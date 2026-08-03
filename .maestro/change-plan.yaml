@@ -1,0 +1,31 @@
+# Change-plan navigation, UI taps only (no deep links): the dev client
+# auto-loads the last bundle on plain launch, then we walk Journeys →
+# Settings tab → plan link → paywall. The Settings link text depends on
+# entitlement state ('Change plan' when subscribed, 'Get Owed Pro' when not),
+# so both are handled conditionally.
+appId: com.sshanavas.owed
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Journeys"
+    timeout: 30000
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Restore purchases"
+    timeout: 10000
+- runFlow:
+    when:
+      visible: "Change plan"
+    commands:
+      - tapOn: "Change plan"
+- runFlow:
+    when:
+      visible: "Get Owed Pro"
+    commands:
+      - tapOn: "Get Owed Pro"
+- extendedWaitUntil:
+    visible: "Monthly"
+    timeout: 15000
+- assertVisible: "Yearly"
+- assertVisible: "Lifetime"
+- assertVisible: "Restore purchases"

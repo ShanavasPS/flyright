@@ -65,6 +65,12 @@ export function Settings() {
                   longest-running one unlocks Pro; the others expire on their own.
                 </ThemedText>
               )}
+              {/* Always-available plan switch: the Customer Center's own
+                  Change Plans row only exists once plans are attached to it
+                  in the dashboard, and not at all on the Test Store/Android. */}
+              <Pressable onPress={() => router.push('/paywall')}>
+                <ThemedText type="link">Change plan</ThemedText>
+              </Pressable>
               <Pressable onPress={onManageSubscription}>
                 <ThemedText type="link">Manage subscription</ThemedText>
               </Pressable>
