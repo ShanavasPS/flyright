@@ -1,13 +1,36 @@
+import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
-import { presentCustomerCenter, restorePurchases, useHasPro } from '@/services/purchases';
+import {
+  presentCustomerCenter,
+  restorePurchases,
+  useActiveSubscriptions,
+  useProEntitlement,
+} from '@/services/purchases';
+
+const PLAN_LABELS: Record<string, string> = {
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+  lifetime: 'Lifetime',
+};
+
+function renewalLine(expirationDate: string | null, willRenew: boolean): string {
+  if (!expirationDate) return 'Lifetime access — yours forever';
+  const date = new Date(expirationDate).toLocaleDateString();
+  return willRenew ? `Renews ${date}` : `Expires ${date}`;
+}
+
+const planLabel = (productId: string) =>
+  PLAN_LABELS[productId.split(':')[0]] ?? productId;
 
 export function Settings() {
-  const hasPro = useHasPro();
+  const router = useRouter();
+  const pro = useProEntitlement();
+  const activeSubscriptions = useActiveSubscriptions();
 
   const onRestore = async () => {
     const restored = await restorePurchases();
@@ -23,12 +46,35 @@ export function Settings() {
         <ThemedText type="title">Settings</ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="subtitle">
-            {hasPro ? 'Owed Pro — active' : 'Free plan'}
-          </ThemedText>
-          <Pressable onPress={() => presentCustomerCenter()}>
-            <ThemedText type="link">Manage subscription</ThemedText>
-          </Pressable>
+          {pro ? (
+            <>
+              <ThemedText type="subtitle">
+                Owed Pro — {planLabel(pro.productIdentifier)}
+              </ThemedText>
+              <ThemedText type="small">
+                {renewalLine(pro.expirationDate, pro.willRenew)}
+              </ThemedText>
+              {activeSubscriptions.length > 1 && (
+                <ThemedText type="small">
+                  All active plans: {activeSubscriptions.map(planLabel).join(', ')}. The
+                  longest-running one unlocks Pro; the others expire on their own.
+                </ThemedText>
+              )}
+              <Pressable onPress={() => router.push('/paywall')}>
+                <ThemedText type="link">Change plan</ThemedText>
+              </Pressable>
+              <Pressable onPress={() => presentCustomerCenter()}>
+                <ThemedText type="link">Manage subscription</ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <ThemedText type="subtitle">Free plan</ThemedText>
+              <Pressable onPress={() => router.push('/paywall')}>
+                <ThemedText type="link">Get Owed Pro</ThemedText>
+              </Pressable>
+            </>
+          )}
           <Pressable onPress={onRestore}>
             <ThemedText type="link">Restore purchases</ThemedText>
           </Pressable>

@@ -39,6 +39,20 @@ export const useCustomerInfo = () => usePurchasesStore((s) => s.customerInfo);
 /** Reactive 'Owed Pro' entitlement check — use this to gate UI. */
 export const useHasPro = () => usePurchasesStore((s) => entitledToPro(s.customerInfo));
 
+/** Active 'Owed Pro' entitlement details (product, renewal state), or null. */
+export const useProEntitlement = () =>
+  usePurchasesStore((s) => s.customerInfo?.entitlements.active[ENTITLEMENT_PRO] ?? null);
+
+const NO_SUBSCRIPTIONS: string[] = [];
+
+/**
+ * Product ids of all active store subscriptions. More than one can be active
+ * in the Test Store, where a plan change stacks instead of replacing (real
+ * stores replace plans within a subscription group).
+ */
+export const useActiveSubscriptions = () =>
+  usePurchasesStore((s) => s.customerInfo?.activeSubscriptions ?? NO_SUBSCRIPTIONS);
+
 export function initPurchases() {
   if (Platform.OS === 'web') return; // web build is informational; no billing
   const platformKey = Platform.select({ ios: RC_API_KEY_IOS, android: RC_API_KEY_ANDROID });
