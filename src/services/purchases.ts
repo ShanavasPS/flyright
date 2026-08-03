@@ -23,7 +23,11 @@ import { RC_API_KEY_ANDROID, RC_API_KEY_IOS, RC_API_KEY_TEST } from '@/constants
  */
 export const ENTITLEMENT_PRO = 'Owed Pro';
 
+/** Custom action id configured on the Customer Center's management screen. */
+export const CC_ACTION_CHANGE_PLAN = 'change_plan';
+
 let configured = false;
+let usingTestStore = false;
 
 /** Reactive customer state — kept in sync by the SDK's update listener. */
 const usePurchasesStore = create<{ customerInfo: CustomerInfo | null }>(() => ({
@@ -67,6 +71,7 @@ export function initPurchases() {
   if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
   Purchases.configure({ apiKey });
   configured = true;
+  usingTestStore = apiKey.startsWith('test_');
 
   Purchases.addCustomerInfoUpdateListener((customerInfo) => {
     usePurchasesStore.setState({ customerInfo });
@@ -144,14 +149,32 @@ export async function presentProPaywall(): Promise<boolean> {
   }
 }
 
-/** Self-serve subscription management (cancel, refund, plan changes). */
-export async function presentCustomerCenter() {
-  if (!configured) return;
+/**
+ * Self-serve subscription management (cancel, refund, plan changes).
+ * Resolves once the sheet is dismissed; `changePlanRequested` is true when the
+ * user picked a plan-change option the store can't handle natively — the
+ * 'change_plan' custom action (any platform), or the built-in iOS
+ * 'Change plans' path under the Test Store. The caller should then show the
+ * paywall.
+ */
+export async function presentCustomerCenter(): Promise<{ changePlanRequested: boolean }> {
+  if (!configured) return { changePlanRequested: false };
+  let changePlanRequested = false;
   try {
-    await RevenueCatUI.presentCustomerCenter();
+    await RevenueCatUI.presentCustomerCenter({
+      callbacks: {
+        onCustomActionSelected: ({ actionId }) => {
+          if (actionId === CC_ACTION_CHANGE_PLAN) changePlanRequested = true;
+        },
+        onManagementOptionSelected: ({ option }) => {
+          if (option === 'change_plans' && usingTestStore) changePlanRequested = true;
+        },
+      },
+    });
   } catch (e) {
     console.warn('[purchases] customer center failed', e);
   }
+  return { changePlanRequested };
 }
 
 /** Restore prior purchases; returns whether 'Owed Pro' is now active. */

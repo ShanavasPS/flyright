@@ -1,0 +1,17 @@
+# Paywall E2E: offering loads from RevenueCat and all three packages render.
+# Uses deep links; assertions stick to package names so they survive a
+# redesigned Paywalls v2 template.
+appId: com.sshanavas.owed
+---
+- launchApp
+- openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "Journeys"
+    timeout: 30000
+- openLink: "owed:///paywall"
+- extendedWaitUntil:
+    visible: "Monthly"
+    timeout: 15000
+- assertVisible: "Yearly"
+- assertVisible: "Lifetime"
+- assertVisible: "Restore purchases"

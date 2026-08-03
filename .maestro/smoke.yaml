@@ -1,0 +1,12 @@
+# Smoke test: dev-client build boots, JS bundle loads, home screen renders.
+# Run: maestro test .maestro/smoke.yaml   (requires a booted simulator with the
+# dev build installed and `npx expo start` serving the bundle on :8081)
+appId: com.sshanavas.owed
+---
+- launchApp
+- openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "Journeys"
+    timeout: 30000
+- assertVisible: "No journeys yet"
+- assertVisible: "See a demo verdict.*"

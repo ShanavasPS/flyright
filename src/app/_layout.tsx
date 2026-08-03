@@ -1,10 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { LogBox, useColorScheme } from 'react-native';
 
 import { initNotifications } from '@/services/notifications';
 import { initPurchases } from '@/services/purchases';
+
+// Known dev-time noise (missing keys, Test Store notices). Keep them in the
+// console but out of the LogBox toast — its animation breaks the accessibility
+// tree that Maestro E2E runs read.
+LogBox.ignoreLogs(['[notifications]', '[purchases]', '[RevenueCat]']);
 
 const queryClient = new QueryClient();
 

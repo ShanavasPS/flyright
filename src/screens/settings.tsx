@@ -32,6 +32,11 @@ export function Settings() {
   const pro = useProEntitlement();
   const activeSubscriptions = useActiveSubscriptions();
 
+  const onManageSubscription = async () => {
+    const { changePlanRequested } = await presentCustomerCenter();
+    if (changePlanRequested) router.push('/paywall');
+  };
+
   const onRestore = async () => {
     const restored = await restorePurchases();
     Alert.alert(
@@ -60,10 +65,7 @@ export function Settings() {
                   longest-running one unlocks Pro; the others expire on their own.
                 </ThemedText>
               )}
-              <Pressable onPress={() => router.push('/paywall')}>
-                <ThemedText type="link">Change plan</ThemedText>
-              </Pressable>
-              <Pressable onPress={() => presentCustomerCenter()}>
+              <Pressable onPress={onManageSubscription}>
                 <ThemedText type="link">Manage subscription</ThemedText>
               </Pressable>
             </>
