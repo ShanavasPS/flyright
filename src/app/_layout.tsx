@@ -31,6 +31,10 @@ export default function RootLayout() {
             name="paywall"
             options={{ presentation: 'modal', headerShown: false }}
           />
+          <Stack.Screen
+            name="customer-center"
+            options={{ title: 'Manage subscription', headerBackTitle: 'Back' }}
+          />
         </Stack>
       </QueryClientProvider>
     </ThemeProvider>

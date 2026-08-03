@@ -6,7 +6,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import {
-  presentCustomerCenter,
   restorePurchases,
   useActiveSubscriptions,
   useProEntitlement,
@@ -31,11 +30,6 @@ export function Settings() {
   const router = useRouter();
   const pro = useProEntitlement();
   const activeSubscriptions = useActiveSubscriptions();
-
-  const onManageSubscription = async () => {
-    const { changePlanRequested } = await presentCustomerCenter();
-    if (changePlanRequested) router.push('/paywall');
-  };
 
   const onRestore = async () => {
     const restored = await restorePurchases();
@@ -66,9 +60,8 @@ export function Settings() {
                 </ThemedText>
               )}
               {/* Plan changes live inside the Customer Center: a 'change_plan'
-                  custom action configured on its management screen, handled in
-                  presentCustomerCenter → paywall. */}
-              <Pressable onPress={onManageSubscription}>
+                  custom action configured on its management screen. */}
+              <Pressable onPress={() => router.push('/customer-center')}>
                 <ThemedText type="link">Manage subscription</ThemedText>
               </Pressable>
             </>

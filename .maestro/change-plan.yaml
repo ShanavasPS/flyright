@@ -1,6 +1,6 @@
 # Change-plan navigation, UI taps only (no deep links): Settings tab →
-# Manage subscription (Customer Center) → 'Change plan' custom action →
-# close the sheet → the app opens the paywall. On the free plan (test
+# Manage subscription (Customer Center on a pushed route) → 'Change plan'
+# custom action → paywall opens immediately. On the free plan (test
 # subscriptions expire on their own) the path is Settings → Get Owed Pro.
 # The dev client auto-loads the last bundle on plain launch.
 appId: com.sshanavas.owed
@@ -22,10 +22,6 @@ appId: com.sshanavas.owed
           visible: "Change plan"
           timeout: 15000
       - tapOn: "Change plan"
-      # The sheet stays open after a custom action; close it (X, top right)
-      # and the app routes to the paywall.
-      - tapOn:
-          point: 90%,10%
 - runFlow:
     when:
       visible: "Get Owed Pro"
