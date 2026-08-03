@@ -1,8 +1,8 @@
-# Change-plan navigation, UI taps only (no deep links): the dev client
-# auto-loads the last bundle on plain launch, then we walk Journeys →
-# Settings tab → plan link → paywall. The Settings link text depends on
-# entitlement state ('Change plan' when subscribed, 'Get Owed Pro' when not),
-# so both are handled conditionally.
+# Change-plan navigation, UI taps only (no deep links): Settings tab →
+# Manage subscription (Customer Center) → 'Change plan' custom action →
+# close the sheet → the app opens the paywall. On the free plan (test
+# subscriptions expire on their own) the path is Settings → Get Owed Pro.
+# The dev client auto-loads the last bundle on plain launch.
 appId: com.sshanavas.owed
 ---
 - launchApp
@@ -15,9 +15,17 @@ appId: com.sshanavas.owed
     timeout: 10000
 - runFlow:
     when:
-      visible: "Change plan"
+      visible: "Manage subscription"
     commands:
+      - tapOn: "Manage subscription"
+      - extendedWaitUntil:
+          visible: "Change plan"
+          timeout: 15000
       - tapOn: "Change plan"
+      # The sheet stays open after a custom action; close it (X, top right)
+      # and the app routes to the paywall.
+      - tapOn:
+          point: 90%,10%
 - runFlow:
     when:
       visible: "Get Owed Pro"
