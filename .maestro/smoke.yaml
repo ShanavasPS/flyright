@@ -3,10 +3,12 @@
 # dev build installed and `npx expo start` serving the bundle on :8081)
 appId: com.sshanavas.owed
 ---
-- launchApp
+- launchApp:
+    clearState: true # deterministic: the journeys DB starts empty
 - openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 - extendedWaitUntil:
     visible: "Journeys"
     timeout: 30000
+- assertVisible: "Search to add flights"
 - assertVisible: "No journeys yet"
 - assertVisible: "See a demo verdict.*"

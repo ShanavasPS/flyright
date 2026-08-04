@@ -10,8 +10,9 @@ export default function TabsLayout() {
   return (
     <NativeTabs
       backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      indicatorColor={colors.backgroundSelected}
+      iconColor={colors.textSecondary}
+      labelStyle={{ color: colors.textSecondary, selected: { color: colors.tint } }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Journeys</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon

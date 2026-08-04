@@ -8,19 +8,33 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 export const Colors = {
+  // "Altitude blue + payout green": brand blue (#208AEF, same as the splash)
+  // for actions and chrome accents; green is reserved for money moments —
+  // owed amounts, eligible verdicts, on-time status. Dark mode is deep navy,
+  // not pure black, so cards still read as "sky at night".
+  // Light mode is branded, not plain white: soft blue page background with
+  // white elevated cards (ThemedView shadows them) and navy-blue headings.
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#0B1520',
+    heading: '#0F4C8A',
+    background: '#EAF2FB',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#D3E4F6',
+    textSecondary: '#5B6B7C',
+    tint: '#208AEF',
+    success: '#17914F',
+    danger: '#D93036',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F2F6FA',
+    heading: '#F2F6FA',
+    background: '#0A1220',
+    backgroundElement: '#16202E',
+    backgroundSelected: '#223144',
+    textSecondary: '#93A5B8',
+    tint: '#3B9AF7',
+    success: '#2DB874',
+    danger: '#F2555A',
   },
 } as const;
 

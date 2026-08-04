@@ -1,0 +1,43 @@
+# Add-flight flow: search-bar entry → flight number → date → track → verdict.
+# Uses the dev mock in /api/flight-status (no AERODATABOX_API_KEY set): an odd
+# flight number on a past date arrives 195 min late → EU261-eligible.
+# Note: pressable rows flatten their children into one accessibility label on
+# iOS, so row selectors are .*…* regexes over the combined label.
+# Run: maestro test .maestro/add-flight.yaml   (requires a booted simulator with
+# the dev build installed and `npx expo start` serving the bundle on :8081)
+appId: com.sshanavas.owed
+---
+- launchApp:
+    clearState: true # deterministic: the journeys DB starts empty
+- openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "Search to add flights"
+    timeout: 30000
+- tapOn: "Search to add flights"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+- tapOn: "AY1331 or LH873"
+- inputText: "AY1331"
+- extendedWaitUntil:
+    visible: ".*Search this flight.*"
+    timeout: 5000
+- tapOn: ".*Search this flight.*"
+- extendedWaitUntil:
+    visible: ".*Yesterday.*"
+    timeout: 5000
+- tapOn: ".*Yesterday.*"
+- extendedWaitUntil:
+    visible: ".*Track this flight.*"
+    timeout: 15000
+- assertVisible: ".*HEL → FRA.*"
+- tapOn: ".*Track this flight.*"
+- assertVisible: "Added to Journeys"
+- extendedWaitUntil:
+    visible: "Search to add flights"
+    timeout: 10000
+- assertVisible: ".*Finnair AY1331.*"
+- tapOn: ".*HEL to FRA.*"
+- extendedWaitUntil:
+    visible: "You're owed.*"
+    timeout: 15000
