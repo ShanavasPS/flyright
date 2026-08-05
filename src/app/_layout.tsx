@@ -76,6 +76,8 @@ export default function RootLayout() {
             name="customer-center"
             options={{ title: 'Manage subscription', headerBackTitle: 'Back' }}
           />
+          <Stack.Screen name="privacy" options={{ title: 'Privacy Policy' }} />
+          <Stack.Screen name="support" options={{ title: 'Support' }} />
         </Stack>
       </QueryClientProvider>
     </ThemeProvider>

@@ -59,13 +59,13 @@ export const useActiveSubscriptions = () =>
 export function initPurchases() {
   if (Platform.OS === 'web') return; // web build is informational; no billing
   const platformKey = Platform.select({ ios: RC_API_KEY_IOS, android: RC_API_KEY_ANDROID });
-  const apiKey = platformKey || RC_API_KEY_TEST;
+  // The Test Store fallback is dev-only; a release build must ship platform keys.
+  const apiKey = platformKey || (__DEV__ ? RC_API_KEY_TEST : '');
   if (!apiKey) {
-    console.warn('[purchases] no RevenueCat key set for this platform — purchases disabled');
+    (__DEV__ ? console.warn : console.error)(
+      '[purchases] no RevenueCat key set for this platform — purchases disabled',
+    );
     return;
-  }
-  if (apiKey.startsWith('test_') && !__DEV__) {
-    console.error('[purchases] Test Store key in a release build — set platform keys before shipping');
   }
   if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
   Purchases.configure({ apiKey });
