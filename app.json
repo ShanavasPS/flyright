@@ -8,7 +8,10 @@
     "scheme": "owed",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.sshanavas.owed"
+      "bundleIdentifier": "com.sshanavas.owed",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.sshanavas.owed",
