@@ -27,9 +27,9 @@ export function Support() {
           </ThemedText>
         </ThemedView>
         <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">What Owed does</ThemedText>
+          <ThemedText type="smallBold">What FlyRight does</ThemedText>
           <ThemedText type="small">
-            Owed watches your flights and trains, tells you when a disruption makes you
+            FlyRight watches your flights and trains, tells you when a disruption makes you
             eligible for compensation under EU261, UK261, or EU rail passenger rights,
             and helps you claim it — keeping 0% of your payout.
           </ThemedText>

@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "owed",
-    "slug": "owed",
+    "name": "FlyRight",
+    "slug": "flyright",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "owed",
+    "scheme": "flyright",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.sshanavas.owed",
+      "bundleIdentifier": "com.sshanavas.flyright",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.sshanavas.owed",
+      "package": "com.sshanavas.flyright",
       "adaptiveIcon": {
         "backgroundColor": "#208AEF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -34,7 +34,7 @@
       [
         "expo-router",
         {
-          "origin": "https://owed.expo.app"
+          "origin": "https://flyright.expo.app"
         }
       ],
       [
@@ -57,7 +57,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Owed scans boarding passes and photographs claim evidence (receipts, PIR forms).",
+          "cameraPermission": "FlyRight scans boarding passes and photographs claim evidence (receipts, PIR forms).",
           "recordAudioAndroid": false
         }
       ]
@@ -67,7 +67,9 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": "https://flyright.expo.app"
+      },
       "eas": {
         "build": {
           "experimental": {
@@ -75,10 +77,10 @@
               "appExtensions": [
                 {
                   "targetName": "OneSignalNotificationServiceExtension",
-                  "bundleIdentifier": "com.sshanavas.owed.OneSignalNotificationServiceExtension",
+                  "bundleIdentifier": "com.sshanavas.flyright.OneSignalNotificationServiceExtension",
                   "entitlements": {
                     "com.apple.security.application-groups": [
-                      "group.com.sshanavas.owed.onesignal"
+                      "group.com.sshanavas.flyright.onesignal"
                     ]
                   }
                 }
@@ -86,7 +88,7 @@
             }
           }
         },
-        "projectId": "aafd8773-b090-468f-8ad4-12f6ce12690b"
+        "projectId": "37d65a3e-bca7-4915-ab16-8ca73a85f7ac"
       }
     },
     "owner": "shanavascruise"

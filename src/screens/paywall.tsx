@@ -32,11 +32,11 @@ export function Paywall() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="title">Owed Pro</ThemedText>
+          <ThemedText type="title">FlyRight Pro</ThemedText>
           <ThemedText>
             RevenueCat isn&apos;t configured in this build. Set EXPO_PUBLIC_RC_TEST_KEY
             (dev) or EXPO_PUBLIC_RC_IOS_KEY / EXPO_PUBLIC_RC_ANDROID_KEY (release) in
-            .env.local, and create the &apos;Owed Pro&apos; entitlement and an offering
+            .env.local, and create the &apos;FlyRight Pro&apos; entitlement and an offering
             in the RevenueCat dashboard.
           </ThemedText>
           <Pressable onPress={() => router.back()}>

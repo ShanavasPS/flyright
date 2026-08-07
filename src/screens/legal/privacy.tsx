@@ -44,7 +44,7 @@ export function Privacy() {
           Privacy Policy
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Owed — effective 5 August 2026
+          FlyRight — effective 5 August 2026
         </ThemedText>
         {SECTIONS.map(({ title, body }) => (
           <ThemedView key={title} type="backgroundElement" style={styles.card}>

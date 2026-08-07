@@ -35,7 +35,7 @@ export function Settings() {
     const restored = await restorePurchases();
     Alert.alert(
       restored ? 'Purchases restored' : 'Nothing to restore',
-      restored ? 'Owed Pro is active on this device.' : 'No previous purchases were found.'
+      restored ? 'FlyRight Pro is active on this device.' : 'No previous purchases were found.'
     );
   };
 
@@ -48,7 +48,7 @@ export function Settings() {
           {pro ? (
             <>
               <ThemedText type="subtitle">
-                Owed Pro — {planLabel(pro.productIdentifier)}
+                FlyRight Pro — {planLabel(pro.productIdentifier)}
               </ThemedText>
               <ThemedText type="small">
                 {renewalLine(pro.expirationDate, pro.willRenew)}
@@ -69,7 +69,7 @@ export function Settings() {
             <>
               <ThemedText type="subtitle">Free plan</ThemedText>
               <Pressable onPress={() => router.push('/paywall')}>
-                <ThemedText type="link">Get Owed Pro</ThemedText>
+                <ThemedText type="link">Get FlyRight Pro</ThemedText>
               </Pressable>
             </>
           )}
@@ -79,7 +79,7 @@ export function Settings() {
         </ThemedView>
 
         <ThemedText type="small">
-          Owed generates claim documents for you to send yourself. It is not a law
+          FlyRight generates claim documents for you to send yourself. It is not a law
           firm and takes no commission — you keep 100% of what you recover.
         </ThemedText>
       </SafeAreaView>

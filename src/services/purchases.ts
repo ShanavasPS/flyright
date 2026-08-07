@@ -16,12 +16,12 @@ import { RC_API_KEY_ANDROID, RC_API_KEY_IOS, RC_API_KEY_TEST } from '@/constants
  * react-native-purchases directly.
  *
  * Entitlements:
- *  - 'Owed Pro'     → Pro subscription/lifetime (unlimited claims, deadline tracking)
- * Products (attached to 'Owed Pro' in the dashboard): monthly, yearly, lifetime.
+ *  - 'FlyRight Pro'     → Pro subscription/lifetime (unlimited claims, deadline tracking)
+ * Products (attached to 'FlyRight Pro' in the dashboard): monthly, yearly, lifetime.
  * Non-subscription (planned):
  *  - 'claim_credit' → consumable, unlocks a single claim packet
  */
-export const ENTITLEMENT_PRO = 'Owed Pro';
+export const ENTITLEMENT_PRO = 'FlyRight Pro';
 
 /** Custom action id configured on the Customer Center's management screen. */
 export const CC_ACTION_CHANGE_PLAN = 'change_plan';
@@ -39,10 +39,10 @@ const entitledToPro = (info: CustomerInfo | null) =>
 /** Latest CustomerInfo, updated live on purchases/renewals/restores. */
 export const useCustomerInfo = () => usePurchasesStore((s) => s.customerInfo);
 
-/** Reactive 'Owed Pro' entitlement check — use this to gate UI. */
+/** Reactive 'FlyRight Pro' entitlement check — use this to gate UI. */
 export const useHasPro = () => usePurchasesStore((s) => entitledToPro(s.customerInfo));
 
-/** Active 'Owed Pro' entitlement details (product, renewal state), or null. */
+/** Active 'FlyRight Pro' entitlement details (product, renewal state), or null. */
 export const useProEntitlement = () =>
   usePurchasesStore((s) => s.customerInfo?.entitlements.active[ENTITLEMENT_PRO] ?? null);
 
@@ -125,7 +125,7 @@ export async function purchase(pkg: PurchasesPackage): Promise<PurchaseOutcome> 
 /**
  * Present the current offering's paywall (remote-configured in the RevenueCat
  * dashboard — Paywalls v2) unless already entitled. Returns true if the user
- * ends up entitled to 'Owed Pro'.
+ * ends up entitled to 'FlyRight Pro'.
  */
 export async function presentProPaywall(): Promise<boolean> {
   if (!configured) return false;
@@ -147,7 +147,7 @@ export async function presentProPaywall(): Promise<boolean> {
   }
 }
 
-/** Restore prior purchases; returns whether 'Owed Pro' is now active. */
+/** Restore prior purchases; returns whether 'FlyRight Pro' is now active. */
 export async function restorePurchases(): Promise<boolean> {
   if (!configured) return false;
   try {

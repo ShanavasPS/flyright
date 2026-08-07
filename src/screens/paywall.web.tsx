@@ -9,7 +9,7 @@ export function Paywall() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="subtitle" themeColor="heading">
-        Owed Pro
+        FlyRight Pro
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         Subscriptions are available in the iOS and Android apps.

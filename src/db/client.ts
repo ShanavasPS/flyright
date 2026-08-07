@@ -3,6 +3,6 @@ import { openDatabaseSync } from 'expo-sqlite';
 
 import * as schema from './schema';
 
-const sqlite = openDatabaseSync('owed.db', { enableChangeListener: true });
+const sqlite = openDatabaseSync('flyright.db', { enableChangeListener: true });
 
 export const db = drizzle(sqlite, { schema });
