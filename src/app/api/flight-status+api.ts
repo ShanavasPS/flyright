@@ -90,14 +90,15 @@ export async function GET(request: Request) {
     },
   );
 
-  if (upstream.status === 404) {
+  // AeroDataBox answers 204 (empty body) when the flight/date has no data.
+  if (upstream.status === 404 || upstream.status === 204) {
     return Response.json({ error: 'flight not found' }, { status: 404 });
   }
   if (!upstream.ok) {
     return Response.json({ error: 'upstream error' }, { status: 502 });
   }
 
-  const legs: any[] = await upstream.json();
+  const legs: any[] = await upstream.json().catch(() => null);
   if (!Array.isArray(legs) || legs.length === 0) {
     return Response.json({ error: 'flight not found' }, { status: 404 });
   }
