@@ -16,12 +16,14 @@ import { RC_API_KEY_ANDROID, RC_API_KEY_IOS, RC_API_KEY_TEST } from '@/constants
  * react-native-purchases directly.
  *
  * Entitlements:
- *  - 'FlyRight Pro'     → Pro subscription/lifetime (unlimited claims, deadline tracking)
- * Products (attached to 'FlyRight Pro' in the dashboard): monthly, yearly, lifetime.
+ *  - 'Owed Pro' (displayed as "FlyRight Pro") → Pro subscription/lifetime
+ *    (unlimited claims, deadline tracking). The lookup key kept the app's old
+ *    name because RevenueCat entitlement identifiers are immutable.
+ * Products (attached to 'Owed Pro' in the dashboard): monthly, yearly, lifetime.
  * Non-subscription (planned):
  *  - 'claim_credit' → consumable, unlocks a single claim packet
  */
-export const ENTITLEMENT_PRO = 'FlyRight Pro';
+export const ENTITLEMENT_PRO = 'Owed Pro';
 
 /** Custom action id configured on the Customer Center's management screen. */
 export const CC_ACTION_CHANGE_PLAN = 'change_plan';
