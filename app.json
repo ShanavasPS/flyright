@@ -8,13 +8,13 @@
     "scheme": "flyright",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.sshanavas.flyright",
+      "bundleIdentifier": "com.shanavasshaji.flyright",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.sshanavas.flyright",
+      "package": "com.shanavasshaji.flyright",
       "adaptiveIcon": {
         "backgroundColor": "#208AEF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -77,10 +77,10 @@
               "appExtensions": [
                 {
                   "targetName": "OneSignalNotificationServiceExtension",
-                  "bundleIdentifier": "com.sshanavas.flyright.OneSignalNotificationServiceExtension",
+                  "bundleIdentifier": "com.shanavasshaji.flyright.OneSignalNotificationServiceExtension",
                   "entitlements": {
                     "com.apple.security.application-groups": [
-                      "group.com.sshanavas.flyright.onesignal"
+                      "group.com.shanavasshaji.flyright.onesignal"
                     ]
                   }
                 }
