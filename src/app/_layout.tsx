@@ -70,7 +70,12 @@ export default function RootLayout() {
           />
           <Stack.Screen
             name="paywall"
-            options={{ presentation: 'modal', headerShown: false }}
+            options={{
+              presentation: 'formSheet',
+              headerShown: false,
+              sheetGrabberVisible: true,
+              sheetAllowedDetents: [0.97],
+            }}
           />
           <Stack.Screen
             name="customer-center"
