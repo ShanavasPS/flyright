@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, formatTime, localDateString } from '@/services/dates';
+import { requestPushPermission } from '@/services/notifications';
 import {
   FlightLookupError,
   lookupFlight,
@@ -94,6 +95,9 @@ export function AddFlight() {
       createdAt: new Date().toISOString(),
     });
     setStep('added');
+    // The meaningful moment: they just trusted us with a flight to watch.
+    // iOS shows the system dialog once; subsequent calls are no-ops.
+    requestPushPermission().catch(() => {});
   };
 
   // Let the check-mark land, then hand back to the journeys list.
