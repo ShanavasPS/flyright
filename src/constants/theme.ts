@@ -8,32 +8,33 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 export const Colors = {
-  // "Altitude blue + payout green": brand blue (#208AEF, same as the splash)
-  // for actions and chrome accents; green is reserved for money moments —
-  // owed amounts, eligible verdicts, on-time status. Dark mode is deep navy,
-  // not pure black, so cards still read as "sky at night".
-  // Light mode is branded, not plain white: soft blue page background with
-  // white elevated cards (ThemedView shadows them) and navy-blue headings.
+  // "Midnight navy + payout green" (matches the contrail-check app icon,
+  // #0C1B36 splash): navy anchors headings and dark-mode surfaces, cobalt is
+  // the action tint, and green stays reserved for money moments — owed
+  // amounts, eligible verdicts, on-time status. Dark mode is the icon's
+  // night-flight navy, not pure black, so cards still read as "sky at night".
+  // Light mode is a cool porcelain page with white elevated cards
+  // (ThemedView shadows them) and midnight-navy headings.
   light: {
-    text: '#0B1520',
-    heading: '#0F4C8A',
-    background: '#EAF2FB',
+    text: '#0B1424',
+    heading: '#13294B',
+    background: '#F3F6FA',
     backgroundElement: '#FFFFFF',
-    backgroundSelected: '#D3E4F6',
-    textSecondary: '#5B6B7C',
-    tint: '#208AEF',
-    success: '#17914F',
+    backgroundSelected: '#DDE7F4',
+    textSecondary: '#5A6A7E',
+    tint: '#1E6BE0',
+    success: '#0FA362',
     danger: '#D93036',
   },
   dark: {
-    text: '#F2F6FA',
-    heading: '#F2F6FA',
-    background: '#0A1220',
-    backgroundElement: '#16202E',
-    backgroundSelected: '#223144',
-    textSecondary: '#93A5B8',
-    tint: '#3B9AF7',
-    success: '#2DB874',
+    text: '#F2F6FB',
+    heading: '#F2F6FB',
+    background: '#070F20',
+    backgroundElement: '#101D34',
+    backgroundSelected: '#1B2C4A',
+    textSecondary: '#8FA2BB',
+    tint: '#4E9BF5',
+    success: '#2FD68C',
     danger: '#F2555A',
   },
 } as const;
