@@ -45,3 +45,4 @@ example
 # Store credentials — never commit
 google-service-account.json
 revenuecat-service-account.json
+asc-api-key.p8
