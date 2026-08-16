@@ -1,3 +1,7 @@
+import { ClerkProvider } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
+
+import { PurchasesIdentitySync } from '@/components/purchases-identity-sync';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
@@ -9,10 +13,21 @@ import { useDbReady } from '@/services/journeys';
 import { initNotifications } from '@/services/notifications';
 import { initPurchases } from '@/services/purchases';
 
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+
+if (!publishableKey) {
+  throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Add your key to .env.local.\nRun: 1) clerk auth login  2) clerk link  3) clerk env pull — then restart the dev server.");
+}
+
 // Known dev-time noise (missing keys, Test Store notices). Keep them in the
 // console but out of the LogBox toast — its animation breaks the accessibility
 // tree that Maestro E2E runs read.
-LogBox.ignoreLogs(['[notifications]', '[purchases]', '[RevenueCat]']);
+LogBox.ignoreLogs([
+  '[notifications]',
+  '[purchases]',
+  '[RevenueCat]',
+  'Clerk: Clerk has been loaded with development keys',
+]);
 
 const queryClient = new QueryClient();
 
@@ -51,40 +66,48 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={navTheme(colorScheme === 'dark' ? 'dark' : 'light')}>
-      <QueryClientProvider client={queryClient}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="journey/[id]"
-            options={{ title: 'Journey', headerBackButtonDisplayMode: 'minimal' }}
-          />
-          <Stack.Screen
-            name="add-flight"
-            options={{
-              presentation: 'formSheet',
-              headerShown: false,
-              sheetGrabberVisible: true,
-              sheetAllowedDetents: [0.9],
-            }}
-          />
-          <Stack.Screen
-            name="paywall"
-            options={{
-              presentation: 'formSheet',
-              headerShown: false,
-              sheetGrabberVisible: true,
-              sheetAllowedDetents: [0.97],
-            }}
-          />
-          <Stack.Screen
-            name="customer-center"
-            options={{ title: 'Manage subscription', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen name="privacy" options={{ title: 'Privacy Policy' }} />
-          <Stack.Screen name="support" options={{ title: 'Support' }} />
-        </Stack>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <PurchasesIdentitySync />
+      <ThemeProvider value={navTheme(colorScheme === 'dark' ? 'dark' : 'light')}>
+        <QueryClientProvider client={queryClient}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="add-flight"
+              options={{
+                presentation: 'formSheet',
+                headerShown: false,
+                sheetGrabberVisible: true,
+                sheetAllowedDetents: [0.9],
+              }}
+            />
+            <Stack.Screen
+              name="paywall"
+              options={{
+                presentation: 'formSheet',
+                headerShown: false,
+                sheetGrabberVisible: true,
+                sheetAllowedDetents: [0.97],
+              }}
+            />
+            {/* No swipe-to-dismiss: AuthView's onDismiss fires on native view
+                disappearance, so a native-initiated close plus our
+                router.back() would double-pop into the tab navigator. Clerk's
+                X button and auth completion are the dismissal paths. */}
+            <Stack.Screen
+              name="sign-in"
+              options={{
+                presentation: 'formSheet',
+                headerShown: false,
+                gestureEnabled: false,
+                sheetAllowedDetents: [0.9],
+              }}
+            />
+            <Stack.Screen name="privacy" options={{ title: 'Privacy Policy' }} />
+            <Stack.Screen name="support" options={{ title: 'Support' }} />
+          </Stack>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </ClerkProvider>
   );
 }

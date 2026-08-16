@@ -1,3 +1,4 @@
+import { useAuth, useClerk, useUser } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +26,45 @@ function renewalLine(expirationDate: string | null, willRenew: boolean): string 
 
 const planLabel = (productId: string) =>
   PLAN_LABELS[productId.split(':')[0]] ?? productId;
+
+function AccountCard() {
+  const router = useRouter();
+  // Native auth components can leave the session briefly 'pending' mid-flow;
+  // don't flash the signed-out card while that resolves.
+  const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
+  if (!isLoaded) return null;
+
+  return (
+    <ThemedView type="backgroundElement" style={styles.card}>
+      {isSignedIn ? (
+        <>
+          <ThemedText type="subtitle">
+            {user?.primaryEmailAddress?.emailAddress ?? 'Signed in'}
+          </ThemedText>
+          <Pressable onPress={() => router.push('/account')}>
+            <ThemedText type="link">Manage account</ThemedText>
+          </Pressable>
+          <Pressable onPress={() => void signOut()}>
+            <ThemedText type="link">Sign out</ThemedText>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <ThemedText type="subtitle">Account</ThemedText>
+          <ThemedText type="small">
+            Keep your purchases and travel history safe across devices.
+          </ThemedText>
+          <Pressable onPress={() => router.push('/sign-in')}>
+            <ThemedText type="link">Sign in or create account</ThemedText>
+          </Pressable>
+        </>
+      )}
+    </ThemedView>
+  );
+}
 
 export function Settings() {
   const router = useRouter();
@@ -77,6 +117,8 @@ export function Settings() {
             <ThemedText type="link">Restore purchases</ThemedText>
           </Pressable>
         </ThemedView>
+
+        <AccountCard />
 
         <ThemedText type="small">
           FlyRight generates claim documents for you to send yourself. It is not a law

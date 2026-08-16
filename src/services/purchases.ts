@@ -84,6 +84,34 @@ export function initPurchases() {
 
 export const isPurchasesConfigured = () => configured;
 
+/**
+ * Tie the RevenueCat identity to the signed-in Clerk user so purchases made on
+ * any surface (native stores, web billing) land on the same customer. logIn
+ * merges the device's anonymous purchase history into the account.
+ */
+export async function logInPurchases(userId: string) {
+  if (!configured) return;
+  try {
+    if ((await Purchases.getAppUserID()) === userId) return;
+    const { customerInfo } = await Purchases.logIn(userId);
+    usePurchasesStore.setState({ customerInfo });
+  } catch (e) {
+    console.warn('[purchases] logIn failed', e);
+  }
+}
+
+/** Back to a fresh anonymous RevenueCat user after Clerk sign-out. */
+export async function logOutPurchases() {
+  if (!configured) return;
+  try {
+    if (await Purchases.isAnonymous()) return; // logOut throws if already anonymous
+    const customerInfo = await Purchases.logOut();
+    usePurchasesStore.setState({ customerInfo });
+  } catch (e) {
+    console.warn('[purchases] logOut failed', e);
+  }
+}
+
 /** Imperative entitlement check (prefer useHasPro in components). */
 export async function hasPro(): Promise<boolean> {
   if (!configured) return false;

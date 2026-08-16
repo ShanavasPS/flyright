@@ -22,6 +22,10 @@ export function initPurchases() {}
 
 export const isPurchasesConfigured = () => false;
 
+export async function logInPurchases(_userId: string) {}
+
+export async function logOutPurchases() {}
+
 export async function hasPro(): Promise<boolean> {
   return false;
 }

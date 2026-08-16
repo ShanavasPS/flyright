@@ -66,6 +66,13 @@
           "cameraPermission": "FlyRight scans boarding passes and photographs claim evidence (receipts, PIR forms).",
           "recordAudioAndroid": false
         }
+      ],
+      "expo-secure-store",
+      [
+        "@clerk/expo",
+        {
+          "theme": "./clerk-theme.json"
+        }
       ]
     ],
     "experiments": {
