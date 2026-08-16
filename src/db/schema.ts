@@ -2,6 +2,9 @@ import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const journeys = sqliteTable('journeys', {
   id: text('id').primaryKey(),
+  /** Clerk user id; null while the device is anonymous. Backfilled on sign-in
+   *  so the future cloud sync knows which rows belong to the account. */
+  userId: text('user_id'),
   mode: text('mode', { enum: ['flight', 'train', 'bus', 'ferry'] }).notNull(),
   carrier: text('carrier').notNull(),
   carrierCountry: text('carrier_country').notNull(),
@@ -30,6 +33,8 @@ export const disruptions = sqliteTable('disruptions', {
 
 export const claims = sqliteTable('claims', {
   id: text('id').primaryKey(),
+  /** See journeys.userId. */
+  userId: text('user_id'),
   journeyId: text('journey_id').notNull().references(() => journeys.id),
   regulation: text('regulation').notNull(),
   amount: real('amount').notNull(),
