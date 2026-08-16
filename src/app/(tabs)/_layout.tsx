@@ -13,7 +13,7 @@ export default function TabsLayout() {
       indicatorColor={colors.backgroundSelected}
       iconColor={colors.textSecondary}
       labelStyle={{ color: colors.textSecondary, selected: { color: colors.tint } }}>
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger name="(journeys)">
         <NativeTabs.Trigger.Label>Journeys</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}
@@ -29,7 +29,7 @@ export default function TabsLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="settings">
+      <NativeTabs.Trigger name="(settings)">
         <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}
