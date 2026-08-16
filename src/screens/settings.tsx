@@ -84,6 +84,8 @@ export function Settings() {
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="title">Settings</ThemedText>
 
+        <AccountCard />
+
         <ThemedView type="backgroundElement" style={styles.card}>
           {pro ? (
             <>
@@ -117,8 +119,6 @@ export function Settings() {
             <ThemedText type="link">Restore purchases</ThemedText>
           </Pressable>
         </ThemedView>
-
-        <AccountCard />
 
         <ThemedText type="small">
           FlyRight generates claim documents for you to send yourself. It is not a law
