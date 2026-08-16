@@ -27,6 +27,18 @@ function renewalLine(expirationDate: string | null, willRenew: boolean): string 
 const planLabel = (productId: string) =>
   PLAN_LABELS[productId.split(':')[0]] ?? productId;
 
+/** Placeholder shell shown while Clerk initializes (a network round trip on
+ * fresh installs) — keeps the card's footprint so the content doesn't jump. */
+function AccountCardSkeleton() {
+  return (
+    <ThemedView type="backgroundElement" style={styles.card}>
+      <ThemedText type="subtitle">Account</ThemedText>
+      <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '55%' }]} />
+      <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '40%' }]} />
+    </ThemedView>
+  );
+}
+
 function AccountCard() {
   const router = useRouter();
   // Native auth components can leave the session briefly 'pending' mid-flow;
@@ -35,7 +47,7 @@ function AccountCard() {
   const { user } = useUser();
   const { signOut } = useClerk();
 
-  if (!isLoaded) return null;
+  if (!isLoaded) return <AccountCardSkeleton />;
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
@@ -143,5 +155,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.four,
     borderRadius: Spacing.four,
+  },
+  skeletonBar: {
+    height: 18,
+    borderRadius: Spacing.two,
   },
 });
