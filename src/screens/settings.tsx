@@ -1,4 +1,6 @@
 import { useAuth, useClerk, useUser } from '@clerk/expo';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +28,14 @@ function renewalLine(expirationDate: string | null, willRenew: boolean): string 
 
 const planLabel = (productId: string) =>
   PLAN_LABELS[productId.split(':')[0]] ?? productId;
+
+/** "1.0.0 (6)" from the installed binary; falls back to the JS config
+ * version on web, where native version APIs return null. */
+function versionLine(): string {
+  const version = Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '';
+  const build = Application.nativeBuildVersion;
+  return `Version ${version}${build ? ` (${build})` : ''}`;
+}
 
 /** Placeholder shell shown while Clerk initializes (a network round trip on
  * fresh installs) — keeps the card's footprint so the content doesn't jump. */
@@ -136,6 +146,10 @@ export function Settings() {
           FlyRight generates claim documents for you to send yourself. It is not a law
           firm and takes no commission — you keep 100% of what you recover.
         </ThemedText>
+
+        <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
+          {versionLine()}
+        </ThemedText>
       </SafeAreaView>
     </ThemedView>
   );
@@ -159,5 +173,9 @@ const styles = StyleSheet.create({
   skeletonBar: {
     height: 18,
     borderRadius: Spacing.two,
+  },
+  version: {
+    marginTop: 'auto',
+    textAlign: 'center',
   },
 });
