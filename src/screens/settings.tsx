@@ -123,7 +123,12 @@ function AccountCard() {
   );
 }
 
-function NotificationsCard() {
+/** Inset hairline between rows of a grouped card. */
+function RowSeparator() {
+  return <ThemedView type="backgroundSelected" style={styles.separator} />;
+}
+
+function PushNotificationsRow() {
   const theme = useTheme();
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -170,13 +175,13 @@ function NotificationsCard() {
     }
   };
 
+  // Web has no push channel — the row disappears along with its separator.
   if (Platform.OS === 'web') return null;
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="subtitle">Notifications</ThemedText>
-      <View style={styles.switchRow}>
-        <View style={styles.switchLabel}>
+    <>
+      <View style={styles.row}>
+        <View style={styles.rowLabel}>
           <ThemedText>Push notifications</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Disruption alerts and claim reminders for your flights.
@@ -190,12 +195,14 @@ function NotificationsCard() {
           trackColor={{ true: theme.tint }}
         />
       </View>
-    </ThemedView>
+      <RowSeparator />
+    </>
   );
 }
 
 export function Settings() {
   const router = useRouter();
+  const theme = useTheme();
   const pro = useProEntitlement();
   const activeSubscriptions = useActiveSubscriptions();
 
@@ -207,6 +214,15 @@ export function Settings() {
     );
   };
 
+  const chevron = (
+    <SymbolView
+      name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+      size={14}
+      weight="bold"
+      tintColor={theme.textSecondary}
+    />
+  );
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -216,41 +232,43 @@ export function Settings() {
 
         <AccountCard />
 
-        <NotificationsCard />
+        <ThemedView type="backgroundElement" style={styles.group}>
+          <PushNotificationsRow />
 
-        <ThemedView type="backgroundElement" style={styles.card}>
-          {pro ? (
-            <>
-              <ThemedText type="subtitle">
-                FlyRight Pro — {planLabel(pro.productIdentifier)}
-              </ThemedText>
-              <ThemedText type="small">
-                {renewalLine(pro.expirationDate, pro.willRenew)}
-              </ThemedText>
-              {activeSubscriptions.length > 1 && (
-                <ThemedText type="small">
-                  All active plans: {activeSubscriptions.map(planLabel).join(', ')}. The
-                  longest-running one unlocks Pro; the others expire on their own.
+          {/* Plan changes live inside the Customer Center: a 'change_plan'
+              custom action configured on its management screen. */}
+          <Pressable
+            onPress={() => router.push(pro ? '/customer-center' : '/paywall')}
+            style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+            <View style={styles.rowLabel}>
+              <ThemedText>{pro ? 'FlyRight Pro' : 'Get FlyRight Pro'}</ThemedText>
+              {pro && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {renewalLine(pro.expirationDate, pro.willRenew)}
                 </ThemedText>
               )}
-              {/* Plan changes live inside the Customer Center: a 'change_plan'
-                  custom action configured on its management screen. */}
-              <Pressable onPress={() => router.push('/customer-center')}>
-                <ThemedText type="link">Manage subscription</ThemedText>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <ThemedText type="subtitle">Free plan</ThemedText>
-              <Pressable onPress={() => router.push('/paywall')}>
-                <ThemedText type="link">Get FlyRight Pro</ThemedText>
-              </Pressable>
-            </>
-          )}
-          <Pressable onPress={onRestore}>
-            <ThemedText type="link">Restore purchases</ThemedText>
+            </View>
+            <ThemedText type="small" themeColor="textSecondary">
+              {pro ? planLabel(pro.productIdentifier) : 'Free plan'}
+            </ThemedText>
+            {chevron}
+          </Pressable>
+
+          <RowSeparator />
+
+          <Pressable
+            onPress={onRestore}
+            style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+            <ThemedText themeColor="tint">Restore purchases</ThemedText>
           </Pressable>
         </ThemedView>
+
+        {pro && activeSubscriptions.length > 1 && (
+          <ThemedText type="small" themeColor="textSecondary">
+            All active plans: {activeSubscriptions.map(planLabel).join(', ')}. The
+            longest-running one unlocks Pro; the others expire on their own.
+          </ThemedText>
+        )}
 
         <ThemedText type="small">
           FlyRight generates claim documents for you to send yourself. It is not a law
@@ -280,14 +298,23 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: Spacing.four,
   },
-  switchRow: {
+  group: {
+    borderRadius: Spacing.four,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
   },
-  switchLabel: {
+  rowLabel: {
     flex: 1,
     gap: Spacing.half,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: Spacing.four,
   },
   profileRow: {
     flexDirection: 'row',
