@@ -11,5 +11,9 @@ When the user asks for an EAS build, do ALL of this without being reminded:
 3. **Run the builds yourself** — the user has standing authorization for these two commands and does not want to be asked to run them manually (use the global `eas` binary, not npx):
    `eas build -p ios --profile production --non-interactive --no-wait --auto-submit`
    `eas build -p android --profile production --non-interactive --no-wait --auto-submit`
-4. **Rebuild the local dev app so the simulator shows the new version too**: `npx expo prebuild -p ios` then `npx expo run:ios` (`ios/` is gitignored/generated; the version string in Settings comes from the installed native binary, so a JS reload never updates it).
-5. Commit and push the version bump.
+4. **Rebuild the local dev apps on BOTH platforms so the simulator and emulator show the new version too**:
+   - iOS: `npx expo prebuild -p ios` then `npx expo run:ios`
+   - Android: `npx expo prebuild -p android` then `npx expo run:android` (boot an emulator first if none is running: `~/Library/Android/sdk/emulator/emulator -avd Pixel_9a`)
+
+   The explicit `prebuild` step is load-bearing: `expo run:ios`/`run:android` silently REUSE an existing `ios/`/`android/` directory without re-running prebuild, so version numbers and app.json/plugin config changes never reach the installed app unless prebuild runs first. Both directories are gitignored/generated, and the version string in Settings comes from the installed native binary — a JS reload never updates it. After installing, verify the version on the device actually matches `app.json` before calling it done.
+5. **Commit and push** the version bump — local git must end up in sync with the remote (`git push`, don't leave commits unpushed).
