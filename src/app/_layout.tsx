@@ -15,6 +15,7 @@ import { useVersionGate } from "@/hooks/use-version-gate";
 import { useDbReady } from "@/services/journeys";
 import { initNotifications } from "@/services/notifications";
 import { initPurchases } from "@/services/purchases";
+import { applyStoredTheme } from "@/services/theme";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
@@ -39,6 +40,10 @@ LogBox.ignoreLogs([
 Observe.configure({
   integrations: { "expo-router": true },
 });
+
+// Before first render for the same reason — a post-mount apply would flash
+// the system theme before snapping to the user's chosen one.
+applyStoredTheme();
 
 const queryClient = new QueryClient();
 

@@ -27,6 +27,11 @@ import {
   setPushEnabled,
 } from '@/services/notifications';
 import {
+  getThemePreference,
+  setThemePreference,
+  type ThemePreference,
+} from '@/services/theme';
+import {
   restorePurchases,
   useActiveSubscriptions,
   useProEntitlement,
@@ -126,6 +131,54 @@ function AccountCard() {
 /** Inset hairline between rows of a grouped card. */
 function RowSeparator() {
   return <ThemedView type="backgroundSelected" style={styles.separator} />;
+}
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
+function AppearanceRow() {
+  const theme = useTheme();
+  const [preference, setPreference] = useState(getThemePreference);
+
+  const select = (value: ThemePreference) => {
+    setPreference(value);
+    setThemePreference(value);
+  };
+
+  // Web can't override the scheme (no Appearance.setColorScheme there);
+  // it follows prefers-color-scheme without a row.
+  if (Platform.OS === 'web') return null;
+
+  return (
+    <>
+      <View style={styles.row}>
+        <View style={styles.rowLabel}>
+          <ThemedText>Appearance</ThemedText>
+        </View>
+        <View style={[styles.segments, { backgroundColor: theme.background }]}>
+          {THEME_OPTIONS.map(({ value, label }) => (
+            <Pressable
+              key={value}
+              onPress={() => select(value)}
+              style={[
+                styles.segment,
+                value === preference && { backgroundColor: theme.backgroundSelected },
+              ]}>
+              <ThemedText
+                type="small"
+                themeColor={value === preference ? 'text' : 'textSecondary'}>
+                {label}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+      <RowSeparator />
+    </>
+  );
 }
 
 function PushNotificationsRow() {
@@ -235,6 +288,8 @@ export function Settings() {
         <ThemedView type="backgroundElement" style={styles.group}>
           <PushNotificationsRow />
 
+          <AppearanceRow />
+
           {/* Plan changes live inside the Customer Center: a 'change_plan'
               custom action configured on its management screen. */}
           <Pressable
@@ -315,6 +370,17 @@ const styles = StyleSheet.create({
   separator: {
     height: StyleSheet.hairlineWidth,
     marginLeft: Spacing.four,
+  },
+  segments: {
+    flexDirection: 'row',
+    padding: Spacing.half,
+    borderRadius: Spacing.two + Spacing.half,
+    gap: Spacing.half,
+  },
+  segment: {
+    paddingHorizontal: Spacing.two + Spacing.one,
+    paddingVertical: Spacing.one,
+    borderRadius: Spacing.two,
   },
   profileRow: {
     flexDirection: 'row',
