@@ -1,7 +1,7 @@
 import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 
-import { PurchasesIdentitySync } from "@/components/purchases-identity-sync";
+import { IdentitySync } from "@/components/identity-sync";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Observe, ObserveRoot } from "expo-observe";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
@@ -88,7 +88,7 @@ function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <PurchasesIdentitySync />
+      <IdentitySync />
       <ThemeProvider
         value={navTheme(colorScheme === "dark" ? "dark" : "light")}
       >

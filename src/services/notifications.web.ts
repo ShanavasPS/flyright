@@ -10,6 +10,10 @@ export async function requestPushPermission(): Promise<boolean> {
 
 export function setUserTag(_key: string, _value: string) {}
 
+export function logInNotifications(_userId: string, _email?: string) {}
+
+export function logOutNotifications() {}
+
 export async function scheduleDeadlineReminder(_opts: {
   claimId: string;
   title: string;

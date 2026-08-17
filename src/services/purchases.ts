@@ -87,14 +87,18 @@ export const isPurchasesConfigured = () => configured;
 /**
  * Tie the RevenueCat identity to the signed-in Clerk user so purchases made on
  * any surface (native stores, web billing) land on the same customer. logIn
- * merges the device's anonymous purchase history into the account.
+ * merges the device's anonymous purchase history into the account. The email
+ * (once Clerk knows it) becomes the $email subscriber attribute — dashboard
+ * lookup and support; the SDK skips the sync when the value is unchanged.
  */
-export async function logInPurchases(userId: string) {
+export async function logInPurchases(userId: string, email?: string) {
   if (!configured) return;
   try {
-    if ((await Purchases.getAppUserID()) === userId) return;
-    const { customerInfo } = await Purchases.logIn(userId);
-    usePurchasesStore.setState({ customerInfo });
+    if ((await Purchases.getAppUserID()) !== userId) {
+      const { customerInfo } = await Purchases.logIn(userId);
+      usePurchasesStore.setState({ customerInfo });
+    }
+    if (email) await Purchases.setEmail(email);
   } catch (e) {
     console.warn('[purchases] logIn failed', e);
   }
