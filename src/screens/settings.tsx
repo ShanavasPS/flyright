@@ -1,13 +1,16 @@
-import { useAuth, useClerk, useUser } from '@clerk/expo';
+import { useAuth, useUser } from '@clerk/expo';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, StyleSheet } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   restorePurchases,
   useActiveSubscriptions,
@@ -41,50 +44,67 @@ function versionLine(): string {
  * fresh installs) — keeps the card's footprint so the content doesn't jump. */
 function AccountCardSkeleton() {
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="subtitle">Account</ThemedText>
-      <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '55%' }]} />
-      <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '40%' }]} />
+    <ThemedView type="backgroundElement" style={[styles.card, styles.profileRow]}>
+      <ThemedView type="backgroundSelected" style={styles.avatar} />
+      <View style={styles.profileText}>
+        <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '55%' }]} />
+        <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '40%' }]} />
+      </View>
     </ThemedView>
   );
 }
 
 function AccountCard() {
   const router = useRouter();
+  const theme = useTheme();
   // Native auth components can leave the session briefly 'pending' mid-flow;
   // don't flash the signed-out card while that resolves.
   const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
   const { user } = useUser();
-  const { signOut } = useClerk();
 
   if (!isLoaded) return <AccountCardSkeleton />;
 
+  if (!isSignedIn) {
+    return (
+      <ThemedView type="backgroundElement" style={styles.card}>
+        <ThemedText type="subtitle">Account</ThemedText>
+        <ThemedText type="small">
+          Keep your purchases and travel history safe across devices.
+        </ThemedText>
+        <Pressable onPress={() => router.push('/sign-in')}>
+          <ThemedText type="link">Sign in or create account</ThemedText>
+        </Pressable>
+      </ThemedView>
+    );
+  }
+
+  // Email-OTP users have no name yet, so the email becomes the title line.
+  // Clerk's imageUrl always resolves — initials placeholder when no photo.
+  const email = user?.primaryEmailAddress?.emailAddress;
+  const name = user?.fullName;
+
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
-      {isSignedIn ? (
-        <>
-          <ThemedText type="subtitle">
-            {user?.primaryEmailAddress?.emailAddress ?? 'Signed in'}
-          </ThemedText>
-          <Pressable onPress={() => router.push('/account')}>
-            <ThemedText type="link">Manage account</ThemedText>
-          </Pressable>
-          <Pressable onPress={() => void signOut()}>
-            <ThemedText type="link">Sign out</ThemedText>
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <ThemedText type="subtitle">Account</ThemedText>
-          <ThemedText type="small">
-            Keep your purchases and travel history safe across devices.
-          </ThemedText>
-          <Pressable onPress={() => router.push('/sign-in')}>
-            <ThemedText type="link">Sign in or create account</ThemedText>
-          </Pressable>
-        </>
-      )}
-    </ThemedView>
+    <Pressable
+      onPress={() => router.push('/account')}
+      style={({ pressed }) => pressed && styles.pressedRow}>
+      <ThemedView type="backgroundElement" style={[styles.card, styles.profileRow]}>
+        <Image source={user?.imageUrl} style={styles.avatar} />
+        <View style={styles.profileText}>
+          <ThemedText numberOfLines={1}>{name ?? email ?? 'Signed in'}</ThemedText>
+          {name && email && (
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              {email}
+            </ThemedText>
+          )}
+        </View>
+        <SymbolView
+          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+          size={14}
+          weight="bold"
+          tintColor={theme.textSecondary}
+        />
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -169,6 +189,22 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.four,
     borderRadius: Spacing.four,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pressedRow: {
+    opacity: 0.7,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  profileText: {
+    flex: 1,
+    gap: Spacing.half,
   },
   skeletonBar: {
     height: 18,
