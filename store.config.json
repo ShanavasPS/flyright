@@ -1,19 +1,81 @@
 {
   "configVersion": 0,
   "apple": {
-    "version": "1.0",
+    "version": "1.0.2",
+    "copyright": "© 2026 Shanavas Shaji",
+    "categories": ["TRAVEL"],
     "release": {
       "automaticRelease": true
+    },
+    "info": {
+      "en-US": {
+        "title": "FlyRight: Flight Compensation",
+        "subtitle": "Get paid for flight delays",
+        "description": "FlyRight watches your flights and tells you the moment a delay or cancellation makes you eligible for airline compensation — and exactly how much you are owed.\n\nAdd a flight in seconds. FlyRight tracks it and applies EU261 air passenger rights to every disruption. If your delayed or cancelled flight qualifies, you get a clear verdict — up to €600 per passenger — and a ready-to-send claim letter.\n\n• Track your flights with live status\n• Instant EU261 compensation verdicts\n• See exactly how much you are owed\n• Generate a ready-to-send claim letter\n• Deadline reminders so you never miss a claim window\n• No account needed — sign in only to keep purchases across devices\n\nDelayed three hours or more, cancelled last minute, or denied boarding on an EU flight? Airlines owe you real money. FlyRight makes sure you collect it.",
+        "keywords": [
+          "flight delay",
+          "compensation",
+          "eu261",
+          "claim",
+          "refund",
+          "airline",
+          "flight tracker",
+          "cancelled"
+        ],
+        "supportUrl": "https://flyright.expo.app/support",
+        "privacyPolicyUrl": "https://flyright.expo.app/privacy",
+        "screenshots": {
+          "APP_IPAD_PRO_3GEN_129": [
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-02.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-01.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-03.png"
+          ],
+          "APP_IPHONE_65": [
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-03.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-02.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-01.png"
+          ]
+        }
+      }
+    },
+    "advisory": {
+      "ageRatingOverride": "NONE",
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "kidsAgeBand": null,
+      "koreaAgeRatingOverride": "NONE",
+      "lootBox": false,
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": false,
+      "ageAssurance": false,
+      "ageRatingOverrideV2": "NONE",
+      "developerAgeRatingInfoUrl": null,
+      "gunsOrOtherWeapons": "NONE",
+      "healthOrWellnessTopics": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "userGeneratedContent": false
     },
     "review": {
       "firstName": "Shanavas",
       "lastName": "Shaji",
       "email": "shanavascruise@gmail.com",
+      "phone": "+358504757771",
       "demoUsername": "reviewer+clerk_test@getflyright.com",
       "demoPassword": "424242",
       "demoRequired": false,
-      "notes": "The app is passwordless and all core functionality (flight tracking, EU261 compensation verdicts) works without signing in. To review the optional account features: tap Settings > Sign in, choose Continue with email, enter the demo username above, then enter 424242 as the verification code (the demo password field repeats this code; no email is sent for this test address).",
-      "phone": "+358504757771"
+      "notes": "The app is passwordless and all core functionality (flight tracking, EU261 compensation verdicts) works without signing in. To review the optional account features: tap Settings > Sign in, choose Continue with email, enter the demo username above, then enter 424242 as the verification code (the demo password field repeats this code; no email is sent for this test address)."
     }
   }
 }
