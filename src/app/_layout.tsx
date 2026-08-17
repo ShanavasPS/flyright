@@ -3,6 +3,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 
 import { PurchasesIdentitySync } from "@/components/purchases-identity-sync";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Observe, ObserveRoot } from "expo-observe";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useEffect } from "react";
 import { LogBox, useColorScheme } from "react-native";
@@ -33,6 +34,12 @@ LogBox.ignoreLogs([
   "Clerk: Clerk has been loaded with development keys",
 ]);
 
+// Must run at module scope, before any screen mounts — configure() throws if
+// called after mount. Release builds only; debug builds collect but don't send.
+Observe.configure({
+  integrations: { "expo-router": true },
+});
+
 const queryClient = new QueryClient();
 
 /** Replaces the app with the update-required screen when the server rejects
@@ -61,7 +68,7 @@ function navTheme(scheme: "light" | "dark") {
   };
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
   const { success: dbReady, error: dbError } = useDbReady();
 
@@ -132,3 +139,6 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
+
+// Measures TTR from launch to first render of the tree above.
+export default ObserveRoot.wrap(RootLayout);

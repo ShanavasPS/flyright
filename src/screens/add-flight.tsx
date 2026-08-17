@@ -1,5 +1,6 @@
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { useQuery } from '@tanstack/react-query';
+import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -77,6 +78,16 @@ export function AddFlight() {
   const flight = lookup.data;
   const routeKnown = !!flight?.from.code && !!flight?.to.code;
 
+  // Funnel drop-off signal: they typed a flight and we couldn't show it.
+  useEffect(() => {
+    if (!lookup.error) return;
+    Observe.logEvent('flight.lookup_failed', {
+      severity: 'warn',
+      body: lookup.error.message,
+      attributes: { known: lookup.error instanceof FlightLookupError },
+    });
+  }, [lookup.error]);
+
   const track = async () => {
     if (!flight || !routeKnown) return;
     await addJourney({
@@ -95,6 +106,13 @@ export function AddFlight() {
       createdAt: new Date().toISOString(),
     });
     setStep('added');
+    Observe.logEvent('flight.tracked', {
+      attributes: {
+        carrier: flight.carrier.name,
+        route: `${flight.from.code}-${flight.to.code}`,
+        distanceKm: flight.distanceKm ?? 0,
+      },
+    });
     // The meaningful moment: they just trusted us with a flight to watch.
     // iOS shows the system dialog once; subsequent calls are no-ops.
     requestPushPermission().catch(() => {});
