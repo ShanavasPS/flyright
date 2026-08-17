@@ -4,13 +4,28 @@ import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  AppState,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Switch,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import {
+  addPushStateListener,
+  getPushEnabled,
+  setPushEnabled,
+} from '@/services/notifications';
 import {
   restorePurchases,
   useActiveSubscriptions,
@@ -108,6 +123,77 @@ function AccountCard() {
   );
 }
 
+function NotificationsCard() {
+  const theme = useTheme();
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const refresh = () =>
+      getPushEnabled().then((value) => {
+        if (mounted) setEnabled(value);
+      });
+    refresh();
+    // State changes behind our back two ways: OneSignal events (the
+    // first-journey permission prompt, subscription changes) and the user
+    // flipping the permission in system settings — the latter arrives only
+    // as an app foreground, so listen for both.
+    const unsubscribe = addPushStateListener(refresh);
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+      appState.remove();
+    };
+  }, []);
+
+  const onToggle = async (value: boolean) => {
+    setBusy(true);
+    setEnabled(value);
+    // Enabling can bounce through the OS permission prompt — settle on
+    // whatever actually stuck.
+    const result = await setPushEnabled(value);
+    setEnabled(result === 'on');
+    setBusy(false);
+    if (result === 'blocked') {
+      Alert.alert(
+        'Notifications are off for FlyRight',
+        'Allow notifications in system settings to get disruption alerts and claim reminders.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
+    }
+  };
+
+  if (Platform.OS === 'web') return null;
+
+  return (
+    <ThemedView type="backgroundElement" style={styles.card}>
+      <ThemedText type="subtitle">Notifications</ThemedText>
+      <View style={styles.switchRow}>
+        <View style={styles.switchLabel}>
+          <ThemedText>Push notifications</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Disruption alerts and claim reminders for your flights.
+          </ThemedText>
+        </View>
+        <Switch
+          testID="push-toggle"
+          value={enabled}
+          disabled={busy}
+          onValueChange={onToggle}
+          trackColor={{ true: theme.tint }}
+        />
+      </View>
+    </ThemedView>
+  );
+}
+
 export function Settings() {
   const router = useRouter();
   const pro = useProEntitlement();
@@ -129,6 +215,8 @@ export function Settings() {
         </ThemedText>
 
         <AccountCard />
+
+        <NotificationsCard />
 
         <ThemedView type="backgroundElement" style={styles.card}>
           {pro ? (
@@ -191,6 +279,15 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.four,
     borderRadius: Spacing.four,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  switchLabel: {
+    flex: 1,
+    gap: Spacing.half,
   },
   profileRow: {
     flexDirection: 'row',
