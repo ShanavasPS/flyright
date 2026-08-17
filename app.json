@@ -2,7 +2,7 @@
   "expo": {
     "name": "FlyRight",
     "slug": "flyright",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "flyright",
@@ -18,7 +18,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "FlyRight does not request your location. This notice is required because a bundled notification SDK references location APIs."
       },
-      "buildNumber": "8"
+      "buildNumber": "9"
     },
     "android": {
       "package": "com.shanavasshaji.flyright",
@@ -32,7 +32,7 @@
       "permissions": [
         "android.permission.CAMERA"
       ],
-      "versionCode": 8
+      "versionCode": 9
     },
     "web": {
       "output": "server",
