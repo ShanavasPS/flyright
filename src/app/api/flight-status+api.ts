@@ -9,26 +9,7 @@
  * add-flight flow and E2E tests work offline (see mockLeg below).
  */
 
-/** Operating-carrier country by IATA prefix — EU261's carrier test needs it and
- * flight-data providers don't return it. Unknown prefixes fall back to ''. */
-const CARRIERS: Record<string, { name: string; country: string }> = {
-  AY: { name: 'Finnair', country: 'FI' },
-  LH: { name: 'Lufthansa', country: 'DE' },
-  BA: { name: 'British Airways', country: 'GB' },
-  AF: { name: 'Air France', country: 'FR' },
-  KL: { name: 'KLM', country: 'NL' },
-  FR: { name: 'Ryanair', country: 'IE' },
-  U2: { name: 'easyJet', country: 'GB' },
-  SK: { name: 'SAS', country: 'SE' },
-  LX: { name: 'Swiss', country: 'CH' },
-  IB: { name: 'Iberia', country: 'ES' },
-  TP: { name: 'TAP Air Portugal', country: 'PT' },
-};
-
-function carrierFor(flight: string) {
-  const prefix = flight.slice(0, 2).toUpperCase();
-  return { iata: prefix, ...(CARRIERS[prefix] ?? { name: prefix, country: '' }) };
-}
+import { carrierFor } from '@/constants/carriers';
 
 /** AeroDataBox uses "2026-08-10 08:00Z"; the app stores strict ISO. */
 function toIso(s: string | undefined): string | null {
@@ -41,7 +22,13 @@ function toIso(s: string | undefined): string | null {
 function mockLeg(flight: string, date: string) {
   const carrier = carrierFor(flight);
   const digits = parseInt(flight.replace(/\D/g, ''), 10) || 0;
-  const isPast = date < new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  const isPast = date < today;
+
+  // Mimic the provider's history horizon so the lookup-failed → add-manually
+  // path is exercisable offline: anything older than a year 404s like prod.
+  const yearAgo = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`;
+  if (date < yearAgo) return null;
   const delayMinutes = isPast ? (digits % 2 === 1 ? 195 : 0) : null;
 
   return {
@@ -72,7 +59,10 @@ export async function GET(request: Request) {
   if (!apiKey) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[flight-status] no AERODATABOX_API_KEY — serving mock data');
-      return Response.json(mockLeg(flight, date));
+      const leg = mockLeg(flight, date);
+      return leg
+        ? Response.json(leg)
+        : Response.json({ error: 'flight not found' }, { status: 404 });
     }
     return Response.json(
       { error: 'flight data provider not configured' },

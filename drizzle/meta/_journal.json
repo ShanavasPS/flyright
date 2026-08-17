@@ -15,6 +15,13 @@
       "when": 1786882160382,
       "tag": "0001_clean_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786984685406,
+      "tag": "0002_freezing_matthew_murdock",
+      "breakpoints": true
     }
   ]
 }

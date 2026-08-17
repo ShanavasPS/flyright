@@ -18,7 +18,14 @@ export const journeys = sqliteTable('journeys', {
   scheduledArrival: text('scheduled_arrival').notNull(),
   ticketPriceAmount: real('ticket_price_amount'),
   ticketPriceCurrency: text('ticket_price_currency'),
+  /** 'lookup' rows track a live flight via the status API; 'manual' rows are
+   *  journal entries (historical or number-less) that must never be polled. */
+  source: text('source', { enum: ['lookup', 'manual'] }).notNull().default('lookup'),
   createdAt: text('created_at').notNull(),
+  /** Set on every write — last-write-wins merge key for the future cloud sync. */
+  updatedAt: text('updated_at').notNull().default(''),
+  /** Soft-delete tombstone, so the future sync can propagate deletions. */
+  deletedAt: text('deleted_at'),
 });
 
 export const disruptions = sqliteTable('disruptions', {

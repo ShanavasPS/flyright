@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -10,8 +12,9 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
+import { formatDayLabelWithYear } from '@/services/dates';
 import { lookupFlight } from '@/services/flight-lookup';
-import { toDomainJourney, useJourney } from '@/services/journeys';
+import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { hasPro } from '@/services/purchases';
 
 // Kept as a data-free showcase of the verdict flow ("See a demo verdict" on the
@@ -31,16 +34,26 @@ const DEMO_JOURNEY: Journey = {
 
 const DEMO_DISRUPTION: Disruption = { type: 'delay', delayMinutes: 195 };
 
+// Past this age, EU261/UK261 claim windows (2–6 years depending on country)
+// have usually lapsed — the trip is journal material, not a claim.
+const CLAIM_WINDOW_MS = 3 * 365 * 86_400_000;
+
 export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) {
+  // Frozen at mount — claim-window age doesn't need to tick while open.
+  const [now] = useState(() => Date.now());
   const isDemo = !journeyId || journeyId === 'demo';
   const row = useJourney(journeyId ?? 'demo');
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
 
-  // Live disruption data for real journeys; the demo uses a canned 195-min delay.
+  // Only 'lookup' rows track a live flight; manual journal entries and the
+  // demo must never hit the status API.
+  const isLookupable = !isDemo && !!journey && row?.source === 'lookup' && !!journey.number;
+
+  // Live disruption data for tracked journeys; the demo uses a canned 195-min delay.
   const status = useQuery({
     queryKey: ['flight-status', journey?.number, journey?.scheduledDeparture.slice(0, 10)],
     queryFn: () => lookupFlight(journey!.number, journey!.scheduledDeparture.slice(0, 10)),
-    enabled: !isDemo && !!journey,
+    enabled: isLookupable,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
@@ -57,11 +70,17 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
   const disruption: Disruption | null =
     delayMinutes != null ? { type: 'delay', delayMinutes } : null;
 
+  const tripAge = now - Date.parse(journey.scheduledDeparture);
+  // A verdict is a bonus on top of the journal — when we can't get live data
+  // (manual entries, flights the provider no longer remembers), the trip
+  // simply reads as history instead of showing a spinner or an error.
+  const journalOnly = !isDemo && (!isLookupable || status.isError);
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="title" themeColor="heading">
-          {journey.carrier} {journey.number}
+          {journey.number ? `${journey.carrier} ${journey.number}` : journey.carrier}
         </ThemedText>
         <ThemedText>
           {journey.from.code} → {journey.to.code}
@@ -69,18 +88,70 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
 
         {disruption ? (
           <VerdictCard journey={journey} disruption={disruption} />
+        ) : journalOnly ? (
+          <Card>
+            <ThemedText type="subtitle">
+              {formatDayLabelWithYear(journey.scheduledDeparture)}
+            </ThemedText>
+            <ThemedText type="small">
+              You flew {Math.round(journey.distanceKm).toLocaleString()} km
+              {journey.from.country && journey.to.country
+                ? journey.from.country === journey.to.country
+                  ? ` within ${journey.from.country}`
+                  : ` from ${journey.from.country} to ${journey.to.country}`
+                : ''}
+              .
+            </ThemedText>
+            {tripAge > CLAIM_WINDOW_MS && (
+              <ThemedText type="small" themeColor="textSecondary">
+                Compensation claim windows (2–6 years depending on country) have likely
+                passed for this trip.
+              </ThemedText>
+            )}
+          </Card>
         ) : (
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <Card>
             <ThemedText type="subtitle">We&apos;re watching this flight</ThemedText>
             <ThemedText type="small">
               {status.isPending && !isDemo
                 ? 'Checking the latest status…'
                 : "No disruption so far. If a delay makes you eligible for compensation, you'll know here first."}
             </ThemedText>
-          </ThemedView>
+          </Card>
         )}
+
+        {!isDemo && row && <RemoveRow journeyId={row.id} />}
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+function RemoveRow({ journeyId }: { journeyId: string }) {
+  const router = useRouter();
+  const theme = useTheme();
+
+  const confirmRemove = () => {
+    Alert.alert('Remove this trip?', 'It will disappear from your travel history.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteJourney(journeyId);
+          router.back();
+        },
+      },
+    ]);
+  };
+
+  return (
+    <View style={styles.removeRow}>
+      <Pressable onPress={confirmRemove} hitSlop={Spacing.two}>
+        <ThemedText type="small" style={{ color: theme.danger }}>
+          Remove from My travels
+        </ThemedText>
+      </Pressable>
+    </View>
   );
 }
 
@@ -98,7 +169,7 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   };
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <Card>
       {verdict.eligible && verdict.compensation ? (
         <>
           <ThemedText type="title" style={{ color: theme.success }}>
@@ -118,7 +189,7 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
           <ThemedText type="small">{verdict.reason}</ThemedText>
         </>
       )}
-    </ThemedView>
+    </Card>
   );
 }
 
@@ -135,10 +206,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
   },
-  card: {
-    gap: Spacing.two,
-    padding: Spacing.four,
-    borderRadius: Spacing.four,
+  removeRow: {
+    marginTop: 'auto',
+    paddingBottom: Spacing.four,
+    alignItems: 'center',
   },
   cta: {
     marginTop: Spacing.two,

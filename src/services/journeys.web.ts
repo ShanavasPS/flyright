@@ -23,6 +23,10 @@ export async function addJourney(_row: NewJourneyRow): Promise<void> {
   throw new Error('Adding journeys is not supported on web yet.');
 }
 
+export async function deleteJourney(_id: string): Promise<void> {
+  throw new Error('Deleting journeys is not supported on web yet.');
+}
+
 export function toDomainJourney(row: JourneyRow): Journey {
   return {
     id: row.id,

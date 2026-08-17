@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
@@ -18,21 +18,40 @@ export function useDbReady() {
 
 /** All journeys, newest first. Live — re-renders when rows change. */
 export function useJourneys() {
-  return useLiveQuery(db.select().from(journeys).orderBy(desc(journeys.createdAt)));
+  return useLiveQuery(
+    db.select().from(journeys).where(isNull(journeys.deletedAt)).orderBy(desc(journeys.createdAt)),
+  );
 }
 
 /** A single journey by id, or undefined while loading / when missing. */
 export function useJourney(id: string) {
   const { data } = useLiveQuery(
-    db.select().from(journeys).where(eq(journeys.id, id)),
+    db.select().from(journeys).where(and(eq(journeys.id, id), isNull(journeys.deletedAt))),
     [id],
   );
   return data?.[0];
 }
 
 export async function addJourney(row: NewJourneyRow) {
-  // id is the natural key (number + date) — re-adding the same flight is a no-op.
-  await db.insert(journeys).values(row).onConflictDoNothing();
+  const now = new Date().toISOString();
+  // id is the natural key (number + date). Re-adding a soft-deleted trip
+  // revives it; re-adding a live one is a no-op.
+  await db
+    .insert(journeys)
+    .values({ ...row, updatedAt: row.updatedAt ?? now })
+    .onConflictDoUpdate({
+      target: journeys.id,
+      set: { deletedAt: null, updatedAt: now },
+    });
+}
+
+/** Soft delete — the tombstone lets a future cloud sync propagate removals. */
+export async function deleteJourney(id: string) {
+  const now = new Date().toISOString();
+  await db
+    .update(journeys)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(eq(journeys.id, id));
 }
 
 /** DB row → the rules-engine shape. */

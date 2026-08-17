@@ -19,6 +19,17 @@ export function formatDayLabel(isoDate: string): string {
   });
 }
 
+/** "5 Aug 2015" — for past rows where a weekday or a "3650 days ago"
+ * countdown reads worse than the plain date. */
+export function formatDayLabelWithYear(isoDate: string): string {
+  const date = new Date(`${isoDate.slice(0, 10)}T12:00:00`);
+  return date.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 /** "08:00" local time from an ISO timestamp; '—' when unknown. */
 export function formatTime(iso: string | null): string {
   if (!iso) return '—';
