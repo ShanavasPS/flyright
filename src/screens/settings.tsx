@@ -124,7 +124,9 @@ export function Settings() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title">Settings</ThemedText>
+        <ThemedText type="title" themeColor="heading">
+          Settings
+        </ThemedText>
 
         <AccountCard />
 

@@ -9,7 +9,9 @@ export function Claims() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title">Claims</ThemedText>
+        <ThemedText type="title" themeColor="heading">
+          Claims
+        </ThemedText>
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="subtitle">No claims yet</ThemedText>
           <ThemedText type="small">

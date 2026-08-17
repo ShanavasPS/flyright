@@ -11,12 +11,12 @@ export default function TabsLayout() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundSelected}
-      iconColor={colors.textSecondary}
+      iconColor={{ default: colors.textSecondary, selected: colors.tint }}
       labelStyle={{ color: colors.textSecondary, selected: { color: colors.tint } }}>
       <NativeTabs.Trigger name="(journeys)">
         <NativeTabs.Trigger.Label>Journeys</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
+          src={require('@/assets/images/tabIcons/journeys.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -24,7 +24,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="claims">
         <NativeTabs.Trigger.Label>Claims</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
+          src={require('@/assets/images/tabIcons/claims.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -32,7 +32,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="(settings)">
         <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
+          src={require('@/assets/images/tabIcons/settings.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
