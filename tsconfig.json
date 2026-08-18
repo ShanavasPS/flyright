@@ -17,5 +17,8 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+  ],
+  // convex/ has its own stricter tsconfig, typechecked by `npx convex dev` on
+  // every push; app imports of convex/_generated still check as dependencies.
+  "exclude": ["node_modules", "convex"]
 }

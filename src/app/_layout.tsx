@@ -1,7 +1,11 @@
-import { ClerkProvider } from "@clerk/expo";
+import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import { IdentitySync } from "@/components/identity-sync";
+import { JourneySync } from "@/components/journey-sync";
+import { CONVEX_URL } from "@/constants/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Observe, ObserveRoot } from "expo-observe";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
@@ -46,6 +50,24 @@ Observe.configure({
 applyStoredTheme();
 
 const queryClient = new QueryClient();
+
+// Cloud sync is optional infrastructure: with no EXPO_PUBLIC_CONVEX_URL the
+// app runs exactly as before, purely local.
+const convex = CONVEX_URL
+  ? new ConvexReactClient(CONVEX_URL, { unsavedChangesWarning: false })
+  : null;
+
+/** Mounts the Convex provider + journey sync when a deployment is configured;
+ * otherwise renders children untouched. */
+function CloudSync({ children }: { children: React.ReactNode }) {
+  if (!convex) return <>{children}</>;
+  return (
+    <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+      <JourneySync />
+      {children}
+    </ConvexProviderWithClerk>
+  );
+}
 
 /** Replaces the app with the update-required screen when the server rejects
  * this binary version. Fails open — see useVersionGate. */
@@ -94,6 +116,7 @@ function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <IdentitySync />
+      <CloudSync>
       <ThemeProvider
         value={navTheme(colorScheme === "dark" ? "dark" : "light")}
       >
@@ -141,6 +164,7 @@ function RootLayout() {
           </VersionGate>
         </QueryClientProvider>
       </ThemeProvider>
+      </CloudSync>
     </ClerkProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { useAuth } from '@clerk/expo';
 import { Link, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, SectionList, StyleSheet, View } from 'react-native';
@@ -21,7 +22,8 @@ const YEAR_MS = 365 * 86_400_000;
 
 export function Journeys() {
   const router = useRouter();
-  const { data: journeys } = useJourneys();
+  const { userId } = useAuth();
+  const { data: journeys } = useJourneys(userId);
 
   const now = new Date();
   const sections = useMemo(() => groupJourneys(journeys ?? [], now), [journeys]); // eslint-disable-line react-hooks/exhaustive-deps

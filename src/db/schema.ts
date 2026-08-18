@@ -24,8 +24,11 @@ export const journeys = sqliteTable('journeys', {
   createdAt: text('created_at').notNull(),
   /** Set on every write — last-write-wins merge key for the future cloud sync. */
   updatedAt: text('updated_at').notNull().default(''),
-  /** Soft-delete tombstone, so the future sync can propagate deletions. */
+  /** Soft-delete tombstone, so the sync can propagate deletions. */
   deletedAt: text('deleted_at'),
+  /** updatedAt value at the last successful push/pull. Row is dirty iff
+   *  syncedAt IS NULL OR updatedAt > syncedAt. Never sent to Convex. */
+  syncedAt: text('synced_at'),
 });
 
 export const disruptions = sqliteTable('disruptions', {

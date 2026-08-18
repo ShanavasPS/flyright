@@ -1,3 +1,4 @@
+import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -41,8 +42,9 @@ const CLAIM_WINDOW_MS = 3 * 365 * 86_400_000;
 export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) {
   // Frozen at mount — claim-window age doesn't need to tick while open.
   const [now] = useState(() => Date.now());
+  const { userId } = useAuth();
   const isDemo = !journeyId || journeyId === 'demo';
-  const row = useJourney(journeyId ?? 'demo');
+  const row = useJourney(journeyId ?? 'demo', userId);
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
 
   // Only 'lookup' rows track a live flight; manual journal entries and the

@@ -11,11 +11,14 @@ export function useDbReady() {
   return { success: true, error: undefined };
 }
 
-export function useJourneys(): { data: JourneyRow[] } {
+export function useJourneys(_currentUserId: string | null | undefined): { data: JourneyRow[] } {
   return { data: [] };
 }
 
-export function useJourney(_id: string): JourneyRow | undefined {
+export function useJourney(
+  _id: string,
+  _currentUserId: string | null | undefined,
+): JourneyRow | undefined {
   return undefined;
 }
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, or } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
@@ -16,18 +16,35 @@ export function useDbReady() {
   return useMigrations(db, migrations);
 }
 
-/** All journeys, newest first. Live — re-renders when rows change. */
-export function useJourneys() {
+/** Rows visible to the current viewer: their own plus unclaimed anonymous
+ * rows. Scoping by account keeps user B on user A's device from seeing A's
+ * trips; after sign-out the previous account's rows are hidden, not deleted. */
+function visibleTo(currentUserId: string | null | undefined) {
+  return and(
+    isNull(journeys.deletedAt),
+    currentUserId
+      ? or(isNull(journeys.userId), eq(journeys.userId, currentUserId))
+      : isNull(journeys.userId),
+  );
+}
+
+/** The viewer's journeys, newest first. Live — re-renders when rows change. */
+export function useJourneys(currentUserId: string | null | undefined) {
   return useLiveQuery(
-    db.select().from(journeys).where(isNull(journeys.deletedAt)).orderBy(desc(journeys.createdAt)),
+    db
+      .select()
+      .from(journeys)
+      .where(visibleTo(currentUserId))
+      .orderBy(desc(journeys.createdAt)),
+    [currentUserId ?? ''],
   );
 }
 
 /** A single journey by id, or undefined while loading / when missing. */
-export function useJourney(id: string) {
+export function useJourney(id: string, currentUserId: string | null | undefined) {
   const { data } = useLiveQuery(
-    db.select().from(journeys).where(and(eq(journeys.id, id), isNull(journeys.deletedAt))),
-    [id],
+    db.select().from(journeys).where(and(eq(journeys.id, id), visibleTo(currentUserId))),
+    [id, currentUserId ?? ''],
   );
   return data?.[0];
 }
