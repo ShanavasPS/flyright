@@ -162,6 +162,14 @@ function MoneyBadge({ claim, owed, now }: { claim?: ClaimRow; owed?: Money; now:
   );
 }
 
+/** "in 3h" / "26h ago" / "in 5d" / "now" — compact enough to live on the
+ * row's right edge without squeezing the flight details. */
+function timerLabel(timer: { value: number; unit: string }): string {
+  if (timer.unit === 'now') return 'now';
+  const short = timer.unit.startsWith('hours') ? 'h' : 'd';
+  return timer.unit.endsWith('ago') ? `${timer.value}${short} ago` : `in ${timer.value}${short}`;
+}
+
 function JourneyItem({
   row,
   now,
@@ -174,25 +182,15 @@ function JourneyItem({
   owed?: Money;
 }) {
   // Recent and upcoming trips get the live countdown; older ones read like a
-  // journal entry — a calendar tile and the full date.
+  // journal entry — the full date in the carrier line says enough.
   const isOld = now.getTime() - Date.parse(row.scheduledDeparture) > YEAR_MS;
-  const departureDay = new Date(`${row.scheduledDeparture.slice(0, 10)}T12:00:00`);
   const timer = countdown(row.scheduledDeparture, now);
+  const upcoming = Date.parse(row.scheduledDeparture) >= now.getTime();
 
   return (
     <Link href={{ pathname: '/journey/[id]', params: { id: row.id } }} asChild>
       <Pressable>
         <ThemedView type="backgroundElement" style={styles.rowCard}>
-          <View style={styles.timerColumn}>
-            <ThemedText type="subtitle" themeColor="heading">
-              {isOld ? departureDay.getDate() : timer.value}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.timerUnit}>
-              {isOld
-                ? departureDay.toLocaleDateString(undefined, { month: 'short' })
-                : timer.unit}
-            </ThemedText>
-          </View>
           <View style={styles.rowBody}>
             <ThemedText type="small" themeColor="textSecondary">
               {row.carrier}
@@ -210,7 +208,16 @@ function JourneyItem({
                 : `${formatTime(row.scheduledDeparture)} → ${formatTime(row.scheduledArrival)}`}
             </ThemedText>
           </View>
-          {(claim || owed) && <MoneyBadge claim={claim} owed={owed} now={now} />}
+          <View style={styles.rowAside}>
+            {!isOld && (
+              <ThemedText
+                type={upcoming ? 'smallBold' : 'small'}
+                themeColor={upcoming ? 'heading' : 'textSecondary'}>
+                {timerLabel(timer)}
+              </ThemedText>
+            )}
+            {(claim || owed) && <MoneyBadge claim={claim} owed={owed} now={now} />}
+          </View>
         </ThemedView>
       </Pressable>
     </Link>
@@ -247,16 +254,14 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     borderRadius: Spacing.four,
   },
-  timerColumn: {
-    alignItems: 'center',
-    minWidth: 56,
-  },
-  timerUnit: {
-    textTransform: 'uppercase',
-  },
   rowBody: {
     flex: 1,
     gap: Spacing.half,
+  },
+  rowAside: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: Spacing.two,
   },
   route: {
     fontSize: 16,
