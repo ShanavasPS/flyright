@@ -9,13 +9,18 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelStatsHeader } from '@/components/travel-stats-header';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { evaluate } from '@/rules/engine';
+import type { Money } from '@/rules/types';
+import { useClaims, type ClaimRow } from '@/services/claims';
 import {
   countdown,
   formatDayLabel,
   formatDayLabelWithYear,
   formatTime,
 } from '@/services/dates';
-import { useJourneys, type JourneyRow } from '@/services/journeys';
+import { useDisruptions } from '@/services/disruptions';
+import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
 import { groupJourneys, travelStats } from '@/services/timeline';
 
 const YEAR_MS = 365 * 86_400_000;
@@ -24,10 +29,34 @@ export function Journeys() {
   const router = useRouter();
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
+  const { data: claimRows } = useClaims(userId);
+  const { data: disruptionRows } = useDisruptions();
 
   const now = new Date();
   const sections = useMemo(() => groupJourneys(journeys ?? [], now), [journeys]); // eslint-disable-line react-hooks/exhaustive-deps
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
+  const claimByJourney = useMemo(() => {
+    const map = new Map<string, ClaimRow>();
+    for (const row of claimRows ?? []) map.set(row.claims.journeyId, row.claims);
+    return map;
+  }, [claimRows]);
+  // Cached delays run through the pure rules engine — no network — so rows the
+  // app knows are compensation-eligible get a money badge before any claim exists.
+  const owedByJourney = useMemo(() => {
+    const byId = new Map((journeys ?? []).map((j) => [j.id, j]));
+    const map = new Map<string, Money>();
+    for (const d of disruptionRows ?? []) {
+      if (d.delayMinutes == null) continue;
+      const row = byId.get(d.journeyId);
+      if (!row) continue;
+      const verdict = evaluate(toDomainJourney(row), {
+        type: 'delay',
+        delayMinutes: d.delayMinutes,
+      });
+      if (verdict.eligible && verdict.compensation) map.set(row.id, verdict.compensation);
+    }
+    return map;
+  }, [disruptionRows, journeys]);
 
   return (
     <ThemedView style={styles.container}>
@@ -57,7 +86,14 @@ export function Journeys() {
                 {section.title}
               </ThemedText>
             )}
-            renderItem={({ item }) => <JourneyItem row={item} now={now} />}
+            renderItem={({ item }) => (
+              <JourneyItem
+                row={item}
+                now={now}
+                claim={claimByJourney.get(item.id)}
+                owed={owedByJourney.get(item.id)}
+              />
+            )}
           />
         ) : (
           <Card>
@@ -91,7 +127,52 @@ function manualScheduleLabel(row: JourneyRow): string {
   return `${formatTime(dep)} → ${formatTime(arr)}`;
 }
 
-function JourneyItem({ row, now }: { row: JourneyRow; now: Date }) {
+/** Money-moment marker on a journey row: the amount in payout green on the
+ * page background, so it pops off the card surface in both light (porcelain
+ * on white) and dark (deep navy on card navy) modes. A claim's lifecycle
+ * (draft/sent/overdue) wins over plain eligibility ("owed"). */
+function MoneyBadge({ claim, owed, now }: { claim?: ClaimRow; owed?: Money; now: Date }) {
+  const theme = useTheme();
+  const amount = claim ? `${claim.amount} ${claim.currency}` : `${owed!.amount} ${owed!.currency}`;
+  const overdue =
+    claim?.status === 'sent' &&
+    !!claim.responseDeadline &&
+    Date.parse(claim.responseDeadline) < now.getTime();
+
+  const label = !claim
+    ? 'owed'
+    : claim.status === 'draft'
+      ? 'draft'
+      : overdue
+        ? 'overdue'
+        : claim.status;
+
+  return (
+    <ThemedView type="background" style={styles.claimBadge}>
+      <ThemedText type="smallBold" style={{ color: theme.success }}>
+        {amount}
+      </ThemedText>
+      <ThemedText
+        type="small"
+        themeColor={overdue ? undefined : 'textSecondary'}
+        style={overdue ? { color: theme.danger } : undefined}>
+        {label}
+      </ThemedText>
+    </ThemedView>
+  );
+}
+
+function JourneyItem({
+  row,
+  now,
+  claim,
+  owed,
+}: {
+  row: JourneyRow;
+  now: Date;
+  claim?: ClaimRow;
+  owed?: Money;
+}) {
   // Recent and upcoming trips get the live countdown; older ones read like a
   // journal entry — a calendar tile and the full date.
   const isOld = now.getTime() - Date.parse(row.scheduledDeparture) > YEAR_MS;
@@ -129,6 +210,7 @@ function JourneyItem({ row, now }: { row: JourneyRow; now: Date }) {
                 : `${formatTime(row.scheduledDeparture)} → ${formatTime(row.scheduledArrival)}`}
             </ThemedText>
           </View>
+          {(claim || owed) && <MoneyBadge claim={claim} owed={owed} now={now} />}
         </ThemedView>
       </Pressable>
     </Link>
@@ -178,5 +260,12 @@ const styles = StyleSheet.create({
   },
   route: {
     fontSize: 16,
+  },
+  claimBadge: {
+    alignItems: 'center',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    gap: Spacing.half,
   },
 });

@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +17,7 @@ import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
 import { useClaimForJourney } from '@/services/claims';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
+import { recordDelay } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { hasPro } from '@/services/purchases';
@@ -70,6 +71,15 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  // Cache any observed delay so the journeys list can badge this row as owed
+  // without its own status call (see services/disruptions.ts).
+  const rowId = row?.id;
+  const observedDelay = status.data?.delayMinutes;
+  useEffect(() => {
+    if (isDemo || !rowId || observedDelay == null) return;
+    recordDelay(rowId, observedDelay).catch(() => {});
+  }, [isDemo, rowId, observedDelay]);
 
   if (!journey) {
     return (

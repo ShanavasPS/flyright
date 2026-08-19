@@ -34,6 +34,7 @@ import {
   lookupFlight,
   normalizeFlightNumber,
 } from '@/services/flight-lookup';
+import { recordDelay } from '@/services/disruptions';
 import { addJourney } from '@/services/journeys';
 
 // Progressive token entry, Flighty-style: each confirmed value becomes a chip
@@ -163,6 +164,11 @@ export function AddFlight() {
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
       createdAt: new Date().toISOString(),
     });
+    // The lookup already knows the arrival delay — cache it so the journeys
+    // list can badge an owed row without another status call.
+    if (flight.delayMinutes != null) {
+      await recordDelay(`${flight.flight}-${flight.date}`, flight.delayMinutes);
+    }
     setStep('added');
     Observe.logEvent('flight.tracked', {
       attributes: {
