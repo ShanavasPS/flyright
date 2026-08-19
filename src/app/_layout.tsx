@@ -168,6 +168,10 @@ function RootLayout() {
                 name="privacy"
                 options={{ title: "Privacy Policy" }}
               />
+              <Stack.Screen
+                name="delete-account"
+                options={{ title: "Delete account" }}
+              />
               <Stack.Screen name="support" options={{ title: "Support" }} />
             </Stack>
           </VersionGate>
