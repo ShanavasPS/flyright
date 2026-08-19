@@ -54,6 +54,7 @@ function routeSentence(journey: Journey): string {
 export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) {
   // Frozen at mount — claim-window age doesn't need to tick while open.
   const [now] = useState(() => Date.now());
+  const router = useRouter();
   const { userId } = useAuth();
   const isDemo = isDemoJourneyId(journeyId);
   const row = useJourney(journeyId ?? 'demo', userId);
@@ -157,7 +158,22 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
           </Card>
         )}
 
-        {!isDemo && row && <RemoveRow journeyId={row.id} />}
+        {!isDemo && row && (
+          <View style={styles.footer}>
+            {/* Only journal entries are editable — lookup rows mirror the
+                flight-data provider and would drift from it if hand-edited. */}
+            {row.source === 'manual' && (
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/add-flight', params: { editId: row.id } })
+                }
+                hitSlop={Spacing.two}>
+                <ThemedText type="link">Edit trip details →</ThemedText>
+              </Pressable>
+            )}
+            <RemoveRow journeyId={row.id} />
+          </View>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -266,8 +282,12 @@ const styles = StyleSheet.create({
   routeBlock: {
     gap: Spacing.half,
   },
-  removeRow: {
+  footer: {
     marginTop: 'auto',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  removeRow: {
     paddingBottom: Spacing.four,
     alignItems: 'center',
   },

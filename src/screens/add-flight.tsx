@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/expo';
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -35,7 +35,7 @@ import {
   normalizeFlightNumber,
 } from '@/services/flight-lookup';
 import { recordDelay } from '@/services/disruptions';
-import { addJourney } from '@/services/journeys';
+import { addJourney, updateJourney, useJourney } from '@/services/journeys';
 
 // Progressive token entry, Flighty-style: each confirmed value becomes a chip
 // and the sheet moves to the next step. Tapping a chip reopens that step.
@@ -70,6 +70,11 @@ export function AddFlight() {
   const router = useRouter();
   const theme = useTheme();
   const { userId } = useAuth();
+  // Edit mode: the journey detail screen reopens this sheet with ?editId=<id>
+  // for a manual entry, prefilled below. The row id stays stable across the
+  // save so claims/disruptions references and the cloud sync key survive.
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const editRow = useJourney(editId ?? '', userId);
 
   const [step, setStep] = useState<Step>('flight');
   const [flightInput, setFlightInput] = useState('');
@@ -93,9 +98,36 @@ export function AddFlight() {
   const inputCandidate = normalizeFlightNumber(flightInput);
   const today = new Date();
 
+  // Prefill once from the row being edited, then jump straight to the manual
+  // form (the guarded set-state-during-render pattern — the row arrives async
+  // from the live query). Only manual entries are editable — lookup rows
+  // mirror the provider.
+  const [prefilled, setPrefilled] = useState(false);
+  if (editId && editRow && !prefilled) {
+    setPrefilled(true);
+    setManualMode(true);
+    setFromInput(editRow.fromCode);
+    setToInput(editRow.toCode);
+    setDate(editRow.scheduledDeparture.slice(0, 10));
+    if (editRow.number) setFlightNumber(editRow.number);
+    // Identical noon timestamps are the "no times entered" placeholder.
+    const dep = editRow.scheduledDeparture;
+    const arr = editRow.scheduledArrival;
+    if (!(dep === arr && dep.endsWith('T12:00:00'))) {
+      setDepTime(dep.slice(11, 16));
+      if (arr !== dep) setArrTime(arr.slice(11, 16));
+    }
+    setStep('manual');
+  }
+
   const confirmFlight = () => {
     if (!inputCandidate) return;
     setFlightNumber(inputCandidate);
+    if (editId) {
+      // Edits never re-enter the lookup flow — back to the manual form.
+      setStep('manual');
+      return;
+    }
     setManualMode(false);
     setStep('date');
   };
@@ -115,6 +147,11 @@ export function AddFlight() {
   const editFlight = () => {
     setFlightInput(flightNumber ?? '');
     setFlightNumber(null);
+    if (editId) {
+      // Keep the rest of the edit intact; only the number is being retyped.
+      setStep('flight');
+      return;
+    }
     setDate(null);
     setManualMode(false);
     setStep('flight');
@@ -208,6 +245,27 @@ export function AddFlight() {
     // An arrival clock earlier than departure means the flight landed next day.
     const arrivalDay =
       arrClock < depClock ? localDateString(new Date(`${date}T12:00:00`), 1) : date;
+
+    if (editId) {
+      await updateJourney(editId, {
+        carrier: carrier?.name ?? 'Flight',
+        carrierCountry: carrier?.country ?? '',
+        number: flightNumber ?? '',
+        fromCode: fromAirport.iata,
+        fromCountry: fromAirport.country,
+        toCode: toAirport.iata,
+        toCountry: toAirport.country,
+        distanceKm,
+        scheduledDeparture: `${date}T${depClock}:00`,
+        scheduledArrival: `${arrivalDay}T${arrClock}:00`,
+      });
+      setStep('added');
+      Observe.logEvent('flight.edited', {
+        attributes: { route: `${fromAirport.iata}-${toAirport.iata}` },
+      });
+      return;
+    }
+
     await addJourney({
       id: `${flightNumber ?? 'TRIP'}-${fromAirport.iata}-${toAirport.iata}-${date}`,
       userId,
@@ -251,10 +309,10 @@ export function AddFlight() {
       <ThemedView style={[styles.container, styles.addedContainer]}>
         <Animated.View entering={ZoomIn.springify()} style={styles.addedBadge}>
           <ThemedText style={[styles.addedCheck, { color: theme.success }]}>✓</ThemedText>
-          <ThemedText type="subtitle">Added to My travels</ThemedText>
+          <ThemedText type="subtitle">{editId ? 'Trip updated' : 'Added to My travels'}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {manualMode
-              ? `${fromInput.toUpperCase()} → ${toInput.toUpperCase()} is in your journal.`
+              ? `${fromInput.toUpperCase()} → ${toInput.toUpperCase()} is ${editId ? 'up to date' : 'in your journal'}.`
               : `We're watching ${flightNumber} for you.`}
           </ThemedText>
         </Animated.View>
@@ -266,7 +324,7 @@ export function AddFlight() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText type="subtitle" themeColor="heading">
-          Add Flight
+          {editId ? 'Edit Trip' : 'Add Flight'}
         </ThemedText>
         <Pressable
           accessibilityLabel="Close"
@@ -277,7 +335,9 @@ export function AddFlight() {
           </ThemedText>
         </Pressable>
       </View>
-      <ThemedText themeColor="textSecondary">{PROMPTS[step]}</ThemedText>
+      <ThemedText themeColor="textSecondary">
+        {editId && step === 'manual' ? 'Update your trip details' : PROMPTS[step]}
+      </ThemedText>
 
       <View style={styles.tokenRow}>
         {flightNumber && (
@@ -529,7 +589,10 @@ export function AddFlight() {
                   />
                 )}
                 <View style={styles.cta}>
-                  <PrimaryButton label="Add to My travels →" onPress={saveManual} />
+                  <PrimaryButton
+                    label={editId ? 'Save changes →' : 'Add to My travels →'}
+                    onPress={saveManual}
+                  />
                 </View>
               </ThemedView>
             )}

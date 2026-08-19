@@ -26,6 +26,13 @@ export async function addJourney(_row: NewJourneyRow): Promise<void> {
   throw new Error('Adding journeys is not supported on web yet.');
 }
 
+export async function updateJourney(
+  _id: string,
+  _fields: Partial<Omit<NewJourneyRow, 'id' | 'userId' | 'createdAt'>>,
+): Promise<void> {
+  throw new Error('Editing journeys is not supported on web yet.');
+}
+
 export async function deleteJourney(_id: string): Promise<void> {
   throw new Error('Deleting journeys is not supported on web yet.');
 }

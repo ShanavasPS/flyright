@@ -62,6 +62,19 @@ export async function addJourney(row: NewJourneyRow) {
     });
 }
 
+/** Edit a journal entry in place. The row id (= sync natural key) stays
+ * stable even when the fields inside it change, so claims and disruptions
+ * keep their reference and the cloud sync patches the same remote row. */
+export async function updateJourney(
+  id: string,
+  fields: Partial<Omit<NewJourneyRow, 'id' | 'userId' | 'createdAt'>>,
+) {
+  await db
+    .update(journeys)
+    .set({ ...fields, updatedAt: new Date().toISOString() })
+    .where(eq(journeys.id, id));
+}
+
 /** Soft delete — the tombstone lets a future cloud sync propagate removals. */
 export async function deleteJourney(id: string) {
   const now = new Date().toISOString();
