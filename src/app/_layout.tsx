@@ -134,6 +134,15 @@ function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name="claim"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.97],
+                }}
+              />
+              <Stack.Screen
                 name="paywall"
                 options={{
                   presentation: "formSheet",

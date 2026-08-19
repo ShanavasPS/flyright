@@ -84,7 +84,10 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
-      ]
+      ],
+      "expo-mail-composer",
+      "expo-sharing",
+      "./plugins/with-pods-uuid-fix.js"
     ],
     "experiments": {
       "typedRoutes": true,

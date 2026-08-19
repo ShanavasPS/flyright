@@ -9,32 +9,17 @@ import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
+import { useClaimForJourney } from '@/services/claims';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { lookupFlight } from '@/services/flight-lookup';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { hasPro } from '@/services/purchases';
-
-// Kept as a data-free showcase of the verdict flow ("See a demo verdict" on the
-// journeys list) and as the fallback while real rows load.
-const DEMO_JOURNEY: Journey = {
-  id: 'demo',
-  mode: 'flight',
-  carrier: 'Lufthansa',
-  carrierCountry: 'DE',
-  number: 'LH873',
-  from: { code: 'HEL', country: 'FI' },
-  to: { code: 'FRA', country: 'DE' },
-  distanceKm: 1530,
-  scheduledDeparture: '2026-08-10T08:00:00Z',
-  scheduledArrival: '2026-08-10T10:30:00Z',
-};
-
-const DEMO_DISRUPTION: Disruption = { type: 'delay', delayMinutes: 195 };
 
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
 // have usually lapsed — the trip is journal material, not a claim.
@@ -69,7 +54,7 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
   // Frozen at mount — claim-window age doesn't need to tick while open.
   const [now] = useState(() => Date.now());
   const { userId } = useAuth();
-  const isDemo = !journeyId || journeyId === 'demo';
+  const isDemo = isDemoJourneyId(journeyId);
   const row = useJourney(journeyId ?? 'demo', userId);
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
 
@@ -201,10 +186,16 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   const router = useRouter();
   const theme = useTheme();
   const verdict = evaluate(journey, disruption);
+  // Never set for the demo journey — there's no DB row to claim against.
+  const claim = useClaimForJourney(journey.id);
+  const claimSent = !!claim && claim.status !== 'draft';
 
   const startClaim = async () => {
     if (await hasPro()) {
-      // TODO: claim wizard route
+      router.push({
+        pathname: '/claim',
+        params: { journeyId: journey.id, delay: String(disruption.delayMinutes ?? 0) },
+      });
       return;
     }
     router.push('/paywall');
@@ -221,9 +212,23 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
           <ThemedText type="small" themeColor="textSecondary">
             Regulation: {verdict.regulation}
           </ThemedText>
-          <View style={styles.cta}>
-            <PrimaryButton label="Generate my claim →" onPress={startClaim} />
-          </View>
+          {claimSent ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Claim sent{claim.sentAt ? ` on ${formatDayLabelWithYear(claim.sentAt)}` : ''} —
+              response due by{' '}
+              {claim.responseDeadline
+                ? formatDayLabelWithYear(claim.responseDeadline)
+                : 'six weeks from sending'}
+              .
+            </ThemedText>
+          ) : (
+            <View style={styles.cta}>
+              <PrimaryButton
+                label={claim ? 'Finish my claim →' : 'Generate my claim →'}
+                onPress={startClaim}
+              />
+            </View>
+          )}
         </>
       ) : (
         <>
