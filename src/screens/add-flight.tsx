@@ -4,7 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { PrimaryButton } from '@/components/primary-button';
@@ -34,6 +41,22 @@ import { addJourney } from '@/services/journeys';
 // 'manual' is the journal path: any trip, any year, no lookup involved.
 type Step = 'flight' | 'date' | 'manual' | 'result' | 'added';
 
+const DEFAULT_DEPARTURE_CLOCK = '12:00';
+
+/** Gate-to-gate estimate for the default arrival: ~850 km/h cruise plus
+ * taxi/climb overhead, rounded to 5 min so the prefilled time looks intentional. */
+function estimatedFlightMinutes(distanceKm: number): number {
+  const airborne = (distanceKm / 850) * 60;
+  return Math.round((airborne + 40) / 5) * 5;
+}
+
+/** 'HH:mm' plus minutes, wrapping past midnight (the save path bumps the day). */
+function addClockMinutes(clock: string, minutes: number): string {
+  const [h, m] = clock.split(':').map(Number);
+  const total = (h * 60 + m + minutes) % (24 * 60);
+  return `${`${Math.floor(total / 60)}`.padStart(2, '0')}:${`${total % 60}`.padStart(2, '0')}`;
+}
+
 const PROMPTS: Record<Step, string> = {
   flight: 'Enter your flight number',
   date: 'Enter the departure date',
@@ -61,6 +84,10 @@ export function AddFlight() {
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
   const [activeField, setActiveField] = useState<'from' | 'to'>('from');
+  // Optional 'HH:mm' times for journal entries; null keeps the noon placeholder.
+  const [depTime, setDepTime] = useState<string | null>(null);
+  const [arrTime, setArrTime] = useState<string | null>(null);
+  const [timePickerFor, setTimePickerFor] = useState<'dep' | 'arr' | null>(null);
 
   const inputCandidate = normalizeFlightNumber(flightInput);
   const today = new Date();
@@ -152,6 +179,17 @@ export function AddFlight() {
   const fromAirport = getAirport(fromInput);
   const toAirport = getAirport(toInput);
 
+  // The time chips come prefilled: noon departure, arrival tracking whatever
+  // departure is chosen plus the leg's estimated duration.
+  const manualKm =
+    fromAirport && toAirport
+      ? haversineKm(fromAirport.lat, fromAirport.lon, toAirport.lat, toAirport.lon)
+      : null;
+  const depClock = depTime ?? DEFAULT_DEPARTURE_CLOCK;
+  const arrClock =
+    arrTime ??
+    (manualKm != null ? addClockMinutes(depClock, estimatedFlightMinutes(manualKm)) : depClock);
+
   const saveManual = async () => {
     if (!fromAirport || !toAirport || !date) return;
     const carrier = flightNumber ? carrierFor(flightNumber) : null;
@@ -161,6 +199,9 @@ export function AddFlight() {
       toAirport.lat,
       toAirport.lon,
     );
+    // An arrival clock earlier than departure means the flight landed next day.
+    const arrivalDay =
+      arrClock < depClock ? localDateString(new Date(`${date}T12:00:00`), 1) : date;
     await addJourney({
       id: `${flightNumber ?? 'TRIP'}-${fromAirport.iata}-${toAirport.iata}-${date}`,
       userId,
@@ -174,9 +215,8 @@ export function AddFlight() {
       toCode: toAirport.iata,
       toCountry: toAirport.country,
       distanceKm,
-      // No schedule data for journal entries — midday keeps list times sane.
-      scheduledDeparture: `${date}T12:00:00`,
-      scheduledArrival: `${date}T12:00:00`,
+      scheduledDeparture: `${date}T${depClock}:00`,
+      scheduledArrival: `${arrivalDay}T${arrClock}:00`,
       createdAt: new Date().toISOString(),
     });
     setStep('added');
@@ -438,6 +478,50 @@ export function AddFlight() {
                   ).toLocaleString()}{' '}
                   km{date ? ` · ${formatDayLabel(date)}` : ''}
                 </ThemedText>
+                <View style={styles.timesRow}>
+                  {(
+                    [
+                      { field: 'dep', label: 'Departs', clock: depClock },
+                      { field: 'arr', label: 'Arrives', clock: arrClock },
+                    ] as const
+                  ).map(({ field, label, clock }) => (
+                    <Pressable
+                      key={field}
+                      style={styles.timeChip}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setTimePickerFor((open) => (open === field ? null : field));
+                      }}>
+                      <ThemedView
+                        type={timePickerFor === field ? 'backgroundSelected' : 'background'}
+                        style={styles.timeChipInner}>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {label}
+                        </ThemedText>
+                        <ThemedText type="smallBold" themeColor="tint">
+                          {formatTime(`${date}T${clock}:00`)}
+                        </ThemedText>
+                      </ThemedView>
+                    </Pressable>
+                  ))}
+                </View>
+                {timePickerFor && (
+                  <DateTimePicker
+                    value={
+                      new Date(`${date}T${timePickerFor === 'dep' ? depClock : arrClock}:00`)
+                    }
+                    mode="time"
+                    display="spinner"
+                    presentation="inline"
+                    accentColor={theme.tint}
+                    onDismiss={() => setTimePickerFor(null)}
+                    onValueChange={(_event, picked) => {
+                      const clock = `${`${picked.getHours()}`.padStart(2, '0')}:${`${picked.getMinutes()}`.padStart(2, '0')}`;
+                      if (timePickerFor === 'dep') setDepTime(clock);
+                      else setArrTime(clock);
+                    }}
+                  />
+                )}
                 <View style={styles.cta}>
                   <PrimaryButton label="Add to My travels →" onPress={saveManual} />
                 </View>
@@ -605,6 +689,19 @@ const styles = StyleSheet.create({
   },
   cta: {
     marginTop: Spacing.two,
+  },
+  timesRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  timeChip: {
+    flex: 1,
+  },
+  timeChipInner: {
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    gap: Spacing.half,
   },
   addedContainer: {
     alignItems: 'center',

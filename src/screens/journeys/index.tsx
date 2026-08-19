@@ -78,6 +78,19 @@ export function Journeys() {
   );
 }
 
+/** Journal entries only carry times the user typed: identical noon timestamps
+ * are the "no times" placeholder (show distance), identical non-noon ones mean
+ * a single entered time — never render a fabricated departure → arrival pair. */
+function manualScheduleLabel(row: JourneyRow): string {
+  const { scheduledDeparture: dep, scheduledArrival: arr } = row;
+  if (dep === arr) {
+    return dep.endsWith('T12:00:00')
+      ? `${Math.round(row.distanceKm).toLocaleString()} km`
+      : `${formatTime(dep)} · ${Math.round(row.distanceKm).toLocaleString()} km`;
+  }
+  return `${formatTime(dep)} → ${formatTime(arr)}`;
+}
+
 function JourneyItem({ row, now }: { row: JourneyRow; now: Date }) {
   // Recent and upcoming trips get the live countdown; older ones read like a
   // journal entry — a calendar tile and the full date.
@@ -111,7 +124,9 @@ function JourneyItem({ row, now }: { row: JourneyRow; now: Date }) {
               {row.fromCode} to {row.toCode}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {formatTime(row.scheduledDeparture)} → {formatTime(row.scheduledArrival)}
+              {row.source === 'manual'
+                ? manualScheduleLabel(row)
+                : `${formatTime(row.scheduledDeparture)} → ${formatTime(row.scheduledArrival)}`}
             </ThemedText>
           </View>
         </ThemedView>
