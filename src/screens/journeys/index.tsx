@@ -1,8 +1,10 @@
 import { useAuth } from '@clerk/expo';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useMemo } from 'react';
-import { Pressable, SectionList, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
@@ -65,15 +67,6 @@ export function Journeys() {
           My travels
         </ThemedText>
 
-        <Pressable
-          accessibilityRole="search"
-          accessibilityLabel="Add a flight, past or future"
-          onPress={() => router.push('/add-flight')}>
-          <ThemedView type="backgroundElement" style={styles.searchBar}>
-            <ThemedText themeColor="textSecondary">Add a flight — past or future</ThemedText>
-          </ThemedView>
-        </Pressable>
-
         {journeys?.length ? (
           <SectionList
             sections={sections}
@@ -110,7 +103,51 @@ export function Journeys() {
           </Card>
         )}
       </SafeAreaView>
+      {/* iOS gets the native detached "+" beside the tab bar (see the tabs
+          layout); this docked overlay is the Android/web equivalent. */}
+      {Platform.OS !== 'ios' && <AddFlightButton onPress={() => router.push('/add-flight')} />}
     </ThemedView>
+  );
+}
+
+/** iOS 26-style standalone "+" control docked beside the floating tab bar —
+ * the detached-circle treatment the system search tab gets, sitting at the
+ * tab bar's own level in its right margin rather than floating over content.
+ * Liquid Glass where the OS supports it; an elevated brand-tint circle
+ * everywhere else. */
+function AddFlightButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const glass = isLiquidGlassAvailable();
+
+  const icon = (
+    <SymbolView
+      name={{ ios: 'plus', android: 'add', web: 'add' }}
+      size={24}
+      weight="semibold"
+      tintColor={glass ? theme.tint : '#ffffff'}
+    />
+  );
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Add a flight, past or future"
+      onPress={onPress}
+      // Inside NativeTabs the bottom inset includes the tab bar itself;
+      // subtracting it back out leaves the device inset, and the small
+      // offset centers the circle on the floating pill's midline.
+      style={[styles.fab, { bottom: Math.max(insets.bottom - BottomTabInset - 5, 4) }]}>
+      {glass ? (
+        <GlassView glassEffectStyle="regular" isInteractive style={styles.fabCircle}>
+          {icon}
+        </GlassView>
+      ) : (
+        <View style={[styles.fabCircle, styles.fabFallback, { backgroundColor: theme.tint }]}>
+          {icon}
+        </View>
+      )}
+    </Pressable>
   );
 }
 
@@ -234,10 +271,24 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.three,
   },
-  searchBar: {
-    borderRadius: Spacing.four,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+  fab: {
+    position: 'absolute',
+    right: Spacing.two,
+  },
+  fabCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  fabFallback: {
+    shadowColor: '#0B1520',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   list: {
     gap: Spacing.two,
