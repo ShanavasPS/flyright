@@ -1,8 +1,17 @@
 import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
+import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
@@ -55,6 +64,7 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
   // Frozen at mount — claim-window age doesn't need to tick while open.
   const [now] = useState(() => Date.now());
   const router = useRouter();
+  const theme = useTheme();
   const { userId } = useAuth();
   const isDemo = isDemoJourneyId(journeyId);
   const row = useJourney(journeyId ?? 'demo', userId);
@@ -158,54 +168,74 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
           </Card>
         )}
 
+        {/* Edit/remove live in a header "···" menu (the Flighty/Tripsy
+            pattern): edit as a plain action, remove destructive and last,
+            never side by side in the content. */}
         {!isDemo && row && (
-          <View style={styles.footer}>
-            {/* Only journal entries are editable — lookup rows mirror the
-                flight-data provider and would drift from it if hand-edited. */}
-            {row.source === 'manual' && (
-              <Pressable
-                onPress={() =>
-                  router.push({ pathname: '/add-flight', params: { editId: row.id } })
-                }
-                hitSlop={Spacing.two}>
-                <ThemedText type="link">Edit trip details →</ThemedText>
-              </Pressable>
-            )}
-            <RemoveRow journeyId={row.id} />
-          </View>
+          <Stack.Screen
+            options={{
+              headerRight: () => (
+                <Pressable
+                  accessibilityLabel="Trip options"
+                  hitSlop={Spacing.three}
+                  onPress={() => showTripMenu(row.id, row.source === 'manual', router)}>
+                  <SymbolView
+                    name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
+                    size={22}
+                    tintColor={theme.tint}
+                  />
+                </Pressable>
+              ),
+            }}
+          />
         )}
       </SafeAreaView>
     </ThemedView>
   );
 }
 
-function RemoveRow({ journeyId }: { journeyId: string }) {
-  const router = useRouter();
-  const theme = useTheme();
-
-  const confirmRemove = () => {
-    Alert.alert('Remove this trip?', 'It will disappear from your travel history.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteJourney(journeyId);
-          router.back();
-        },
+function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>) {
+  Alert.alert('Remove this trip?', 'It will disappear from your travel history.', [
+    { text: 'Cancel', style: 'cancel' },
+    {
+      text: 'Remove',
+      style: 'destructive',
+      onPress: async () => {
+        await deleteJourney(journeyId);
+        router.back();
       },
-    ]);
-  };
+    },
+  ]);
+}
 
-  return (
-    <View style={styles.removeRow}>
-      <Pressable onPress={confirmRemove} hitSlop={Spacing.two}>
-        <ThemedText type="small" style={{ color: theme.danger }}>
-          Remove from My travels
-        </ThemedText>
-      </Pressable>
-    </View>
-  );
+/** Native "···" menu: Edit (journal entries only), then destructive Remove. */
+function showTripMenu(journeyId: string, editable: boolean, router: ReturnType<typeof useRouter>) {
+  const edit = () => router.push({ pathname: '/add-flight', params: { editId: journeyId } });
+  const remove = () => confirmRemove(journeyId, router);
+
+  if (Platform.OS === 'ios') {
+    const options = editable
+      ? ['Edit trip details', 'Remove from My travels', 'Cancel']
+      : ['Remove from My travels', 'Cancel'];
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        destructiveButtonIndex: editable ? 1 : 0,
+        cancelButtonIndex: options.length - 1,
+      },
+      (index) => {
+        if (editable && index === 0) edit();
+        else if (index === (editable ? 1 : 0)) remove();
+      },
+    );
+    return;
+  }
+
+  Alert.alert('Trip options', undefined, [
+    ...(editable ? [{ text: 'Edit trip details', onPress: edit }] : []),
+    { text: 'Remove from My travels', style: 'destructive' as const, onPress: remove },
+    { text: 'Cancel', style: 'cancel' as const },
+  ]);
 }
 
 function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Disruption }) {
@@ -281,15 +311,6 @@ const styles = StyleSheet.create({
   },
   routeBlock: {
     gap: Spacing.half,
-  },
-  footer: {
-    marginTop: 'auto',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  removeRow: {
-    paddingBottom: Spacing.four,
-    alignItems: 'center',
   },
   cta: {
     marginTop: Spacing.two,
