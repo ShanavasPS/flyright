@@ -28,6 +28,11 @@ export const ENTITLEMENT_PRO = 'Owed Pro';
 /** Custom action id configured on the Customer Center's management screen. */
 export const CC_ACTION_CHANGE_PLAN = 'change_plan';
 
+/** Offering shown when an existing subscriber changes plan: same packages as
+ * the default offering, but its paywall speaks to a current customer
+ * ("Switch plan") instead of pitching an unlock. */
+export const OFFERING_CHANGE_PLAN = 'change-plan';
+
 let configured = false;
 
 /** Reactive customer state — kept in sync by the SDK's update listener. */
@@ -134,6 +139,22 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   if (!configured) return null;
   const offerings = await Purchases.getOfferings();
   return offerings.current;
+}
+
+/** A specific offering by identifier (e.g. OFFERING_CHANGE_PLAN), or null when
+ * it doesn't exist or the SDK isn't configured — callers fall back to the
+ * default offering's paywall. */
+export async function getOfferingByIdentifier(
+  identifier: string,
+): Promise<PurchasesOffering | null> {
+  if (!configured) return null;
+  try {
+    const offerings = await Purchases.getOfferings();
+    return offerings.all[identifier] ?? null;
+  } catch (e) {
+    console.warn('[purchases] getOfferings failed', e);
+    return null;
+  }
 }
 
 export type PurchaseOutcome =

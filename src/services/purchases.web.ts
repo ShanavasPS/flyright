@@ -10,6 +10,7 @@ export type { PurchaseOutcome };
 
 export const ENTITLEMENT_PRO = 'FlyRight Pro';
 export const CC_ACTION_CHANGE_PLAN = 'change_plan';
+export const OFFERING_CHANGE_PLAN = 'change-plan';
 
 export const useCustomerInfo = (): CustomerInfo | null => null;
 export const useHasPro = () => false;
@@ -31,6 +32,12 @@ export async function hasPro(): Promise<boolean> {
 }
 
 export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
+  return null;
+}
+
+export async function getOfferingByIdentifier(
+  _identifier: string,
+): Promise<PurchasesOffering | null> {
   return null;
 }
 
