@@ -5,6 +5,8 @@
 // Relative import (not @/assets) so jest resolves it without extra config.
 import data from '../../assets/data/airports.json';
 
+import { COUNTRY_NAMES } from '@/constants/countries';
+
 /** [lat, lon, ISO country, city] — the compact tuple the build script emits. */
 type AirportTuple = [number, number, string, string];
 
@@ -21,6 +23,11 @@ export interface Airport {
 function toAirport(iata: string, tuple: AirportTuple): Airport {
   const [lat, lon, country, city] = tuple;
   return { iata, lat, lon, country, city };
+}
+
+/** "FI" → "Finland"; falls back to the code itself for unknown values. */
+export function countryName(isoCode: string): string {
+  return COUNTRY_NAMES[isoCode] ?? isoCode;
 }
 
 export function getAirport(iata: string): Airport | undefined {

@@ -13,7 +13,8 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
-import { formatDayLabelWithYear } from '@/services/dates';
+import { countryName, getAirport } from '@/services/airports';
+import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { lookupFlight } from '@/services/flight-lookup';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { hasPro } from '@/services/purchases';
@@ -38,6 +39,31 @@ const DEMO_DISRUPTION: Disruption = { type: 'delay', delayMinutes: 195 };
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
 // have usually lapsed — the trip is journal material, not a claim.
 const CLAIM_WINDOW_MS = 3 * 365 * 86_400_000;
+
+/** "Doha, Qatar" for a known airport; the country name alone otherwise. */
+function placeLabel(place: Journey['from']): string {
+  const airport = getAirport(place.code);
+  if (airport) return `${airport.city}, ${countryName(airport.country)}`;
+  return place.country ? countryName(place.country) : place.code;
+}
+
+/** "from Kochi, India to Doha, Qatar" — cities only when the leg stays within
+ * one country, country names alone when the airports aren't in the dataset. */
+function routeSentence(journey: Journey): string {
+  const from = getAirport(journey.from.code);
+  const to = getAirport(journey.to.code);
+  if (from && to) {
+    return from.country === to.country
+      ? `from ${from.city} to ${to.city}`
+      : `from ${from.city}, ${countryName(from.country)} to ${to.city}, ${countryName(to.country)}`;
+  }
+  if (journey.from.country && journey.to.country) {
+    return journey.from.country === journey.to.country
+      ? `within ${countryName(journey.from.country)}`
+      : `from ${countryName(journey.from.country)} to ${countryName(journey.to.country)}`;
+  }
+  return '';
+}
 
 export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) {
   // Frozen at mount — claim-window age doesn't need to tick while open.
@@ -78,15 +104,34 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
   // simply reads as history instead of showing a spinner or an error.
   const journalOnly = !isDemo && (!isLookupable || status.isError);
 
+  // Journal entries without user-entered times store the placeholder noon
+  // pair — no schedule worth showing. A lone entered time reads as a departure.
+  const schedule =
+    journey.scheduledDeparture === journey.scheduledArrival
+      ? journey.scheduledDeparture.endsWith('T12:00:00')
+        ? null
+        : `${tripAge > 0 ? 'Departed' : 'Departs'} ${formatTime(journey.scheduledDeparture)}`
+      : `${formatTime(journey.scheduledDeparture)} → ${formatTime(journey.scheduledArrival)}`;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="title" themeColor="heading">
           {journey.number ? `${journey.carrier} ${journey.number}` : journey.carrier}
         </ThemedText>
-        <ThemedText>
-          {journey.from.code} → {journey.to.code}
-        </ThemedText>
+        <View style={styles.routeBlock}>
+          <ThemedText>
+            {journey.from.code} → {journey.to.code}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {placeLabel(journey.from)} → {placeLabel(journey.to)}
+          </ThemedText>
+          {schedule && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {schedule}
+            </ThemedText>
+          )}
+        </View>
 
         {disruption ? (
           <VerdictCard journey={journey} disruption={disruption} />
@@ -97,12 +142,7 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
             </ThemedText>
             <ThemedText type="small">
               You flew {Math.round(journey.distanceKm).toLocaleString()} km
-              {journey.from.country && journey.to.country
-                ? journey.from.country === journey.to.country
-                  ? ` within ${journey.from.country}`
-                  : ` from ${journey.from.country} to ${journey.to.country}`
-                : ''}
-              .
+              {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
             </ThemedText>
             {tripAge > CLAIM_WINDOW_MS && (
               <ThemedText type="small" themeColor="textSecondary">
@@ -207,6 +247,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
+  },
+  routeBlock: {
+    gap: Spacing.half,
   },
   removeRow: {
     marginTop: 'auto',
