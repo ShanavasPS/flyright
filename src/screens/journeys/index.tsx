@@ -62,7 +62,9 @@ export function Journeys() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      {/* Top edge only: the list itself runs under the floating tab bar (the
+          iOS 26 behavior — glass blurs the content scrolling beneath it). */}
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
         <ThemedText type="title" themeColor="heading">
           My travels
         </ThemedText>
@@ -71,6 +73,7 @@ export function Journeys() {
           <SectionList
             sections={sections}
             keyExtractor={(row) => row.id}
+            contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             stickySectionHeadersEnabled={false}
             ListHeaderComponent={<TravelStatsHeader stats={stats} />}
@@ -269,7 +272,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
   },
   fab: {
     position: 'absolute',
@@ -292,6 +294,8 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: Spacing.two,
+    // Breathing room past the auto tab-bar inset when scrolled to the end.
+    paddingBottom: Spacing.three,
   },
   sectionTitle: {
     textTransform: 'uppercase',
