@@ -9,7 +9,6 @@ import type { PurchaseOutcome } from './purchases';
 export type { PurchaseOutcome };
 
 export const ENTITLEMENT_PRO = 'FlyRight Pro';
-export const CC_ACTION_CHANGE_PLAN = 'change_plan';
 export const OFFERING_CHANGE_PLAN = 'change-plan';
 
 export const useCustomerInfo = (): CustomerInfo | null => null;
@@ -47,6 +46,16 @@ export async function purchase(_pkg: PurchasesPackage): Promise<PurchaseOutcome>
 
 export async function presentProPaywall(): Promise<boolean> {
   return false;
+}
+
+export type RefundRequestOutcome = 'submitted' | 'cancelled' | 'unavailable';
+
+export async function beginRefundRequest(): Promise<RefundRequestOutcome> {
+  return 'unavailable';
+}
+
+export async function getAppUserId(): Promise<string | null> {
+  return null;
 }
 
 export async function restorePurchases(): Promise<boolean> {

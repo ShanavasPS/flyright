@@ -7,8 +7,8 @@ export default function SettingsStack() {
     <Stack>
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen
-        name="customer-center"
-        options={{ title: 'Manage subscription', headerBackTitle: 'Back' }}
+        name="manage-subscription"
+        options={{ title: 'Manage subscription', headerBackButtonDisplayMode: 'minimal' }}
       />
       {/* On native, Clerk's UserProfileView brings its own navigation chrome;
           the route header is hidden and onHostBack (see screens/account.tsx)

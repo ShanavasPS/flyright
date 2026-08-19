@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import Purchases, {
   LOG_LEVEL,
+  REFUND_REQUEST_STATUS,
   type CustomerInfo,
   type PurchasesError,
   type PurchasesOffering,
@@ -24,9 +25,6 @@ import { RC_API_KEY_ANDROID, RC_API_KEY_IOS, RC_API_KEY_TEST } from '@/constants
  *  - 'claim_credit' → consumable, unlocks a single claim packet
  */
 export const ENTITLEMENT_PRO = 'Owed Pro';
-
-/** Custom action id configured on the Customer Center's management screen. */
-export const CC_ACTION_CHANGE_PLAN = 'change_plan';
 
 /** Offering shown when an existing subscriber changes plan: same packages as
  * the default offering, but its paywall speaks to a current customer
@@ -199,6 +197,33 @@ export async function presentProPaywall(): Promise<boolean> {
   } catch (e) {
     console.warn('[purchases] paywall failed', e);
     return false;
+  }
+}
+
+export type RefundRequestOutcome = 'submitted' | 'cancelled' | 'unavailable';
+
+/** StoreKit's refund sheet for the active entitlement — iOS only; Android
+ * refunds go through Google Play support instead. */
+export async function beginRefundRequest(): Promise<RefundRequestOutcome> {
+  if (!configured || Platform.OS !== 'ios') return 'unavailable';
+  try {
+    const status = await Purchases.beginRefundRequestForActiveEntitlement();
+    if (status === REFUND_REQUEST_STATUS.SUCCESS) return 'submitted';
+    if (status === REFUND_REQUEST_STATUS.USER_CANCELLED) return 'cancelled';
+    return 'unavailable';
+  } catch (e) {
+    console.warn('[purchases] refund request failed', e);
+    return 'unavailable';
+  }
+}
+
+/** Current RevenueCat app user id — shown so support can find the customer. */
+export async function getAppUserId(): Promise<string | null> {
+  if (!configured) return null;
+  try {
+    return await Purchases.getAppUserID();
+  } catch {
+    return null;
   }
 }
 

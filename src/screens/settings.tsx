@@ -290,10 +290,8 @@ export function Settings() {
 
           <AppearanceRow />
 
-          {/* Plan changes live inside the Customer Center: a 'change_plan'
-              custom action configured on its management screen. */}
           <Pressable
-            onPress={() => router.push(pro ? '/customer-center' : '/paywall')}
+            onPress={() => router.push(pro ? '/manage-subscription' : '/paywall')}
             style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
             <View style={styles.rowLabel}>
               <ThemedText>{pro ? 'FlyRight Pro' : 'Get FlyRight Pro'}</ThemedText>
