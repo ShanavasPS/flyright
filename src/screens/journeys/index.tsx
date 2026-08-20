@@ -3,14 +3,14 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useMemo } from 'react';
-import { Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, SectionList, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelStatsHeader } from '@/components/travel-stats-header';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
@@ -65,9 +65,12 @@ export function Journeys() {
       {/* Top edge only: the list itself runs under the floating tab bar (the
           iOS 26 behavior — glass blurs the content scrolling beneath it). */}
       <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <ThemedText type="title" themeColor="heading">
-          My travels
-        </ThemedText>
+        <View style={styles.titleRow}>
+          <ThemedText type="title" themeColor="heading">
+            My travels
+          </ThemedText>
+          <AddFlightButton onPress={() => router.push('/add-flight')} />
+        </View>
 
         {journeys?.length ? (
           <SectionList
@@ -106,27 +109,21 @@ export function Journeys() {
           </Card>
         )}
       </SafeAreaView>
-      {/* iOS gets the native detached "+" beside the tab bar (see the tabs
-          layout); this docked overlay is the Android/web equivalent. */}
-      {Platform.OS !== 'ios' && <AddFlightButton onPress={() => router.push('/add-flight')} />}
     </ThemedView>
   );
 }
 
-/** iOS 26-style standalone "+" control docked beside the floating tab bar —
- * the detached-circle treatment the system search tab gets, sitting at the
- * tab bar's own level in its right margin rather than floating over content.
- * Liquid Glass where the OS supports it; an elevated brand-tint circle
- * everywhere else. */
+/** Header-style "+" on the title row's right edge — the standard list-screen
+ * add affordance, same placement on every platform. Liquid Glass where the OS
+ * supports it; an elevated brand-tint circle everywhere else. */
 function AddFlightButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const glass = isLiquidGlassAvailable();
 
   const icon = (
     <SymbolView
       name={{ ios: 'plus', android: 'add', web: 'add' }}
-      size={24}
+      size={20}
       weight="semibold"
       tintColor={glass ? theme.tint : '#ffffff'}
     />
@@ -136,17 +133,13 @@ function AddFlightButton({ onPress }: { onPress: () => void }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Add a flight, past or future"
-      onPress={onPress}
-      // Inside NativeTabs the bottom inset includes the tab bar itself;
-      // subtracting it back out leaves the device inset, and the small
-      // offset centers the circle on the floating pill's midline.
-      style={[styles.fab, { bottom: Math.max(insets.bottom - BottomTabInset - 5, 4) }]}>
+      onPress={onPress}>
       {glass ? (
-        <GlassView glassEffectStyle="regular" isInteractive style={styles.fabCircle}>
+        <GlassView glassEffectStyle="regular" isInteractive style={styles.addCircle}>
           {icon}
         </GlassView>
       ) : (
-        <View style={[styles.fabCircle, styles.fabFallback, { backgroundColor: theme.tint }]}>
+        <View style={[styles.addCircle, styles.addFallback, { backgroundColor: theme.tint }]}>
           {icon}
         </View>
       )}
@@ -273,19 +266,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
   },
-  fab: {
-    position: 'absolute',
-    right: Spacing.two,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  fabCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  addCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  fabFallback: {
+  addFallback: {
     shadowColor: '#0B1520',
     shadowOpacity: 0.25,
     shadowRadius: 10,
