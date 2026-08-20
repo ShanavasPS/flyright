@@ -12,11 +12,17 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useEffect } from "react";
 import { LogBox, useColorScheme } from "react-native";
 
+import { NotificationRouter } from "@/components/notification-router";
 import { ThemedText } from "@/components/themed-text";
 import { UpdateRequired } from "@/components/update-required";
 import { Colors } from "@/constants/theme";
 import { useVersionGate } from "@/hooks/use-version-gate";
+import { registerFlightWatch } from "@/services/flight-watch";
 import { useDbReady } from "@/services/journeys";
+import {
+  initNotificationLifecycle,
+  reconcileNotifications,
+} from "@/services/notification-lifecycle";
 import { initNotifications } from "@/services/notifications";
 import { initPurchases } from "@/services/purchases";
 import { applyStoredTheme } from "@/services/theme";
@@ -34,6 +40,7 @@ if (!publishableKey) {
 // tree that Maestro E2E runs read.
 LogBox.ignoreLogs([
   "[notifications]",
+  "[flight-watch]",
   "[purchases]",
   "[RevenueCat]",
   "Clerk: Clerk has been loaded with development keys",
@@ -102,6 +109,12 @@ function RootLayout() {
   useEffect(() => {
     initPurchases();
     initNotifications();
+    initNotificationLifecycle();
+    // Importing flight-watch also defines its background task (global-scope
+    // contract); registration + a reconcile pass heal any schedule drift
+    // from runs the app missed while closed.
+    void registerFlightWatch();
+    void reconcileNotifications();
   }, []);
 
   if (dbError) {
@@ -116,6 +129,7 @@ function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <IdentitySync />
+      <NotificationRouter />
       <CloudSync>
       <ThemeProvider
         value={navTheme(colorScheme === "dark" ? "dark" : "light")}

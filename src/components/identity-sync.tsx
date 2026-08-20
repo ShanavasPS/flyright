@@ -1,6 +1,7 @@
 import { useUser } from '@clerk/expo';
 import { useEffect } from 'react';
 
+import { setNotificationViewer } from '@/services/notification-lifecycle';
 import { logInNotifications, logOutNotifications } from '@/services/notifications';
 import { logInPurchases, logOutPurchases } from '@/services/purchases';
 
@@ -26,6 +27,8 @@ export function IdentitySync() {
       void logOutPurchases();
       logOutNotifications();
     }
+    // Scheduled reminders scope to the same identity (see notification-lifecycle).
+    setNotificationViewer(userId ?? null);
   }, [isLoaded, userId, email]);
 
   return null;

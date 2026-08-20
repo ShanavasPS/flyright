@@ -7,6 +7,7 @@ import migrations from '../../drizzle/migrations';
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import type { Journey } from '@/rules/types';
+import { reconcileNotifications } from '@/services/notification-lifecycle';
 
 export type JourneyRow = typeof journeys.$inferSelect;
 export type NewJourneyRow = typeof journeys.$inferInsert;
@@ -60,6 +61,7 @@ export async function addJourney(row: NewJourneyRow) {
       target: journeys.id,
       set: { deletedAt: null, updatedAt: now },
     });
+  void reconcileNotifications();
 }
 
 /** Edit a journal entry in place. The row id (= sync natural key) stays
@@ -73,6 +75,7 @@ export async function updateJourney(
     .update(journeys)
     .set({ ...fields, updatedAt: new Date().toISOString() })
     .where(eq(journeys.id, id));
+  void reconcileNotifications();
 }
 
 /** Soft delete — the tombstone lets a future cloud sync propagate removals. */
@@ -82,6 +85,7 @@ export async function deleteJourney(id: string) {
     .update(journeys)
     .set({ deletedAt: now, updatedAt: now })
     .where(eq(journeys.id, id));
+  void reconcileNotifications();
 }
 
 /** DB row → the rules-engine shape. */

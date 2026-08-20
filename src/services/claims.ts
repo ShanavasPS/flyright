@@ -4,6 +4,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
 import type { Verdict } from '@/rules/types';
+import { reconcileNotifications } from '@/services/notification-lifecycle';
 
 export type ClaimRow = typeof claims.$inferSelect;
 
@@ -76,6 +77,7 @@ export async function saveClaim(opts: {
         responseDeadline: deadline.toISOString(),
       })
       .where(eq(claims.id, id));
+    void reconcileNotifications();
     return;
   }
 
@@ -91,4 +93,5 @@ export async function saveClaim(opts: {
     responseDeadline: sent ? deadline.toISOString() : null,
     createdAt: now.toISOString(),
   });
+  void reconcileNotifications();
 }

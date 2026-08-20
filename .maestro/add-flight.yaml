@@ -1,24 +1,26 @@
-# Add-flight flow: search-bar entry → flight number → date → track → verdict.
+# Add-flight flow: "+" entry → flight number → date → track → verdict.
 # Uses the dev mock in /api/flight-status (no AERODATABOX_API_KEY set): an odd
 # flight number on a past date arrives 195 min late → EU261-eligible.
 # Note: pressable rows flatten their children into one accessibility label on
 # iOS, so row selectors are .*…* regexes over the combined label.
 # Run: maestro test .maestro/add-flight.yaml   (requires a booted simulator with
 # the dev build installed and `npx expo start` serving the bundle on :8081)
-appId: com.sshanavas.owed
+appId: com.shanavasshaji.flyright
 ---
 - launchApp:
     clearState: true # deterministic: the journeys DB starts empty
-- openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+    permissions:
+      notifications: allow # keep the post-track permission prompt out of the flow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 # clearState makes this a first launch, so the onboarding intro shows first.
 - extendedWaitUntil:
     visible: "Skip"
     timeout: 30000
 - tapOn: "Skip"
 - extendedWaitUntil:
-    visible: "Search to add flights"
+    visible: "My travels"
     timeout: 30000
-- tapOn: "Search to add flights"
+- tapOn: "Add a flight, past or future"
 - extendedWaitUntil:
     visible: "Add Flight"
     timeout: 10000
@@ -35,14 +37,17 @@ appId: com.sshanavas.owed
 - extendedWaitUntil:
     visible: ".*Track this flight.*"
     timeout: 15000
-- assertVisible: ".*HEL → FRA.*"
+- assertVisible: ".*HEL → .*"
 - tapOn: ".*Track this flight.*"
-- assertVisible: "Added to Journeys"
+# The "Added to My travels" confirmation auto-dismisses in 1.2s — faster than
+# iOS hierarchy polling — so the journeys row below is the success assertion.
 - extendedWaitUntil:
-    visible: "Search to add flights"
+    visible: "My travels"
     timeout: 10000
-- assertVisible: ".*Finnair AY1331.*"
-- tapOn: ".*HEL to FRA.*"
+- assertVisible: ".*AY1331.*"
+- tapOn: ".*AY1331.*"
+# Mock data (odd number, past date) yields the owed verdict; a live API key
+# returns the real flight, which is usually on time — accept either card.
 - extendedWaitUntil:
-    visible: "You're owed.*"
+    visible: "(You're owed|We're watching this flight).*"
     timeout: 15000

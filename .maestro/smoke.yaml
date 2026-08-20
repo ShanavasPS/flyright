@@ -1,11 +1,11 @@
 # Smoke test: dev-client build boots, JS bundle loads, home screen renders.
 # Run: maestro test .maestro/smoke.yaml   (requires a booted simulator with the
 # dev build installed and `npx expo start` serving the bundle on :8081)
-appId: com.sshanavas.owed
+appId: com.shanavasshaji.flyright
 ---
 - launchApp:
     clearState: true # deterministic: the journeys DB starts empty
-- openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 # A cleared state means a first launch, so the onboarding intro covers the
 # tabs — its render doubles as the boot check before Skip reveals the journal.
 - extendedWaitUntil:
@@ -13,8 +13,7 @@ appId: com.sshanavas.owed
     timeout: 30000
 - tapOn: "Skip"
 - extendedWaitUntil:
-    visible: "Journeys"
+    visible: "My travels"
     timeout: 30000
-- assertVisible: "Search to add flights"
-- assertVisible: "No journeys yet"
+- assertVisible: "Your travel journal"
 - assertVisible: "See a demo verdict.*"

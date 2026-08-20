@@ -21,6 +21,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { reconcileNotifications } from '@/services/notification-lifecycle';
 import {
   addPushStateListener,
   getPushEnabled,
@@ -216,6 +217,9 @@ function PushNotificationsRow() {
     const result = await setPushEnabled(value);
     setEnabled(result === 'on');
     setBusy(false);
+    // The toggle governs local reminders too: off empties the schedule,
+    // on rebuilds it from the journal.
+    void reconcileNotifications();
     if (result === 'blocked') {
       Alert.alert(
         'Notifications are off for FlyRight',

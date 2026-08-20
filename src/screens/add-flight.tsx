@@ -28,6 +28,7 @@ import {
   localDateString,
 } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
+import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
 import {
   FlightLookupError,
@@ -215,8 +216,12 @@ export function AddFlight() {
       },
     });
     // The meaningful moment: they just trusted us with a flight to watch.
-    // iOS shows the system dialog once; subsequent calls are no-ops.
-    requestPushPermission().catch(() => {});
+    // iOS shows the system dialog once; subsequent calls are no-ops. The
+    // reconcile after it schedules this trip's reminder now that (if granted)
+    // the permission exists — the earlier addJourney reconcile ran without it.
+    requestPushPermission()
+      .then(() => reconcileNotifications())
+      .catch(() => {});
   };
 
   const fromAirport = getAirport(fromInput);
