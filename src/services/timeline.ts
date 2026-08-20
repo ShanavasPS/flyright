@@ -71,7 +71,9 @@ export interface TravelRecap extends TravelStats {
   /** Most-landed-in city, excluding home: without that carve-out every return
    * leg would crown the user's own city their top destination. */
   topDestination: { city: string; landings: number } | null;
-  topAirline: { carrier: string; flights: number } | null;
+  /** `number` is a sample flight number from that airline's rows, so the UI
+   * can derive the carrier's IATA code for its logo. */
+  topAirline: { carrier: string; flights: number; number: string } | null;
 }
 
 /** "Helsinki (Vantaa)" → "Helsinki"; unknown codes fall back to the code
@@ -115,6 +117,7 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
   const base = travelStats(rows);
   const airports = new Set<string>();
   const airlineCounts = new Map<string, number>();
+  const airlineNumbers = new Map<string, string>();
   const departureCities = new Map<string, number>();
   const arrivalCities = new Map<string, number>();
   const yearCounts = new Map<string, number>();
@@ -126,7 +129,10 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
     airports.add(row.fromCode);
     airports.add(row.toCode);
     const airline = airlineOf(row);
-    if (airline) bump(airlineCounts, airline);
+    if (airline) {
+      bump(airlineCounts, airline);
+      if (row.number && !airlineNumbers.has(airline)) airlineNumbers.set(airline, row.number);
+    }
     bump(departureCities, cityOf(row.fromCode));
     bump(arrivalCities, cityOf(row.toCode));
     const year = row.scheduledDeparture.slice(0, 4);
@@ -154,6 +160,12 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
     shortest: shortest !== longest ? shortest : null,
     homeCity: home ? { city: home.key, departures: home.count } : null,
     topDestination: destination ? { city: destination.key, landings: destination.count } : null,
-    topAirline: airline ? { carrier: airline.key, flights: airline.count } : null,
+    topAirline: airline
+      ? {
+          carrier: airline.key,
+          flights: airline.count,
+          number: airlineNumbers.get(airline.key) ?? '',
+        }
+      : null,
   };
 }

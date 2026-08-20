@@ -157,7 +157,7 @@ describe('travelRecap', () => {
     ]);
     expect(recap.airports).toBe(3);
     expect(recap.airlines).toBe(2);
-    expect(recap.topAirline).toEqual({ carrier: 'Finnair', flights: 2 });
+    expect(recap.topAirline).toEqual({ carrier: 'Finnair', flights: 2, number: 'AY123' });
   });
 
   it("ignores the manual-entry 'Flight' placeholder when ranking airlines", () => {
@@ -168,7 +168,7 @@ describe('travelRecap', () => {
     ];
     const recap = travelRecap(rows);
     expect(recap.airlines).toBe(1);
-    expect(recap.topAirline).toEqual({ carrier: 'Finnair', flights: 1 });
+    expect(recap.topAirline).toEqual({ carrier: 'Finnair', flights: 1, number: 'AY123' });
     expect(travelRecap([trip('HEL', 'FRA', { carrier: 'Flight' })]).topAirline).toBeNull();
   });
 

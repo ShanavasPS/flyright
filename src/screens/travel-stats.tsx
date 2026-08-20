@@ -1,8 +1,9 @@
 import { useAuth } from '@clerk/expo';
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { useMemo } from 'react';
+import { SymbolView } from 'expo-symbols';
+import { useMemo, type ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AirlineLogo } from '@/components/airline-logo';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -60,7 +61,12 @@ export function TravelStats() {
         <SheenCard>
           {recap.topDestination && (
             <Headline
-              icon={{ ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' }}
+              badge={
+                <IconBadge
+                  symbol={{ ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' }}
+                  size={44}
+                />
+              }
               value={recap.topDestination.city}
               caption={`top destination · ${plural(recap.topDestination.landings, 'landing')}`}
             />
@@ -80,8 +86,13 @@ export function TravelStats() {
             <SectionLabel>Airlines</SectionLabel>
             <SheenCard>
               <Headline
-                icon={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-                climbing
+                badge={
+                  <AirlineLogo
+                    number={recap.topAirline.number}
+                    carrier={recap.topAirline.carrier}
+                    size={44}
+                  />
+                }
                 value={recap.topAirline.carrier}
                 caption={`most flown · ${plural(recap.topAirline.flights, 'flight')}`}
               />
@@ -181,21 +192,19 @@ function Contrail() {
 }
 
 /** The one big fact in a card — a name, not a number, gets the display size,
- * anchored by the same tint-washed icon badge the journey rows use. */
+ * anchored by a badge (an icon or an airline logo chip) on the left. */
 function Headline({
-  icon,
-  climbing,
+  badge,
   value,
   caption,
 }: {
-  icon: SymbolViewProps['name'];
-  climbing?: boolean;
+  badge: ReactNode;
   value: string;
   caption: string;
 }) {
   return (
     <View style={styles.headline}>
-      <IconBadge symbol={icon} size={44} climbing={climbing} />
+      {badge}
       <View style={styles.headlineBody}>
         <ThemedText type="subtitle" themeColor="heading" numberOfLines={1} adjustsFontSizeToFit>
           {value}
