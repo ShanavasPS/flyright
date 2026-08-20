@@ -81,6 +81,16 @@ export function cityOf(iata: string): string {
   return city ? city.replace(/\s*\(.*$/, '') : iata;
 }
 
+const EARTH_CIRCUMFERENCE_KM = 40_075;
+
+/** "0.4× around the Earth" once past ~1% of the equator, so even a short
+ * history gets a hook; below that the comparison would deflate ("0.0×"). */
+export function earthComparison(totalKm: number): string | null {
+  const ratio = totalKm / EARTH_CIRCUMFERENCE_KM;
+  if (ratio < 0.01) return null;
+  return `${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)}× around the Earth`;
+}
+
 /** Manual entries without a recognised flight number store the mode label
  * ("Flight") as the carrier — a placeholder, not an airline. */
 export function airlineOf(row: JourneyRow): string | null {

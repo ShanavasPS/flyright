@@ -10,17 +10,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { useJourneys, type JourneyRow } from '@/services/journeys';
-import { airlineOf, cityOf, travelRecap } from '@/services/timeline';
-
-const EARTH_CIRCUMFERENCE_KM = 40_075;
-
-/** "0.4× around the Earth" once past ~1%, so even a short history gets a
- * hook; below that the comparison would just read "0.0×" and deflate. */
-function earthLine(totalKm: number): string | null {
-  const ratio = totalKm / EARTH_CIRCUMFERENCE_KM;
-  if (ratio < 0.01) return null;
-  return `${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)}× around the Earth`;
-}
+import { airlineOf, cityOf, earthComparison, travelRecap } from '@/services/timeline';
 
 /** The deep-dive behind the My travels summary card: records, places,
  * airlines, and logbook facts computed from the same local journey rows. */
@@ -39,7 +29,7 @@ export function TravelStats() {
     );
   }
 
-  const orbit = earthLine(recap.totalKm);
+  const orbit = earthComparison(recap.totalKm);
 
   return (
     <ThemedView style={styles.container}>
