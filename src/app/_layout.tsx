@@ -164,6 +164,16 @@ function RootLayout() {
                   sheetAllowedDetents: [0.9],
                 }}
               />
+              {/* First-run intro. No dismiss gesture: Skip and the CTAs are
+                the exits, so the seen-flag paths stay the only ways out. */}
+              <Stack.Screen
+                name="onboarding"
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                  gestureEnabled: false,
+                }}
+              />
               <Stack.Screen
                 name="privacy"
                 options={{ title: "Privacy Policy" }}

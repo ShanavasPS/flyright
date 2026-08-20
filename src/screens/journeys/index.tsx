@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,6 +20,7 @@ import { useClaims, type ClaimRow } from '@/services/claims';
 import { countdown, formatDayLabel, formatTime } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
+import { markOnboardingSeen, onboardingSeen } from '@/services/onboarding';
 import { cityOf, groupJourneys, travelStats } from '@/services/timeline';
 
 const YEAR_MS = 365 * 86_400_000;
@@ -43,6 +44,16 @@ export function Journeys() {
   const { data: journeys } = useJourneys(userId);
   const { data: claimRows } = useClaims(userId);
   const { data: disruptionRows } = useDisruptions();
+
+  // First launch decides once the journal has loaded: a brand-new user (no
+  // rows, intro never shown) gets the onboarding pages; a user whose journal
+  // already has entries predates the intro and is waived, not interrupted.
+  const loaded = journeys != null;
+  useEffect(() => {
+    if (!loaded || onboardingSeen()) return;
+    if (journeys!.length) markOnboardingSeen();
+    else router.push('/onboarding');
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const now = new Date();
   const sections = useMemo(() => groupJourneys(journeys ?? [], now), [journeys]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -6,6 +6,12 @@ appId: com.sshanavas.owed
 - launchApp:
     clearState: true # deterministic: the journeys DB starts empty
 - openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# A cleared state means a first launch, so the onboarding intro covers the
+# tabs — its render doubles as the boot check before Skip reveals the journal.
+- extendedWaitUntil:
+    visible: "Every flight, remembered"
+    timeout: 30000
+- tapOn: "Skip"
 - extendedWaitUntil:
     visible: "Journeys"
     timeout: 30000

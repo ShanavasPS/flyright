@@ -10,6 +10,11 @@ appId: com.sshanavas.owed
 - launchApp:
     clearState: true # deterministic: the journeys DB starts empty
 - openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# clearState makes this a first launch, so the onboarding intro shows first.
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 30000
+- tapOn: "Skip"
 - extendedWaitUntil:
     visible: "Search to add flights"
     timeout: 30000
