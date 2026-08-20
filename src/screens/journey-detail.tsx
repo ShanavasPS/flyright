@@ -261,7 +261,7 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
     <Card>
       {verdict.eligible && verdict.compensation ? (
         <>
-          <ThemedText type="title" style={{ color: theme.success }}>
+          <ThemedText type="display" style={{ color: theme.success }}>
             You&apos;re owed {verdict.compensation.amount} {verdict.compensation.currency}
           </ThemedText>
           <ThemedText type="small">{verdict.reason}</ThemedText>

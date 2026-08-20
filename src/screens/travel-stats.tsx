@@ -35,7 +35,7 @@ export function TravelStats() {
     <ThemedView style={styles.container}>
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.list}>
         <View style={styles.hero}>
-          <ThemedText type="title" themeColor="heading">
+          <ThemedText type="display" themeColor="heading">
             {recap.totalKm.toLocaleString()}
           </ThemedText>
           <ThemedText themeColor="textSecondary">kilometres flown</ThemedText>
