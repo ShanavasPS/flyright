@@ -1,7 +1,7 @@
 {
   "configVersion": 0,
   "apple": {
-    "version": "1.0.2",
+    "version": "1.0.4",
     "copyright": "© 2026 Shanavas Shaji",
     "categories": ["TRAVEL"],
     "release": {
@@ -26,14 +26,16 @@
         "privacyPolicyUrl": "https://flyright.expo.app/privacy",
         "screenshots": {
           "APP_IPAD_PRO_3GEN_129": [
-            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-02.png",
             "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-01.png",
-            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-03.png"
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-02.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-03.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-04.png"
           ],
           "APP_IPHONE_65": [
-            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-03.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-01.png",
             "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-02.png",
-            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-01.png"
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-03.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-04.png"
           ]
         }
       }
