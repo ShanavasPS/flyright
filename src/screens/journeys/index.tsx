@@ -35,6 +35,19 @@ const MODE_SYMBOL: Record<JourneyRow['mode'], SymbolViewProps['name']> = {
   ferry: { ios: 'ferry.fill', android: 'directions_boat', web: 'directions_boat' },
 };
 
+/** The context line above the title — the next departure when one is booked
+ * (the thing a traveller actually wants at a glance), today's date otherwise.
+ * Relies on groupJourneys putting the soonest upcoming trip first. */
+function headerEyebrow(sections: ReturnType<typeof groupJourneys>, now: Date): string {
+  const next = sections[0]?.key === 'upcoming' ? sections[0].data[0] : undefined;
+  if (next) {
+    const timer = countdown(next.scheduledDeparture, now);
+    const when = timer.unit === 'now' ? 'boarding soon' : timerLabel(timer);
+    return `Next trip ${when} · ${next.fromCode} → ${next.toCode}`;
+  }
+  return now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 export function Journeys() {
   const router = useRouter();
   const { userId } = useAuth();
@@ -74,9 +87,18 @@ export function Journeys() {
           iOS 26 behavior — glass blurs the content scrolling beneath it). */}
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.titleRow}>
-          <ThemedText type="title" themeColor="heading">
-            My travels
-          </ThemedText>
+          <View style={styles.titleBlock}>
+            <ThemedText
+              type="smallBold"
+              themeColor="textSecondary"
+              style={styles.eyebrow}
+              numberOfLines={1}>
+              {headerEyebrow(sections, now)}
+            </ThemedText>
+            <ThemedText type="title" themeColor="heading">
+              My travels
+            </ThemedText>
+          </View>
           <AddFlightButton onPress={() => router.push('/add-flight')} />
         </View>
 
@@ -279,6 +301,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  titleBlock: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  eyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   addCircle: {
     width: 40,
