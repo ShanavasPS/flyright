@@ -1,8 +1,9 @@
 import { useAuth } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { useMemo } from 'react';
+import { SymbolView } from 'expo-symbols';
+import { useMemo, useState } from 'react';
 import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,24 +17,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
 import { useClaims, type ClaimRow } from '@/services/claims';
-import {
-  countdown,
-  formatDayLabel,
-  formatDayLabelWithYear,
-  formatTime,
-} from '@/services/dates';
+import { countdown, formatDayLabel, formatTime } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
-import { groupJourneys, travelStats } from '@/services/timeline';
+import { cityOf, groupJourneys, travelStats } from '@/services/timeline';
 
 const YEAR_MS = 365 * 86_400_000;
-
-const MODE_SYMBOL: Record<JourneyRow['mode'], SymbolViewProps['name']> = {
-  flight: { ios: 'airplane', android: 'flight', web: 'flight' },
-  train: { ios: 'tram.fill', android: 'train', web: 'train' },
-  bus: { ios: 'bus.fill', android: 'directions_bus', web: 'directions_bus' },
-  ferry: { ios: 'ferry.fill', android: 'directions_boat', web: 'directions_boat' },
-};
 
 /** The context line above the title — the next departure when one is booked
  * (the thing a traveller actually wants at a glance), today's date otherwise.
@@ -177,23 +166,59 @@ function AddFlightButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Journal entries only carry times the user typed: identical noon timestamps
- * are the "no times" placeholder (show distance), identical non-noon ones mean
- * a single entered time — never render a fabricated departure → arrival pair. */
-function manualScheduleLabel(row: JourneyRow): string {
-  const { scheduledDeparture: dep, scheduledArrival: arr } = row;
-  if (dep === arr) {
-    return dep.endsWith('T12:00:00')
-      ? `${Math.round(row.distanceKm).toLocaleString()} km`
-      : `${formatTime(dep)} · ${Math.round(row.distanceKm).toLocaleString()} km`;
-  }
-  return `${formatTime(dep)} → ${formatTime(arr)}`;
+/** "LH873" → "LH": the two-character IATA airline designator (letters or a
+ * letter/digit mix, e.g. W6, U2) that prefixes a flight number. Null for
+ * manual journal entries that were logged without one. */
+function airlineCode(flightNumber: string): string | null {
+  const match = flightNumber.trim().toUpperCase().match(/^([A-Z]{2}|[A-Z]\d|\d[A-Z])\s?\d/);
+  return match ? match[1] : null;
 }
 
-/** Money-moment marker on a journey row: the amount in payout green on the
- * page background, so it pops off the card surface in both light (porcelain
- * on white) and dark (deep navy on card navy) modes. A claim's lifecycle
- * (draft/sent/overdue) wins over plain eligibility ("owed"). */
+/** The airline's logo on a white chip (logos are drawn for light backgrounds,
+ * so the chip stays white in dark mode too — the airline-app convention).
+ * Falls back to the brand plane badge when the row has no flight number or
+ * the logo can't load (e.g. first render while offline; expo-image's disk
+ * cache serves repeat renders without a network). */
+function AirlineLogo({ row }: { row: JourneyRow }) {
+  const [failed, setFailed] = useState(false);
+  const code = airlineCode(row.number);
+  if (!code || failed) {
+    return <IconBadge symbol={{ ios: 'airplane', android: 'flight', web: 'flight' }} climbing />;
+  }
+  return (
+    <View style={styles.logoChip}>
+      <Image
+        source={{ uri: `https://images.kiwi.com/airlines/64x64/${code}.png` }}
+        style={styles.logo}
+        contentFit="contain"
+        cachePolicy="disk"
+        onError={() => setFailed(true)}
+        accessibilityLabel={row.carrier}
+      />
+    </View>
+  );
+}
+
+/** The codes-and-times detail line, Flighty-style: "HEL 10:15 → LHR 14:20".
+ * Journal entries only carry times the user typed: identical noon timestamps
+ * are the "no times" placeholder (show distance), identical non-noon ones mean
+ * a single entered time — never render a fabricated departure → arrival pair. */
+function scheduleLabel(row: JourneyRow): string {
+  const { scheduledDeparture: dep, scheduledArrival: arr } = row;
+  const km = `${Math.round(row.distanceKm).toLocaleString()} km`;
+  if (row.source === 'manual' && dep === arr) {
+    return dep.endsWith('T12:00:00')
+      ? `${row.fromCode} → ${row.toCode} · ${km}`
+      : `${row.fromCode} ${formatTime(dep)} → ${row.toCode} · ${km}`;
+  }
+  return `${row.fromCode} ${formatTime(dep)} → ${row.toCode} ${formatTime(arr)}`;
+}
+
+/** Money-moment marker on a journey row: a compact pill in the meta line's
+ * right slot — amount in payout green on the page background, so it pops off
+ * the card surface in both light (porcelain on white) and dark (deep navy on
+ * card navy) modes. A claim's lifecycle (draft/sent/overdue) wins over plain
+ * eligibility ("owed"). */
 function MoneyBadge({ claim, owed, now }: { claim?: ClaimRow; owed?: Money; now: Date }) {
   const theme = useTheme();
   const amount = claim ? `${claim.amount} ${claim.currency}` : `${owed!.amount} ${owed!.currency}`;
@@ -245,7 +270,7 @@ function JourneyItem({
   owed?: Money;
 }) {
   // Recent and upcoming trips get the live countdown; older ones read like a
-  // journal entry — the full date in the carrier line says enough.
+  // journal entry — the calendar rail plus the year section header say enough.
   const isOld = now.getTime() - Date.parse(row.scheduledDeparture) > YEAR_MS;
   const timer = countdown(row.scheduledDeparture, now);
   const upcoming = Date.parse(row.scheduledDeparture) >= now.getTime();
@@ -253,34 +278,46 @@ function JourneyItem({
     <Link href={{ pathname: '/journey/[id]', params: { id: row.id } }} asChild>
       <Pressable style={({ pressed }) => pressed && styles.rowPressed}>
         <SheenCard style={styles.rowCard}>
-          <IconBadge symbol={MODE_SYMBOL[row.mode]} climbing={row.mode === 'flight'} />
+          <AirlineLogo row={row} />
           <View style={styles.rowBody}>
-            {/* Date leads so a long carrier name truncates, never the date. */}
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {isOld
-                ? formatDayLabelWithYear(row.scheduledDeparture)
-                : formatDayLabel(row.scheduledDeparture)}{' '}
-              · {row.carrier}
-              {row.number ? ` ${row.number}` : ''}
-            </ThemedText>
-            <ThemedText type="smallBold" themeColor="heading" style={styles.route}>
-              {row.fromCode} → {row.toCode}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {row.source === 'manual'
-                ? manualScheduleLabel(row)
-                : `${formatTime(row.scheduledDeparture)} → ${formatTime(row.scheduledArrival)}`}
-            </ThemedText>
-          </View>
-          <View style={styles.rowAside}>
-            {!isOld && (
+            {/* Countdown sits on the meta line's right (Flighty's date slot) so
+                the title and schedule lines get the full card width below.
+                Date leads so a long carrier name truncates, never the date;
+                the year lives in the section headers. */}
+            <View style={styles.metaRow}>
               <ThemedText
-                type={upcoming ? 'smallBold' : 'small'}
-                themeColor={upcoming ? 'heading' : 'textSecondary'}>
-                {timerLabel(timer)}
+                type="small"
+                themeColor="textSecondary"
+                numberOfLines={1}
+                style={styles.metaCarrier}>
+                {/* The logo already names the airline, so the flight number
+                    alone follows the date (Flighty's pattern); carrier is the
+                    fallback for number-less journal entries. */}
+                {formatDayLabel(row.scheduledDeparture)} · {row.number || row.carrier}
               </ThemedText>
-            )}
-            {(claim || owed) && <MoneyBadge claim={claim} owed={owed} now={now} />}
+              {/* One right slot: the money moment outranks the countdown. */}
+              {claim || owed ? (
+                <MoneyBadge claim={claim} owed={owed} now={now} />
+              ) : (
+                !isOld && (
+                  <ThemedText
+                    type={upcoming ? 'smallBold' : 'small'}
+                    themeColor={upcoming ? 'heading' : 'textSecondary'}>
+                    {timerLabel(timer)}
+                  </ThemedText>
+                )
+              )}
+            </View>
+            <ThemedText
+              type="smallBold"
+              themeColor="heading"
+              style={styles.route}
+              numberOfLines={1}>
+              {cityOf(row.fromCode)} to {cityOf(row.toCode)}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              {scheduleLabel(row)}
+            </ThemedText>
           </View>
         </SheenCard>
       </Pressable>
@@ -351,19 +388,38 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
   },
-  rowAside: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.two,
+  },
+  metaCarrier: {
+    flex: 1,
+  },
+  // Same footprint as IconBadge so logo rows and fallback rows line up.
+  logoChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(19,41,75,0.10)',
+  },
+  logo: {
+    width: 26,
+    height: 26,
   },
   route: {
     fontSize: 16,
   },
   claimBadge: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'baseline',
     borderRadius: Spacing.two,
-    paddingVertical: Spacing.one,
+    paddingVertical: 2,
     paddingHorizontal: Spacing.two,
-    gap: Spacing.half,
+    gap: Spacing.one,
   },
 });
