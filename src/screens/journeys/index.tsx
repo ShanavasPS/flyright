@@ -8,7 +8,7 @@ import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
-import { IconBadge, SheenCard } from '@/components/sheen-card';
+import { PLANE_CLIMBING, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelStatsHeader } from '@/components/travel-stats-header';
@@ -176,14 +176,26 @@ function airlineCode(flightNumber: string): string | null {
 
 /** The airline's logo on a white chip (logos are drawn for light backgrounds,
  * so the chip stays white in dark mode too — the airline-app convention).
- * Falls back to the brand plane badge when the row has no flight number or
- * the logo can't load (e.g. first render while offline; expo-image's disk
- * cache serves repeat renders without a network). */
+ * Rows without a flight number — and logos that can't load (e.g. first render
+ * while offline; expo-image's disk cache serves repeat renders without a
+ * network) — get the same chip with the brand plane climbing in the app tint,
+ * so every row matches while the fallback clearly isn't an airline mark. */
 function AirlineLogo({ row }: { row: JourneyRow }) {
+  const theme = useTheme();
   const [failed, setFailed] = useState(false);
   const code = airlineCode(row.number);
   if (!code || failed) {
-    return <IconBadge symbol={{ ios: 'airplane', android: 'flight', web: 'flight' }} climbing />;
+    return (
+      <View style={[styles.logoChip, { borderColor: `${theme.tint}55` }]}>
+        <SymbolView
+          name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+          size={20}
+          weight="semibold"
+          tintColor={theme.tint}
+          style={PLANE_CLIMBING}
+        />
+      </View>
+    );
   }
   return (
     <View style={styles.logoChip}>
@@ -407,9 +419,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(19,41,75,0.10)',
   },
+  // Large enough that full-bleed square marks (e.g. Emirates' red tile) read
+  // as the logo rather than a stamp floating in the chip.
   logo: {
-    width: 26,
-    height: 26,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
   },
   route: {
     fontSize: 16,
