@@ -11,6 +11,10 @@ export default function JourneysStack() {
         name="journey/[id]"
         options={{ title: 'Journey', headerBackButtonDisplayMode: 'minimal' }}
       />
+      <Stack.Screen
+        name="stats"
+        options={{ title: 'Travel stats', headerBackButtonDisplayMode: 'minimal' }}
+      />
     </Stack>
   );
 }
