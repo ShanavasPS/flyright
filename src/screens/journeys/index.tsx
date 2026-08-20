@@ -1,14 +1,14 @@
 import { useAuth } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AirlineLogo } from '@/components/airline-logo';
 import { Card } from '@/components/card';
-import { PLANE_CLIMBING, SheenCard } from '@/components/sheen-card';
+import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelStatsHeader } from '@/components/travel-stats-header';
@@ -166,51 +166,6 @@ function AddFlightButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** "LH873" → "LH": the two-character IATA airline designator (letters or a
- * letter/digit mix, e.g. W6, U2) that prefixes a flight number. Null for
- * manual journal entries that were logged without one. */
-function airlineCode(flightNumber: string): string | null {
-  const match = flightNumber.trim().toUpperCase().match(/^([A-Z]{2}|[A-Z]\d|\d[A-Z])\s?\d/);
-  return match ? match[1] : null;
-}
-
-/** The airline's logo on a white chip (logos are drawn for light backgrounds,
- * so the chip stays white in dark mode too — the airline-app convention).
- * Rows without a flight number — and logos that can't load (e.g. first render
- * while offline; expo-image's disk cache serves repeat renders without a
- * network) — get the same chip with the brand plane climbing in the app tint,
- * so every row matches while the fallback clearly isn't an airline mark. */
-function AirlineLogo({ row }: { row: JourneyRow }) {
-  const theme = useTheme();
-  const [failed, setFailed] = useState(false);
-  const code = airlineCode(row.number);
-  if (!code || failed) {
-    return (
-      <View style={[styles.logoChip, { borderColor: `${theme.tint}55` }]}>
-        <SymbolView
-          name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-          size={20}
-          weight="semibold"
-          tintColor={theme.tint}
-          style={PLANE_CLIMBING}
-        />
-      </View>
-    );
-  }
-  return (
-    <View style={styles.logoChip}>
-      <Image
-        source={{ uri: `https://images.kiwi.com/airlines/64x64/${code}.png` }}
-        style={styles.logo}
-        contentFit="contain"
-        cachePolicy="disk"
-        onError={() => setFailed(true)}
-        accessibilityLabel={row.carrier}
-      />
-    </View>
-  );
-}
-
 /** The codes-and-times detail line, Flighty-style: "HEL 10:15 → LHR 14:20".
  * Journal entries only carry times the user typed: identical noon timestamps
  * are the "no times" placeholder (show distance), identical non-noon ones mean
@@ -290,7 +245,7 @@ function JourneyItem({
     <Link href={{ pathname: '/journey/[id]', params: { id: row.id } }} asChild>
       <Pressable style={({ pressed }) => pressed && styles.rowPressed}>
         <SheenCard style={styles.rowCard}>
-          <AirlineLogo row={row} />
+          <AirlineLogo number={row.number} carrier={row.carrier} />
           <View style={styles.rowBody}>
             {/* Countdown sits on the meta line's right (Flighty's date slot) so
                 the title and schedule lines get the full card width below.
@@ -407,24 +362,6 @@ const styles = StyleSheet.create({
   },
   metaCarrier: {
     flex: 1,
-  },
-  // Same footprint as IconBadge so logo rows and fallback rows line up.
-  logoChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(19,41,75,0.10)',
-  },
-  // Large enough that full-bleed square marks (e.g. Emirates' red tile) read
-  // as the logo rather than a stamp floating in the chip.
-  logo: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
   },
   route: {
     fontSize: 16,

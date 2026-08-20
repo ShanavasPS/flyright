@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AirlineLogo } from '@/components/airline-logo';
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
@@ -122,9 +123,12 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" themeColor="heading">
-          {journey.number ? `${journey.carrier} ${journey.number}` : journey.carrier}
-        </ThemedText>
+        <View style={styles.titleRow}>
+          <AirlineLogo number={journey.number} carrier={journey.carrier} size={48} />
+          <ThemedText type="title" themeColor="heading" style={styles.titleText}>
+            {journey.number ? `${journey.carrier} ${journey.number}` : journey.carrier}
+          </ThemedText>
+        </View>
         <View style={styles.routeBlock}>
           <ThemedText>
             {journey.from.code} → {journey.to.code}
@@ -308,6 +312,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  titleText: {
+    flex: 1,
   },
   routeBlock: {
     gap: Spacing.half,
