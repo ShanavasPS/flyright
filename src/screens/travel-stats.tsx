@@ -1,9 +1,9 @@
 import { useAuth } from '@clerk/expo';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useMemo } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
-import { Card } from '@/components/card';
+import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -57,9 +57,10 @@ export function TravelStats() {
         )}
 
         <SectionLabel>Places</SectionLabel>
-        <Card>
+        <SheenCard>
           {recap.topDestination && (
             <Headline
+              icon={{ ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' }}
               value={recap.topDestination.city}
               caption={`top destination · ${plural(recap.topDestination.landings, 'landing')}`}
             />
@@ -72,23 +73,25 @@ export function TravelStats() {
           )}
           <InfoRow label="Countries" value={`${recap.countries}`} />
           <InfoRow label="Airports" value={`${recap.airports}`} />
-        </Card>
+        </SheenCard>
 
         {recap.topAirline && (
           <>
             <SectionLabel>Airlines</SectionLabel>
-            <Card>
+            <SheenCard>
               <Headline
+                icon={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+                climbing
                 value={recap.topAirline.carrier}
                 caption={`most flown · ${plural(recap.topAirline.flights, 'flight')}`}
               />
               <InfoRow label="Airlines flown" value={`${recap.airlines}`} />
-            </Card>
+            </SheenCard>
           </>
         )}
 
         <SectionLabel>Logbook</SectionLabel>
-        <Card>
+        <SheenCard>
           <InfoRow label="Trips logged" value={`${recap.trips}`} />
           {recap.firstYear && <InfoRow label="Flying since" value={recap.firstYear} />}
           {recap.busiestYear && (
@@ -98,7 +101,7 @@ export function TravelStats() {
             />
           )}
           {recap.hoursAloft > 0 && <InfoRow label="Time in the air" value={`≈ ${recap.hoursAloft} h`} />}
-        </Card>
+        </SheenCard>
       </ScrollView>
     </ThemedView>
   );
@@ -119,15 +122,16 @@ function SectionLabel({ children }: { children: string }) {
 /** A record rendered as the boarding-pass moment it was: codes joined by a
  * dotted contrail (the app icon's motif), cities beneath, receipt line below. */
 function RecordCard({ label, row }: { label: string; row: JourneyRow }) {
+  const theme = useTheme();
   const airline = airlineOf(row);
   const when = formatDayLabelWithYear(row.scheduledDeparture);
   return (
-    <Card>
+    <SheenCard>
       <View style={styles.spacedRow}>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>
           {label}
         </ThemedText>
-        <ThemedText type="smallBold" themeColor="heading">
+        <ThemedText type="smallBold" style={{ color: theme.tint }}>
           {Math.round(row.distanceKm).toLocaleString()} km
         </ThemedText>
       </View>
@@ -151,7 +155,7 @@ function RecordCard({ label, row }: { label: string; row: JourneyRow }) {
       <ThemedText type="small" themeColor="textSecondary">
         {airline ? `${airline} · ${when}` : when}
       </ThemedText>
-    </Card>
+    </SheenCard>
   );
 }
 
@@ -176,16 +180,30 @@ function Contrail() {
   );
 }
 
-/** The one big fact in a card — a name, not a number, gets the display size. */
-function Headline({ value, caption }: { value: string; caption: string }) {
+/** The one big fact in a card — a name, not a number, gets the display size,
+ * anchored by the same tint-washed icon badge the journey rows use. */
+function Headline({
+  icon,
+  climbing,
+  value,
+  caption,
+}: {
+  icon: SymbolViewProps['name'];
+  climbing?: boolean;
+  value: string;
+  caption: string;
+}) {
   return (
     <View style={styles.headline}>
-      <ThemedText type="subtitle" themeColor="heading" numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {caption}
-      </ThemedText>
+      <IconBadge symbol={icon} size={44} climbing={climbing} />
+      <View style={styles.headlineBody}>
+        <ThemedText type="subtitle" themeColor="heading" numberOfLines={1} adjustsFontSizeToFit>
+          {value}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {caption}
+        </ThemedText>
+      </View>
     </View>
   );
 }
@@ -260,6 +278,13 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '90deg' }],
   },
   headline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginBottom: Spacing.one,
+  },
+  headlineBody: {
+    flex: 1,
     gap: Spacing.half,
   },
 });

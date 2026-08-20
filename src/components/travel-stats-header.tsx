@@ -44,8 +44,9 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
 
         <View style={styles.statsRow}>
           <Stat label={stats.trips === 1 ? 'trip' : 'trips'} value={stats.trips.toLocaleString()} />
-          <Stat label="km flown" value={stats.totalKm.toLocaleString()} />
+          <Stat align="center" label="km flown" value={stats.totalKm.toLocaleString()} />
           <Stat
+            align="right"
             label={stats.countries === 1 ? 'country' : 'countries'}
             value={stats.countries.toLocaleString()}
           />
@@ -86,9 +87,19 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+/** Left / center / right columns so the row spans the full card width. */
+function Stat({
+  value,
+  label,
+  align = 'left',
+}: {
+  value: string;
+  label: string;
+  align?: 'left' | 'center' | 'right';
+}) {
+  const alignItems = align === 'left' ? 'flex-start' : align === 'center' ? 'center' : 'flex-end';
   return (
-    <View style={styles.stat}>
+    <View style={[styles.stat, { alignItems }]}>
       <ThemedText type="smallBold" style={styles.statLabel}>
         {label}
       </ThemedText>

@@ -3,15 +3,15 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useMemo } from 'react';
-import { Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
+import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
+import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelStatsHeader } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
@@ -28,36 +28,12 @@ import { groupJourneys, travelStats } from '@/services/timeline';
 
 const YEAR_MS = 365 * 86_400_000;
 
-// A quiet cousin of the passport card's night sky: each row gets a faint
-// top-left sheen over the normal card surface plus a hairline border, so the
-// list reads polished without competing with the navy hero card above it.
-const ROW_SHEEN = {
-  dark: 'linear-gradient(160deg, #182948 0%, #101D34 52%, #0D1930 100%)',
-  light: 'linear-gradient(160deg, #FFFFFF 0%, #FDFEFF 52%, #F2F7FE 100%)',
-} as const;
-const ROW_BORDER = {
-  dark: 'rgba(242,246,251,0.07)',
-  light: 'rgba(19,41,75,0.06)',
-} as const;
-// Tint-washed backdrop for the leading mode icon.
-const ICON_WASH = {
-  dark: 'linear-gradient(160deg, rgba(78,155,245,0.26) 0%, rgba(78,155,245,0.10) 100%)',
-  light: 'linear-gradient(160deg, rgba(30,107,224,0.14) 0%, rgba(30,107,224,0.05) 100%)',
-} as const;
-
 const MODE_SYMBOL: Record<JourneyRow['mode'], SymbolViewProps['name']> = {
   flight: { ios: 'airplane', android: 'flight', web: 'flight' },
   train: { ios: 'tram.fill', android: 'train', web: 'train' },
   bus: { ios: 'bus.fill', android: 'directions_bus', web: 'directions_bus' },
   ferry: { ios: 'ferry.fill', android: 'directions_boat', web: 'directions_boat' },
 };
-
-// Climbing at 45° like a departure. SF's airplane points east (rotate back),
-// Material's flight points north (rotate forward) — both end up northeast.
-const PLANE_CLIMBING = Platform.select({
-  ios: { transform: [{ rotate: '-45deg' }] },
-  default: { transform: [{ rotate: '45deg' }] },
-});
 
 export function Journeys() {
   const router = useRouter();
@@ -251,31 +227,11 @@ function JourneyItem({
   const isOld = now.getTime() - Date.parse(row.scheduledDeparture) > YEAR_MS;
   const timer = countdown(row.scheduledDeparture, now);
   const upcoming = Date.parse(row.scheduledDeparture) >= now.getTime();
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const theme = useTheme();
-
   return (
     <Link href={{ pathname: '/journey/[id]', params: { id: row.id } }} asChild>
       <Pressable style={({ pressed }) => pressed && styles.rowPressed}>
-        <ThemedView
-          type="backgroundElement"
-          style={[
-            styles.rowCard,
-            {
-              experimental_backgroundImage: ROW_SHEEN[scheme],
-              borderColor: ROW_BORDER[scheme],
-            },
-          ]}>
-          <View
-            style={[styles.modeIcon, { experimental_backgroundImage: ICON_WASH[scheme] }]}>
-            <SymbolView
-              name={MODE_SYMBOL[row.mode]}
-              size={20}
-              weight="semibold"
-              tintColor={theme.tint}
-              style={row.mode === 'flight' ? PLANE_CLIMBING : undefined}
-            />
-          </View>
+        <SheenCard style={styles.rowCard}>
+          <IconBadge symbol={MODE_SYMBOL[row.mode]} climbing={row.mode === 'flight'} />
           <View style={styles.rowBody}>
             {/* Date leads so a long carrier name truncates, never the date. */}
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
@@ -304,7 +260,7 @@ function JourneyItem({
             )}
             {(claim || owed) && <MoneyBadge claim={claim} owed={owed} now={now} />}
           </View>
-        </ThemedView>
+        </SheenCard>
       </Pressable>
     </Link>
   );
@@ -357,15 +313,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     padding: Spacing.three,
-    borderRadius: Spacing.four,
-    borderWidth: 1,
-  },
-  modeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   rowBody: {
     flex: 1,
