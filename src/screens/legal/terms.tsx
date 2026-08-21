@@ -16,7 +16,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Subscriptions and purchases',
-    body: 'FlyRight Pro is sold as a monthly or yearly subscription or a one-time lifetime purchase. Purchases made in the apps are billed by Apple or Google under their terms; purchases made on flyright.expo.app are processed by Stripe and managed by RevenueCat. Subscriptions renew automatically until cancelled, and you can cancel anytime — access continues to the end of the paid period.',
+    body: 'FlyRight Pro is sold as a monthly or yearly subscription or a one-time lifetime purchase. Purchases made in the apps are billed by Apple or Google under their terms; purchases made on getflyright.com are processed by Stripe and managed by RevenueCat. Subscriptions renew automatically until cancelled, and you can cancel anytime — access continues to the end of the paid period.',
   },
   {
     title: 'Refunds',

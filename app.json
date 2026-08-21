@@ -42,7 +42,7 @@
       [
         "expo-router",
         {
-          "origin": "https://flyright.expo.app"
+          "origin": "https://getflyright.com"
         }
       ],
       [
@@ -95,7 +95,7 @@
     },
     "extra": {
       "router": {
-        "origin": "https://flyright.expo.app"
+        "origin": "https://getflyright.com"
       },
       "eas": {
         "build": {

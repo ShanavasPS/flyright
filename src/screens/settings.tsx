@@ -275,7 +275,7 @@ export function Settings() {
     if (!isSignedIn) {
       Alert.alert(
         'Nothing to restore',
-        'No previous purchases were found on this device. Bought Pro on flyright.expo.app? Sign in with that account instead.',
+        'No previous purchases were found on this device. Bought Pro on getflyright.com? Sign in with that account instead.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Sign in', onPress: () => router.push('/sign-in') },
