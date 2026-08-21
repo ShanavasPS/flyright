@@ -10,6 +10,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { reconcileNotifications } from '@/services/notification-lifecycle';
+import { requestPushPermission } from '@/services/notifications';
 import { markOnboardingSeen } from '@/services/onboarding';
 
 type Page = {
@@ -19,6 +21,9 @@ type Page = {
   body: string;
   /** Omitted on the welcome page — it shows the animated brand icon instead. */
   icon?: ComponentProps<typeof SymbolView>['name'];
+  /** The push-priming page: mock notification art, and the primary button
+   * fires the one-shot OS permission prompt instead of paging forward. */
+  kind?: 'push';
 };
 
 // Travel buddy first, claims second — the pages sell the journal before the
@@ -41,6 +46,14 @@ const PAGES: Page[] = [
     icon: { ios: 'clock.badge.exclamationmark', android: 'schedule', web: 'schedule' },
   },
   {
+    key: 'push',
+    kind: 'push',
+    title: 'Never miss money you’re owed',
+    body:
+      'A heads-up before every trip, an alert the moment a delay reaches ' +
+      'compensation territory, and deadline reminders on claims you’ve sent.',
+  },
+  {
     key: 'claim',
     title: 'Claim it in minutes',
     body:
@@ -56,7 +69,9 @@ export function Onboarding() {
   const { width } = useWindowDimensions();
   const listRef = useRef<FlatList<Page>>(null);
   const [page, setPage] = useState(0);
+  const [busy, setBusy] = useState(false);
   const last = page === PAGES.length - 1;
+  const isPush = PAGES[page].kind === 'push';
 
   // Seen the moment it appears: every exit path (Skip, Android back, the CTAs)
   // counts, so the intro can never show twice.
@@ -70,6 +85,30 @@ export function Onboarding() {
   function finish(then?: '/add-flight' | '/journey/demo') {
     router.back();
     if (then) setTimeout(() => router.push(then), 450);
+  }
+
+  function advance() {
+    const next = page + 1;
+    // Optimistic: Android's scrollToIndex doesn't always fire
+    // onMomentumScrollEnd, so the dots would lag a swipe behind.
+    setPage(next);
+    listRef.current?.scrollToIndex({ index: next, animated: true });
+  }
+
+  /** The priming page's whole point: the OS permission alert fires only from
+   * this explicit tap, after the pitch. Advances whatever the user decides —
+   * a denial still moves on, and add-flight's later request is a no-op once
+   * the one-shot prompt is spent. */
+  async function enablePush() {
+    setBusy(true);
+    try {
+      await requestPushPermission();
+      // If they granted, anything the journal already implies gets scheduled.
+      await reconcileNotifications();
+    } finally {
+      setBusy(false);
+      advance();
+    }
   }
 
   // Explicit insets, not SafeAreaView: inside a fullScreenModal the native
@@ -112,7 +151,9 @@ export function Onboarding() {
           renderItem={({ item }) => (
             <View style={[styles.page, { width }]}>
               <View style={styles.art}>
-                {item.icon ? (
+                {item.kind === 'push' ? (
+                  <MockNotification />
+                ) : item.icon ? (
                   <View
                     style={[styles.iconCircle, { backgroundColor: theme.backgroundSelected }]}>
                     <SymbolView name={item.icon} size={56} tintColor={theme.tint} />
@@ -157,27 +198,64 @@ export function Onboarding() {
             ))}
           </View>
           <PrimaryButton
-            label={last ? 'Add your first flight' : 'Continue'}
+            label={last ? 'Add your first flight' : isPush ? 'Turn on notifications' : 'Continue'}
+            disabled={busy}
             onPress={() => {
               if (last) return finish('/add-flight');
-              // Optimistic: Android's scrollToIndex doesn't always fire
-              // onMomentumScrollEnd, so the dots would lag a swipe behind.
-              setPage(page + 1);
-              listRef.current?.scrollToIndex({ index: page + 1, animated: true });
+              if (isPush) return void enablePush();
+              advance();
             }}
           />
-          {/* Reserved slot on every page so the button row never jumps. */}
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => finish('/journey/demo')}
-            disabled={!last}
-            style={!last && styles.hidden}>
-            <ThemedText type="link" style={styles.demoLink}>
-              See a demo verdict →
-            </ThemedText>
-          </Pressable>
+          {/* One reserved slot on every page so the button row never jumps:
+              the priming page's "Not now", the last page's demo link, an
+              invisible placeholder elsewhere. */}
+          {isPush ? (
+            <Pressable accessibilityRole="button" onPress={advance} disabled={busy}>
+              <ThemedText type="link" style={styles.demoLink}>
+                Not now
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => finish('/journey/demo')}
+              disabled={!last}
+              style={!last && styles.hidden}>
+              <ThemedText type="link" style={styles.demoLink}>
+                See a demo verdict →
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
       </View>
+    </ThemedView>
+  );
+}
+
+/** The priming page's hero: the exact delay alert the lifecycle sends,
+ * rendered as a mock push banner (the Expedia/Vrbo/Flighty pattern) — showing
+ * the money moment beats describing it. */
+function MockNotification() {
+  return (
+    <ThemedView type="backgroundElement" style={styles.mockCard}>
+      <View style={styles.mockHeader}>
+        <View style={styles.mockAppIcon}>
+          <Image
+            style={styles.mockAppImage}
+            source={require('@/assets/images/splash-icon.png')}
+          />
+        </View>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.mockAppName}>
+          FlyRight
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          now
+        </ThemedText>
+      </View>
+      <ThemedText type="smallBold">AY1331 delayed — you’re likely owed €400</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        Running 3h 15m late. EU261 compensation applies — start your claim.
+      </ThemedText>
     </ThemedView>
   );
 }
@@ -205,6 +283,7 @@ const styles = StyleSheet.create({
   },
   art: {
     height: 160,
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.four,
@@ -227,6 +306,38 @@ const styles = StyleSheet.create({
   brandImage: {
     width: 76,
     height: 76,
+  },
+  mockCard: {
+    alignSelf: 'stretch',
+    gap: Spacing.one,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    shadowColor: '#0B1520',
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  mockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  mockAppIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0C1B36',
+  },
+  mockAppImage: {
+    width: 14,
+    height: 14,
+  },
+  mockAppName: {
+    flex: 1,
   },
   eyebrow: {
     fontSize: 12,
