@@ -8,7 +8,7 @@ import type { PurchaseOutcome } from './purchases';
 
 export type { PurchaseOutcome };
 
-export const ENTITLEMENT_PRO = 'FlyRight Pro';
+export const ENTITLEMENT_PRO = 'Owed Pro';
 export const OFFERING_CHANGE_PLAN = 'change-plan';
 
 export const useCustomerInfo = (): CustomerInfo | null => null;

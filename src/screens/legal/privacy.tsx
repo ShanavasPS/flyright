@@ -16,7 +16,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Purchases',
-    body: 'Subscriptions and one-time purchases are processed by Apple App Store or Google Play and managed through RevenueCat. RevenueCat receives an anonymous app user id and purchase history so your entitlements work across reinstalls. We never see your payment details. See RevenueCat’s privacy policy at revenuecat.com/privacy.',
+    body: 'Subscriptions and one-time purchases are processed by Apple App Store, Google Play, or — for purchases made on flyright.expo.app — Stripe, and managed through RevenueCat. RevenueCat receives an app user id and purchase history so your entitlements work across reinstalls and devices. We never see your payment details. See RevenueCat’s privacy policy at revenuecat.com/privacy.',
   },
   {
     title: 'Notifications',

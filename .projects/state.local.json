@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "project": {
+    "catalog": "prod",
+    "initializedAt": "2026-08-21T05:37:57.582Z",
+    "merchantDisplayName": null,
+    "merchantId": "acct_1U6km03jcHNX35he",
+    "projectId": "project_61VG96j3Izv7JeKgd16VG8jMDYDGukmH6hdjXeFwuXya",
+    "projectName": "flyRight"
+  },
+  "providers": {
+    "revenuecat": {
+      "accountRequestId": "fprvcnn_61VGAM1Y17Nm2x7cJ16VG8jMDYDGukmH6hdjXeFwu8y0",
+      "configuration": {},
+      "linkedAt": "2026-08-21T06:57:49.457Z",
+      "providerId": "prvdr_61UvIBCNECigaYpha53zM",
+      "providerName": "RevenueCat",
+      "redirectUrl": null,
+      "requestedAt": "2026-08-21T06:57:49.457Z",
+      "status": "complete"
+    }
+  },
+  "resources": {
+    "revenuecat-app": {
+      "configuration": {},
+      "createdAt": "2026-08-21T07:02:01.158Z",
+      "lastRevealedAt": "2026-08-21T07:02:01.848Z",
+      "lastStatus": "complete",
+      "name": "revenuecat-app",
+      "providerId": "prvdr_61UvIBCNECigaYpha53zM",
+      "providerName": "RevenueCat",
+      "resourceId": "fres_61VGAPx5LlK1eNBuu16VG8jMDYDGukmH6hdjXeFwuRyS",
+      "serviceId": "app"
+    }
+  }
+}

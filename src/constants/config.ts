@@ -9,6 +9,10 @@ export const RC_API_KEY_TEST = process.env.EXPO_PUBLIC_RC_TEST_KEY ?? '';
 export const ONESIGNAL_APP_ID = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID ?? '';
 // Convex deployment URL. Empty → cloud sync is disabled and the app runs local-only.
 export const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL ?? '';
+// RevenueCat Web Purchase Link base (https://pay.rev.cat/<token>) — the web
+// funnel appends /<clerkUserId>. Empty → web checkout hides and the funnel
+// points at the store listings instead.
+export const WEB_PURCHASE_LINK = process.env.EXPO_PUBLIC_WEB_PURCHASE_LINK ?? '';
 
 // Shown on the privacy/support pages and in store listings.
 export const SUPPORT_EMAIL = 'shanavascruise@gmail.com';

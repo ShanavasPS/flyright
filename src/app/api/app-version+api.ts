@@ -8,12 +8,9 @@
  * endpoint must only return valid=false for versions that truly cannot be
  * allowed to run.
  */
-const MIN_SUPPORTED_VERSION = process.env.MIN_SUPPORTED_APP_VERSION ?? '1.0.0';
+import { STORE_URLS } from '@/constants/store-links';
 
-const STORE_URLS: Record<string, string> = {
-  ios: 'https://apps.apple.com/app/id6801505051',
-  android: 'https://play.google.com/store/apps/details?id=com.shanavasshaji.flyright',
-};
+const MIN_SUPPORTED_VERSION = process.env.MIN_SUPPORTED_APP_VERSION ?? '1.0.0';
 
 /** Compare dotted numeric versions; negative when a < b. */
 function compareVersions(a: string, b: string): number {
@@ -41,6 +38,6 @@ export function GET(request: Request) {
   return Response.json({
     valid,
     minVersion: MIN_SUPPORTED_VERSION,
-    storeUrl: STORE_URLS[platform],
+    storeUrl: STORE_URLS[platform as keyof typeof STORE_URLS],
   });
 }

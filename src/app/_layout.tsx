@@ -10,7 +10,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Observe, ObserveRoot } from "expo-observe";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useEffect } from "react";
-import { LogBox, useColorScheme } from "react-native";
+import { LogBox } from "react-native";
+
+// The hydration-aware hook (not react-native's) so the navigation chrome and
+// the screens resolve the same scheme on web — RN's own hook leaves the header
+// stuck on the pre-hydration light theme while screens go dark.
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 import { NotificationRouter } from "@/components/notification-router";
 import { ThemedText } from "@/components/themed-text";
@@ -188,9 +193,25 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* Web funnel: landing → checkout → post-purchase. Present on
+                native too (go-pro forwards to the paywall) but only linked
+                from the web build. */}
+              <Stack.Screen
+                name="check"
+                options={{ title: "Check your flight" }}
+              />
+              <Stack.Screen name="go-pro" options={{ title: "FlyRight Pro" }} />
+              <Stack.Screen
+                name="welcome"
+                options={{ title: "Welcome to Pro" }}
+              />
               <Stack.Screen
                 name="privacy"
                 options={{ title: "Privacy Policy" }}
+              />
+              <Stack.Screen
+                name="terms"
+                options={{ title: "Terms of Service" }}
               />
               <Stack.Screen
                 name="delete-account"

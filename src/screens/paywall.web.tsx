@@ -1,18 +1,23 @@
+import { Link } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
-/** RevenueCat paywalls are native-only; the web page just points at the apps. */
+/** RevenueCat paywalls are native-only; on web the /go-pro funnel step is the
+ * checkout surface, so this page just forwards there. */
 export function Paywall() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="subtitle" themeColor="heading">
         FlyRight Pro
       </ThemedText>
+      <Link href="/go-pro">
+        <ThemedText type="link">Get Pro on the web →</ThemedText>
+      </Link>
       <ThemedText type="small" themeColor="textSecondary">
-        Subscriptions are available in the iOS and Android apps.
+        Also available inside the iOS and Android apps.
       </ThemedText>
     </ThemedView>
   );

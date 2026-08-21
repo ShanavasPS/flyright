@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "providers": {
+    "revenuecat": {
+      "name": "RevenueCat"
+    }
+  },
+  "resources": {
+    "revenuecat-app": {
+      "name": "revenuecat-app",
+      "providerName": "RevenueCat",
+      "serviceId": "app"
+    }
+  }
+}

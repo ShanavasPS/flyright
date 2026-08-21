@@ -260,15 +260,30 @@ function PushNotificationsRow() {
 export function Settings() {
   const router = useRouter();
   const theme = useTheme();
+  const { isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
   const pro = useProEntitlement();
   const activeSubscriptions = useActiveSubscriptions();
 
   const onRestore = async () => {
     const restored = await restorePurchases();
-    Alert.alert(
-      restored ? 'Purchases restored' : 'Nothing to restore',
-      restored ? 'FlyRight Pro is active on this device.' : 'No previous purchases were found.'
-    );
+    if (restored) {
+      Alert.alert('Purchases restored', 'FlyRight Pro is active on this device.');
+      return;
+    }
+    // Web-funnel purchases live on the buyer's account (Clerk id), not this
+    // device's store receipts — signing in is the "restore" that finds them.
+    if (!isSignedIn) {
+      Alert.alert(
+        'Nothing to restore',
+        'No previous purchases were found on this device. Bought Pro on flyright.expo.app? Sign in with that account instead.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Sign in', onPress: () => router.push('/sign-in') },
+        ]
+      );
+      return;
+    }
+    Alert.alert('Nothing to restore', 'No previous purchases were found.');
   };
 
   const chevron = (

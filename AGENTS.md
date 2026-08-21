@@ -17,3 +17,13 @@ When the user asks for an EAS build, do ALL of this without being reminded:
 
    The explicit `prebuild` step is load-bearing: `expo run:ios`/`run:android` silently REUSE an existing `ios/`/`android/` directory without re-running prebuild, so version numbers and app.json/plugin config changes never reach the installed app unless prebuild runs first. Both directories are gitignored/generated, and the version string in Settings comes from the installed native binary — a JS reload never updates it. After installing, verify the version on the device actually matches `app.json` before calling it done.
 5. **Commit and push** the version bump — local git must end up in sync with the remote (`git push`, don't leave commits unpushed).
+
+<!-- stripe-projects-cli managed:agents-md:start -->
+## Stripe Projects CLI
+
+This repository is initialized for the Stripe project "flyRight".
+
+## Tools used
+
+- [Stripe CLI](https://docs.stripe.com/stripe-cli) with the `projects` plugin to manage third-party services, credentials, and deployments for this project. Use the stripe-projects-cli to manage deploying and access to third party services.
+<!-- stripe-projects-cli managed:agents-md:end -->
