@@ -16,4 +16,8 @@ appId: com.shanavasshaji.flyright
     visible: "My travels"
     timeout: 30000
 - assertVisible: "Your travel journal"
+- tapOn: "Claims"
+- extendedWaitUntil:
+    visible: "No claims yet"
+    timeout: 10000
 - assertVisible: "See a demo verdict.*"

@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/expo';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +37,10 @@ export function Claims() {
               When a delayed journey qualifies for compensation, generate the claim from its
               detail screen — the letter and response deadline get tracked here.
             </ThemedText>
+            {/* Demo journey exercises the whole verdict flow without live data. */}
+            <Link href="/journey/demo">
+              <ThemedText type="link">See a demo verdict →</ThemedText>
+            </Link>
           </ThemedView>
         )}
       </SafeAreaView>

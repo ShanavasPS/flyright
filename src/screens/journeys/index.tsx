@@ -125,17 +125,13 @@ export function Journeys() {
             )}
           />
         ) : (
+          // Pure travel-journal pitch — claims live in their own tab.
           <Card>
             <ThemedText type="subtitle">Your travel journal</ThemedText>
             <ThemedText type="small">
-              Log any flight — next month&apos;s trip or one from years back. Your travel
-              history lives here, and if a delay ever makes you eligible for compensation,
-              you&apos;ll know — and how much.
+              Log any flight — next month&apos;s trip or one from years back. Distance,
+              countries, airlines: your travel story adds up here.
             </ThemedText>
-            {/* Demo journey exercises the whole verdict flow without live data. */}
-            <Link href="/journey/demo">
-              <ThemedText type="link">See a demo verdict →</ThemedText>
-            </Link>
           </Card>
         )}
       </SafeAreaView>
