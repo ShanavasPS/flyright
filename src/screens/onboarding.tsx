@@ -82,7 +82,7 @@ export function Onboarding() {
   /** Dismiss to the journeys tab, then open the follow-up screen only after
    * the modal's exit animation has released the presentation slot — pushing a
    * sheet while the fullScreenModal is still animating out drops it. */
-  function finish(then?: '/add-flight' | '/journey/demo') {
+  function finish(then?: '/add-flight') {
     router.back();
     if (then) setTimeout(() => router.push(then), 450);
   }
@@ -207,25 +207,16 @@ export function Onboarding() {
             }}
           />
           {/* One reserved slot on every page so the button row never jumps:
-              the priming page's "Not now", the last page's demo link, an
-              invisible placeholder elsewhere. */}
-          {isPush ? (
-            <Pressable accessibilityRole="button" onPress={advance} disabled={busy}>
-              <ThemedText type="link" style={styles.demoLink}>
-                Not now
-              </ThemedText>
-            </Pressable>
-          ) : (
-            <Pressable
-              accessibilityRole="link"
-              onPress={() => finish('/journey/demo')}
-              disabled={!last}
-              style={!last && styles.hidden}>
-              <ThemedText type="link" style={styles.demoLink}>
-                See a demo verdict →
-              </ThemedText>
-            </Pressable>
-          )}
+              the priming page's "Not now", an invisible placeholder elsewhere. */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={advance}
+            disabled={!isPush || busy}
+            style={!isPush && styles.hidden}>
+            <ThemedText type="link" style={styles.footerLink}>
+              Not now
+            </ThemedText>
+          </Pressable>
         </View>
       </View>
     </ThemedView>
@@ -368,7 +359,7 @@ const styles = StyleSheet.create({
   dotActive: {
     width: 20,
   },
-  demoLink: {
+  footerLink: {
     textAlign: 'center',
   },
 });
