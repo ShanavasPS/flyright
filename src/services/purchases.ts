@@ -38,7 +38,9 @@ const usePurchasesStore = create<{ customerInfo: CustomerInfo | null }>(() => ({
   customerInfo: null,
 }));
 
-const entitledToPro = (info: CustomerInfo | null) =>
+/** Whether a CustomerInfo carries the active 'FlyRight Pro' entitlement —
+ * for synchronous checks on SDK callback payloads (prefer useHasPro in UI). */
+export const entitledToPro = (info: CustomerInfo | null) =>
   info != null && ENTITLEMENT_PRO in info.entitlements.active;
 
 /** Latest CustomerInfo, updated live on purchases/renewals/restores. */

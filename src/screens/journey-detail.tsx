@@ -251,14 +251,19 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   const claimSent = !!claim && claim.status !== 'draft';
 
   const startClaim = async () => {
-    if (await hasPro()) {
-      router.push({
-        pathname: '/claim',
-        params: { journeyId: journey.id, delay: String(disruption.delayMinutes ?? 0) },
-      });
+    const delay = String(disruption.delayMinutes ?? 0);
+    // The demo exists to show off the whole verdict → letter flow, so it never
+    // hits the paywall — Pro gates real claims only.
+    if (isDemoJourneyId(journey.id) || (await hasPro())) {
+      router.push({ pathname: '/claim', params: { journeyId: journey.id, delay } });
       return;
     }
-    router.push('/paywall');
+    // `next` lets the paywall continue straight into the claim wizard after an
+    // unlock instead of bouncing back here for a second tap.
+    router.push({
+      pathname: '/paywall',
+      params: { next: `/claim?journeyId=${encodeURIComponent(journey.id)}&delay=${delay}` },
+    });
   };
 
   return (

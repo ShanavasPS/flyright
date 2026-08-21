@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import type { PurchasesOffering } from 'react-native-purchases';
 import RevenueCatUI from 'react-native-purchases-ui';
@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { getOfferingByIdentifier, isPurchasesConfigured } from '@/services/purchases';
+import { entitledToPro, getOfferingByIdentifier, isPurchasesConfigured } from '@/services/purchases';
 
 /**
  * The paywall itself is remote-configured in RevenueCat (Paywalls v2) and
@@ -20,10 +20,18 @@ import { getOfferingByIdentifier, isPurchasesConfigured } from '@/services/purch
  * Customer Center's change-plan action uses this to show subscriber copy
  * ("Switch plan") instead of the acquisition pitch. Unknown identifiers fall
  * back to the default offering.
+ *
+ * Pass ?next=<href> to continue somewhere after an unlock (purchase or
+ * entitling restore) — the caller's original destination, e.g. the claim
+ * wizard — instead of bouncing back for a second tap. Cancel/close always
+ * just goes back.
  */
 export function Paywall() {
   const router = useRouter();
-  const { offering: offeringId } = useLocalSearchParams<{ offering?: string }>();
+  const { offering: offeringId, next } = useLocalSearchParams<{
+    offering?: string;
+    next?: string;
+  }>();
 
   const wantsOffering = typeof offeringId === 'string' && offeringId.length > 0;
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
@@ -42,6 +50,20 @@ export function Paywall() {
     };
   }, [wantsOffering, offeringId]);
 
+  // A successful purchase fires onPurchaseCompleted AND onDismiss (RevenueCatUI
+  // requests dismissal itself after a purchase), so every exit funnels through
+  // this once-guard — a second router.back() would pop the screen under the
+  // sheet too, dropping the buyer on the wrong screen.
+  const exited = useRef(false);
+  const exitOnce = (go: () => void) => {
+    if (exited.current) return;
+    exited.current = true;
+    go();
+  };
+  const continueTo = typeof next === 'string' && next.length > 0 ? (next as Href) : null;
+  const unlocked = () =>
+    exitOnce(() => (continueTo ? router.replace(continueTo) : router.back()));
+
   if (isPurchasesConfigured()) {
     if (resolving) {
       return (
@@ -54,9 +76,13 @@ export function Paywall() {
       <RevenueCatUI.Paywall
         style={styles.container}
         options={{ offering }}
-        onPurchaseCompleted={() => router.back()}
-        onRestoreCompleted={() => router.back()}
-        onDismiss={() => router.back()}
+        onPurchaseCompleted={unlocked}
+        // A restore can complete without granting Pro (nothing to restore) —
+        // only an entitling one continues; otherwise the paywall stays up.
+        onRestoreCompleted={({ customerInfo }) => {
+          if (entitledToPro(customerInfo)) unlocked();
+        }}
+        onDismiss={() => exitOnce(() => router.back())}
       />
     );
   }
