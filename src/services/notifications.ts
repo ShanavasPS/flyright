@@ -2,6 +2,7 @@ import Storage from 'expo-sqlite/kv-store';
 import { LogLevel, OneSignal } from 'react-native-onesignal';
 
 import { ONESIGNAL_APP_ID } from '@/constants/config';
+import { initLiveActivities } from '@/services/live-activity';
 
 /**
  * OneSignal boundary: remote push registration, opt-in state, identity, and
@@ -15,6 +16,9 @@ export function initNotifications() {
   }
   if (__DEV__) OneSignal.Debug.setLogLevel(LogLevel.Verbose);
   OneSignal.initialize(ONESIGNAL_APP_ID);
+  // Registers the default Live Activity types so travel-day widgets can
+  // start locally and receive REST-driven updates (no-op off iOS).
+  initLiveActivities();
 }
 
 /** Ask at a meaningful moment (first journey added), never on first launch. */

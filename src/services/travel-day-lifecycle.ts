@@ -17,6 +17,12 @@ import Storage from 'expo-sqlite/kv-store';
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import type { FlightStatus } from '@/services/flight-lookup';
+import {
+  endTravelActivity,
+  getActivityId,
+  startTravelActivity,
+  updateTravelActivity,
+} from '@/services/live-activity';
 import { getPushEnabled } from '@/services/notifications';
 import {
   EMPTY_FACTS,
@@ -106,6 +112,7 @@ export function reconcileTravelDay(): Promise<void> {
 
 async function teardown(journeyId: string, reason: 'ended' | 'disabled'): Promise<void> {
   await Notifications.dismissNotificationAsync(notificationId(journeyId));
+  endTravelActivity(journeyId);
   Storage.removeItemSync(postedKey(journeyId));
   if (reason === 'ended') {
     await markActivity(journeyId, { endedAt: new Date().toISOString() });
@@ -118,7 +125,10 @@ async function doReconcile(): Promise<void> {
   const stateRows = await allTravelDayRows();
   const byJourney = new Map(stateRows.map((row) => [row.journeyId, row]));
 
-  const enabled = getTravelDayEnabled() && (await getPushEnabled());
+  // The Android ongoing notification needs the push permission; the iOS Live
+  // Activity has its own OS consent, so only our own switch gates it there.
+  const enabled =
+    getTravelDayEnabled() && (Platform.OS === 'ios' || (await getPushEnabled()));
   if (!enabled) {
     for (const row of stateRows) {
       if (row.activityStartedAt && !row.endedAt) await teardown(row.journeyId, 'disabled');
@@ -142,20 +152,31 @@ async function doReconcile(): Promise<void> {
       const facts = getFlightFacts(j.id);
       const content = liveContent(j, state, facts, now);
       const fingerprint = `${content.title}|${content.subtitle}|${content.gate ?? ''}`;
-      if (Storage.getItemSync(postedKey(j.id)) === fingerprint) continue;
+      // Unchanged content only skips work when the surface actually exists —
+      // on iOS a stale fingerprint (app update mid-window) must not block the
+      // first Live Activity start.
+      const surfaceExists = Platform.OS !== 'ios' || !!getActivityId(j.id);
+      if (surfaceExists && Storage.getItemSync(postedKey(j.id)) === fingerprint) continue;
 
-      await Notifications.scheduleNotificationAsync({
-        identifier: notificationId(j.id),
-        content: {
-          title: content.title,
-          body: content.subtitle,
-          sticky: true,
-          data: { url: `/journey/${j.id}` },
-        },
-        // Immediate delivery; the channel-aware trigger routes it onto the
-        // silent travel-day channel on Android (null = default channel).
-        trigger: Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null,
-      });
+      if (Platform.OS === 'ios') {
+        // Lock-screen Live Activity: started locally once, refreshed through
+        // the OneSignal REST proxy afterwards.
+        if (getActivityId(j.id)) updateTravelActivity(j.id, content);
+        else startTravelActivity(j, content);
+      } else {
+        await Notifications.scheduleNotificationAsync({
+          identifier: notificationId(j.id),
+          content: {
+            title: content.title,
+            body: content.subtitle,
+            sticky: true,
+            data: { url: `/journey/${j.id}` },
+          },
+          // Immediate delivery; the channel-aware trigger routes it onto the
+          // silent travel-day channel.
+          trigger: { channelId: CHANNEL_ID },
+        });
+      }
       Storage.setItemSync(postedKey(j.id), fingerprint);
       if (!row?.activityStartedAt) {
         await markActivity(j.id, { activityStartedAt: now.toISOString() });

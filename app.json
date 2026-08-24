@@ -14,6 +14,9 @@
         "tinted": "./assets/images/ios-icon-tinted.png"
       },
       "bundleIdentifier": "com.shanavasshaji.flyright",
+      "associatedDomains": [
+        "applinks:getflyright.com"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "FlyRight does not request your location. This notice is required because a bundled notification SDK references location APIs."
@@ -31,6 +34,23 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "getflyright.com",
+              "pathPrefix": "/t"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ],
       "versionCode": 13
     },
@@ -59,7 +79,12 @@
       [
         "onesignal-expo-plugin",
         {
-          "mode": "production"
+          "mode": "production",
+          "liveActivities": {
+            "targetName": "FlyRightWidget",
+            "widgetFilePath": "./targets/FlyRightWidget/FlyRightLiveActivity.swift",
+            "deploymentTarget": "16.2"
+          }
         }
       ],
       [
@@ -98,23 +123,6 @@
         "origin": "https://getflyright.com"
       },
       "eas": {
-        "build": {
-          "experimental": {
-            "ios": {
-              "appExtensions": [
-                {
-                  "targetName": "OneSignalNotificationServiceExtension",
-                  "bundleIdentifier": "com.shanavasshaji.flyright.OneSignalNotificationServiceExtension",
-                  "entitlements": {
-                    "com.apple.security.application-groups": [
-                      "group.com.shanavasshaji.flyright.onesignal"
-                    ]
-                  }
-                }
-              ]
-            }
-          }
-        },
         "projectId": "37d65a3e-bca7-4915-ab16-8ca73a85f7ac"
       }
     },
