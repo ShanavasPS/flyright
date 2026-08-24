@@ -8,6 +8,7 @@ import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import type { Journey } from '@/rules/types';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
+import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
 
 export type JourneyRow = typeof journeys.$inferSelect;
 export type NewJourneyRow = typeof journeys.$inferInsert;
@@ -62,6 +63,7 @@ export async function addJourney(row: NewJourneyRow) {
       set: { deletedAt: null, updatedAt: now },
     });
   void reconcileNotifications();
+  void reconcileTravelDay();
 }
 
 /** Edit a journal entry in place. The row id (= sync natural key) stays
@@ -76,6 +78,7 @@ export async function updateJourney(
     .set({ ...fields, updatedAt: new Date().toISOString() })
     .where(eq(journeys.id, id));
   void reconcileNotifications();
+  void reconcileTravelDay();
 }
 
 /** Soft delete — the tombstone lets a future cloud sync propagate removals. */
@@ -86,6 +89,7 @@ export async function deleteJourney(id: string) {
     .set({ deletedAt: now, updatedAt: now })
     .where(eq(journeys.id, id));
   void reconcileNotifications();
+  void reconcileTravelDay();
 }
 
 /** DB row → the rules-engine shape. */

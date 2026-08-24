@@ -29,6 +29,13 @@
       "when": 1787027025999,
       "tag": "0003_chilly_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787545382040,
+      "tag": "0004_parallel_hawkeye",
+      "breakpoints": true
     }
   ]
 }

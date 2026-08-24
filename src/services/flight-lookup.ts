@@ -13,6 +13,17 @@ export interface FlightStatus {
   to: { code: string | null; country: string | null };
   scheduledDeparture: string | null;
   scheduledArrival: string | null;
+  /** Travel-day facts — absent from responses served before the API route
+   * learned them, so every field is optional as well as nullable. */
+  gate?: string | null;
+  terminal?: string | null;
+  checkInDesk?: string | null;
+  baggageBelt?: string | null;
+  boardingTime?: string | null;
+  estimatedDeparture?: string | null;
+  actualDeparture?: string | null;
+  estimatedArrival?: string | null;
+  actualArrival?: string | null;
 }
 
 export class FlightLookupError extends Error {

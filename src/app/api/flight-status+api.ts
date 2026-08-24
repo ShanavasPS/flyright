@@ -43,6 +43,16 @@ function mockLeg(flight: string, date: string) {
     to: { code: 'FRA', country: 'DE' },
     scheduledDeparture: `${date}T08:00Z`,
     scheduledArrival: `${date}T10:35Z`,
+    // Travel-day facts, so the live timeline is exercisable offline.
+    gate: '24',
+    terminal: '2',
+    checkInDesk: '210-231',
+    baggageBelt: isPast ? '5' : null,
+    boardingTime: `${date}T07:20Z`,
+    estimatedDeparture: delayMinutes ? `${date}T11:15Z` : `${date}T08:00Z`,
+    actualDeparture: isPast ? (delayMinutes ? `${date}T11:20Z` : `${date}T08:02Z`) : null,
+    estimatedArrival: delayMinutes ? `${date}T13:50Z` : `${date}T10:35Z`,
+    actualArrival: isPast ? (delayMinutes ? `${date}T13:50Z` : `${date}T10:31Z`) : null,
   };
 }
 
@@ -93,7 +103,8 @@ export async function GET(request: Request) {
     return Response.json({ error: 'flight not found' }, { status: 404 });
   }
 
-  // Normalize to the shape the app's rules engine needs — nothing more.
+  // Normalize to the shape the app needs: the rules-engine fields plus the
+  // travel-day facts (gate/terminal/times) the live timeline renders.
   const leg = legs[0];
   const scheduled = leg.arrival?.scheduledTime?.utc;
   const actual = leg.arrival?.actualTime?.utc ?? leg.arrival?.predictedTime?.utc;
@@ -115,5 +126,15 @@ export async function GET(request: Request) {
     to: { code: leg.arrival?.airport?.iata, country: leg.arrival?.airport?.countryCode },
     scheduledDeparture: toIso(leg.departure?.scheduledTime?.utc),
     scheduledArrival: toIso(leg.arrival?.scheduledTime?.utc),
+    gate: leg.departure?.gate ?? null,
+    terminal: leg.departure?.terminal ?? null,
+    checkInDesk: leg.departure?.checkInDesk ?? null,
+    baggageBelt: leg.arrival?.baggageBelt ?? null,
+    // AeroDataBox has no separate boarding time; the widget derives one.
+    boardingTime: null,
+    estimatedDeparture: toIso(leg.departure?.predictedTime?.utc),
+    actualDeparture: toIso(leg.departure?.actualTime?.utc),
+    estimatedArrival: toIso(leg.arrival?.predictedTime?.utc),
+    actualArrival: toIso(leg.arrival?.actualTime?.utc),
   });
 }

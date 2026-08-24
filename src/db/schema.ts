@@ -31,6 +31,21 @@ export const journeys = sqliteTable('journeys', {
   syncedAt: text('synced_at'),
 });
 
+export const travelDay = sqliteTable('travel_day', {
+  journeyId: text('journey_id').primaryKey().references(() => journeys.id),
+  /** Furthest TravelStage reached; null before the first tap. */
+  stage: text('stage'),
+  /** JSON Record<TravelStage, ISO timestamp> of every reached stage. */
+  stamps: text('stamps').notNull().default('{}'),
+  /** When a live surface (widget/ongoing notification) was first shown. */
+  activityStartedAt: text('activity_started_at'),
+  /** Set when the travel window closes and surfaces are torn down. */
+  endedAt: text('ended_at'),
+  updatedAt: text('updated_at').notNull(),
+  /** See journeys.syncedAt — dirty rows push to the Convex live session. */
+  syncedAt: text('synced_at'),
+});
+
 export const disruptions = sqliteTable('disruptions', {
   id: text('id').primaryKey(),
   journeyId: text('journey_id').notNull().references(() => journeys.id),

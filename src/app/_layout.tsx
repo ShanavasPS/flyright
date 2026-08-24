@@ -29,6 +29,7 @@ import {
   reconcileNotifications,
 } from "@/services/notification-lifecycle";
 import { initNotifications } from "@/services/notifications";
+import { reconcileTravelDay } from "@/services/travel-day-lifecycle";
 import { initPurchases } from "@/services/purchases";
 import { applyStoredTheme } from "@/services/theme";
 
@@ -121,6 +122,13 @@ function RootLayout() {
     void registerFlightWatch();
     void reconcileNotifications();
   }, []);
+
+  // Unlike its sibling above, this reconcile reads the travel_day table that
+  // migration 0004 introduces — running it before migrations finish would
+  // warn "no such table" on every cold start of an upgraded install.
+  useEffect(() => {
+    if (dbReady) void reconcileTravelDay();
+  }, [dbReady]);
 
   if (dbError) {
     return (

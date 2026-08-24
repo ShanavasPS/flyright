@@ -23,6 +23,11 @@ import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import {
+  getTravelDayEnabled,
+  reconcileTravelDay,
+  setTravelDayEnabled,
+} from '@/services/travel-day-lifecycle';
+import {
   addPushStateListener,
   getPushEnabled,
   setPushEnabled,
@@ -218,8 +223,10 @@ function PushNotificationsRow() {
     setEnabled(result === 'on');
     setBusy(false);
     // The toggle governs local reminders too: off empties the schedule,
-    // on rebuilds it from the journal.
+    // on rebuilds it from the journal. Travel-day surfaces ride the same
+    // permission, so they reconcile alongside.
     void reconcileNotifications();
+    void reconcileTravelDay();
     if (result === 'blocked') {
       Alert.alert(
         'Notifications are off for FlyRight',
@@ -248,6 +255,40 @@ function PushNotificationsRow() {
           testID="push-toggle"
           value={enabled}
           disabled={busy}
+          onValueChange={onToggle}
+          trackColor={{ true: theme.tint }}
+        />
+      </View>
+      <RowSeparator />
+    </>
+  );
+}
+
+/** Governs the live travel-day surfaces (the updating trip notification, and
+ * later the lock-screen widget) independently of alert-style pushes. */
+function TravelDayRow() {
+  const theme = useTheme();
+  const [enabled, setEnabled] = useState(() => getTravelDayEnabled());
+
+  const onToggle = (value: boolean) => {
+    setEnabled(value);
+    setTravelDayEnabled(value); // fires its own reconcile
+  };
+
+  if (Platform.OS === 'web') return null;
+
+  return (
+    <>
+      <View style={styles.row}>
+        <View style={styles.rowLabel}>
+          <ThemedText>Travel day live updates</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            A live trip card in your notifications from 24 hours before departure.
+          </ThemedText>
+        </View>
+        <Switch
+          testID="travel-day-toggle"
+          value={enabled}
           onValueChange={onToggle}
           trackColor={{ true: theme.tint }}
         />
@@ -306,6 +347,7 @@ export function Settings() {
 
         <ThemedView type="backgroundElement" style={styles.group}>
           <PushNotificationsRow />
+          <TravelDayRow />
 
           <AppearanceRow />
 

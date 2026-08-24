@@ -40,13 +40,15 @@ const DAY_MS = 24 * HOUR_MS;
 /** Every scheduled identifier the lifecycle owns. Reconcile only ever cancels
  * within this namespace, so it can never touch OneSignal's remote pushes or
  * anything another module schedules. */
-export const OWNED_ID = /^(trip|claim-week|claim-due|delay)-/;
+export const OWNED_ID = /^(trip|claim-week|claim-due|delay|travel-day)-/;
 
 const flightLabel = (j: ReminderJourney) => j.number || j.carrier;
 
 /** Manual entries store a noon departure = arrival pair when the user never
  * entered times — don't announce a fabricated "departs at 12:00". */
-function hasRealTime(j: ReminderJourney): boolean {
+export function hasRealTime(
+  j: Pick<ReminderJourney, 'source' | 'scheduledDeparture' | 'scheduledArrival'>,
+): boolean {
   if (j.source !== 'manual') return true;
   return !(j.scheduledDeparture === j.scheduledArrival && j.scheduledDeparture.endsWith('T12:00:00'));
 }

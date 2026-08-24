@@ -11,6 +11,7 @@ import { Card } from '@/components/card';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TravelDayBanner } from '@/components/travel-day-banner';
 import { TravelStatsHeader } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -109,7 +110,13 @@ export function Journeys() {
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             stickySectionHeadersEnabled={false}
-            ListHeaderComponent={<TravelStatsHeader stats={stats} />}
+            // The live moment outranks the all-time flex without displacing it.
+            ListHeaderComponent={
+              <>
+                <TravelDayBanner journeys={journeys} />
+                <TravelStatsHeader stats={stats} />
+              </>
+            }
             renderSectionHeader={({ section }) => (
               <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
                 {section.title}

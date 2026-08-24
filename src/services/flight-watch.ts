@@ -8,6 +8,7 @@ import { recordDelay } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
 import { toDomainJourney } from '@/services/journeys';
 import { maybeNotifyDelay } from '@/services/notification-lifecycle';
+import { noteFlightFacts, reconcileTravelDay } from '@/services/travel-day-lifecycle';
 
 /**
  * Periodic background sweep over tracked flights near their departure: pull
@@ -70,6 +71,7 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
   for (const row of watched) {
     try {
       const status = await lookupFlight(row.number, row.scheduledDeparture.slice(0, 10));
+      await noteFlightFacts(row.id, status);
       if (status.delayMinutes == null) continue;
       await recordDelay(row.id, status.delayMinutes);
       await maybeNotifyDelay(toDomainJourney(row), status.delayMinutes);
@@ -77,4 +79,6 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
       // One flight's lookup failing must not abort the rest of the sweep.
     }
   }
+  // Fresh facts may change the live surface (gate posted, flight landed).
+  await reconcileTravelDay();
 }

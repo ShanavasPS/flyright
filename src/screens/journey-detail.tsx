@@ -2,13 +2,14 @@ import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { SymbolView } from 'expo-symbols';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -19,8 +20,10 @@ import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
 import { Spacing } from '@/constants/theme';
+import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
@@ -31,6 +34,13 @@ import { recordDelay } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { hasPro } from '@/services/purchases';
+import { travelWindow, type TravelStage } from '@/services/travel-day';
+import {
+  getFlightFacts,
+  noteFlightFacts,
+  reconcileTravelDay,
+} from '@/services/travel-day-lifecycle';
+import { advanceStage, undoStage, useTravelDay } from '@/services/travel-day-store';
 
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
 // have usually lapsed — the trip is journal material, not a claim.
@@ -62,8 +72,9 @@ function routeSentence(journey: Journey): string {
 }
 
 export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) {
-  // Frozen at mount — claim-window age doesn't need to tick while open.
-  const [now] = useState(() => Date.now());
+  // Ticks so the travel-day timeline stays live while open; the coarser
+  // claim-window math reads the same clock and doesn't mind the updates.
+  const now = useNow(60_000).getTime();
   const router = useRouter();
   const theme = useTheme();
   const { userId } = useAuth();
@@ -93,6 +104,18 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
     recordDelay(rowId, observedDelay).catch(() => {});
   }, [isDemo, rowId, observedDelay]);
 
+  // Persist the full fact set (gate, boarding, actual times) for the live
+  // surfaces, then let the reconciler update the ongoing notification.
+  const observedFacts = status.data;
+  useEffect(() => {
+    if (isDemo || !rowId || !observedFacts) return;
+    noteFlightFacts(rowId, observedFacts)
+      .then(() => reconcileTravelDay())
+      .catch(() => {});
+  }, [isDemo, rowId, observedFacts]);
+
+  const travelState = useTravelDay(rowId ?? '');
+
   if (!journey) {
     return (
       <ThemedView style={[styles.container, styles.centered]}>
@@ -111,6 +134,12 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
   // simply reads as history instead of showing a spinner or an error.
   const journalOnly = !isDemo && (!isLookupable || status.isError);
 
+  // Inside the travel window the live timeline takes over from the passive
+  // "watching" copy; the verdict card still wins when there's money on it.
+  const travelPhase =
+    !isDemo && row ? travelWindow(row, travelState, new Date(now)).phase : 'unsupported';
+  const travelActive = travelPhase === 'reminder' || travelPhase === 'live';
+
   // Journal entries without user-entered times store the placeholder noon
   // pair — no schedule worth showing. A lone entered time reads as a departure.
   const schedule =
@@ -123,6 +152,12 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        {/* The travel-day timeline made the tall path (title + timeline +
+            verdict) overflow smaller screens — everything scrolls now. */}
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}>
         <View style={styles.titleRow}>
           <AirlineLogo number={journey.number} carrier={journey.carrier} size={48} />
           <ThemedText type="title" themeColor="heading" style={styles.titleText}>
@@ -143,9 +178,23 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
           )}
         </View>
 
+        {travelActive && row && (
+          <TravelDayTimeline
+            journey={row}
+            state={travelState}
+            facts={getFlightFacts(row.id)}
+            onAdvance={(stage: TravelStage) => {
+              void advanceStage(row.id, stage).then(() => reconcileTravelDay());
+            }}
+            onUndo={() => {
+              void undoStage(row.id).then(() => reconcileTravelDay());
+            }}
+          />
+        )}
+
         {disruption ? (
           <VerdictCard journey={journey} disruption={disruption} />
-        ) : journalOnly ? (
+        ) : travelActive ? null : journalOnly ? (
           <Card>
             <ThemedText type="subtitle">
               {formatDayLabelWithYear(journey.scheduledDeparture)}
@@ -171,6 +220,8 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
             </ThemedText>
           </Card>
         )}
+
+        </ScrollView>
 
         {/* Edit/remove live in a header "···" menu (the Flighty/Tripsy
             pattern): edit as a plain action, remove destructive and last,
@@ -315,7 +366,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.five,
     gap: Spacing.three,
   },
   titleRow: {
