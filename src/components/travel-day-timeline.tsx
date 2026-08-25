@@ -42,6 +42,7 @@ export function TravelDayTimeline({
   readOnly = false,
   onAdvance,
   onUndo,
+  action,
 }: {
   journey: TravelJourney;
   state: TravelDayState;
@@ -49,6 +50,8 @@ export function TravelDayTimeline({
   readOnly?: boolean;
   onAdvance?: (stage: TravelStage) => void;
   onUndo?: () => void;
+  /** Optional header-row control — the traveler's share pill. */
+  action?: React.ReactNode;
 }) {
   const theme = useTheme();
   const currentIndex = stageIndex(state.stage);
@@ -71,7 +74,10 @@ export function TravelDayTimeline({
 
   return (
     <Card>
-      <ThemedText type="subtitle">Travel day</ThemedText>
+      <View style={styles.headerRow}>
+        <ThemedText type="subtitle">Travel day</ThemedText>
+        {action}
+      </View>
 
       {chips.length > 0 && (
         <View style={styles.chipRow}>
@@ -191,6 +197,12 @@ export function TravelDayTimeline({
 }
 
 const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

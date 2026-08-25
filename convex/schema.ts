@@ -32,4 +32,82 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_user_key', ['userId', 'naturalKey']),
+
+  /** One live travel-day session per shared trip. Standalone with a
+   * denormalized flight snapshot: the public token query must never join
+   * into the owner-scoped journeys mirror, and the session keeps working if
+   * the journey row is edited mid-flight. The unguessable shareToken is the
+   * ONLY public handle — naturalKey is guessable and never leaves the
+   * server unauthenticated (see liveShared.toPublicSession). */
+  liveSessions: defineTable({
+    userId: v.string(),
+    naturalKey: v.string(),
+    status: v.union(v.literal('active'), v.literal('closed'), v.literal('canceled')),
+
+    // Flight snapshot (public-safe)
+    carrier: v.string(),
+    number: v.string(),
+    fromCode: v.string(),
+    toCode: v.string(),
+    scheduledDeparture: v.string(),
+    scheduledArrival: v.string(),
+
+    // Stage machine — same stage keys as src/services/travel-day.ts
+    currentStage: v.union(v.string(), v.null()),
+    stageTimes: v.record(v.string(), v.string()),
+
+    // Flight-driven facts (from the poll chain)
+    flightStatus: v.union(v.string(), v.null()),
+    delayMinutes: v.union(v.number(), v.null()),
+    gate: v.union(v.string(), v.null()),
+    terminal: v.union(v.string(), v.null()),
+    baggageBelt: v.union(v.string(), v.null()),
+    estimatedDeparture: v.union(v.string(), v.null()),
+    actualDeparture: v.union(v.string(), v.null()),
+    estimatedArrival: v.union(v.string(), v.null()),
+    actualArrival: v.union(v.string(), v.null()),
+    lastCheckedAt: v.union(v.string(), v.null()),
+
+    /** The traveler device's Live Activity id — lets the poll chain push
+     * lock-screen updates. Never public. */
+    activityId: v.union(v.string(), v.null()),
+
+    shareToken: v.union(v.string(), v.null()),
+    expiresAt: v.string(),
+
+    // Push bookkeeping — a stage pushes to followers at most once.
+    notifiedStages: v.record(v.string(), v.boolean()),
+    notifiedDelayBucket: v.union(v.number(), v.null()),
+    notifiedGate: v.union(v.string(), v.null()),
+    pendingNotify: v.boolean(),
+    pollScheduledId: v.union(v.id('_scheduled_functions'), v.null()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_key', ['userId', 'naturalKey'])
+    .index('by_token', ['shareToken'])
+    .index('by_status', ['status']),
+
+  follows: defineTable({
+    sessionId: v.id('liveSessions'),
+    /** Denormalized traveler id → cheap purge on account deletion. */
+    ownerId: v.string(),
+    followerId: v.string(),
+    muted: v.boolean(),
+    createdAt: v.string(),
+  })
+    .index('by_session', ['sessionId'])
+    .index('by_follower', ['followerId'])
+    .index('by_session_follower', ['sessionId', 'followerId'])
+    .index('by_owner', ['ownerId']),
+
+  /** Display names for "Sam is through security" — fed by the Clerk webhook
+   * (user.created/updated); Convex JWTs only carry the subject. */
+  profiles: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    imageUrl: v.union(v.string(), v.null()),
+    updatedAt: v.string(),
+  }).index('by_user', ['userId']),
 });

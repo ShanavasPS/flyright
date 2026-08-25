@@ -24,7 +24,16 @@ http.route({
     if (!secret) return new Response('webhook not configured', { status: 503 });
 
     const payload = await request.text();
-    let event: { type?: string; data?: { id?: string } };
+    let event: {
+      type?: string;
+      data?: {
+        id?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        username?: string | null;
+        image_url?: string | null;
+      };
+    };
     try {
       event = new Webhook(secret).verify(payload, {
         'svix-id': request.headers.get('svix-id') ?? '',
@@ -38,6 +47,19 @@ http.route({
     if (event.type === 'user.deleted' && event.data?.id) {
       const purged = await ctx.runMutation(internal.users.purge, { userId: event.data.id });
       console.log(`[clerk-webhook] user.deleted ${event.data.id}: purged ${purged} journeys`);
+    }
+
+    // Display names for follower-facing copy ("Sam is through security").
+    // Subscribe user.created + user.updated on the same Clerk endpoint.
+    if ((event.type === 'user.created' || event.type === 'user.updated') && event.data?.id) {
+      const d = event.data;
+      const userId = event.data.id;
+      const name = d.first_name?.trim() || d.username?.trim() || 'A traveler';
+      await ctx.runMutation(internal.users.upsertProfile, {
+        userId,
+        name,
+        imageUrl: d.image_url ?? null,
+      });
     }
 
     return new Response(null, { status: 200 });

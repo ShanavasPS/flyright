@@ -10,7 +10,7 @@
  * store and the lifecycle import each other) — callers reconcile after
  * mutating, the same way screens already fire reconcileNotifications. */
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { Observe } from 'expo-observe';
 
@@ -108,4 +108,16 @@ export async function markActivity(
 /** All travel-day rows — the lifecycle reconciler joins them to journeys. */
 export async function allTravelDayRows(): Promise<TravelDayRow[]> {
   return db.select().from(travelDay);
+}
+
+export const isDirty = (row: TravelDayRow): boolean =>
+  row.syncedAt === null || row.updatedAt > row.syncedAt;
+
+/** Same guard as markJourneysSynced: an edit that landed mid-push keeps the
+ * row dirty for the next pass. */
+export async function markTravelDaySynced(row: TravelDayRow): Promise<void> {
+  await db
+    .update(travelDay)
+    .set({ syncedAt: row.updatedAt })
+    .where(and(eq(travelDay.journeyId, row.journeyId), eq(travelDay.updatedAt, row.updatedAt)));
 }

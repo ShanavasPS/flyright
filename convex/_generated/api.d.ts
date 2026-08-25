@@ -8,8 +8,14 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
+import type * as flightData from "../flightData.js";
 import type * as http from "../http.js";
 import type * as journeys from "../journeys.js";
+import type * as live from "../live.js";
+import type * as liveInternal from "../liveInternal.js";
+import type * as liveShared from "../liveShared.js";
+import type * as onesignal from "../onesignal.js";
 import type * as users from "../users.js";
 
 import type {
@@ -19,8 +25,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
+  flightData: typeof flightData;
   http: typeof http;
   journeys: typeof journeys;
+  live: typeof live;
+  liveInternal: typeof liveInternal;
+  liveShared: typeof liveShared;
+  onesignal: typeof onesignal;
   users: typeof users;
 }>;
 

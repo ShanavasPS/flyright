@@ -20,7 +20,9 @@ import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TravelDayShare } from '@/components/travel-day-share';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { CONVEX_URL } from '@/constants/config';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
@@ -183,6 +185,7 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
             journey={row}
             state={travelState}
             facts={getFlightFacts(row.id)}
+            action={CONVEX_URL ? <TravelDayShare journeyId={row.id} /> : undefined}
             onAdvance={(stage: TravelStage) => {
               void advanceStage(row.id, stage).then(() => reconcileTravelDay());
             }}

@@ -11,8 +11,10 @@ import { Card } from '@/components/card';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { FollowingSection } from '@/components/following-section';
 import { TravelDayBanner } from '@/components/travel-day-banner';
 import { TravelStatsHeader } from '@/components/travel-stats-header';
+import { CONVEX_URL } from '@/constants/config';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
@@ -114,6 +116,7 @@ export function Journeys() {
             ListHeaderComponent={
               <>
                 <TravelDayBanner journeys={journeys} />
+                {!!CONVEX_URL && <FollowingSection />}
                 <TravelStatsHeader stats={stats} />
               </>
             }

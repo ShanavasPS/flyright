@@ -1,6 +1,8 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 
+import { internal } from './_generated/api';
+
 /** Row shape the client pushes — deliberately has NO userId field: the server
  * stamps identity.subject, so a client can never write another user's rows. */
 const journeyRow = v.object({
@@ -44,6 +46,34 @@ export const push = mutation({
         await ctx.db.insert('journeys', { ...row, userId: identity.subject });
       } else if (row.updatedAt > existing.updatedAt) {
         await ctx.db.patch(existing._id, row);
+      }
+
+      // A deleted trip takes its live session down with it — followers see
+      // the page expire and the lock-screen widget ends, independent of any
+      // further client cooperation.
+      if (row.deletedAt) {
+        const sessions = await ctx.db
+          .query('liveSessions')
+          .withIndex('by_user_key', (q) =>
+            q.eq('userId', identity.subject).eq('naturalKey', row.naturalKey),
+          )
+          .collect();
+        for (const session of sessions) {
+          if (session.status !== 'active') continue;
+          if (session.pollScheduledId)
+            await ctx.scheduler.cancel(session.pollScheduledId).catch(() => {});
+          await ctx.db.patch(session._id, {
+            status: 'canceled',
+            shareToken: null,
+            pollScheduledId: null,
+            updatedAt: new Date().toISOString(),
+          });
+          if (session.activityId) {
+            await ctx.scheduler.runAfter(0, internal.liveInternal.updateActivity, {
+              sessionId: session._id,
+            });
+          }
+        }
       }
     }
   },

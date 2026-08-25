@@ -5,6 +5,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
+import { TravelDaySync } from "@/components/travel-day-sync";
 import { CONVEX_URL } from "@/constants/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Observe, ObserveRoot } from "expo-observe";
@@ -77,6 +78,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
   return (
     <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
       <JourneySync />
+      <TravelDaySync />
       {children}
     </ConvexProviderWithClerk>
   );
