@@ -28,7 +28,12 @@ export async function POST(request: Request) {
   const appId = process.env.ONESIGNAL_APP_ID ?? process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID;
   const apiKey = process.env.ONESIGNAL_REST_API_KEY;
   if (!appId || !apiKey) {
-    return Response.json({ error: 'live activity updates not configured' }, { status: 501 });
+    // Names only — helps diagnose env wiring without leaking values.
+    const missing = [!appId && 'app id', !apiKey && 'rest key'].filter(Boolean).join(', ');
+    return Response.json(
+      { error: `live activity updates not configured (missing: ${missing})` },
+      { status: 501 },
+    );
   }
 
   const body = await request.json().catch(() => null);
