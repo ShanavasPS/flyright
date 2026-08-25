@@ -49,7 +49,15 @@ export async function pushLiveActivity(
     {
       method: 'POST',
       headers: { authorization: cfg.auth, 'content-type': 'application/json' },
-      body: JSON.stringify({ event, event_updates: contentState, name: `travel-day ${event}` }),
+      body: JSON.stringify({
+        event,
+        // DefaultLiveActivityAttributes reads context.state.data[...] — the
+        // update payload must nest under "data" or decoding fails and iOS
+        // dims the widget behind a stuck spinner.
+        event_updates: { data: contentState },
+        ...(event === 'end' ? { dismissal_date: Math.floor(Date.now() / 1000) + 15 * 60 } : {}),
+        name: `travel-day ${event}`,
+      }),
     },
   );
   if (!res.ok) console.warn('[onesignal] LA failed', res.status, (await res.text()).slice(0, 200));

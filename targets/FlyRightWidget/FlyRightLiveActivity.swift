@@ -42,14 +42,20 @@ private struct TravelDayModel {
     let delayed: Bool
 
     init(context: ActivityViewContext<DefaultLiveActivityAttributes>) {
+        // Empty strings travel as "not set" (the JS side can't send nils
+        // through the OneSignal dict) — treat them as nil here.
+        func text(_ value: String?) -> String? {
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }
         journeyId = context.attributes.data["journeyId"]?.asString() ?? ""
-        title = context.attributes.data["title"]?.asString() ?? "Travel day"
-        subtitle = context.state.data["subtitle"]?.asString() ?? ""
+        title = text(context.attributes.data["title"]?.asString()) ?? "Travel day"
+        subtitle = text(context.state.data["subtitle"]?.asString()) ?? "Following your trip"
         progress = min(1, max(0, context.state.data["progress"]?.asDouble() ?? 0))
-        stageLabel = context.state.data["stageLabel"]?.asString()
-        gate = context.state.data["gate"]?.asString()
-        terminal = context.state.data["terminal"]?.asString()
-        delayLabel = context.state.data["delayLabel"]?.asString()
+        stageLabel = text(context.state.data["stageLabel"]?.asString())
+        gate = text(context.state.data["gate"]?.asString())
+        terminal = text(context.state.data["terminal"]?.asString())
+        delayLabel = text(context.state.data["delayLabel"]?.asString())
         delayed = context.state.data["emphasis"]?.asString() == "delay"
     }
 
@@ -102,9 +108,14 @@ struct OneSignalWidgetLiveActivity: Widget {
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Brand.cobalt)
                 } else {
-                    ProgressView(value: model.progress)
-                        .progressViewStyle(.circular)
-                        .tint(Brand.cobalt)
+                    // Static progress ring — NEVER a ProgressView spinner
+                    // here: widgets don't animate it, so it reads as a
+                    // stuck loader.
+                    Circle()
+                        .trim(from: 0, to: max(0.06, model.progress))
+                        .stroke(Brand.cobalt, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 14, height: 14)
                 }
             } minimal: {
                 Image(systemName: "airplane")

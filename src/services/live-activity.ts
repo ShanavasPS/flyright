@@ -73,15 +73,28 @@ export function updateTravelActivity(journeyId: string, content: LiveContent): v
   }).catch(() => {});
 }
 
-/** End the activity and forget its id (window closed or feature toggled off). */
-export function endTravelActivity(journeyId: string): void {
+/** End the activity and forget its id (window closed or feature toggled
+ * off). The final content renders in the dimmed post-end state, so ends
+ * always carry one — a generic goodbye when the caller has none. */
+export function endTravelActivity(journeyId: string, content?: LiveContent): void {
   const activityId = getActivityId(journeyId);
   if (!activityId) return;
   Storage.removeItemSync(activityKey(journeyId));
   if (!supported()) return;
+  const finalState = content
+    ? contentState(content)
+    : {
+        subtitle: 'Travel day complete',
+        progress: 1,
+        stageLabel: '',
+        gate: '',
+        terminal: '',
+        delayLabel: '',
+        emphasis: 'none',
+      };
   void fetch('/api/live-activity', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ activityId, event: 'end' }),
+    body: JSON.stringify({ activityId, event: 'end', contentState: finalState }),
   }).catch(() => {});
 }

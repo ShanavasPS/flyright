@@ -110,9 +110,13 @@ export function reconcileTravelDay(): Promise<void> {
   return run;
 }
 
-async function teardown(journeyId: string, reason: 'ended' | 'disabled'): Promise<void> {
+async function teardown(
+  journeyId: string,
+  reason: 'ended' | 'disabled',
+  finalContent?: Parameters<typeof endTravelActivity>[1],
+): Promise<void> {
   await Notifications.dismissNotificationAsync(notificationId(journeyId));
-  endTravelActivity(journeyId);
+  endTravelActivity(journeyId, finalContent);
   Storage.removeItemSync(postedKey(journeyId));
   if (reason === 'ended') {
     await markActivity(journeyId, { endedAt: new Date().toISOString() });
@@ -183,7 +187,9 @@ async function doReconcile(): Promise<void> {
         Observe.logEvent('travel_day.activity_started');
       }
     } else if (row && row.activityStartedAt && !row.endedAt) {
-      await teardown(j.id, 'ended');
+      // The final render lingers dimmed after the end — give it the real
+      // last state ("Landed in LHR") instead of a generic goodbye.
+      await teardown(j.id, 'ended', liveContent(j, state, getFlightFacts(j.id), now));
     }
   }
 }

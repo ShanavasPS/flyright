@@ -12,4 +12,4 @@ export function startTravelActivity(_journey: TravelJourney, _content: LiveConte
 
 export function updateTravelActivity(_journeyId: string, _content: LiveContent): void {}
 
-export function endTravelActivity(_journeyId: string): void {}
+export function endTravelActivity(_journeyId: string, _content?: LiveContent): void {}

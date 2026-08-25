@@ -47,8 +47,10 @@ export async function POST(request: Request) {
   for (const key of STATE_KEYS) {
     if (body?.contentState?.[key] !== undefined) eventUpdates[key] = body.contentState[key];
   }
-  if (event === 'update' && Object.keys(eventUpdates).length === 0) {
-    return Response.json({ error: 'contentState is required for updates' }, { status: 400 });
+  if (Object.keys(eventUpdates).length === 0) {
+    // Ends need the final state too — empty content is what the widget
+    // renders while the activity lingers dimmed after ending.
+    return Response.json({ error: 'contentState is required' }, { status: 400 });
   }
 
   const upstream = await fetch(
@@ -63,8 +65,14 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         event,
-        // OneSignal requires event_updates even on 'end'; send the last state.
-        event_updates: eventUpdates,
+        // DefaultLiveActivityAttributes contract: the widget reads
+        // context.state.data[...], so updates MUST nest under "data" — flat
+        // keys fail ContentState decoding and iOS dims the activity behind
+        // a stuck spinner. Send the final state on 'end' too.
+        event_updates: { data: eventUpdates },
+        ...(event === 'end'
+          ? { dismissal_date: Math.floor(Date.now() / 1000) + 15 * 60 }
+          : {}),
         name: `travel-day ${event}`,
       }),
     },
