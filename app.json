@@ -52,7 +52,7 @@
           ]
         }
       ],
-      "versionCode": 14
+      "versionCode": 15
     },
     "web": {
       "output": "server",
