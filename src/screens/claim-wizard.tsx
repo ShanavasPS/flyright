@@ -341,6 +341,9 @@ export function ClaimWizard() {
 }
 
 const styles = StyleSheet.create({
+  // Plain layout on purpose — a ScrollView inside this formSheet is captured
+  // by the sheet's drag integration and hoisted over the header (same
+  // constraint as add-flight); every step's content must fit the sheet.
   container: {
     flex: 1,
     paddingHorizontal: Spacing.four,

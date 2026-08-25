@@ -3,7 +3,9 @@
   "apple": {
     "version": "1.0.4",
     "copyright": "© 2026 Shanavas Shaji",
-    "categories": ["TRAVEL"],
+    "categories": [
+      "TRAVEL"
+    ],
     "release": {
       "automaticRelease": true
     },
@@ -11,7 +13,7 @@
       "en-US": {
         "title": "FlyRight: Flight Compensation",
         "subtitle": "Get paid for flight delays",
-        "description": "FlyRight watches your flights and tells you the moment a delay or cancellation makes you eligible for airline compensation — and exactly how much you are owed.\n\nAdd a flight in seconds. FlyRight tracks it and applies EU261 air passenger rights to every disruption. If your delayed or cancelled flight qualifies, you get a clear verdict — up to €600 per passenger — and a ready-to-send claim letter.\n\n• Track your flights with live status\n• Instant EU261 compensation verdicts\n• See exactly how much you are owed\n• Generate a ready-to-send claim letter\n• Deadline reminders so you never miss a claim window\n• No account needed — sign in only to keep purchases across devices\n\nDelayed three hours or more, cancelled last minute, or denied boarding on an EU flight? Airlines owe you real money. FlyRight makes sure you collect it.",
+        "description": "FlyRight watches your flights and tells you the moment a delay or cancellation makes you eligible for airline compensation — and exactly how much you are owed.\n\nAdd a flight in seconds. FlyRight tracks it and applies EU261 air passenger rights to every disruption. If your delayed or cancelled flight qualifies, you get a clear verdict — up to €600 per passenger — and a ready-to-send claim letter.\n\n• Track your flights with live status\n• Instant EU261 compensation verdicts\n• See exactly how much you are owed\n• Generate a ready-to-send claim letter\n• Deadline reminders so you never miss a claim window\n• No account needed — sign in only to keep purchases across devices\n\nDelayed three hours or more, cancelled last minute, or denied boarding on an EU flight? Airlines owe you real money. FlyRight makes sure you collect it.\n\nPrivacy policy: https://getflyright.com/privacy\nTerms of Use (EULA): https://getflyright.com/terms",
         "keywords": [
           "flight delay",
           "compensation",

@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import type { PurchasesOffering } from 'react-native-purchases';
 import RevenueCatUI from 'react-native-purchases-ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -73,17 +74,43 @@ export function Paywall() {
       );
     }
     return (
-      <RevenueCatUI.Paywall
-        style={styles.container}
-        options={{ offering }}
-        onPurchaseCompleted={unlocked}
-        // A restore can complete without granting Pro (nothing to restore) —
-        // only an entitling one continues; otherwise the paywall stays up.
-        onRestoreCompleted={({ customerInfo }) => {
-          if (entitledToPro(customerInfo)) unlocked();
-        }}
-        onDismiss={() => exitOnce(() => router.back())}
-      />
+      <ThemedView style={styles.container}>
+        <RevenueCatUI.Paywall
+          style={styles.paywall}
+          options={{ offering }}
+          onPurchaseCompleted={unlocked}
+          // A restore can complete without granting Pro (nothing to restore) —
+          // only an entitling one continues; otherwise the paywall stays up.
+          onRestoreCompleted={({ customerInfo }) => {
+            if (entitledToPro(customerInfo)) unlocked();
+          }}
+          onDismiss={() => exitOnce(() => router.back())}
+        />
+        {/* App Review 3.1.2: subscription paywalls must carry functional
+            privacy policy + Terms of Use links in the app itself. The in-app
+            browser presents fine over this form sheet. */}
+        <View style={styles.legalRow}>
+          <Pressable
+            accessibilityRole="link"
+            hitSlop={Spacing.two}
+            onPress={() => void openBrowserAsync('https://getflyright.com/privacy')}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Privacy policy
+            </ThemedText>
+          </Pressable>
+          <ThemedText type="small" themeColor="textSecondary">
+            ·
+          </ThemedText>
+          <Pressable
+            accessibilityRole="link"
+            hitSlop={Spacing.two}
+            onPress={() => void openBrowserAsync('https://getflyright.com/terms')}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Terms of Use
+            </ThemedText>
+          </Pressable>
+        </View>
+      </ThemedView>
     );
   }
 
@@ -111,6 +138,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
+  },
+  paywall: {
+    flex: 1,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingBottom: Spacing.four,
   },
   centered: {
     alignItems: 'center',

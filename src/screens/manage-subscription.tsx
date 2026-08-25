@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
@@ -123,7 +123,7 @@ export function ManageSubscription() {
 
   if (!pro) {
     return (
-      <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, styles.scrollContent]}>
         <Card>
           <ThemedText type="subtitle">No active subscription</ThemedText>
           <ThemedText type="small">
@@ -142,6 +142,11 @@ export function ManageSubscription() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Must scroll in small windows (iPad compatibility mode). */}
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
       <Card>
         <View style={styles.planHeader}>
           <ThemedText type="subtitle">FlyRight Pro</ThemedText>
@@ -191,6 +196,7 @@ export function ManageSubscription() {
           Support ID: {userId}
         </ThemedText>
       )}
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -198,6 +204,8 @@ export function ManageSubscription() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: Spacing.four,
     gap: Spacing.three,
   },

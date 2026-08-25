@@ -11,6 +11,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   View,
@@ -162,7 +163,11 @@ function AppearanceRow() {
     <>
       <View style={styles.row}>
         <View style={styles.rowLabel}>
-          <ThemedText>Appearance</ThemedText>
+          {/* Never let the word break mid-syllable in narrow windows (iPad
+              compatibility mode) — shrink instead. */}
+          <ThemedText numberOfLines={1} adjustsFontSizeToFit>
+            Appearance
+          </ThemedText>
         </View>
         <View style={[styles.segments, { backgroundColor: theme.background }]}>
           {THEME_OPTIONS.map(({ value, label }) => (
@@ -339,6 +344,12 @@ export function Settings() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        {/* The settings stack is taller than small windows (iPad
+            compatibility mode, small phones) — it must scroll. */}
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}>
         <ThemedText type="title" themeColor="heading">
           Settings
         </ThemedText>
@@ -392,6 +403,7 @@ export function Settings() {
         <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
           {versionLine()}
         </ThemedText>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -403,6 +415,8 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.three,
