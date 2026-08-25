@@ -51,7 +51,9 @@ export async function POST(request: Request) {
     {
       method: 'POST',
       headers: {
-        authorization: `Key ${apiKey}`,
+        // New dashboard keys (os_v2_…) use the Key scheme; the app's original
+        // Legacy API Key authenticates with Basic.
+        authorization: apiKey.startsWith('os_v2_') ? `Key ${apiKey}` : `Basic ${apiKey}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
