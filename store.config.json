@@ -79,7 +79,7 @@
       "demoUsername": "reviewer+clerk_test@getflyright.com",
       "demoPassword": "424242",
       "demoRequired": false,
-      "notes": "The app is passwordless and all core functionality (flight tracking, EU261 compensation verdicts) works without signing in. To review the optional account features: tap Settings > Sign in, choose Continue with email, enter the demo username above, then enter 424242 as the verification code (the demo password field repeats this code; no email is sent for this test address)."
+      "notes": "RESUBMISSION 1.0.7 — fixes for the 1.0.5 review issues:\n- Guideline 4 (iPad): every screen now scrolls correctly in compatibility mode (Settings, subscription management, trip details). Verified on iPad Air 11-inch (M3), iPadOS 26.\n- Guideline 3.1.2(c): functional Terms of Use (EULA) and Privacy Policy links now appear directly on the subscription paywall, and the App Description links both (https://getflyright.com/terms, https://getflyright.com/privacy).\n- Guideline 2.1(b): the three in-app purchase products are included in this submission. To reach the paywall in the app: Settings > Get FlyRight Pro. A screen recording of a successful sandbox purchase captured on a physical device is attached.\n\nSIGN-IN DEMO: the app is passwordless and all core functionality (flight tracking, EU261 compensation verdicts, travel-day timeline) works without signing in. To review the optional account features: tap Settings > Sign in, choose Continue with email, enter the demo username above, then enter 424242 as the verification code (the demo password field repeats this code; no email is sent for this test address)."
     }
   }
 }
