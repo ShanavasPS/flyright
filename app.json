@@ -21,7 +21,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "FlyRight does not request your location. This notice is required because a bundled notification SDK references location APIs."
       },
-      "buildNumber": "14"
+      "buildNumber": "17"
     },
     "android": {
       "package": "com.shanavasshaji.flyright",
