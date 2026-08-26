@@ -66,6 +66,8 @@ export function FollowingSection() {
 const styles = StyleSheet.create({
   section: {
     gap: Spacing.two,
+    // Owns its top margin — the hero card above carries none.
+    marginTop: Spacing.two,
     marginBottom: Spacing.two,
   },
   title: {

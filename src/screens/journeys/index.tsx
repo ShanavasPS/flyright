@@ -12,8 +12,7 @@ import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
-import { TravelDayBanner } from '@/components/travel-day-banner';
-import { TravelStatsHeader } from '@/components/travel-stats-header';
+import { HomeHero } from '@/components/travel-day-banner';
 import { CONVEX_URL } from '@/constants/config';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -130,12 +129,12 @@ export function Journeys() {
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             stickySectionHeadersEnabled={false}
-            // The live moment outranks the all-time flex without displacing it.
+            // One hero: on travel day the live flight and all-time stats
+            // share a single navy card; otherwise the stats card stands alone.
             ListHeaderComponent={
               <>
-                <TravelDayBanner journeys={journeys} />
+                <HomeHero journeys={journeys} stats={stats} />
                 {!!CONVEX_URL && <FollowingSection />}
-                <TravelStatsHeader stats={stats} />
               </>
             }
             renderSectionHeader={({ section }) => (

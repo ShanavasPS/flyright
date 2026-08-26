@@ -10,23 +10,22 @@ import { earthComparison, type TravelStats } from '@/services/timeline';
 // The card keeps the brand's night-flight navy in BOTH themes — on the light
 // porcelain page it reads as the one premium object on screen, in dark mode
 // the gradient lifts it just above the flat card surfaces. Text colors are
-// therefore fixed (white on navy), not theme tokens.
-const NIGHT_SKY = 'linear-gradient(150deg, #1C3459 0%, #0C1B36 62%, #091530 100%)';
-const WHITE = '#F2F6FB';
-const WHITE_DIM = 'rgba(242,246,251,0.62)';
-const WHITE_FAINT = 'rgba(242,246,251,0.16)';
-const COBALT = '#7FB1F2';
+// therefore fixed (white on navy), not theme tokens. Exported so the travel
+// day hero can share the exact same treatment (one hero, one palette).
+export const NIGHT_SKY = 'linear-gradient(150deg, #1C3459 0%, #0C1B36 62%, #091530 100%)';
+export const WHITE = '#F2F6FB';
+export const WHITE_DIM = 'rgba(242,246,251,0.62)';
+export const WHITE_FAINT = 'rgba(242,246,251,0.16)';
+export const COBALT = '#7FB1F2';
 
 /** The rewarding little flex at the top of My travels — a passport-style
  * navy card that opens the full Travel stats screen. Renders nothing until
  * there's at least one trip. Signed-out users get the backup pitch — the
  * trips they just logged are the reason to make an account. */
 export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
-  const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
   if (!stats.trips) return null;
-  const orbit = earthComparison(stats.totalKm);
 
   return (
     <Pressable
@@ -35,6 +34,21 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
       onPress={() => router.push('/stats')}
       style={({ pressed }) => pressed && styles.pressed}>
       <View style={[styles.card, { experimental_backgroundImage: NIGHT_SKY }]}>
+        <TravelStatsBody stats={stats} />
+      </View>
+    </Pressable>
+  );
+}
+
+/** The card's contents without the navy card itself, so the travel-day hero
+ * can host the same stats inside its combined card. Assumes stats.trips > 0. */
+export function TravelStatsBody({ stats }: { stats: TravelStats }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
+  const orbit = earthComparison(stats.totalKm);
+
+  return (
+    <View style={styles.statsBody}>
         <View style={styles.spacedRow}>
           <ThemedText type="smallBold" style={styles.microLabel}>
             All-time
@@ -82,8 +96,7 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
             </ThemedText>
           </Pressable>
         )}
-      </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -130,6 +143,11 @@ function MiniContrail() {
 const styles = StyleSheet.create({
   pressed: {
     opacity: 0.9,
+  },
+  // Same vertical rhythm the card used to own, so the body reads identically
+  // whether it lives in its own card or inside the travel-day hero.
+  statsBody: {
+    gap: Spacing.three,
   },
   card: {
     gap: Spacing.three,

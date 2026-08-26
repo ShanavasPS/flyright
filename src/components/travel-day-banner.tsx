@@ -10,9 +10,19 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import {
+  COBALT,
+  NIGHT_SKY,
+  TravelStatsBody,
+  TravelStatsHeader,
+  WHITE,
+  WHITE_DIM,
+  WHITE_FAINT,
+} from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import type { JourneyRow } from '@/services/journeys';
+import type { TravelStats } from '@/services/timeline';
 import {
   activeJourney,
   liveContent,
@@ -21,44 +31,43 @@ import {
 import { getFlightFacts } from '@/services/travel-day-lifecycle';
 import { useTravelDay } from '@/services/travel-day-store';
 
-// TravelStatsHeader is the night sky (all-time, memories); travel day is
-// broad daylight. The card flips to the brand's two tint blues — deep action
-// cobalt easing to day-sky blue low on the horizon — and the progress line
-// reads as a white contrail across it. Fixed in both themes for the same
-// reason as the stats card: it's the one live object on the page.
-const DAY_SKY = 'linear-gradient(150deg, #1E6BE0 40%, #4E9BF5 100%)';
-const WHITE = '#F2F6FB';
-// Brighter ground than the navy cards, so dimmed text keeps more alpha here.
-const WHITE_DIM = 'rgba(242,246,251,0.78)';
-const WHITE_FAINT = 'rgba(242,246,251,0.22)';
 const LIVE_GREEN = '#2FD68C';
 const DELAY_AMBER = '#F2B441';
 
-/** The travel-day moment at the top of My travels: appears T−24h before the
- * next flight, ticks through the stages, and opens the journey's live
- * timeline. Renders nothing when no trip is in its window. */
-export function TravelDayBanner({ journeys }: { journeys: JourneyRow[] }) {
+/** The single hero at the top of My travels — one premium navy object per
+ * screen. On a travel day (T−24h through landing) the live flight and the
+ * all-time stats share one night-sky card: live section on top opening the
+ * journey timeline, stats below opening Travel stats. Every other day the
+ * plain stats card stands alone. */
+export function HomeHero({
+  journeys,
+  stats,
+}: {
+  journeys: JourneyRow[];
+  stats: TravelStats;
+}) {
   const router = useRouter();
   const now = useNow(60_000);
   const active = activeJourney(journeys, now);
   // Hooks stay unconditional; an empty id just reads no row.
   const state = useTravelDay(active?.id ?? '');
 
-  if (!active) return null;
-  const { phase } = travelWindow(active, state, now);
-  if (phase !== 'reminder' && phase !== 'live') return null;
+  const phase = active ? travelWindow(active, state, now).phase : null;
+  if (!active || (phase !== 'reminder' && phase !== 'live')) {
+    return <TravelStatsHeader stats={stats} />;
+  }
 
   const facts = getFlightFacts(active.id);
   const content = liveContent(active, state, facts, now);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open travel day for ${content.title}`}
-      testID="travel-day-banner"
-      onPress={() => router.push({ pathname: '/journey/[id]', params: { id: active.id } })}
-      style={({ pressed }) => [styles.wrapper, pressed && styles.pressed]}>
-      <View style={[styles.card, { experimental_backgroundImage: DAY_SKY }]}>
+    <View style={[styles.card, { experimental_backgroundImage: NIGHT_SKY }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open travel day for ${content.title}`}
+        testID="travel-day-banner"
+        onPress={() => router.push({ pathname: '/journey/[id]', params: { id: active.id } })}
+        style={({ pressed }) => [styles.liveSection, pressed && styles.pressed]}>
         <View style={styles.spacedRow}>
           <ThemedText type="smallBold" style={styles.microLabel}>
             {phase === 'live' ? 'Travel day' : 'Departs tomorrow'}
@@ -75,7 +84,7 @@ export function TravelDayBanner({ journeys }: { journeys: JourneyRow[] }) {
               {content.subtitle}
             </ThemedText>
           </View>
-          {/* Same disclosure affordance as the stats card — this opens a screen. */}
+          {/* Same disclosure affordance as the stats footer — this opens a screen. */}
           <SymbolView
             name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
             size={14}
@@ -90,7 +99,7 @@ export function TravelDayBanner({ journeys }: { journeys: JourneyRow[] }) {
               {
                 // Never fully empty — a sliver of contrail shows it's alive.
                 width: `${Math.max(4, Math.round(content.progress * 100))}%`,
-                backgroundColor: content.emphasis === 'delay' ? DELAY_AMBER : WHITE,
+                backgroundColor: content.emphasis === 'delay' ? DELAY_AMBER : COBALT,
               },
             ]}
           />
@@ -106,8 +115,21 @@ export function TravelDayBanner({ journeys }: { journeys: JourneyRow[] }) {
               .join(' · ')}
           </ThemedText>
         )}
-      </View>
-    </Pressable>
+      </Pressable>
+
+      {!!stats.trips && (
+        <>
+          <View style={styles.divider} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open your travel stats"
+            onPress={() => router.push('/stats')}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <TravelStatsBody stats={stats} />
+          </Pressable>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -130,14 +152,11 @@ function LiveDot() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: Spacing.two,
-  },
   pressed: {
     opacity: 0.9,
   },
   card: {
-    gap: Spacing.two,
+    gap: Spacing.three,
     padding: Spacing.four,
     borderRadius: Spacing.four,
     borderWidth: 1,
@@ -148,14 +167,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
+  liveSection: {
+    gap: Spacing.two,
+  },
   spacedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   microLabel: {
-    // Full white — dimmed tones lose too much contrast on the cobalt ground.
-    color: WHITE,
+    color: WHITE_DIM,
     fontSize: 11,
     lineHeight: 14,
     textTransform: 'uppercase',
@@ -173,8 +194,7 @@ const styles = StyleSheet.create({
     backgroundColor: LIVE_GREEN,
   },
   liveLabel: {
-    // White for legibility on cobalt; the pulsing dot carries the green.
-    color: WHITE,
+    color: LIVE_GREEN,
     fontSize: 11,
     lineHeight: 14,
     textTransform: 'uppercase',
@@ -208,6 +228,10 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   factLine: {
-    color: WHITE,
+    color: COBALT,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: WHITE_FAINT,
   },
 });
