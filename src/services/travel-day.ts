@@ -41,6 +41,19 @@ export const STAGE_LABELS: Record<TravelStage, string> = {
   landed: 'Landed',
 };
 
+/** One-word stage labels for the tightest surfaces (the Dynamic Island's
+ * compact trailing slot) — status at a glance, not a sentence. */
+export const STAGE_COMPACT: Record<TravelStage, string> = {
+  at_airport: 'Airport',
+  checked_in: 'Checked in',
+  bag_dropped: 'Bags',
+  security: 'Security',
+  immigration: 'Passport',
+  boarded: 'Boarded',
+  departed: 'In air',
+  landed: 'Landed',
+};
+
 /** Imperative labels for the tap targets ("Tap when you're…"). */
 export const STAGE_PROMPTS: Record<(typeof TRAVELER_STAGES)[number], string> = {
   at_airport: "I'm at the airport",
@@ -114,6 +127,25 @@ export function undoLast(state: TravelDayState): TravelDayState {
   delete stamps[state.stage];
   const remaining = STAGE_ORDER.filter((s) => stamps[s] !== undefined);
   return { stage: remaining[remaining.length - 1] ?? null, stamps };
+}
+
+/** Sliding the timeline back: any earlier *stamped* traveler stage is a valid
+ * landing spot, and — like undo — never once the flight has departed. */
+export function canRewindTo(state: TravelDayState, target: TravelStage): boolean {
+  if (state.stage === null || !isTravelerStage(state.stage)) return false;
+  if (!isTravelerStage(target)) return false;
+  return state.stamps[target] !== undefined && stageIndex(target) < stageIndex(state.stage);
+}
+
+/** Rewind to an earlier stamped stage, dropping every stamp after it. */
+export function rewindTo(state: TravelDayState, target: TravelStage): TravelDayState {
+  if (!canRewindTo(state, target)) return state;
+  const stamps: TravelDayState['stamps'] = {};
+  for (const s of STAGE_ORDER) {
+    const stamp = state.stamps[s];
+    if (stamp !== undefined && stageIndex(s) <= stageIndex(target)) stamps[s] = stamp;
+  }
+  return { stage: target, stamps };
 }
 
 /** Flight data outranks taps: an actual departure/arrival promotes the state
@@ -210,6 +242,10 @@ export interface LiveContent {
   progress: number;
   stageIndex: number;
   stageLabel: string | null;
+  /** The Dynamic Island's compact trailing slot: one word of status.
+   * Gate wins until boarding (it's the walk's destination); after that the
+   * stage word; before any stage, the departure clock. */
+  compactLabel: string;
   gate: string | null;
   terminal: string | null;
   boardingTime: string | null;
@@ -255,12 +291,22 @@ export function liveContent(
   }
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
 
+  const compactLabel =
+    state.stage && index >= stageIndex('boarded')
+      ? STAGE_COMPACT[state.stage]
+      : facts.gate
+        ? `G${facts.gate}`
+        : state.stage
+          ? STAGE_COMPACT[state.stage]
+          : formatTime(facts.estimatedDeparture ?? j.scheduledDeparture);
+
   return {
     title: `${flight} · ${routeLabel(j)}`,
     subtitle,
     progress: (index + 1) / STAGE_ORDER.length,
     stageIndex: index,
     stageLabel,
+    compactLabel,
     gate: facts.gate,
     terminal: facts.terminal,
     boardingTime: facts.boardingTime,

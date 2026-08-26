@@ -42,7 +42,7 @@ import {
   noteFlightFacts,
   reconcileTravelDay,
 } from '@/services/travel-day-lifecycle';
-import { advanceStage, undoStage, useTravelDay } from '@/services/travel-day-store';
+import { advanceStage, rewindStage, undoStage, useTravelDay } from '@/services/travel-day-store';
 
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
 // have usually lapsed — the trip is journal material, not a claim.
@@ -153,7 +153,9 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      {/* No top edge: the native stack header already owns that inset —
+          including it doubled up as a blank band under the header. */}
+      <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
         {/* The travel-day timeline made the tall path (title + timeline +
             verdict) overflow smaller screens — everything scrolls now. */}
         <ScrollView
@@ -188,6 +190,9 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
             action={CONVEX_URL ? <TravelDayShare journeyId={row.id} /> : undefined}
             onAdvance={(stage: TravelStage) => {
               void advanceStage(row.id, stage).then(() => reconcileTravelDay());
+            }}
+            onRewind={(stage: TravelStage) => {
+              void rewindStage(row.id, stage).then(() => reconcileTravelDay());
             }}
             onUndo={() => {
               void undoStage(row.id).then(() => reconcileTravelDay());
@@ -371,6 +376,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: Spacing.three,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.five,
     gap: Spacing.three,

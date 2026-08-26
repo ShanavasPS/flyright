@@ -20,6 +20,7 @@ import {
   EMPTY_TRAVEL_DAY,
   advance,
   applyFlightFacts,
+  rewindTo,
   undoLast,
   type FlightFacts,
   type TravelDayState,
@@ -81,6 +82,14 @@ export async function undoStage(journeyId: string): Promise<void> {
   if (next === state) return;
   await writeState(journeyId, next);
   Observe.logEvent('travel_day.stage_undone');
+}
+
+export async function rewindStage(journeyId: string, target: TravelStage): Promise<void> {
+  const state = await readState(journeyId);
+  const next = rewindTo(state, target);
+  if (next === state) return;
+  await writeState(journeyId, next);
+  Observe.logEvent('travel_day.stage_rewound', { attributes: { stage: target } });
 }
 
 /** Merge observed flight facts (actual departure/arrival) into the stage

@@ -100,7 +100,10 @@ export function DeleteAccount() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>{body}</SafeAreaView>
+      {/* No top edge: the stack header already owns that inset. */}
+      <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
+        {body}
+      </SafeAreaView>
     </ThemedView>
   );
 }

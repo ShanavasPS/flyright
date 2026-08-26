@@ -1,3 +1,4 @@
+import { formatTime } from '@/services/dates';
 import {
   EMPTY_FACTS,
   EMPTY_TRAVEL_DAY,
@@ -6,7 +7,9 @@ import {
   advance,
   applyFlightFacts,
   canAdvanceTo,
+  canRewindTo,
   liveContent,
+  rewindTo,
   travelWindow,
   undoLast,
   type FlightFacts,
@@ -84,6 +87,48 @@ describe('undoLast', () => {
       stamps: { boarded: NOW.toISOString(), departed: NOW.toISOString() },
     };
     expect(undoLast(departed)).toBe(departed);
+  });
+});
+
+describe('rewindTo / canRewindTo', () => {
+  const walk = (): TravelDayState => {
+    let state = advance(EMPTY_TRAVEL_DAY, 'at_airport', NOW);
+    state = advance(state, 'checked_in', NOW);
+    state = advance(state, 'security', NOW);
+    return state;
+  };
+
+  it('slides back multiple stages, dropping the stamps after the target', () => {
+    const state = rewindTo(walk(), 'at_airport');
+    expect(state.stage).toBe('at_airport');
+    expect(state.stamps.at_airport).toBeDefined();
+    expect(state.stamps.checked_in).toBeUndefined();
+    expect(state.stamps.security).toBeUndefined();
+  });
+
+  it('keeps stamps up to and including the target', () => {
+    const state = rewindTo(walk(), 'checked_in');
+    expect(state.stage).toBe('checked_in');
+    expect(state.stamps.at_airport).toBeDefined();
+    expect(state.stamps.checked_in).toBeDefined();
+    expect(state.stamps.security).toBeUndefined();
+  });
+
+  it('rejects unstamped (skipped) stages and forward targets', () => {
+    const state = walk(); // bag_dropped was skipped
+    expect(canRewindTo(state, 'bag_dropped')).toBe(false);
+    expect(canRewindTo(state, 'boarded')).toBe(false);
+    expect(canRewindTo(state, 'security')).toBe(false);
+    expect(rewindTo(state, 'boarded')).toBe(state);
+  });
+
+  it('is off-limits once the flight has departed', () => {
+    const departed: TravelDayState = {
+      stage: 'departed',
+      stamps: { at_airport: NOW.toISOString(), departed: NOW.toISOString() },
+    };
+    expect(canRewindTo(departed, 'at_airport')).toBe(false);
+    expect(rewindTo(departed, 'at_airport')).toBe(departed);
   });
 });
 
@@ -207,6 +252,27 @@ describe('liveContent', () => {
       last = progress;
     }
     expect(last).toBeLessThanOrEqual(1);
+  });
+
+  it('compactLabel: departure clock → gate → stage word once boarded', () => {
+    // No stage, no gate: the scheduled departure clock (stable, useful).
+    const before = liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, liveNow);
+    expect(before.compactLabel).toBe(formatTime('2026-08-25T08:00Z'));
+
+    // Gate outranks the walk until boarding — it's where you're headed.
+    const atAirport = advance(EMPTY_TRAVEL_DAY, 'security', liveNow);
+    expect(liveContent(journey(), atAirport, facts({ gate: '24' }), liveNow).compactLabel).toBe(
+      'G24',
+    );
+    expect(liveContent(journey(), atAirport, EMPTY_FACTS, liveNow).compactLabel).toBe('Security');
+
+    // From boarded on, the stage word wins even with a gate posted.
+    const boarded = advance(atAirport, 'boarded', liveNow);
+    expect(liveContent(journey(), boarded, facts({ gate: '24' }), liveNow).compactLabel).toBe(
+      'Boarded',
+    );
+    const landed = applyFlightFacts(boarded, facts({ actualArrival: '2026-08-25T10:50Z' }));
+    expect(liveContent(journey(), landed, EMPTY_FACTS, liveNow).compactLabel).toBe('Landed');
   });
 
   it('reflects in-air and landed states', () => {

@@ -1,6 +1,12 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +20,7 @@ import {
   STAGE_PROMPTS,
   TRAVELER_STAGES,
   canAdvanceTo,
+  canRewindTo,
   stageIndex,
   type FlightFacts,
   type TravelDayState,
@@ -32,15 +39,25 @@ const STAGE_ICONS: Record<TravelStage, SymbolViewProps['name']> = {
   landed: { ios: 'airplane.arrival', android: 'flight_land', web: 'flight_land' },
 };
 
-/** The travel-day walk: flight facts up top, then the eight stages — stamped
- * ones with their time, the traveler's next steps tappable, flight-driven
- * rows never tappable. `readOnly` renders the same view for followers. */
+/** Width of the icon column; the rail, its fill, and the sliding thumb are
+ * all centered on it. Matches the rows' minHeight so the thumb circle covers
+ * exactly one stop. */
+const ICON_COLUMN = 28;
+const RAIL_WIDTH = 3;
+const SPRING = { damping: 18, stiffness: 170 } as const;
+
+/** The travel-day walk as a vertical slider: flight facts up top, then the
+ * eight stages strung on a rail. A tinted fill and a thumb spring to the
+ * current stage; tapping ahead advances, tapping an earlier stamped stage
+ * slides back to it. Flight-driven rows are never tappable, and `readOnly`
+ * renders the same view for followers. */
 export function TravelDayTimeline({
   journey,
   state,
   facts,
   readOnly = false,
   onAdvance,
+  onRewind,
   onUndo,
   action,
 }: {
@@ -49,6 +66,8 @@ export function TravelDayTimeline({
   facts: FlightFacts;
   readOnly?: boolean;
   onAdvance?: (stage: TravelStage) => void;
+  /** Slide back to an earlier stamped stage (drops the stamps after it). */
+  onRewind?: (stage: TravelStage) => void;
   onUndo?: () => void;
   /** Optional header-row control — the traveler's share pill. */
   action?: React.ReactNode;
@@ -71,6 +90,37 @@ export function TravelDayTimeline({
 
   // The one tap that's usually next: the first un-stamped traveler stage.
   const nextStage = TRAVELER_STAGES.find((s) => canAdvanceTo(state, s));
+
+  // Each row reports its center Y (relative to the stages container); the
+  // rail spans first-to-last center and the fill/thumb aim at the current
+  // one, so the slider stays true through font scaling and label wraps.
+  const [centers, setCenters] = useState<(number | undefined)[]>([]);
+  const measured = STAGE_ORDER.every((_, i) => centers[i] !== undefined);
+  const railTop = measured ? centers[0]! : 0;
+  const railHeight = measured ? centers[STAGE_ORDER.length - 1]! - centers[0]! : 0;
+  const target = measured && currentIndex >= 0 ? centers[currentIndex]! : railTop;
+
+  const fillHeight = useSharedValue(0);
+  const thumbY = useSharedValue(0);
+  // First measurement snaps into place (reopening the screen mid-trip must
+  // not replay the whole walk); stage changes after that spring.
+  const settled = useRef(false);
+  useEffect(() => {
+    if (!measured) return;
+    const fill = Math.max(0, target - railTop);
+    const y = target - ICON_COLUMN / 2;
+    if (!settled.current) {
+      settled.current = true;
+      fillHeight.value = fill;
+      thumbY.value = y;
+      return;
+    }
+    fillHeight.value = withSpring(fill, SPRING);
+    thumbY.value = withSpring(y, SPRING);
+  }, [measured, target, railTop, fillHeight, thumbY]);
+
+  const fillStyle = useAnimatedStyle(() => ({ height: fillHeight.value }));
+  const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateY: thumbY.value }] }));
 
   return (
     <Card>
@@ -102,11 +152,32 @@ export function TravelDayTimeline({
       )}
 
       <View style={styles.stages}>
-        {STAGE_ORDER.map((stage) => {
+        {measured && (
+          <>
+            <View
+              style={[
+                styles.rail,
+                { top: railTop, height: railHeight, backgroundColor: theme.backgroundSelected },
+              ]}
+            />
+            <Animated.View
+              style={[styles.railFill, { top: railTop, backgroundColor: theme.tint }, fillStyle]}
+            />
+            {currentIndex >= 0 && (
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.thumb, { backgroundColor: theme.tint }, thumbStyle]}
+              />
+            )}
+          </>
+        )}
+        {STAGE_ORDER.map((stage, index) => {
           const stamp = state.stamps[stage];
           const isCurrent = stage === state.stage;
           const reached = stamp !== undefined;
-          const tappable = !readOnly && !!onAdvance && canAdvanceTo(state, stage);
+          const advanceable = !readOnly && !!onAdvance && canAdvanceTo(state, stage);
+          const rewindable = !readOnly && !!onRewind && canRewindTo(state, stage);
+          const tappable = advanceable || rewindable;
           const isNext = stage === nextStage;
           const skipped = !reached && stageIndex(stage) < currentIndex;
 
@@ -117,17 +188,42 @@ export function TravelDayTimeline({
               : theme.textSecondary;
 
           // The next step reads as its action ("I'm on board"), the rest as
-          // plain labels. The accessible name must be this same string —
+          // plain labels. The accessible name must contain this same string —
           // announcing text that differs from what's shown fails label-in-name.
-          const rowLabel = tappable && isNext ? STAGE_PROMPTS[stage as never] : STAGE_LABELS[stage];
+          const rowLabel =
+            advanceable && isNext ? STAGE_PROMPTS[stage as never] : STAGE_LABELS[stage];
+
+          // The current row's circle is transparent — the sliding thumb behind
+          // it is its fill, so the highlight visibly travels between rows.
+          // Everyone else masks the rail with an opaque circle.
+          const circleColor = isCurrent
+            ? 'transparent'
+            : reached
+              ? theme.backgroundSelected
+              : theme.backgroundElement;
+
+          const onRowLayout = (e: LayoutChangeEvent) => {
+            const { y, height } = e.nativeEvent.layout;
+            const center = y + height / 2;
+            setCenters((prev) => {
+              if (prev[index] === center) return prev;
+              const next = [...prev];
+              next[index] = center;
+              return next;
+            });
+          };
 
           const rowContent = (
             <>
-              <SymbolView
-                name={STAGE_ICONS[stage]}
-                size={18}
-                tintColor={skipped ? theme.backgroundSelected : color}
-              />
+              <View style={[styles.iconCircle, { backgroundColor: circleColor }]}>
+                <SymbolView
+                  name={STAGE_ICONS[stage]}
+                  size={18}
+                  tintColor={
+                    isCurrent ? '#FFFFFF' : skipped ? theme.backgroundSelected : color
+                  }
+                />
+              </View>
               <ThemedText
                 type={isCurrent ? 'smallBold' : 'small'}
                 style={[styles.stageLabel, { color: skipped ? theme.textSecondary : color }]}>
@@ -140,9 +236,9 @@ export function TravelDayTimeline({
                   </ThemedText>
                 </Animated.View>
               )}
-              {/* Every tappable stage wears an empty check circle — without
+              {/* Every advanceable stage wears an empty check circle — without
                   it, only the highlighted next step reads as actionable. */}
-              {tappable && (
+              {advanceable && (
                 <SymbolView
                   name={{
                     ios: 'circle',
@@ -175,7 +271,7 @@ export function TravelDayTimeline({
           // which would swallow the nested Undo button.
           if (!tappable) {
             return (
-              <View key={stage} style={styles.stageRow}>
+              <View key={stage} style={styles.stageRow} onLayout={onRowLayout}>
                 {rowContent}
               </View>
             );
@@ -184,8 +280,9 @@ export function TravelDayTimeline({
             <Pressable
               key={stage}
               accessibilityRole="button"
-              accessibilityLabel={rowLabel}
-              onPress={() => onAdvance!(stage)}
+              accessibilityLabel={advanceable ? rowLabel : `Go back to ${rowLabel}`}
+              onLayout={onRowLayout}
+              onPress={() => (advanceable ? onAdvance!(stage) : onRewind!(stage))}
               style={({ pressed }) => [styles.stageRow, pressed && styles.pressed]}>
               {rowContent}
             </Pressable>
@@ -219,11 +316,38 @@ const styles = StyleSheet.create({
   stages: {
     gap: Spacing.two,
   },
+  rail: {
+    position: 'absolute',
+    left: (ICON_COLUMN - RAIL_WIDTH) / 2,
+    width: RAIL_WIDTH,
+    borderRadius: RAIL_WIDTH / 2,
+  },
+  railFill: {
+    position: 'absolute',
+    left: (ICON_COLUMN - RAIL_WIDTH) / 2,
+    width: RAIL_WIDTH,
+    borderRadius: RAIL_WIDTH / 2,
+  },
+  thumb: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: ICON_COLUMN,
+    height: ICON_COLUMN,
+    borderRadius: ICON_COLUMN / 2,
+  },
+  iconCircle: {
+    width: ICON_COLUMN,
+    height: ICON_COLUMN,
+    borderRadius: ICON_COLUMN / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   stageRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    minHeight: 28,
+    minHeight: ICON_COLUMN,
   },
   stageLabel: {
     flex: 1,

@@ -9,8 +9,8 @@
 // src/services/travel-day.ts#liveContent and sent via
 // src/services/live-activity.ts — keep the two files in sync:
 //   attributes: journeyId, title
-//   state: subtitle, progress (0…1), stageLabel, gate, terminal,
-//          delayLabel, emphasis ("none" | "delay" | "gate")
+//   state: subtitle, progress (0…1), stageLabel, compactLabel, gate,
+//          terminal, delayLabel, emphasis ("none" | "delay" | "gate")
 
 import ActivityKit
 import WidgetKit
@@ -36,6 +36,7 @@ private struct TravelDayModel {
     let subtitle: String
     let progress: Double
     let stageLabel: String?
+    let compactLabel: String?
     let gate: String?
     let terminal: String?
     let delayLabel: String?
@@ -53,6 +54,7 @@ private struct TravelDayModel {
         subtitle = text(context.state.data["subtitle"]?.asString()) ?? "Following your trip"
         progress = min(1, max(0, context.state.data["progress"]?.asDouble() ?? 0))
         stageLabel = text(context.state.data["stageLabel"]?.asString())
+        compactLabel = text(context.state.data["compactLabel"]?.asString())
         gate = text(context.state.data["gate"]?.asString())
         terminal = text(context.state.data["terminal"]?.asString())
         delayLabel = text(context.state.data["delayLabel"]?.asString())
@@ -103,14 +105,19 @@ struct OneSignalWidgetLiveActivity: Widget {
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Brand.amber)
                         .lineLimit(1)
-                } else if let gate = model.gate {
-                    Text("G\(gate)")
+                        .minimumScaleFactor(0.8)
+                } else if let word = model.compactLabel {
+                    // One word of status ("Security", "G12", "Boarded") —
+                    // the JS model picks it; see LiveContent.compactLabel.
+                    Text(word)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Brand.cobalt)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 } else {
-                    // Static progress ring — NEVER a ProgressView spinner
-                    // here: widgets don't animate it, so it reads as a
-                    // stuck loader.
+                    // Pre-compactLabel app versions: static progress ring —
+                    // NEVER a ProgressView spinner here: widgets don't
+                    // animate it, so it reads as a stuck loader.
                     Circle()
                         .trim(from: 0, to: max(0.06, model.progress))
                         .stroke(Brand.cobalt, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))

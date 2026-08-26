@@ -24,6 +24,8 @@ export async function advanceStage(_journeyId: string, _target: TravelStage): Pr
 
 export async function undoStage(_journeyId: string): Promise<void> {}
 
+export async function rewindStage(_journeyId: string, _target: TravelStage): Promise<void> {}
+
 export async function mergeFlightStages(_journeyId: string, _facts: FlightFacts): Promise<void> {}
 
 export async function markActivity(

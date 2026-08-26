@@ -154,7 +154,8 @@ export function FollowTrip({ token }: { token: string }) {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ title: 'Live trip' }} />
-      <SafeAreaView style={styles.safeArea}>
+      {/* No top edge: the stack header already owns that inset. */}
+      <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
