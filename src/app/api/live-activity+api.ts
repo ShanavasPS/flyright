@@ -18,6 +18,7 @@ const STATE_KEYS = [
   'subtitle',
   'progress',
   'stageLabel',
+  'compactLabel',
   'gate',
   'terminal',
   'delayLabel',
