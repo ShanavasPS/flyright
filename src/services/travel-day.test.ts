@@ -59,10 +59,19 @@ describe('advance / canAdvanceTo', () => {
     expect(advance(state, 'at_airport', NOW)).toBe(state);
   });
 
-  it('never lets a tap reach flight-driven stages', () => {
+  it('never lets a tap reach flight-driven stages on tracked flights', () => {
     const state = advance(EMPTY_TRAVEL_DAY, 'boarded', NOW);
     expect(canAdvanceTo(state, 'departed' as never)).toBe(false);
     expect(advance(state, 'landed' as never, NOW)).toBe(state);
+  });
+
+  it('manual trips may tap departed and landed (no status feed to do it)', () => {
+    let state = advance(EMPTY_TRAVEL_DAY, 'boarded', NOW);
+    expect(canAdvanceTo(state, 'departed', true)).toBe(true);
+    state = advance(state, 'departed', NOW, true);
+    state = advance(state, 'landed', NOW, true);
+    expect(state.stage).toBe('landed');
+    expect(state.stamps.landed).toBe(NOW.toISOString());
   });
 });
 
@@ -81,12 +90,14 @@ describe('undoLast', () => {
     expect(undoLast(state).stage).toBeNull();
   });
 
-  it('cannot undo a flight-driven stage', () => {
+  it('cannot undo a flight-driven stage on tracked flights', () => {
     const departed: TravelDayState = {
       stage: 'departed',
       stamps: { boarded: NOW.toISOString(), departed: NOW.toISOString() },
     };
     expect(undoLast(departed)).toBe(departed);
+    // Manual trips own every stamp, so the undo works there.
+    expect(undoLast(departed, true).stage).toBe('boarded');
   });
 });
 
@@ -122,13 +133,16 @@ describe('rewindTo / canRewindTo', () => {
     expect(rewindTo(state, 'boarded')).toBe(state);
   });
 
-  it('is off-limits once the flight has departed', () => {
+  it('is off-limits once the flight has departed — unless the trip is manual', () => {
     const departed: TravelDayState = {
       stage: 'departed',
       stamps: { at_airport: NOW.toISOString(), departed: NOW.toISOString() },
     };
     expect(canRewindTo(departed, 'at_airport')).toBe(false);
     expect(rewindTo(departed, 'at_airport')).toBe(departed);
+    const rewound = rewindTo(departed, 'at_airport', true);
+    expect(rewound.stage).toBe('at_airport');
+    expect(rewound.stamps.departed).toBeUndefined();
   });
 });
 

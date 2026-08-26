@@ -189,13 +189,17 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
             facts={getFlightFacts(row.id)}
             action={CONVEX_URL ? <TravelDayShare journeyId={row.id} /> : undefined}
             onAdvance={(stage: TravelStage) => {
-              void advanceStage(row.id, stage).then(() => reconcileTravelDay());
+              void advanceStage(row.id, stage, row.source === 'manual').then(() =>
+                reconcileTravelDay(),
+              );
             }}
             onRewind={(stage: TravelStage) => {
-              void rewindStage(row.id, stage).then(() => reconcileTravelDay());
+              void rewindStage(row.id, stage, row.source === 'manual').then(() =>
+                reconcileTravelDay(),
+              );
             }}
             onUndo={() => {
-              void undoStage(row.id).then(() => reconcileTravelDay());
+              void undoStage(row.id, row.source === 'manual').then(() => reconcileTravelDay());
             }}
           />
         )}

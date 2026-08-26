@@ -68,25 +68,33 @@ async function writeState(journeyId: string, state: TravelDayState): Promise<voi
     .onConflictDoUpdate({ target: travelDay.journeyId, set: values });
 }
 
-export async function advanceStage(journeyId: string, target: TravelStage): Promise<void> {
+export async function advanceStage(
+  journeyId: string,
+  target: TravelStage,
+  manualTrip = false,
+): Promise<void> {
   const state = await readState(journeyId);
-  const next = advance(state, target, new Date());
+  const next = advance(state, target, new Date(), manualTrip);
   if (next === state) return;
   await writeState(journeyId, next);
   Observe.logEvent('travel_day.stage_advanced', { attributes: { stage: target } });
 }
 
-export async function undoStage(journeyId: string): Promise<void> {
+export async function undoStage(journeyId: string, manualTrip = false): Promise<void> {
   const state = await readState(journeyId);
-  const next = undoLast(state);
+  const next = undoLast(state, manualTrip);
   if (next === state) return;
   await writeState(journeyId, next);
   Observe.logEvent('travel_day.stage_undone');
 }
 
-export async function rewindStage(journeyId: string, target: TravelStage): Promise<void> {
+export async function rewindStage(
+  journeyId: string,
+  target: TravelStage,
+  manualTrip = false,
+): Promise<void> {
   const state = await readState(journeyId);
-  const next = rewindTo(state, target);
+  const next = rewindTo(state, target, manualTrip);
   if (next === state) return;
   await writeState(journeyId, next);
   Observe.logEvent('travel_day.stage_rewound', { attributes: { stage: target } });

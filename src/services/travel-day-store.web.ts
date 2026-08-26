@@ -20,11 +20,19 @@ export function useTravelDay(_journeyId: string): TravelDayState {
   return EMPTY_TRAVEL_DAY;
 }
 
-export async function advanceStage(_journeyId: string, _target: TravelStage): Promise<void> {}
+export async function advanceStage(
+  _journeyId: string,
+  _target: TravelStage,
+  _manualTrip = false,
+): Promise<void> {}
 
-export async function undoStage(_journeyId: string): Promise<void> {}
+export async function undoStage(_journeyId: string, _manualTrip = false): Promise<void> {}
 
-export async function rewindStage(_journeyId: string, _target: TravelStage): Promise<void> {}
+export async function rewindStage(
+  _journeyId: string,
+  _target: TravelStage,
+  _manualTrip = false,
+): Promise<void> {}
 
 export async function mergeFlightStages(_journeyId: string, _facts: FlightFacts): Promise<void> {}
 

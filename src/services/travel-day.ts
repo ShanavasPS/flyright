@@ -54,14 +54,18 @@ export const STAGE_COMPACT: Record<TravelStage, string> = {
   landed: 'Landed',
 };
 
-/** Imperative labels for the tap targets ("Tap when you're…"). */
-export const STAGE_PROMPTS: Record<(typeof TRAVELER_STAGES)[number], string> = {
+/** Imperative labels for the tap targets ("Tap when you're…"). The flight
+ * stages' prompts only ever surface on manual journal trips, where the
+ * traveler stamps them too (no status feed to do it). */
+export const STAGE_PROMPTS: Record<TravelStage, string> = {
   at_airport: "I'm at the airport",
   checked_in: "I've checked in",
   bag_dropped: 'Bags are dropped',
   security: "I'm through security",
   immigration: "I'm through immigration",
   boarded: "I'm on board",
+  departed: "We've taken off",
+  landed: "We've landed",
 };
 
 export interface TravelDayState {
@@ -107,39 +111,64 @@ export const stageIndex = (stage: TravelStage | null): number =>
 const isTravelerStage = (stage: TravelStage): stage is (typeof TRAVELER_STAGES)[number] =>
   (TRAVELER_STAGES as readonly string[]).includes(stage);
 
-/** Taps move forward only, may skip stages, and can never pass 'boarded' or
- * override a flight-driven stage. */
-export function canAdvanceTo(state: TravelDayState, target: TravelStage): boolean {
-  if (!isTravelerStage(target)) return false;
+/** Manual journal trips have no status feed, so the flight stages are the
+ * traveler's to stamp too; tracked flights keep them data-only. */
+const travelerMaySet = (stage: TravelStage, manualTrip: boolean): boolean =>
+  manualTrip || isTravelerStage(stage);
+
+/** Taps move forward only and may skip stages. On tracked flights they can
+ * never pass 'boarded' or override a flight-driven stage; manual trips may
+ * tap all the way to 'landed'. */
+export function canAdvanceTo(
+  state: TravelDayState,
+  target: TravelStage,
+  manualTrip = false,
+): boolean {
+  if (!travelerMaySet(target, manualTrip)) return false;
   return stageIndex(target) > stageIndex(state.stage);
 }
 
-export function advance(state: TravelDayState, target: TravelStage, now: Date): TravelDayState {
-  if (!canAdvanceTo(state, target)) return state;
+export function advance(
+  state: TravelDayState,
+  target: TravelStage,
+  now: Date,
+  manualTrip = false,
+): TravelDayState {
+  if (!canAdvanceTo(state, target, manualTrip)) return state;
   return { stage: target, stamps: { ...state.stamps, [target]: now.toISOString() } };
 }
 
-/** Undo the most recent traveler stamp only — one level, and never once the
- * flight has departed (those stages aren't the traveler's to take back). */
-export function undoLast(state: TravelDayState): TravelDayState {
-  if (state.stage === null || !isTravelerStage(state.stage)) return state;
+/** Undo the most recent stamp only — one level, and on tracked flights never
+ * once the flight has departed (those stages aren't the traveler's to take
+ * back; on manual trips every stamp is theirs). */
+export function undoLast(state: TravelDayState, manualTrip = false): TravelDayState {
+  if (state.stage === null || !travelerMaySet(state.stage, manualTrip)) return state;
   const stamps = { ...state.stamps };
   delete stamps[state.stage];
   const remaining = STAGE_ORDER.filter((s) => stamps[s] !== undefined);
   return { stage: remaining[remaining.length - 1] ?? null, stamps };
 }
 
-/** Sliding the timeline back: any earlier *stamped* traveler stage is a valid
- * landing spot, and — like undo — never once the flight has departed. */
-export function canRewindTo(state: TravelDayState, target: TravelStage): boolean {
-  if (state.stage === null || !isTravelerStage(state.stage)) return false;
-  if (!isTravelerStage(target)) return false;
+/** Sliding the timeline back: any earlier *stamped* stage the traveler owns
+ * is a valid landing spot, and — like undo — tracked flights lock the slider
+ * once the flight has departed. */
+export function canRewindTo(
+  state: TravelDayState,
+  target: TravelStage,
+  manualTrip = false,
+): boolean {
+  if (state.stage === null || !travelerMaySet(state.stage, manualTrip)) return false;
+  if (!travelerMaySet(target, manualTrip)) return false;
   return state.stamps[target] !== undefined && stageIndex(target) < stageIndex(state.stage);
 }
 
 /** Rewind to an earlier stamped stage, dropping every stamp after it. */
-export function rewindTo(state: TravelDayState, target: TravelStage): TravelDayState {
-  if (!canRewindTo(state, target)) return state;
+export function rewindTo(
+  state: TravelDayState,
+  target: TravelStage,
+  manualTrip = false,
+): TravelDayState {
+  if (!canRewindTo(state, target, manualTrip)) return state;
   const stamps: TravelDayState['stamps'] = {};
   for (const s of STAGE_ORDER) {
     const stamp = state.stamps[s];

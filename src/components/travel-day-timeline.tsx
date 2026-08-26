@@ -15,10 +15,10 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatTime } from '@/services/dates';
 import {
+  FLIGHT_STAGES,
   STAGE_LABELS,
   STAGE_ORDER,
   STAGE_PROMPTS,
-  TRAVELER_STAGES,
   canAdvanceTo,
   canRewindTo,
   stageIndex,
@@ -27,6 +27,9 @@ import {
   type TravelJourney,
   type TravelStage,
 } from '@/services/travel-day';
+
+const isFlightStage = (stage: TravelStage): boolean =>
+  (FLIGHT_STAGES as readonly string[]).includes(stage);
 
 const STAGE_ICONS: Record<TravelStage, SymbolViewProps['name']> = {
   at_airport: { ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' },
@@ -75,6 +78,9 @@ export function TravelDayTimeline({
   const theme = useTheme();
   const currentIndex = stageIndex(state.stage);
   const factsWithData = journey.source === 'lookup';
+  // Journal trips have no status feed, so the traveler stamps departed/landed
+  // too; tracked flights keep those data-only (and say so, see the caption).
+  const manualTrip = journey.source === 'manual';
 
   const chips: { label: string; value: string; tone?: 'danger' }[] = [];
   if (facts.delayMinutes != null && facts.delayMinutes >= 30) {
@@ -88,8 +94,8 @@ export function TravelDayTimeline({
     chips.push({ label: 'Baggage', value: facts.baggageBelt });
   }
 
-  // The one tap that's usually next: the first un-stamped traveler stage.
-  const nextStage = TRAVELER_STAGES.find((s) => canAdvanceTo(state, s));
+  // The one tap that's usually next: the first un-stamped tappable stage.
+  const nextStage = STAGE_ORDER.find((s) => canAdvanceTo(state, s, manualTrip));
 
   // Each row reports its center Y (relative to the stages container); the
   // rail spans first-to-last center and the fill/thumb aim at the current
@@ -175,11 +181,15 @@ export function TravelDayTimeline({
           const stamp = state.stamps[stage];
           const isCurrent = stage === state.stage;
           const reached = stamp !== undefined;
-          const advanceable = !readOnly && !!onAdvance && canAdvanceTo(state, stage);
-          const rewindable = !readOnly && !!onRewind && canRewindTo(state, stage);
+          const advanceable = !readOnly && !!onAdvance && canAdvanceTo(state, stage, manualTrip);
+          const rewindable = !readOnly && !!onRewind && canRewindTo(state, stage, manualTrip);
           const tappable = advanceable || rewindable;
           const isNext = stage === nextStage;
           const skipped = !reached && stageIndex(stage) < currentIndex;
+          // Tracked flights stamp these from live data — mark them so the
+          // missing tap circle reads as "automatic", not "broken".
+          const flightStamped =
+            !manualTrip && !reached && !readOnly && !!onAdvance && isFlightStage(stage);
 
           const color = isCurrent
             ? theme.tint
@@ -190,8 +200,7 @@ export function TravelDayTimeline({
           // The next step reads as its action ("I'm on board"), the rest as
           // plain labels. The accessible name must contain this same string —
           // announcing text that differs from what's shown fails label-in-name.
-          const rowLabel =
-            advanceable && isNext ? STAGE_PROMPTS[stage as never] : STAGE_LABELS[stage];
+          const rowLabel = advanceable && isNext ? STAGE_PROMPTS[stage] : STAGE_LABELS[stage];
 
           // The current row's circle is transparent — the sliding thumb behind
           // it is its fill, so the highlight visibly travels between rows.
@@ -249,10 +258,23 @@ export function TravelDayTimeline({
                   tintColor={isNext ? theme.tint : theme.textSecondary}
                 />
               )}
+              {/* Data-stamped rows trade the tap circle for a live-data mark,
+                  paired with the caption under the list. */}
+              {flightStamped && (
+                <SymbolView
+                  name={{
+                    ios: 'antenna.radiowaves.left.and.right',
+                    android: 'sensors',
+                    web: 'sensors',
+                  }}
+                  size={16}
+                  tintColor={theme.textSecondary}
+                />
+              )}
               {isCurrent &&
                 !readOnly &&
                 !!onUndo &&
-                stageIndex(stage) < STAGE_ORDER.indexOf('departed') && (
+                (manualTrip || stageIndex(stage) < STAGE_ORDER.indexOf('departed')) && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Undo last step"
@@ -289,6 +311,14 @@ export function TravelDayTimeline({
           );
         })}
       </View>
+
+      {/* Why the last two rows have no tap circle — shown only while they're
+          still pending on a tracked flight, and only to the traveler. */}
+      {!readOnly && !!onAdvance && !manualTrip && !state.stamps.landed && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Departed and Landed fill in automatically from live flight data.
+        </ThemedText>
+      )}
     </Card>
   );
 }
