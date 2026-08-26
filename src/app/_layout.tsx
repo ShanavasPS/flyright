@@ -203,6 +203,17 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* The "Remind me later" follow-up to onboarding's push pitch —
+                journeys/index presents it once the reminder comes due. */}
+              <Stack.Screen
+                name="notification-prime"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.85],
+                }}
+              />
               {/* Web funnel: landing → checkout → post-purchase. Present on
                 native too (go-pro forwards to the paywall) but only linked
                 from the web build. */}

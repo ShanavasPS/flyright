@@ -23,7 +23,13 @@ import { useClaims, type ClaimRow } from '@/services/claims';
 import { countdown, formatDayLabel, formatTime } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
-import { markOnboardingSeen, onboardingSeen } from '@/services/onboarding';
+import { canPromptForPush } from '@/services/notifications';
+import {
+  clearPushRemind,
+  markOnboardingSeen,
+  onboardingSeen,
+  pushRemindDue,
+} from '@/services/onboarding';
 import { cityOf, groupJourneys, travelStats } from '@/services/timeline';
 
 const YEAR_MS = 365 * 86_400_000;
@@ -56,6 +62,18 @@ export function Journeys() {
     if (!loaded || onboardingSeen()) return;
     if (journeys!.length) markOnboardingSeen();
     else router.push('/onboarding');
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The "Remind me later" promise from onboarding's push pitch: one follow-up
+  // sheet on a later session (24h+), and only while the one-shot OS prompt is
+  // still unspent. The flag is consumed up front either way — granted via
+  // add-flight in the meantime means the reminder is moot, not deferred.
+  useEffect(() => {
+    if (!loaded || !onboardingSeen() || !pushRemindDue()) return;
+    clearPushRemind();
+    void canPromptForPush().then((can) => {
+      if (can) router.push('/notification-prime');
+    });
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const now = new Date();

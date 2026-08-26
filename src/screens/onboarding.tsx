@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NotificationPitchArt } from '@/components/notification-pitch';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,7 +13,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
-import { markOnboardingSeen } from '@/services/onboarding';
+import { markOnboardingSeen, markPushRemindLater } from '@/services/onboarding';
 
 type Page = {
   key: string;
@@ -27,7 +28,9 @@ type Page = {
 };
 
 // Travel buddy first, claims second — the pages sell the journal before the
-// money, mirroring how the tabs are ordered.
+// money, mirroring how the tabs are ordered. The push pitch closes the show:
+// it carries the claim story too (delay alerts AND deadline reminders), so
+// the ask lands right after the €600 page has established the stakes.
 const PAGES: Page[] = [
   {
     key: 'journal',
@@ -50,16 +53,9 @@ const PAGES: Page[] = [
     kind: 'push',
     title: 'Never miss money you’re owed',
     body:
-      'A heads-up before every trip, an alert the moment a delay reaches ' +
-      'compensation territory, and deadline reminders on claims you’ve sent.',
-  },
-  {
-    key: 'claim',
-    title: 'Claim it in minutes',
-    body:
-      'Turn an eligible flight into a ready-to-send claim, then track the ' +
-      'airline’s response deadline so nothing slips.',
-    icon: { ios: 'paperplane.fill', android: 'send', web: 'send' },
+      'Most passengers never claim — they simply never find out. Get an alert ' +
+      'the moment a delay is worth money, and reminders before a claim ' +
+      'deadline slips away.',
   },
 ];
 
@@ -70,7 +66,6 @@ export function Onboarding() {
   const listRef = useRef<FlatList<Page>>(null);
   const [page, setPage] = useState(0);
   const [busy, setBusy] = useState(false);
-  const last = page === PAGES.length - 1;
   const isPush = PAGES[page].kind === 'push';
 
   // Seen the moment it appears: every exit path (Skip, Android back, the CTAs)
@@ -79,12 +74,9 @@ export function Onboarding() {
     markOnboardingSeen();
   }, []);
 
-  /** Dismiss to the journeys tab, then open the follow-up screen only after
-   * the modal's exit animation has released the presentation slot — pushing a
-   * sheet while the fullScreenModal is still animating out drops it. */
-  function finish(then?: '/add-flight') {
+  /** Dismiss to the journeys tab — every path out of the intro ends here. */
+  function finish() {
     router.back();
-    if (then) setTimeout(() => router.push(then), 450);
   }
 
   function advance() {
@@ -96,8 +88,8 @@ export function Onboarding() {
   }
 
   /** The priming page's whole point: the OS permission alert fires only from
-   * this explicit tap, after the pitch. Advances whatever the user decides —
-   * a denial still moves on, and add-flight's later request is a no-op once
+   * this explicit tap, after the pitch. Finishes whatever the user decides —
+   * a denial still closes, and add-flight's later request is a no-op once
    * the one-shot prompt is spent. */
   async function enablePush() {
     setBusy(true);
@@ -107,8 +99,16 @@ export function Onboarding() {
       await reconcileNotifications();
     } finally {
       setBusy(false);
-      advance();
+      finish();
     }
+  }
+
+  /** "Remind me later" is a promise, not a dodge: the flag makes the journeys
+   * screen re-open the pitch (as a sheet) on a later session, while the
+   * one-shot OS prompt is still unspent. */
+  function remindLater() {
+    markPushRemindLater();
+    finish();
   }
 
   // Explicit insets, not SafeAreaView: inside a fullScreenModal the native
@@ -130,8 +130,8 @@ export function Onboarding() {
           <Pressable
             accessibilityRole="button"
             onPress={() => finish()}
-            disabled={last}
-            style={last && styles.hidden}>
+            disabled={isPush}
+            style={isPush && styles.hidden}>
             <ThemedText type="link">Skip</ThemedText>
           </Pressable>
         </View>
@@ -152,7 +152,7 @@ export function Onboarding() {
             <View style={[styles.page, { width }]}>
               <View style={styles.art}>
                 {item.kind === 'push' ? (
-                  <MockNotification />
+                  <NotificationPitchArt />
                 ) : item.icon ? (
                   <View
                     style={[styles.iconCircle, { backgroundColor: theme.backgroundSelected }]}>
@@ -198,55 +198,24 @@ export function Onboarding() {
             ))}
           </View>
           <PrimaryButton
-            label={last ? 'Add your first flight' : isPush ? 'Turn on notifications' : 'Continue'}
+            label={isPush ? 'Allow notifications' : 'Continue'}
             disabled={busy}
-            onPress={() => {
-              if (last) return finish('/add-flight');
-              if (isPush) return void enablePush();
-              advance();
-            }}
+            onPress={() => (isPush ? void enablePush() : advance())}
           />
           {/* One reserved slot on every page so the button row never jumps:
-              the priming page's "Not now", an invisible placeholder elsewhere. */}
+              the priming page's "Remind me later", an invisible placeholder
+              elsewhere. */}
           <Pressable
             accessibilityRole="button"
-            onPress={advance}
+            onPress={remindLater}
             disabled={!isPush || busy}
             style={!isPush && styles.hidden}>
             <ThemedText type="link" style={styles.footerLink}>
-              Not now
+              Remind me later
             </ThemedText>
           </Pressable>
         </View>
       </View>
-    </ThemedView>
-  );
-}
-
-/** The priming page's hero: the exact delay alert the lifecycle sends,
- * rendered as a mock push banner (the Expedia/Vrbo/Flighty pattern) — showing
- * the money moment beats describing it. */
-function MockNotification() {
-  return (
-    <ThemedView type="backgroundElement" style={styles.mockCard}>
-      <View style={styles.mockHeader}>
-        <View style={styles.mockAppIcon}>
-          <Image
-            style={styles.mockAppImage}
-            source={require('@/assets/images/splash-icon.png')}
-          />
-        </View>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.mockAppName}>
-          FlyRight
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          now
-        </ThemedText>
-      </View>
-      <ThemedText type="smallBold">AY1331 delayed — you’re likely owed €400</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        Running 3h 15m late. EU261 compensation applies — start your claim.
-      </ThemedText>
     </ThemedView>
   );
 }
@@ -273,7 +242,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   art: {
-    height: 160,
+    // A floor, not a fixed height: the push page's two-banner stack runs
+    // taller than the 128pt icon circles.
+    minHeight: 160,
     alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
@@ -297,38 +268,6 @@ const styles = StyleSheet.create({
   brandImage: {
     width: 76,
     height: 76,
-  },
-  mockCard: {
-    alignSelf: 'stretch',
-    gap: Spacing.one,
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
-    shadowColor: '#0B1520',
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  mockHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    marginBottom: Spacing.one,
-  },
-  mockAppIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0C1B36',
-  },
-  mockAppImage: {
-    width: 14,
-    height: 14,
-  },
-  mockAppName: {
-    flex: 1,
   },
   eyebrow: {
     fontSize: 12,

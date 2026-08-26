@@ -4,3 +4,11 @@ export function onboardingSeen(): boolean {
 }
 
 export function markOnboardingSeen(): void {}
+
+export function markPushRemindLater(): void {}
+
+export function pushRemindDue(): boolean {
+  return false;
+}
+
+export function clearPushRemind(): void {}

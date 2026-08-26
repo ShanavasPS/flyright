@@ -8,6 +8,10 @@ export async function requestPushPermission(): Promise<boolean> {
   return false;
 }
 
+export async function canPromptForPush(): Promise<boolean> {
+  return false;
+}
+
 export async function getPushEnabled(): Promise<boolean> {
   return false;
 }

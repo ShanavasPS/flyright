@@ -27,6 +27,15 @@ export async function requestPushPermission(): Promise<boolean> {
   return OneSignal.Notifications.requestPermission(false);
 }
 
+/** Whether the one-shot OS prompt is still unspent — priming surfaces (the
+ * onboarding pitch, the remind-me-later sheet) only make sense while a tap
+ * can actually summon the system dialog. */
+export async function canPromptForPush(): Promise<boolean> {
+  if (!ONESIGNAL_APP_ID) return false;
+  if (await OneSignal.Notifications.getPermissionAsync()) return false;
+  return OneSignal.Notifications.canRequestPermission();
+}
+
 /**
  * The user's opt-in intent, tracked locally. OneSignal's own `optedIn` flag
  * additionally requires a live APNs token, which simulators and devices
