@@ -5,6 +5,10 @@ export interface FlightStatus {
   flight: string;
   date: string;
   status: string;
+  /** True once the flight has actually landed — the only state where
+   * delayMinutes is a final arrival delay rather than a live prediction.
+   * Optional: responses served before the API route learned it lack it. */
+  landed?: boolean;
   delayMinutes: number | null;
   distanceKm: number | null;
   carrier: { name: string; iata: string };

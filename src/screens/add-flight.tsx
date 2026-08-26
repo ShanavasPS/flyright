@@ -618,7 +618,11 @@ export function AddFlight() {
                   Departs {formatTime(flight.scheduledDeparture)} · Arrives{' '}
                   {formatTime(flight.scheduledArrival)}
                 </ThemedText>
-                <StatusLine status={flight.status} delayMinutes={flight.delayMinutes} />
+                <StatusLine
+                  status={flight.status}
+                  delayMinutes={flight.delayMinutes}
+                  landed={flight.landed}
+                />
                 <View style={styles.cta}>
                   <PrimaryButton label="Track this flight →" onPress={track} />
                 </View>
@@ -668,26 +672,45 @@ function AirportSuggestions({
   );
 }
 
-function StatusLine({ status, delayMinutes }: { status: string; delayMinutes: number | null }) {
+function StatusLine({
+  status,
+  delayMinutes,
+  landed,
+}: {
+  status: string;
+  delayMinutes: number | null;
+  landed?: boolean;
+}) {
   const theme = useTheme();
 
-  if (delayMinutes != null && delayMinutes > 0) {
-    return (
-      <ThemedText type="small" style={{ color: theme.danger }}>
-        Arrived {delayMinutes} min late
-      </ThemedText>
-    );
-  }
-  if (delayMinutes === 0) {
+  // "Arrived" is only true once the flight has landed — before that a
+  // delayMinutes value is a live prediction, not an arrival delay.
+  if (landed) {
+    if (delayMinutes != null && delayMinutes > 0) {
+      return (
+        <ThemedText type="small" style={{ color: theme.danger }}>
+          Arrived {delayMinutes} min late
+        </ThemedText>
+      );
+    }
     return (
       <ThemedText type="small" style={{ color: theme.success }}>
         Arrived on time
       </ThemedText>
     );
   }
+  if (delayMinutes != null && delayMinutes > 0) {
+    return (
+      <ThemedText type="small" style={{ color: theme.danger }}>
+        Running {delayMinutes} min late — we&apos;ll watch the final arrival
+      </ThemedText>
+    );
+  }
   return (
     <ThemedText type="small" themeColor="textSecondary">
-      {status === 'scheduled' ? "Scheduled — we'll watch it for delays" : `Status: ${status}`}
+      {status === 'scheduled' || status === 'Expected'
+        ? "Scheduled — we'll watch it for delays"
+        : `Status: ${status}`}
     </ThemedText>
   );
 }

@@ -215,7 +215,9 @@ function LookupResult({ lookup }: { lookup: ReturnType<typeof useQuery<FlightSta
     );
   }
 
-  if (flight.delayMinutes == null) {
+  // A zero delay only means "arrived on time" once the flight has landed;
+  // before that it's a prediction for a flight that hasn't flown.
+  if (flight.delayMinutes == null || (!flight.landed && flight.delayMinutes <= 0)) {
     return (
       <Card>
         <ThemedText type="subtitle" themeColor="heading">

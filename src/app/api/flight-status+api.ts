@@ -35,6 +35,7 @@ function mockLeg(flight: string, date: string) {
     flight,
     date,
     status: !isPast ? 'scheduled' : delayMinutes ? 'delayed' : 'arrived',
+    landed: isPast,
     delayMinutes,
     distanceKm: 1531,
     carrier: { name: carrier.name, iata: carrier.iata },
@@ -106,35 +107,57 @@ export async function GET(request: Request) {
   // Normalize to the shape the app needs: the rules-engine fields plus the
   // travel-day facts (gate/terminal/times) the live timeline renders.
   const leg = legs[0];
-  const scheduled = leg.arrival?.scheduledTime?.utc;
-  const actual = leg.arrival?.actualTime?.utc ?? leg.arrival?.predictedTime?.utc;
-  const delayMinutes =
-    scheduled && actual
-      ? Math.max(0, Math.round((Date.parse(actual) - Date.parse(scheduled)) / 60000))
+  const dep = leg.departure ?? {};
+  const arr = leg.arrival ?? {};
+
+  // AeroDataBox's live fields: runwayTime is an actual (touchdown/takeoff),
+  // revisedTime the airline's current estimate — which, once the flight has
+  // landed, is the last known gate-arrival time (actualTime often never fills
+  // in). predictedTime exists even for unflown flights.
+  const landed = leg.status === 'Arrived' || !!arr.actualTime?.utc || !!arr.runwayTime?.utc;
+  const actualArrival =
+    arr.actualTime?.utc ?? arr.runwayTime?.utc ?? (landed ? arr.revisedTime?.utc : null);
+
+  // Before landing, an airline-announced revision always counts as a delay
+  // signal, but predictedTime is a speculative ML estimate — it exists for
+  // flights days away, so it only counts once the flight is operating. Either
+  // way a slip within a few minutes of schedule is jitter, not a delay; delay
+  // alerts start at 30 min, so a 15-min floor loses no signal.
+  const OPERATING = ['CheckIn', 'Boarding', 'GateClosed', 'Departed', 'EnRoute', 'Approaching', 'Delayed', 'Diverted'];
+  const PREDICTED_SLIP_MIN = 15;
+  const scheduled = arr.scheduledTime?.utc;
+  const arrivalBasis = landed
+    ? actualArrival
+    : (arr.revisedTime?.utc ?? (OPERATING.includes(leg.status) ? arr.predictedTime?.utc : null));
+  const rawDelay =
+    scheduled && arrivalBasis
+      ? Math.max(0, Math.round((Date.parse(arrivalBasis) - Date.parse(scheduled)) / 60000))
       : null;
+  const delayMinutes = landed || (rawDelay ?? 0) >= PREDICTED_SLIP_MIN ? rawDelay : null;
   const carrier = carrierFor(flight);
 
   return Response.json({
     flight,
     date,
     status: leg.status ?? 'unknown',
+    landed,
     delayMinutes,
     distanceKm: leg.greatCircleDistance?.km ?? null,
     carrier: { name: leg.airline?.name ?? carrier.name, iata: leg.airline?.iata ?? carrier.iata },
     carrierCountry: carrier.country,
-    from: { code: leg.departure?.airport?.iata, country: leg.departure?.airport?.countryCode },
-    to: { code: leg.arrival?.airport?.iata, country: leg.arrival?.airport?.countryCode },
-    scheduledDeparture: toIso(leg.departure?.scheduledTime?.utc),
-    scheduledArrival: toIso(leg.arrival?.scheduledTime?.utc),
-    gate: leg.departure?.gate ?? null,
-    terminal: leg.departure?.terminal ?? null,
-    checkInDesk: leg.departure?.checkInDesk ?? null,
-    baggageBelt: leg.arrival?.baggageBelt ?? null,
+    from: { code: dep.airport?.iata, country: dep.airport?.countryCode },
+    to: { code: arr.airport?.iata, country: arr.airport?.countryCode },
+    scheduledDeparture: toIso(dep.scheduledTime?.utc),
+    scheduledArrival: toIso(arr.scheduledTime?.utc),
+    gate: dep.gate ?? null,
+    terminal: dep.terminal ?? null,
+    checkInDesk: dep.checkInDesk ?? null,
+    baggageBelt: arr.baggageBelt ?? null,
     // AeroDataBox has no separate boarding time; the widget derives one.
     boardingTime: null,
-    estimatedDeparture: toIso(leg.departure?.predictedTime?.utc),
-    actualDeparture: toIso(leg.departure?.actualTime?.utc),
-    estimatedArrival: toIso(leg.arrival?.predictedTime?.utc),
-    actualArrival: toIso(leg.arrival?.actualTime?.utc),
+    estimatedDeparture: toIso(dep.predictedTime?.utc ?? dep.revisedTime?.utc),
+    actualDeparture: toIso(dep.actualTime?.utc ?? dep.runwayTime?.utc),
+    estimatedArrival: toIso(arr.predictedTime?.utc ?? arr.revisedTime?.utc),
+    actualArrival: toIso(actualArrival),
   });
 }
