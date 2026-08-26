@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -20,14 +21,16 @@ import {
 import { getFlightFacts } from '@/services/travel-day-lifecycle';
 import { useTravelDay } from '@/services/travel-day-store';
 
-// Same night-flight navy treatment as TravelStatsHeader — while a trip is
-// live, THIS is the one premium object on screen, so it borrows the identical
-// fixed palette (see that file for the both-themes rationale).
-const NIGHT_SKY = 'linear-gradient(150deg, #1C3459 0%, #0C1B36 62%, #091530 100%)';
+// TravelStatsHeader is the night sky (all-time, memories); travel day is
+// broad daylight. The card flips to the brand's two tint blues — deep action
+// cobalt easing to day-sky blue low on the horizon — and the progress line
+// reads as a white contrail across it. Fixed in both themes for the same
+// reason as the stats card: it's the one live object on the page.
+const DAY_SKY = 'linear-gradient(150deg, #1E6BE0 40%, #4E9BF5 100%)';
 const WHITE = '#F2F6FB';
-const WHITE_DIM = 'rgba(242,246,251,0.62)';
-const WHITE_FAINT = 'rgba(242,246,251,0.16)';
-const COBALT = '#7FB1F2';
+// Brighter ground than the navy cards, so dimmed text keeps more alpha here.
+const WHITE_DIM = 'rgba(242,246,251,0.78)';
+const WHITE_FAINT = 'rgba(242,246,251,0.22)';
 const LIVE_GREEN = '#2FD68C';
 const DELAY_AMBER = '#F2B441';
 
@@ -55,7 +58,7 @@ export function TravelDayBanner({ journeys }: { journeys: JourneyRow[] }) {
       testID="travel-day-banner"
       onPress={() => router.push({ pathname: '/journey/[id]', params: { id: active.id } })}
       style={({ pressed }) => [styles.wrapper, pressed && styles.pressed]}>
-      <View style={[styles.card, { experimental_backgroundImage: NIGHT_SKY }]}>
+      <View style={[styles.card, { experimental_backgroundImage: DAY_SKY }]}>
         <View style={styles.spacedRow}>
           <ThemedText type="smallBold" style={styles.microLabel}>
             {phase === 'live' ? 'Travel day' : 'Departs tomorrow'}
@@ -63,13 +66,21 @@ export function TravelDayBanner({ journeys }: { journeys: JourneyRow[] }) {
           {phase === 'live' && <LiveDot />}
         </View>
 
-        <View style={styles.body}>
-          <ThemedText type="smallBold" style={styles.title} numberOfLines={1}>
-            {content.title}
-          </ThemedText>
-          <ThemedText type="small" style={styles.subtitle} numberOfLines={1}>
-            {content.subtitle}
-          </ThemedText>
+        <View style={styles.bodyRow}>
+          <View style={styles.body}>
+            <ThemedText type="smallBold" style={styles.title} numberOfLines={1}>
+              {content.title}
+            </ThemedText>
+            <ThemedText type="small" style={styles.subtitle} numberOfLines={1}>
+              {content.subtitle}
+            </ThemedText>
+          </View>
+          {/* Same disclosure affordance as the stats card — this opens a screen. */}
+          <SymbolView
+            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            size={14}
+            tintColor={WHITE_DIM}
+          />
         </View>
 
         <View style={styles.track}>
@@ -79,7 +90,7 @@ export function TravelDayBanner({ journeys }: { journeys: JourneyRow[] }) {
               {
                 // Never fully empty — a sliver of contrail shows it's alive.
                 width: `${Math.max(4, Math.round(content.progress * 100))}%`,
-                backgroundColor: content.emphasis === 'delay' ? DELAY_AMBER : COBALT,
+                backgroundColor: content.emphasis === 'delay' ? DELAY_AMBER : WHITE,
               },
             ]}
           />
@@ -143,7 +154,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   microLabel: {
-    color: WHITE_DIM,
+    // Full white — dimmed tones lose too much contrast on the cobalt ground.
+    color: WHITE,
     fontSize: 11,
     lineHeight: 14,
     textTransform: 'uppercase',
@@ -161,13 +173,20 @@ const styles = StyleSheet.create({
     backgroundColor: LIVE_GREEN,
   },
   liveLabel: {
-    color: LIVE_GREEN,
+    // White for legibility on cobalt; the pulsing dot carries the green.
+    color: WHITE,
     fontSize: 11,
     lineHeight: 14,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   body: {
+    flex: 1,
     gap: Spacing.half,
   },
   title: {
@@ -189,6 +208,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   factLine: {
-    color: COBALT,
+    color: WHITE,
   },
 });
