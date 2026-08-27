@@ -11,6 +11,7 @@
  * keys sent here are the contract with targets/FlyRightWidget/
  * FlyRightLiveActivity.swift — change them together. */
 
+import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
 import Storage from 'expo-sqlite/kv-store';
@@ -19,6 +20,14 @@ import { ONESIGNAL_APP_ID } from '@/constants/config';
 import type { LiveContent, TravelJourney } from '@/services/travel-day';
 
 const activityKey = (journeyId: string) => `travel-activity-id-${journeyId}`;
+
+// Reinstalls and app updates kill OS-level Live Activities, but the id
+// persisted below outlives them — without a liveness check (the JS SDK has
+// none) the app would "update" a dead activity forever and never restart it.
+// Stamping ids with the native build catches every install boundary; an id
+// from another build is treated as dead.
+const buildStamp = () =>
+  `${Application.nativeApplicationVersion ?? '0'}(${Application.nativeBuildVersion ?? '0'})`;
 
 const supported = () => Platform.OS === 'ios' && !!ONESIGNAL_APP_ID;
 
@@ -30,8 +39,22 @@ export function initLiveActivities(): void {
   });
 }
 
+/** The journey's activity id, or null if none was started this app build.
+ * Stored as `<buildStamp>|<id>`; a stamp mismatch (or a legacy unstamped
+ * value) means the activity predates the current install and is gone from
+ * the OS — the caller should start a fresh one. */
 export function getActivityId(journeyId: string): string | null {
-  return Storage.getItemSync(activityKey(journeyId));
+  const stored = Storage.getItemSync(activityKey(journeyId));
+  if (!stored) return null;
+  const sep = stored.indexOf('|');
+  const stamp = sep === -1 ? '' : stored.slice(0, sep);
+  const id = sep === -1 ? stored : stored.slice(sep + 1);
+  if (stamp === buildStamp()) return id;
+  // In case the OS did carry the activity across the update, end the orphan
+  // remotely so the restart below can't leave two cards on the lock screen.
+  Storage.removeItemSync(activityKey(journeyId));
+  endById(id);
+  return null;
 }
 
 /** The mutable half the widget renders — must stay JSON-serializable. */
@@ -59,7 +82,7 @@ export function startTravelActivity(journey: TravelJourney, content: LiveContent
     { journeyId: journey.id, title: content.title },
     contentState(content),
   );
-  Storage.setItemSync(activityKey(journey.id), activityId);
+  Storage.setItemSync(activityKey(journey.id), `${buildStamp()}|${activityId}`);
 }
 
 /** Push fresh content to an already-started activity via the server proxy.
@@ -81,6 +104,12 @@ export function endTravelActivity(journeyId: string, content?: LiveContent): voi
   const activityId = getActivityId(journeyId);
   if (!activityId) return;
   Storage.removeItemSync(activityKey(journeyId));
+  endById(activityId, content);
+}
+
+/** Fire-and-forget REST end for an activity id whose storage entry is
+ * already gone (or about to be). */
+function endById(activityId: string, content?: LiveContent): void {
   if (!supported()) return;
   const finalState = content
     ? contentState(content)

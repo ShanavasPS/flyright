@@ -173,6 +173,9 @@ private struct LockScreenView: View {
                         ChipView(text: "Terminal \(terminal)", color: Brand.cobalt)
                     }
                 }
+                // The contrail's plane glyph overflows its 5pt track, visually
+                // eating the stack gap — give the chips extra clearance.
+                .padding(.top, 6)
             }
         }
         .padding(16)
