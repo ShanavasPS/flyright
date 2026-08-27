@@ -155,7 +155,7 @@ async function doReconcile(): Promise<void> {
     if (phase === 'reminder' || phase === 'live') {
       const facts = getFlightFacts(j.id);
       const content = liveContent(j, state, facts, now);
-      const fingerprint = `${content.title}|${content.subtitle}|${content.gate ?? ''}`;
+      const fingerprint = `${content.title}|${content.subtitle}|${content.gate ?? ''}|${content.depTime ?? ''}|${content.arrTime ?? ''}`;
       // Unchanged content only skips work when the surface actually exists —
       // on iOS a stale fingerprint (app update mid-window) must not block the
       // first Live Activity start.

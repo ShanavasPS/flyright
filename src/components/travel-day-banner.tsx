@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { AirlineLogo } from '@/components/airline-logo';
 import { ThemedText } from '@/components/themed-text';
 import {
   COBALT,
@@ -68,29 +69,46 @@ export function HomeHero({
         testID="travel-day-banner"
         onPress={() => router.push({ pathname: '/journey/[id]', params: { id: active.id } })}
         style={({ pressed }) => [styles.liveSection, pressed && styles.pressed]}>
+        {/* Boarding-pass header: the airline's mark top-left, status top-right. */}
         <View style={styles.spacedRow}>
-          <ThemedText type="smallBold" style={styles.microLabel}>
-            {phase === 'live' ? 'Travel day' : 'Departs tomorrow'}
-          </ThemedText>
-          {phase === 'live' && <LiveDot />}
+          <AirlineLogo number={active.number} carrier={active.carrier} size={32} />
+          <View style={styles.headerRight}>
+            <ThemedText type="smallBold" style={styles.microLabel}>
+              {phase === 'live' ? 'Travel day' : 'Departs tomorrow'}
+            </ThemedText>
+            {phase === 'live' && <LiveDot />}
+          </View>
         </View>
 
-        <View style={styles.bodyRow}>
-          <View style={styles.body}>
-            <ThemedText type="smallBold" style={styles.title} numberOfLines={1}>
-              {content.title}
+        {/* The route is the centerpiece: big codes pinned to opposite edges,
+         * times beneath, a dotted contrail with the plane mid-path between. */}
+        <View style={styles.routeRow}>
+          <View style={styles.endpoint}>
+            <ThemedText style={styles.code} numberOfLines={1}>
+              {content.fromCode}
             </ThemedText>
-            <ThemedText type="small" style={styles.subtitle} numberOfLines={1}>
-              {content.subtitle}
-            </ThemedText>
+            {!!content.depTime && (
+              <ThemedText type="small" style={styles.codeTime}>
+                {content.depTime}
+              </ThemedText>
+            )}
           </View>
-          {/* Same disclosure affordance as the stats footer — this opens a screen. */}
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={14}
-            tintColor={WHITE_DIM}
-          />
+          <RoutePath delayed={content.emphasis === 'delay'} />
+          <View style={[styles.endpoint, styles.endpointRight]}>
+            <ThemedText style={styles.code} numberOfLines={1}>
+              {content.toCode}
+            </ThemedText>
+            {!!content.arrTime && (
+              <ThemedText type="small" style={styles.codeTime}>
+                {content.arrTime}
+              </ThemedText>
+            )}
+          </View>
         </View>
+
+        <ThemedText type="small" style={styles.subtitle} numberOfLines={1}>
+          {content.subtitle}
+        </ThemedText>
 
         <View style={styles.track}>
           <View
@@ -105,16 +123,23 @@ export function HomeHero({
           />
         </View>
 
-        {(content.gate || content.delayLabel) && (
+        <View style={styles.spacedRow}>
           <ThemedText type="small" style={styles.factLine} numberOfLines={1}>
             {[
+              content.flightLabel,
               content.gate ? `Gate ${content.gate}` : null,
               content.terminal ? `Terminal ${content.terminal}` : null,
             ]
               .filter(Boolean)
               .join(' · ')}
           </ThemedText>
-        )}
+          {/* Same disclosure affordance as the stats footer — this opens a screen. */}
+          <SymbolView
+            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            size={14}
+            tintColor={WHITE_DIM}
+          />
+        </View>
       </Pressable>
 
       {!!stats.trips && (
@@ -129,6 +154,32 @@ export function HomeHero({
           </Pressable>
         </>
       )}
+    </View>
+  );
+}
+
+/** The dotted contrail joining the route codes, plane mid-path — the same
+ * motif the Live Activity draws, so lock screen and hero read as one. */
+function RoutePath({ delayed }: { delayed: boolean }) {
+  const dots = (key: string) => (
+    <View key={key} style={styles.routeDots}>
+      {Array.from({ length: 3 }, (_, i) => (
+        <View key={i} style={styles.routeDot} />
+      ))}
+    </View>
+  );
+  return (
+    <View style={styles.routePath}>
+      <View style={styles.routeEndDot} />
+      {dots('out')}
+      <SymbolView
+        name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+        size={16}
+        tintColor={delayed ? DELAY_AMBER : COBALT}
+        style={Platform.OS === 'ios' ? undefined : styles.rotated}
+      />
+      {dots('in')}
+      <View style={styles.routeEndDot} />
     </View>
   );
 }
@@ -200,19 +251,64 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  bodyRow: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
   },
-  body: {
-    flex: 1,
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginTop: Spacing.one,
+  },
+  endpoint: {
     gap: Spacing.half,
   },
-  title: {
+  endpointRight: {
+    alignItems: 'flex-end',
+  },
+  code: {
     color: WHITE,
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: 700,
+    letterSpacing: 1,
+  },
+  codeTime: {
+    color: WHITE_DIM,
+    fontVariant: ['tabular-nums'],
+  },
+  routePath: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    // Lift the path to the codes' midline — centering against the full
+    // code+time endpoint block would sag it toward the time row.
+    marginBottom: 20,
+  },
+  routeDots: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+  },
+  routeDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: WHITE_DIM,
+    opacity: 0.55,
+  },
+  routeEndDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: WHITE_DIM,
+  },
+  rotated: {
+    transform: [{ rotate: '90deg' }],
   },
   subtitle: {
     color: WHITE_DIM,

@@ -68,6 +68,8 @@ function contentState(content: LiveContent) {
     terminal: content.terminal ?? '',
     delayLabel: content.delayLabel ?? '',
     emphasis: content.emphasis,
+    depTime: content.depTime ?? '',
+    arrTime: content.arrTime ?? '',
   };
 }
 
@@ -79,7 +81,17 @@ export function startTravelActivity(journey: TravelJourney, content: LiveContent
     .slice(2, 10)}`;
   OneSignal.LiveActivities.startDefault(
     activityId,
-    { journeyId: journey.id, title: content.title },
+    // Route and flight designator are immutable for the activity's lifetime,
+    // so they ride in the attributes — updates and the dimmed post-end state
+    // can never blank them. `title` stays as the pre-joined fallback for
+    // widgets from builds that predate the route layout.
+    {
+      journeyId: journey.id,
+      title: content.title,
+      fromCode: content.fromCode,
+      toCode: content.toCode,
+      flightLabel: content.flightLabel,
+    },
     contentState(content),
   );
   Storage.setItemSync(activityKey(journey.id), `${buildStamp()}|${activityId}`);

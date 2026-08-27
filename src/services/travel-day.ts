@@ -267,6 +267,14 @@ export function activeJourney<T extends TravelJourney>(rows: T[], now: Date): T 
 export interface LiveContent {
   title: string;
   subtitle: string;
+  /** Route endpoints, rendered as the big boarding-pass style codes. */
+  fromCode: string;
+  toCode: string;
+  /** "LH873" (or the carrier name for manual rows without a number). */
+  flightLabel: string;
+  /** Estimated-over-scheduled clock times under each route code. */
+  depTime: string | null;
+  arrTime: string | null;
   /** 0..1 across STAGE_ORDER; 0 before the first stamp. */
   progress: number;
   stageIndex: number;
@@ -297,7 +305,6 @@ export function liveContent(
   now: Date,
 ): LiveContent {
   const flight = j.number || j.carrier;
-  const departure = Date.parse(j.scheduledDeparture);
   const delayed = facts.delayMinutes != null && facts.delayMinutes >= 30;
   const delayLabel = delayed ? `${formatDelay(facts.delayMinutes!)} late` : null;
 
@@ -314,8 +321,13 @@ export function liveContent(
   } else if (state.stage === 'boarded' || (facts.boardingTime && Date.parse(facts.boardingTime) <= now.getTime())) {
     subtitle = state.stage === 'boarded' ? 'On board · ready for pushback' : 'Boarding';
   } else {
-    const departs = `Departs ${formatTime(facts.estimatedDeparture ?? j.scheduledDeparture)}`;
-    subtitle = Number.isNaN(departure) ? departs : `${departs} · ${countdownLabel(Date.parse(facts.estimatedDeparture ?? j.scheduledDeparture), now)}`;
+    // The clock time already sits under the route code on every surface —
+    // the subtitle only counts down ("Departs in 75 min", "Departs now").
+    const effective = facts.estimatedDeparture ?? j.scheduledDeparture;
+    const effectiveMs = Date.parse(effective);
+    subtitle = Number.isNaN(effectiveMs)
+      ? `Departs ${formatTime(effective)}`
+      : `Departs ${countdownLabel(effectiveMs, now)}`;
     if (stageLabel) subtitle = `${stageLabel} · ${subtitle}`;
   }
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
@@ -329,9 +341,17 @@ export function liveContent(
           ? STAGE_COMPACT[state.stage]
           : formatTime(facts.estimatedDeparture ?? j.scheduledDeparture);
 
+  const timeOf = (iso: string | null) =>
+    iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso) : null;
+
   return {
     title: `${flight} · ${routeLabel(j)}`,
     subtitle,
+    fromCode: j.fromCode,
+    toCode: j.toCode,
+    flightLabel: flight,
+    depTime: timeOf(facts.estimatedDeparture ?? j.scheduledDeparture),
+    arrTime: timeOf(facts.estimatedArrival ?? j.scheduledArrival),
     progress: (index + 1) / STAGE_ORDER.length,
     stageIndex: index,
     stageLabel,

@@ -80,10 +80,20 @@ const fmtTime = (iso: string | null): string =>
     ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC'
     : '';
 
+/** "Departs in 2h" / "in 75 min" / "now" — mirrors countdownLabel in
+ * src/services/travel-day.ts, and is timezone-free (unlike clock times). */
+function countdownBit(departureMs: number, now: number): string {
+  const mins = Math.max(0, Math.round((departureMs - now) / 60_000));
+  if (mins >= 90) return `in ${Math.round(mins / 60)}h`;
+  return mins > 0 ? `in ${mins} min` : 'now';
+}
+
 /** Server-side mirror of liveContent() for the Live Activity content state —
- * same dict keys the Swift widget reads. Times render as UTC (the server
- * doesn't know the traveler's timezone); the in-app timeline stays local. */
-export function buildContentState(s: Doc<'liveSessions'>): Record<string, unknown> {
+ * same dict keys the Swift widget reads. Clock times render as UTC (the
+ * server doesn't know the traveler's timezone); the in-app timeline stays
+ * local. The pre-departure subtitle counts down instead — the clock time
+ * already sits under the route code. */
+export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<string, unknown> {
   const delayed = s.delayMinutes != null && s.delayMinutes >= 30;
   const delayLabel = delayed
     ? `${Math.floor(s.delayMinutes! / 60) ? `${Math.floor(s.delayMinutes! / 60)}h ` : ''}${s.delayMinutes! % 60} min late`.replace('h 0 min', 'h')
@@ -94,7 +104,10 @@ export function buildContentState(s: Doc<'liveSessions'>): Record<string, unknow
     subtitle = s.estimatedArrival ? `In the air · lands ${fmtTime(s.estimatedArrival)}` : 'In the air';
   else {
     const stageBit = s.currentStage ? `${STAGE_LABELS[s.currentStage] ?? s.currentStage} · ` : '';
-    subtitle = `${stageBit}Departs ${fmtTime(s.estimatedDeparture ?? s.scheduledDeparture)}`;
+    const departureMs = Date.parse(s.estimatedDeparture ?? s.scheduledDeparture);
+    subtitle = Number.isNaN(departureMs)
+      ? `${stageBit}Departs ${fmtTime(s.estimatedDeparture ?? s.scheduledDeparture)}`
+      : `${stageBit}Departs ${countdownBit(departureMs, now)}`;
   }
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
   return {
@@ -105,6 +118,8 @@ export function buildContentState(s: Doc<'liveSessions'>): Record<string, unknow
     terminal: s.terminal ?? '',
     delayLabel,
     emphasis: delayed ? 'delay' : s.gate ? 'gate' : 'none',
+    depTime: fmtTime(s.estimatedDeparture ?? s.scheduledDeparture),
+    arrTime: fmtTime(s.estimatedArrival ?? s.scheduledArrival),
   };
 }
 

@@ -23,6 +23,8 @@ const STATE_KEYS = [
   'terminal',
   'delayLabel',
   'emphasis',
+  'depTime',
+  'arrTime',
 ] as const;
 
 export async function POST(request: Request) {

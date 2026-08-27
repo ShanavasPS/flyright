@@ -217,7 +217,7 @@ export const updateActivity = internalAction({
     await pushLiveActivity(
       session.activityId,
       session.status === 'active' ? 'update' : 'end',
-      buildContentState(session),
+      buildContentState(session, Date.now()),
     );
   },
 });
