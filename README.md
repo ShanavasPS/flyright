@@ -4,6 +4,13 @@
 
 Flight trackers tell you your flight is late. FlyRight tells you what the airline owes you for it — and helps you claim it.
 
+<p align="center">
+  <img src="store-assets/appstore-65-02.png" width="24%" alt="Instant EU261 compensation verdict — You're owed 400 EUR" />
+  <img src="store-assets/appstore-65-01.png" width="24%" alt="My travels — travel journal with live delay tracking" />
+  <img src="store-assets/appstore-65-03.png" width="24%" alt="Travel stats — kilometres flown, records, places" />
+  <img src="store-assets/appstore-65-04.png" width="24%" alt="Add a flight in seconds with just the flight number" />
+</p>
+
 ## What FlyRight is really about
 
 Most travel apps stop at information: gate changes, delay predictions, where your plane is. FlyRight starts there, but its job isn't done until you're paid. When a disruption happens, FlyRight is already tracking your flight — so the same moment you learn about a 3-hour delay, you learn it's worth up to €600 under EU261, and you can start the claim right from the notification.
