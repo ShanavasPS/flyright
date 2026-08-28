@@ -1,4 +1,5 @@
 import { useAuth, useUser } from '@clerk/expo';
+import { Host, Picker } from '@expo/ui';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
@@ -20,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import {
@@ -163,29 +164,43 @@ function AppearanceRow() {
     <>
       <View style={styles.row}>
         <View style={styles.rowLabel}>
-          {/* Never let the word break mid-syllable in narrow windows (iPad
-              compatibility mode) — shrink instead. */}
-          <ThemedText numberOfLines={1} adjustsFontSizeToFit>
-            Appearance
-          </ThemedText>
+          <ThemedText>Appearance</ThemedText>
         </View>
-        <View style={[styles.segments, { backgroundColor: theme.background }]}>
-          {THEME_OPTIONS.map(({ value, label }) => (
-            <Pressable
-              key={value}
-              onPress={() => select(value)}
-              style={[
-                styles.segment,
-                value === preference && { backgroundColor: theme.backgroundSelected },
-              ]}>
-              <ThemedText
-                type="small"
-                themeColor={value === preference ? 'text' : 'textSecondary'}>
-                {label}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </View>
+        {Platform.OS === 'ios' ? (
+          // A native menu picker stays compact at every window width — the old
+          // inline segmented control collided with the label in narrow iPad
+          // windows (App Review, Guideline 4). iOS-only: @expo/ui's Picker
+          // crashes on Android in SDK 57 (worklet shared-object error inside
+          // ExposedDropdownMenuBox), and Android phones never had the
+          // narrow-window problem, so they keep the segmented control.
+          <Host matchContents>
+            <Picker
+              selectedValue={preference}
+              onValueChange={(value) => select(value as ThemePreference)}>
+              {THEME_OPTIONS.map(({ value, label }) => (
+                <Picker.Item key={value} label={label} value={value} />
+              ))}
+            </Picker>
+          </Host>
+        ) : (
+          <View style={[styles.segments, { backgroundColor: theme.background }]}>
+            {THEME_OPTIONS.map(({ value, label }) => (
+              <Pressable
+                key={value}
+                onPress={() => select(value)}
+                style={[
+                  styles.segment,
+                  value === preference && { backgroundColor: theme.backgroundSelected },
+                ]}>
+                <ThemedText
+                  type="small"
+                  themeColor={value === preference ? 'text' : 'textSecondary'}>
+                  {label}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
       <RowSeparator />
     </>
@@ -417,6 +432,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.three,

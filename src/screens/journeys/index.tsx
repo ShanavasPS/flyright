@@ -14,7 +14,7 @@ import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
 import { HomeHero } from '@/components/travel-day-banner';
 import { CONVEX_URL } from '@/constants/config';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
@@ -332,6 +332,9 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
   },

@@ -24,7 +24,7 @@ import { TravelDayShare } from '@/components/travel-day-share';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { CONVEX_URL } from '@/constants/config';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
@@ -380,6 +380,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     paddingTop: Spacing.three,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.five,

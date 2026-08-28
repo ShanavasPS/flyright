@@ -18,7 +18,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { carrierFor } from '@/constants/carriers';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getAirport, searchAirports, type Airport } from '@/services/airports';
 import {
@@ -718,6 +718,9 @@ function StatusLine({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     gap: Spacing.three,

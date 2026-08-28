@@ -7,7 +7,7 @@ import { AirlineLogo } from '@/components/airline-logo';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { useJourneys, type JourneyRow } from '@/services/journeys';
@@ -237,6 +237,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   list: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.five,
     gap: Spacing.two,

@@ -7,7 +7,7 @@ import { NotificationPitchArt } from '@/components/notification-pitch';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
 
@@ -64,6 +64,9 @@ export function NotificationPrime() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.five,
     paddingTop: Spacing.five,
   },

@@ -1,11 +1,10 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
 export function AnimatedSplashOverlay() {
@@ -59,15 +58,18 @@ export function AnimatedSplashOverlay() {
   );
 }
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
+/** Zoom-out start scale sized to the current window, not the physical screen —
+ * on iPad the app can launch into a window much smaller than the display. */
+const makeIconKeyframe = (windowHeight: number) =>
+  new Keyframe({
+    0: {
+      transform: [{ scale: Math.max(windowHeight, 90) / 90 }],
+    },
+    100: {
+      transform: [{ scale: 1 }],
+      easing: Easing.elastic(0.7),
+    },
+  });
 
 const logoKeyframe = new Keyframe({
   0: {
@@ -96,13 +98,17 @@ const glowKeyframe = new Keyframe({
 });
 
 export function AnimatedIcon() {
+  const { height } = useWindowDimensions();
   return (
     <View style={styles.iconContainer}>
       <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
         <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
       </Animated.View>
 
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
+      <Animated.View
+        entering={makeIconKeyframe(height).duration(DURATION)}
+        style={styles.background}
+      />
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
         <Image style={styles.image} source={require('@/assets/images/splash-icon.png')} />
       </Animated.View>

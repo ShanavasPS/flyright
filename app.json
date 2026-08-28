@@ -2,7 +2,7 @@
   "expo": {
     "name": "FlyRight",
     "slug": "flyright",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "flyright",
@@ -14,14 +14,21 @@
         "tinted": "./assets/images/ios-icon-tinted.png"
       },
       "bundleIdentifier": "com.shanavasshaji.flyright",
+      "supportsTablet": true,
       "associatedDomains": [
         "applinks:getflyright.com"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
         "NSLocationWhenInUseUsageDescription": "FlyRight does not request your location. This notice is required because a bundled notification SDK references location APIs."
       },
-      "buildNumber": "23"
+      "buildNumber": "24"
     },
     "android": {
       "package": "com.shanavasshaji.flyright",
@@ -52,7 +59,7 @@
           ]
         }
       ],
-      "versionCode": 20
+      "versionCode": 21
     },
     "web": {
       "output": "server",

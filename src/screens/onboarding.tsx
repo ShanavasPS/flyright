@@ -31,6 +31,10 @@ type Page = {
 // money, mirroring how the tabs are ordered. The push pitch closes the show:
 // it carries the claim story too (delay alerts AND deadline reminders), so
 // the ask lands right after the €600 page has established the stakes.
+/** Readable column for the intro copy and CTA on tablet-width screens —
+ * tighter than MaxContentWidth because these are single short paragraphs. */
+const PageMaxWidth = 480;
+
 const PAGES: Page[] = [
   {
     key: 'journal',
@@ -116,6 +120,14 @@ export function Onboarding() {
   // status bar. The floor keeps sensible padding on inset-less screens.
   const insets = useSafeAreaInsets();
 
+  // Paging offsets are multiples of the window width, so an iPad rotation or
+  // window resize strands the list between pages — snap back to the current
+  // page whenever the width changes.
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: page * width, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width]);
+
   return (
     <ThemedView style={styles.container}>
       <View
@@ -150,6 +162,9 @@ export function Onboarding() {
           }
           renderItem={({ item }) => (
             <View style={[styles.page, { width }]}>
+              {/* Inner clamp: pages span the whole window, but the art and
+                  copy hold a readable column on iPad-width screens. */}
+              <View style={styles.pageContent}>
               <View style={styles.art}>
                 {item.kind === 'push' ? (
                   <NotificationPitchArt />
@@ -180,6 +195,7 @@ export function Onboarding() {
               <ThemedText themeColor="textSecondary" style={styles.body}>
                 {item.body}
               </ThemedText>
+              </View>
             </View>
           )}
         />
@@ -239,6 +255,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.five,
+  },
+  pageContent: {
+    width: '100%',
+    maxWidth: PageMaxWidth,
+    alignItems: 'center',
     gap: Spacing.two,
   },
   art: {
@@ -282,6 +303,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   footer: {
+    width: '100%',
+    maxWidth: PageMaxWidth,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
   },
