@@ -5,10 +5,11 @@
 Flight trackers tell you your flight is late. FlyRight tells you what the airline owes you for it — and helps you claim it.
 
 <p align="center">
-  <img src="store-assets/appstore-65-02.png" width="24%" alt="Instant EU261 compensation verdict — You're owed 400 EUR" />
-  <img src="store-assets/appstore-65-01.png" width="24%" alt="My travels — travel journal with live delay tracking" />
-  <img src="store-assets/appstore-65-03.png" width="24%" alt="Travel stats — kilometres flown, records, places" />
-  <img src="store-assets/appstore-65-04.png" width="24%" alt="Add a flight in seconds with just the flight number" />
+  <img src="store-assets/appstore-65-05.png" width="19%" alt="Travel day live — boarding-pass hero card counting down to departure" />
+  <img src="store-assets/appstore-65-02.png" width="19%" alt="Instant EU261 compensation verdict — You're owed 400 EUR" />
+  <img src="store-assets/appstore-65-01.png" width="19%" alt="My travels — travel journal with live delay tracking" />
+  <img src="store-assets/appstore-65-03.png" width="19%" alt="Travel stats — kilometres flown, records, places" />
+  <img src="store-assets/appstore-65-04.png" width="19%" alt="Add a flight in seconds with just the flight number" />
 </p>
 
 ## What FlyRight is really about
