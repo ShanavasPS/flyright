@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 
 import { db } from '@/db/client';
@@ -31,4 +32,16 @@ export async function recordDelay(journeyId: string, delayMinutes: number): Prom
 /** All recorded disruptions, live. */
 export function useDisruptions() {
   return useLiveQuery(db.select().from(disruptions));
+}
+
+/** The recorded disruption for one journey, live; undefined when none. */
+export function useDisruption(journeyId: string | undefined): DisruptionRow | undefined {
+  const { data } = useLiveQuery(
+    db
+      .select()
+      .from(disruptions)
+      .where(eq(disruptions.journeyId, journeyId ?? '')),
+    [journeyId],
+  );
+  return data?.[0];
 }

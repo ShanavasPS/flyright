@@ -9,3 +9,7 @@ export async function recordDelay(_journeyId: string, _delayMinutes: number): Pr
 export function useDisruptions(): { data: DisruptionRow[] } {
   return { data: [] };
 }
+
+export function useDisruption(_journeyId: string | undefined): DisruptionRow | undefined {
+  return undefined;
+}

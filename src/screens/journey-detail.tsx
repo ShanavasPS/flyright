@@ -32,7 +32,8 @@ import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
 import { useClaimForJourney } from '@/services/claims';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
-import { recordDelay } from '@/services/disruptions';
+import { resolveDelayMinutes } from '@/services/arrival-delay';
+import { recordDelay, useDisruption } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { hasPro } from '@/services/purchases';
@@ -118,6 +119,11 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
 
   const travelState = useTravelDay(rowId ?? '');
 
+  // The delay cache the journeys list badges from — the status provider
+  // forgets flights long before claim windows close, so a landed flight's
+  // recorded delay must keep the verdict alive once live lookups 404.
+  const recorded = useDisruption(isDemo ? undefined : rowId);
+
   if (!journey) {
     return (
       <ThemedView style={[styles.container, styles.centered]}>
@@ -126,11 +132,18 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
     );
   }
 
-  const delayMinutes = isDemo ? DEMO_DISRUPTION.delayMinutes : status.data?.delayMinutes;
+  const tripAge = now - Date.parse(journey.scheduledDeparture);
+
+  // Recorded delays outside the claim window stay journal material — no point
+  // resurrecting a CTA for a claim that can no longer be filed.
+  const delayMinutes = isDemo
+    ? DEMO_DISRUPTION.delayMinutes
+    : resolveDelayMinutes(
+        status.data,
+        tripAge <= CLAIM_WINDOW_MS ? recorded?.delayMinutes : null,
+      );
   const disruption: Disruption | null =
     delayMinutes != null ? { type: 'delay', delayMinutes } : null;
-
-  const tripAge = now - Date.parse(journey.scheduledDeparture);
   // A verdict is a bonus on top of the journal — when we can't get live data
   // (manual entries, flights the provider no longer remembers), the trip
   // simply reads as history instead of showing a spinner or an error.
