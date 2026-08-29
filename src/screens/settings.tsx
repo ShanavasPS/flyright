@@ -40,6 +40,7 @@ import {
   type ThemePreference,
 } from '@/services/theme';
 import {
+  billingAvailable,
   restorePurchases,
   useActiveSubscriptions,
   useProEntitlement,
@@ -377,30 +378,34 @@ export function Settings() {
 
           <AppearanceRow />
 
-          <Pressable
-            onPress={() => router.push(pro ? '/manage-subscription' : '/paywall')}
-            style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
-            <View style={styles.rowLabel}>
-              <ThemedText>{pro ? 'FlyRight Pro' : 'Get FlyRight Pro'}</ThemedText>
-              {pro && (
+          {billingAvailable && (
+            <>
+              <Pressable
+                onPress={() => router.push(pro ? '/manage-subscription' : '/paywall')}
+                style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+                <View style={styles.rowLabel}>
+                  <ThemedText>{pro ? 'FlyRight Pro' : 'Get FlyRight Pro'}</ThemedText>
+                  {pro && (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {renewalLine(pro.expirationDate, pro.willRenew)}
+                    </ThemedText>
+                  )}
+                </View>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {renewalLine(pro.expirationDate, pro.willRenew)}
+                  {pro ? planLabel(pro.productIdentifier) : 'Free plan'}
                 </ThemedText>
-              )}
-            </View>
-            <ThemedText type="small" themeColor="textSecondary">
-              {pro ? planLabel(pro.productIdentifier) : 'Free plan'}
-            </ThemedText>
-            {chevron}
-          </Pressable>
+                {chevron}
+              </Pressable>
 
-          <RowSeparator />
+              <RowSeparator />
 
-          <Pressable
-            onPress={onRestore}
-            style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
-            <ThemedText themeColor="tint">Restore purchases</ThemedText>
-          </Pressable>
+              <Pressable
+                onPress={onRestore}
+                style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+                <ThemedText themeColor="tint">Restore purchases</ThemedText>
+              </Pressable>
+            </>
+          )}
         </ThemedView>
 
         {pro && activeSubscriptions.length > 1 && (

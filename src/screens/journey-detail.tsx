@@ -42,7 +42,7 @@ import { recordDelay, useDisruption } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
 import { noteSuccess } from '@/services/haptics';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
-import { hasPro } from '@/services/purchases';
+import { billingAvailable, hasPro } from '@/services/purchases';
 import { travelWindow, type TravelStage } from '@/services/travel-day';
 import {
   getFlightFacts,
@@ -351,8 +351,9 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   const startClaim = async () => {
     const delay = String(disruption.delayMinutes ?? 0);
     // The demo exists to show off the whole verdict → letter flow, so it never
-    // hits the paywall — Pro gates real claims only.
-    if (isDemoJourneyId(journey.id) || (await hasPro())) {
+    // hits the paywall — Pro gates real claims only. Builds that can't sell
+    // Pro (Galaxy Store) don't gate at all: no purchase path, no paywall.
+    if (isDemoJourneyId(journey.id) || !billingAvailable || (await hasPro())) {
       router.push({ pathname: '/claim', params: { journeyId: journey.id, delay } });
       return;
     }

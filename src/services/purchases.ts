@@ -10,7 +10,12 @@ import Purchases, {
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { create } from 'zustand';
 
-import { RC_API_KEY_ANDROID, RC_API_KEY_IOS, RC_API_KEY_TEST } from '@/constants/config';
+import {
+  IS_GALAXY_BUILD,
+  RC_API_KEY_ANDROID,
+  RC_API_KEY_IOS,
+  RC_API_KEY_TEST,
+} from '@/constants/config';
 
 /**
  * Single boundary for all RevenueCat access. Nothing else in the app imports
@@ -63,8 +68,17 @@ const NO_SUBSCRIPTIONS: string[] = [];
 export const useActiveSubscriptions = () =>
   usePurchasesStore((s) => s.customerInfo?.activeSubscriptions ?? NO_SUBSCRIPTIONS);
 
+/**
+ * Whether this binary can sell Pro at all. The Galaxy Store build can't:
+ * RevenueCat has no Samsung IAP integration and Galaxy Store policy expects
+ * Samsung IAP for digital goods — so that build hides all upsell UI and
+ * leaves claims un-gated instead of dead-ending users on a paywall.
+ */
+export const billingAvailable = !IS_GALAXY_BUILD;
+
 export function initPurchases() {
   if (Platform.OS === 'web') return; // web build is informational; no billing
+  if (!billingAvailable) return; // Galaxy Store build ships without billing
   const platformKey = Platform.select({ ios: RC_API_KEY_IOS, android: RC_API_KEY_ANDROID });
   // The Test Store fallback is dev-only; a release build must ship platform keys.
   const apiKey = platformKey || (__DEV__ ? RC_API_KEY_TEST : '');

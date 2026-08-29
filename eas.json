@@ -19,6 +19,16 @@
     "production": {
       "extends": "base",
       "autoIncrement": true
+    },
+    "galaxy": {
+      "extends": "production",
+      "environment": "production",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_STORE_VARIANT": "galaxy"
+      }
     }
   },
   "submit": {

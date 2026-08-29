@@ -11,6 +11,10 @@ export type { PurchaseOutcome };
 export const ENTITLEMENT_PRO = 'Owed Pro';
 export const OFFERING_CHANGE_PLAN = 'change-plan';
 
+// The web funnel does sell Pro (web paywall/checkout), so screens that gate on
+// billing keep gating here — only the Galaxy Store native build turns this off.
+export const billingAvailable = true;
+
 export const useCustomerInfo = (): CustomerInfo | null => null;
 export const useHasPro = () => false;
 export const useProEntitlement = () => null;

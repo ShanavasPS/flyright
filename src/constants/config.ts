@@ -2,6 +2,11 @@
 // Server-only secrets (flight data API keys, webhook auth) live in EAS Hosting env vars
 // and are read in src/app/api/* via process.env — never here.
 
+/** Which store this binary is built for — set per build profile in eas.json.
+ * 'galaxy' (Samsung Galaxy Store) ships without billing: RevenueCat has no
+ * Samsung IAP integration, so Pro is not sold there. */
+export const IS_GALAXY_BUILD = process.env.EXPO_PUBLIC_STORE_VARIANT === 'galaxy';
+
 export const RC_API_KEY_IOS = process.env.EXPO_PUBLIC_RC_IOS_KEY ?? '';
 export const RC_API_KEY_ANDROID = process.env.EXPO_PUBLIC_RC_ANDROID_KEY ?? '';
 // RevenueCat Test Store key — dev fallback when no platform key is set. Must not ship.
