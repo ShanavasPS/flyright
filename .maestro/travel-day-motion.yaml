@@ -1,0 +1,65 @@
+# Travel-day motion pass (iOS sim): the delayed live hero must render on My
+# travels, open into the timeline with airport-fact chips, and two stage taps
+# must stamp times through the animated StageRow/StageIcon path (press
+# physics, icon pop, thumb spring — commit 87df655).
+#
+# Seed a live MANUAL trip (every stage tappable) + delayed facts first. Keep
+# the departure ~45 min in the future so the phase is 'live'; bump both dates
+# and times when reusing:
+#   DB="$(xcrun simctl get_app_container booted com.shanavasshaji.flyright data)/Documents/SQLite"
+#   sqlite3 "$DB/flyright.db" "INSERT OR REPLACE INTO journeys (id, mode, carrier, carrier_country, number, from_code, from_country, to_code, to_country, distance_km, scheduled_departure, scheduled_arrival, created_at, user_id, source, updated_at) VALUES ('TEST-LIVE-2026-08-29','flight','Finnair','FI','AY815','HEL','FI','ARN','SE',397,'2026-08-29T11:15Z','2026-08-29T12:15Z','2026-08-29T09:00:00.000Z',NULL,'manual','2026-08-29T09:00:00.000Z'); DELETE FROM travel_day WHERE journey_id='TEST-LIVE-2026-08-29';"
+#   sqlite3 "$DB/ExpoSQLiteStorage" "INSERT OR REPLACE INTO storage (key, value) VALUES ('travel-facts-TEST-LIVE-2026-08-29', '{\"delayMinutes\":45,\"gate\":\"A12\",\"terminal\":\"2\",\"checkInDesk\":null,\"baggageBelt\":null,\"boardingTime\":null,\"estimatedDeparture\":\"2026-08-29T12:00Z\",\"actualDeparture\":null,\"estimatedArrival\":\"2026-08-29T13:00Z\",\"actualArrival\":null}');"
+#   (user_id NULL = anonymous; facts kv makes the hero go amber + chips appear.)
+#
+# ⚠ Hero shadowing: activeJourney picks the EARLIEST same-day in-window trip
+# using an EMPTY travel-day state, so an already-landed tracked flight from
+# this morning steals the hero and then bails to the stats card. Shift such
+# rows out of the window first and restore after:
+#   sqlite3 "$DB/flyright.db" "UPDATE journeys SET scheduled_departure=replace(scheduled_departure,'<today>','<lastweek>'), scheduled_arrival=replace(scheduled_arrival,'<today>','<lastweek>') WHERE id='<offender>';"
+#
+# Clean up after:
+#   sqlite3 "$DB/flyright.db" "DELETE FROM journeys WHERE id='TEST-LIVE-2026-08-29'; DELETE FROM travel_day WHERE journey_id='TEST-LIVE-2026-08-29';"
+#   sqlite3 "$DB/ExpoSQLiteStorage" "DELETE FROM storage WHERE key LIKE '%TEST-LIVE-2026-08-29%';"
+#
+# Run: ~/.maestro/bin/maestro --device <iphone-udid> test .maestro/travel-day-motion.yaml
+#      (dev build installed + Metro on :8081; relaunch is in the flow — the
+#      journeys live query never sees external sqlite writes without it)
+#
+# Gotchas: the hero banner is ONE flattened a11y element ("Open travel day
+# for …") — inner text like "45 min late" can never match, target the
+# travel-day-banner testID. Maestro's `back` is a no-op on iOS — navigate via
+# tabs or the header Back button instead.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+# The delayed live hero must be up (amber fill, gate fact line).
+- extendedWaitUntil:
+    visible:
+      id: "travel-day-banner"
+    timeout: 15000
+- tapOn:
+    id: "travel-day-banner"
+- extendedWaitUntil:
+    visible: "Travel day"
+    timeout: 20000
+# Airport-fact chips render from the seeded facts (plain Views — their text
+# stays individually visible, unlike the flattened hero).
+- assertVisible: "Delay"
+- assertVisible: "45 min"
+- assertVisible: "A12"
+# Two advances through the animated stage rows; each must stamp a time and
+# promote the next prompt.
+- tapOn: "I'm at the airport"
+- extendedWaitUntil:
+    visible: "I've checked in"
+    timeout: 10000
+- tapOn: "I've checked in"
+- extendedWaitUntil:
+    visible: "Bags are dropped"
+    timeout: 10000
+# The Undo control is a Pressable — its a11y label, not its inner text.
+- assertVisible: "Undo last step"
