@@ -1,0 +1,25 @@
+# Galaxy Store build variant check: the billing-free Samsung build hides all
+# Pro upsell UI (settings rows) because RevenueCat has no Samsung IAP.
+#
+# ONLY passes against a `galaxy`-profile build (eas build -p android --profile
+# galaxy → APK with EXPO_PUBLIC_STORE_VARIANT=galaxy). On Play/dev builds the
+# "Get FlyRight Pro" row IS visible and this flow fails by design.
+# Run: maestro test .maestro/galaxy-variant.yaml  (install the galaxy APK first)
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Every flight, remembered"
+    timeout: 30000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Appearance"
+    timeout: 10000
+- assertNotVisible: "Get FlyRight Pro"
+- assertNotVisible: "Restore purchases"
+- assertNotVisible: "FlyRight Pro"
