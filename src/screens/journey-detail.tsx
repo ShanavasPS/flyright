@@ -34,7 +34,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
-import { NEXT_STATUSES } from '@/services/claim-status';
+import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
@@ -383,6 +383,19 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
               <ThemedText type="small" themeColor="textSecondary">
                 {statusGuidance(claim, claimOverdue)}
               </ThemedText>
+              {!!parseSentSnapshot(claim.sentSnapshot) && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="See what we sent"
+                  hitSlop={Spacing.two}
+                  onPress={() =>
+                    router.push({ pathname: '/claim-letter', params: { journeyId: journey.id } })
+                  }>
+                  <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                    See what we sent →
+                  </ThemedText>
+                </Pressable>
+              )}
               {NEXT_STATUSES[claim.status].length > 0 && (
                 <Pressable
                   accessibilityRole="button"

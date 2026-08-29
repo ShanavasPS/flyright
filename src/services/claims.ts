@@ -4,7 +4,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
 import type { Verdict } from '@/rules/types';
-import { canTransition, type ClaimStatus } from '@/services/claim-status';
+import { canTransition, type ClaimStatus, type SentSnapshot } from '@/services/claim-status';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 
 export type ClaimRow = typeof claims.$inferSelect;
@@ -59,8 +59,10 @@ export async function saveClaim(opts: {
   userId: string | null | undefined;
   verdict: Verdict;
   sent: boolean;
+  /** Frozen copy of what went out — stored only on the sending run. */
+  snapshot?: SentSnapshot | null;
 }): Promise<void> {
-  const { journeyId, userId, verdict, sent } = opts;
+  const { journeyId, userId, verdict, sent, snapshot } = opts;
   if (!verdict.compensation) return;
 
   const now = new Date();
@@ -76,6 +78,7 @@ export async function saveClaim(opts: {
         status: 'sent',
         sentAt: now.toISOString(),
         responseDeadline: deadline.toISOString(),
+        sentSnapshot: snapshot ? JSON.stringify(snapshot) : null,
       })
       .where(eq(claims.id, id));
     void reconcileNotifications();
@@ -92,6 +95,7 @@ export async function saveClaim(opts: {
     status: sent ? 'sent' : 'draft',
     sentAt: sent ? now.toISOString() : null,
     responseDeadline: sent ? deadline.toISOString() : null,
+    sentSnapshot: sent && snapshot ? JSON.stringify(snapshot) : null,
     createdAt: now.toISOString(),
   });
   void reconcileNotifications();

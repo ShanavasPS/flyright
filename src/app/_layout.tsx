@@ -174,6 +174,16 @@ function RootLayout() {
                   sheetAllowedDetents: [0.97],
                 }}
               />
+              {/* Read-only view of the sent claim email/letter snapshot. */}
+              <Stack.Screen
+                name="claim-letter"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.9],
+                }}
+              />
               <Stack.Screen
                 name="paywall"
                 options={{

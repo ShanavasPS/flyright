@@ -46,3 +46,30 @@ export const OUTCOME_LABELS: Record<ClaimStatus, string> = {
 export function isClosed(status: ClaimStatus): boolean {
   return status === 'paid' || status === 'rejected';
 }
+
+/** Exactly what went out, frozen at send time: the email subject and cover
+ * note, the letter HTML behind the PDF, and who it addressed. Stored as JSON
+ * in claims.sent_snapshot so the user can always re-read their own claim. */
+export interface SentSnapshot {
+  subject: string;
+  body: string;
+  letterHtml: string;
+  /** Who the letter addresses — the app never sees the composer's To field. */
+  recipient: string;
+  claimantName: string;
+  claimantEmail: string;
+  pdfName: string;
+  via: 'email' | 'share';
+}
+
+export function parseSentSnapshot(json: string | null | undefined): SentSnapshot | null {
+  if (!json) return null;
+  try {
+    const value = JSON.parse(json) as SentSnapshot;
+    return typeof value?.letterHtml === 'string' && typeof value?.subject === 'string'
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+}

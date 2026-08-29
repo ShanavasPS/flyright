@@ -1,7 +1,7 @@
 import { useAuth, useUser } from '@clerk/expo';
 import { Observe } from 'expo-observe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption } from '@/rules/types';
 import { canEmail, emailClaim, generateClaimPdf, shareClaim } from '@/services/claim-delivery';
+import type { SentSnapshot } from '@/services/claim-status';
 import { RESPONSE_WINDOW_DAYS, saveClaim } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { toDomainJourney, useJourney } from '@/services/journeys';
@@ -79,6 +80,9 @@ export function ClaimWizard() {
   const [draftSaved, setDraftSaved] = useState(false);
   // Stamped when the claim is actually sent, so the render stays pure.
   const [responseDeadline, setResponseDeadline] = useState<string | null>(null);
+  // What deliver() handed to the composer/share sheet, awaiting persist() —
+  // a ref because the confirm step commits it in a later event handler.
+  const pendingSnapshot = useRef<SentSnapshot | null>(null);
 
   useEffect(() => {
     canEmail().then(setMailAvailable);
@@ -123,7 +127,15 @@ export function ClaimWizard() {
 
   const persist = async (sent: boolean) => {
     // The demo journey has no DB row to attach a claim to.
-    if (!isDemo) await saveClaim({ journeyId: journey.id, userId, verdict, sent });
+    if (!isDemo) {
+      await saveClaim({
+        journeyId: journey.id,
+        userId,
+        verdict,
+        sent,
+        snapshot: sent ? pendingSnapshot.current : null,
+      });
+    }
   };
 
   const finishSent = async (method: 'email' | 'share') => {
@@ -149,10 +161,22 @@ export function ClaimWizard() {
   const deliver = async (method: 'email' | 'share') => {
     setBusy(true);
     try {
-      const pdfUri = await generateClaimPdf(
-        renderClaimLetter(journey, verdict, claimant),
-        claimPdfName(journey, verdict),
-      );
+      const letterHtml = renderClaimLetter(journey, verdict, claimant);
+      const pdfName = claimPdfName(journey, verdict);
+      // Freeze what's going out BEFORE handing off to the composer/share
+      // sheet — persist() stores this alongside the sent status so the user
+      // can re-read exactly what the carrier received.
+      pendingSnapshot.current = {
+        subject: claimEmailSubject(journey, verdict),
+        body: claimEmailBody(journey, verdict, claimant),
+        letterHtml,
+        recipient: `Customer Relations — ${journey.carrier}`,
+        claimantName: claimant.fullName,
+        claimantEmail: claimant.email,
+        pdfName,
+        via: method,
+      };
+      const pdfUri = await generateClaimPdf(letterHtml, pdfName);
       Observe.logEvent('claim.letter_generated', {
         attributes: { method, regulation: verdict.regulation ?? '', demo: isDemo },
       });

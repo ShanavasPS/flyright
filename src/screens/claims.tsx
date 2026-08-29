@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { NEXT_STATUSES, isClosed } from '@/services/claim-status';
+import { NEXT_STATUSES, isClosed, parseSentSnapshot } from '@/services/claim-status';
 import { useClaims, type ClaimWithJourney } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
 
@@ -79,6 +79,7 @@ function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; in
 
   const overdue = isOverdue(claim, now);
   const recordable = NEXT_STATUSES[claim.status].length > 0;
+  const hasSnapshot = !!parseSentSnapshot(claim.sentSnapshot);
 
   return (
     <Animated.View
@@ -112,6 +113,19 @@ function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; in
             {statusGuidance(claim, overdue)}
           </ThemedText>
         </Pressable>
+        {hasSnapshot && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="See what we sent"
+            hitSlop={Spacing.two}
+            onPress={() =>
+              router.push({ pathname: '/claim-letter', params: { journeyId: journey.id } })
+            }>
+            <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              See what we sent →
+            </ThemedText>
+          </Pressable>
+        )}
         {recordable && (
           <Pressable
             accessibilityRole="button"

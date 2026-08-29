@@ -36,6 +36,13 @@
       "when": 1787545382040,
       "tag": "0004_parallel_hawkeye",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788004702270,
+      "tag": "0005_pale_captain_stacy",
+      "breakpoints": true
     }
   ]
 }

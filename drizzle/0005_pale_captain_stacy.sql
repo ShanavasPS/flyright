@@ -1,0 +1,1 @@
+ALTER TABLE `claims` ADD `sent_snapshot` text;

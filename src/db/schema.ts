@@ -69,6 +69,10 @@ export const claims = sqliteTable('claims', {
   }).notNull().default('draft'),
   sentAt: text('sent_at'),
   responseDeadline: text('response_deadline'),
+  /** JSON SentSnapshot (see claim-status.ts) frozen at send time — the exact
+   * email subject/cover note, the letter HTML, and who it addressed — so the
+   * user can always re-read what actually went out. Null on old/draft rows. */
+  sentSnapshot: text('sent_snapshot'),
   createdAt: text('created_at').notNull(),
 });
 

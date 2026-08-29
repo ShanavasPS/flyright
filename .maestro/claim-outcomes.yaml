@@ -15,9 +15,10 @@
 #     ('LH999-2026-06-20','flight','Lufthansa','DE','LH999','HEL','FI','MUC','DE',1585,'2026-06-20T08:00Z','2026-06-20T10:30Z','2026-06-20T00:00:00.000Z',NULL,'lookup','2026-06-20T00:00:00.000Z');
 #   INSERT OR REPLACE INTO disruptions (id, journey_id, type, delay_minutes, detected_at) VALUES
 #     ('delay-XX999-2026-06-15','XX999-2026-06-15','delay',195,'2026-06-15T12:00:00.000Z');
-#   INSERT OR REPLACE INTO claims (id, user_id, journey_id, regulation, amount, currency, status, sent_at, response_deadline, created_at) VALUES
-#     ('claim-XX999-2026-06-15',NULL,'XX999-2026-06-15','EU261',400,'EUR','sent','2026-08-28T10:00:00.000Z','2026-10-09T10:00:00.000Z','2026-08-28T10:00:00.000Z'),
-#     ('claim-LH999-2026-06-20',NULL,'LH999-2026-06-20','EU261',250,'EUR','sent','2026-07-01T10:00:00.000Z','2026-08-12T10:00:00.000Z','2026-07-01T10:00:00.000Z');"
+#   INSERT OR REPLACE INTO claims (id, user_id, journey_id, regulation, amount, currency, status, sent_at, response_deadline, created_at, sent_snapshot) VALUES
+#     ('claim-XX999-2026-06-15',NULL,'XX999-2026-06-15','EU261',400,'EUR','sent','2026-08-28T10:00:00.000Z','2026-10-09T10:00:00.000Z','2026-08-28T10:00:00.000Z',
+#      '{"subject":"EU261 claim — Finnair XX999, 2026-06-15","body":"Dear Customer Relations,\n\nPlease find attached my claim for 400 EUR compensation under EU261 for flight XX999 from HEL to LHR on 2026-06-15.\n\nI look forward to your response within 6 weeks.\n\nKind regards,\nAda Traveler","letterHtml":"<html><body><p>To the Customer Relations department of Finnair,</p><p>Seeded snapshot for E2E.</p></body></html>","recipient":"Customer Relations — Finnair","claimantName":"Ada Traveler","claimantEmail":"ada@example.com","pdfName":"EU261-claim-XX999-2026-06-15.pdf","via":"email"}'),
+#     ('claim-LH999-2026-06-20',NULL,'LH999-2026-06-20','EU261',250,'EUR','sent','2026-07-01T10:00:00.000Z','2026-08-12T10:00:00.000Z','2026-07-01T10:00:00.000Z',NULL);"
 #
 # Clean up after:
 #   sqlite3 "$DB" "DELETE FROM claims WHERE id IN ('claim-XX999-2026-06-15','claim-LH999-2026-06-20');
@@ -92,3 +93,15 @@ appId: com.shanavasshaji.flyright
 - assertVisible: "Paid, EU261.*"
 - assertVisible: "Response overdue, EU261.*"
 - takeScreenshot: claims-closed
+# The sent snapshot must be readable end to end: the paid card still links
+# to the exact email that went out.
+- tapOn: "See what we sent"
+- extendedWaitUntil:
+    visible: "The email you sent"
+    timeout: 10000
+- assertVisible: "Addressed to"
+- assertVisible: "Customer Relations — Finnair"
+- assertVisible: "EU261 claim — Finnair XX999, 2026-06-15"
+- assertVisible: "EU261-claim-XX999-2026-06-15.pdf"
+- assertVisible: "Open the PDF letter"
+- takeScreenshot: claim-letter-viewer
