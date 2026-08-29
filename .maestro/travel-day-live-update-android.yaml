@@ -1,0 +1,75 @@
+# Android travel-day Live Update: onboarding with push opt-in → track a
+# today's flight inside the travel window → the native module posts the
+# ongoing ProgressStyle notification (promoted Live Update on Android 16+).
+#
+# Needs a real AERODATABOX_API_KEY in .env.local — AY1331 is a real HEL→LHR
+# morning flight (departs 08:00), so run this on a day/time when today's
+# instance exists; any real tracked flight within T−24h works.
+#
+# Maestro can't inspect the notification shade, so the flow ends at the
+# tracked journey. Verify the Live Update itself with:
+#   adb shell dumpsys notification --noredact | grep -A40 shanavasshaji
+#   → expect id=4207 tag=<flight>-<date>, channel=travel-day,
+#     android.progressSegments/progressTrackerIcon extras,
+#     android.requestPromotedOngoing=true and (on API 36+ with the permission
+#     granted) FLAG_PROMOTED_ONGOING in the flags line, plus
+#     android.shortCriticalText for the status-bar chip.
+#
+# Run: maestro --device <emulator> test .maestro/travel-day-live-update-android.yaml
+#      (dev build installed + `npx expo start` on :8081)
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true # deterministic: first launch, empty journal
+    permissions:
+      notifications: allow # POST_NOTIFICATIONS pre-granted, no OS dialog
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# clearState also wipes the dev client's cached bundle — the first Metro
+# download can sit on a black screen well past 30s, hence the long wait.
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 90000
+# Walk onboarding to the push page: the travel-day surface is gated on
+# getPushEnabled() on Android, and only "Allow notifications" records the
+# in-app opt-in intent — "Skip" would leave the Live Update suppressed.
+- tapOn: "Continue"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Allow notifications"
+    timeout: 10000
+- tapOn: "Allow notifications"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+- tapOn: "AY1331 or LH873"
+- inputText: "AY1331"
+- hideKeyboard
+- extendedWaitUntil:
+    visible: ".*Search this flight.*"
+    timeout: 5000
+- tapOn: ".*Search this flight.*"
+- extendedWaitUntil:
+    visible: ".*Today.*"
+    timeout: 5000
+- tapOn: ".*Today.*"
+- extendedWaitUntil:
+    visible: ".*Track this flight.*"
+    timeout: 20000
+- assertVisible: ".*HEL → .*"
+- tapOn: ".*Track this flight.*"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 10000
+- assertVisible: ".*AY1331.*"
+# Reconcile runs on the journey mutation; give it a beat, then the timeline
+# (in-window journeys swap the watching card for the travel-day timeline).
+- tapOn: ".*AY1331.*"
+- extendedWaitUntil:
+    visible: ".*Travel day.*"
+    timeout: 15000
+    optional: true
+- takeScreenshot: .maestro/out/travel-day-live-update-android

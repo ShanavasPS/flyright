@@ -55,3 +55,4 @@ asc-api-key.p8
 .env
 .env.*
 !.env.example
+.maestro/out/
