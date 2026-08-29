@@ -49,6 +49,16 @@ export function useTravelDay(journeyId: string): TravelDayState {
   return rowToState(data?.[0]);
 }
 
+/** Stage state for every journey, live, as a lookup — for surfaces that pick
+ * between journeys (the My travels hero) and must judge each trip's window
+ * with its real stamps, not the empty default. Unstamped trips resolve to
+ * EMPTY_TRAVEL_DAY, same as useTravelDay. */
+export function useTravelDayStates(): (journeyId: string) => TravelDayState {
+  const { data } = useLiveQuery(db.select().from(travelDay), []);
+  const byId = new Map((data ?? []).map((row) => [row.journeyId, rowToState(row)]));
+  return (journeyId) => byId.get(journeyId) ?? EMPTY_TRAVEL_DAY;
+}
+
 async function readState(journeyId: string): Promise<TravelDayState> {
   const rows = await db.select().from(travelDay).where(eq(travelDay.journeyId, journeyId));
   return rowToState(rows[0]);

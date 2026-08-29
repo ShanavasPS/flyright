@@ -39,7 +39,7 @@ import {
 } from '@/services/travel-day';
 import { noteWarning, tapLight } from '@/services/haptics';
 import { getFlightFacts } from '@/services/travel-day-lifecycle';
-import { useTravelDay } from '@/services/travel-day-store';
+import { useTravelDayStates } from '@/services/travel-day-store';
 
 const LIVE_GREEN = '#2FD68C';
 const DELAY_AMBER = '#F2B441';
@@ -60,9 +60,13 @@ export function HomeHero({
 }) {
   const router = useRouter();
   const now = useNow(60_000);
-  const active = activeJourney(journeys, now);
-  // Hooks stay unconditional; an empty id just reads no row.
-  const state = useTravelDay(active?.id ?? '');
+  // Selection needs every trip's real stamps: with the empty default, a
+  // morning flight whose landed stamp already closed its window wins on
+  // departure time, then fails the phase check below and collapses the hero
+  // to plain stats while a later trip is genuinely live.
+  const stateOf = useTravelDayStates();
+  const active = activeJourney(journeys, now, stateOf);
+  const state = stateOf(active?.id ?? '');
 
   const phase = active ? travelWindow(active, state, now).phase : null;
   if (!active || (phase !== 'reminder' && phase !== 'live')) {

@@ -230,6 +230,29 @@ describe('activeJourney', () => {
     expect(activeJourney([nextWeek, later, train, tomorrow], NOW)?.id).toBe(tomorrow.id);
     expect(activeJourney([nextWeek, train], NOW)).toBeNull();
   });
+
+  it('skips a landed flight so it cannot shadow a later live trip', () => {
+    // Both flights are in-window on paper at 11:00Z; the morning one landed
+    // at 10:00Z, so its real window closed at 10:30Z.
+    const morning = journey({
+      id: 'AY1331',
+      scheduledDeparture: '2026-08-25T05:00Z',
+      scheduledArrival: '2026-08-25T08:10Z',
+    });
+    const afternoon = journey({
+      id: 'AY815',
+      scheduledDeparture: '2026-08-25T12:00Z',
+      scheduledArrival: '2026-08-25T13:00Z',
+    });
+    const landed: TravelDayState = { stage: 'landed', stamps: { landed: '2026-08-25T10:00Z' } };
+    const stateOf = (id: string) => (id === morning.id ? landed : EMPTY_TRAVEL_DAY);
+    const at = new Date('2026-08-25T11:00Z');
+
+    // Without real state the landed flight wins on departure time — the bug.
+    expect(activeJourney([morning, afternoon], at)?.id).toBe(morning.id);
+    // With it, the genuinely live afternoon trip surfaces.
+    expect(activeJourney([morning, afternoon], at, stateOf)?.id).toBe(afternoon.id);
+  });
 });
 
 describe('liveContent', () => {

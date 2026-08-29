@@ -20,6 +20,10 @@ export function useTravelDay(_journeyId: string): TravelDayState {
   return EMPTY_TRAVEL_DAY;
 }
 
+export function useTravelDayStates(): (journeyId: string) => TravelDayState {
+  return () => EMPTY_TRAVEL_DAY;
+}
+
 export async function advanceStage(
   _journeyId: string,
   _target: TravelStage,

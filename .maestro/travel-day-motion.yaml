@@ -11,11 +11,10 @@
 #   sqlite3 "$DB/ExpoSQLiteStorage" "INSERT OR REPLACE INTO storage (key, value) VALUES ('travel-facts-TEST-LIVE-2026-08-29', '{\"delayMinutes\":45,\"gate\":\"A12\",\"terminal\":\"2\",\"checkInDesk\":null,\"baggageBelt\":null,\"boardingTime\":null,\"estimatedDeparture\":\"2026-08-29T12:00Z\",\"actualDeparture\":null,\"estimatedArrival\":\"2026-08-29T13:00Z\",\"actualArrival\":null}');"
 #   (user_id NULL = anonymous; facts kv makes the hero go amber + chips appear.)
 #
-# ⚠ Hero shadowing: activeJourney picks the EARLIEST same-day in-window trip
-# using an EMPTY travel-day state, so an already-landed tracked flight from
-# this morning steals the hero and then bails to the stats card. Shift such
-# rows out of the window first and restore after:
-#   sqlite3 "$DB/flyright.db" "UPDATE journeys SET scheduled_departure=replace(scheduled_departure,'<today>','<lastweek>'), scheduled_arrival=replace(scheduled_arrival,'<today>','<lastweek>') WHERE id='<offender>';"
+# Note: activeJourney judges each window with real stamps (useTravelDayStates),
+# so an already-landed same-day flight no longer shadows the hero — no need to
+# shift other rows out of the way. This flow doubles as that regression check
+# when the sim has a landed tracked flight from earlier the same day.
 #
 # Clean up after:
 #   sqlite3 "$DB/flyright.db" "DELETE FROM journeys WHERE id='TEST-LIVE-2026-08-29'; DELETE FROM travel_day WHERE journey_id='TEST-LIVE-2026-08-29';"

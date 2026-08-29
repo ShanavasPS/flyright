@@ -248,12 +248,18 @@ export function travelWindow(
 }
 
 /** The journey the My travels banner should surface: the flight whose window
- * is in reminder/live phase, soonest departure first. Checked without stage
- * state (renderers re-check with the real state and drop ended trips). */
-export function activeJourney<T extends TravelJourney>(rows: T[], now: Date): T | null {
+ * is in reminder/live phase, soonest departure first. Pass `stateOf` so each
+ * window is judged with the trip's real stamps — with the empty default, a
+ * morning flight whose landed stamp already closed its window still wins on
+ * departure time and shadows a genuinely live later trip. */
+export function activeJourney<T extends TravelJourney>(
+  rows: T[],
+  now: Date,
+  stateOf: (journeyId: string) => TravelDayState = () => EMPTY_TRAVEL_DAY,
+): T | null {
   let best: T | null = null;
   for (const row of rows) {
-    const { phase } = travelWindow(row, EMPTY_TRAVEL_DAY, now);
+    const { phase } = travelWindow(row, stateOf(row.id), now);
     if (phase !== 'reminder' && phase !== 'live') continue;
     if (!best || Date.parse(row.scheduledDeparture) < Date.parse(best.scheduledDeparture)) {
       best = row;
