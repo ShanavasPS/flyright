@@ -51,6 +51,9 @@ LogBox.ignoreLogs([
   "[purchases]",
   "[RevenueCat]",
   "Clerk: Clerk has been loaded with development keys",
+  // The dev client probes Metro ports remembered from earlier sessions; the
+  // toast this raises sits over the tab bar and swallows Maestro taps.
+  "Packager status check returned unexpected result",
 ]);
 
 // Must run at module scope, before any screen mounts — configure() throws if

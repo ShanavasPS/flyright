@@ -4,6 +4,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
 import type { Verdict } from '@/rules/types';
+import { canTransition, type ClaimStatus } from '@/services/claim-status';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 
 export type ClaimRow = typeof claims.$inferSelect;
@@ -93,5 +94,16 @@ export async function saveClaim(opts: {
     responseDeadline: sent ? deadline.toISOString() : null,
     createdAt: now.toISOString(),
   });
+  void reconcileNotifications();
+}
+
+/** Record the airline's (or enforcement body's) response. Illegal jumps are
+ * ignored rather than thrown — a stale menu tap after a live-query update
+ * shouldn't crash the screen. Deadline reminders key off status === 'sent',
+ * so the reconcile clears them the moment an outcome lands. */
+export async function recordOutcome(id: string, next: ClaimStatus): Promise<void> {
+  const [existing] = await db.select().from(claims).where(eq(claims.id, id));
+  if (!existing || !canTransition(existing.status, next)) return;
+  await db.update(claims).set({ status: next }).where(eq(claims.id, id));
   void reconcileNotifications();
 }

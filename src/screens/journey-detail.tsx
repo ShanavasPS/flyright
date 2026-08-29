@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { SymbolView } from 'expo-symbols';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Card } from '@/components/card';
+import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PrimaryButton } from '@/components/primary-button';
 import { SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -33,6 +34,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
+import { NEXT_STATUSES } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
@@ -333,6 +335,9 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   // Never set for the demo journey — there's no DB row to claim against.
   const claim = useClaimForJourney(journey.id);
   const claimSent = !!claim && claim.status !== 'draft';
+  // Frozen at mount, same as the Claims tab — overdue-ness needn't tick live.
+  const [mountNow] = useState(() => Date.now());
+  const claimOverdue = !!claim && isOverdue(claim, mountNow);
 
   const owed = verdict.eligible && verdict.compensation ? verdict.compensation.amount : 0;
   const shownAmount = useCountUp(owed);
@@ -373,14 +378,23 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
             Regulation: {verdict.regulation}
           </ThemedText>
           {claimSent ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              Claim sent{claim.sentAt ? ` on ${formatDayLabelWithYear(claim.sentAt)}` : ''} —
-              response due by{' '}
-              {claim.responseDeadline
-                ? formatDayLabelWithYear(claim.responseDeadline)
-                : 'six weeks from sending'}
-              .
-            </ThemedText>
+            <>
+              <StatusChip status={claim.status} overdue={claimOverdue} />
+              <ThemedText type="small" themeColor="textSecondary">
+                {statusGuidance(claim, claimOverdue)}
+              </ThemedText>
+              {NEXT_STATUSES[claim.status].length > 0 && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Record the airline's response"
+                  hitSlop={Spacing.two}
+                  onPress={() => showOutcomeMenu(claim)}>
+                  <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                    Record the airline&apos;s response →
+                  </ThemedText>
+                </Pressable>
+              )}
+            </>
           ) : (
             <View style={styles.cta}>
               <PrimaryButton

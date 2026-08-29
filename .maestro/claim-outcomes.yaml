@@ -1,0 +1,94 @@
+# Claim outcomes (iOS sim): the Claims tab must group claims into
+# In progress / Closed with status chips, and recording the airline's
+# response must walk the outcome graph (sent → rejected → escalated → paid)
+# from the journey's verdict card. Guards src/services/claim-status.ts,
+# recordOutcome, and the chip/guidance UI (claims.tsx + journey-detail.tsx).
+#
+# Seed two sent claims first — one live (Finnair, walked through the graph),
+# one past its six-week deadline (Lufthansa, asserts the overdue chip only).
+# Bump dates when 2026 ages out (deadline B must be in the past, A's in the
+# future, and A's journey within the ~3-year claim window):
+#   DB="$(xcrun simctl get_app_container booted com.shanavasshaji.flyright data)/Documents/SQLite/flyright.db"
+#   sqlite3 "$DB" "
+#   INSERT OR REPLACE INTO journeys (id, mode, carrier, carrier_country, number, from_code, from_country, to_code, to_country, distance_km, scheduled_departure, scheduled_arrival, created_at, user_id, source, updated_at) VALUES
+#     ('XX999-2026-06-15','flight','Finnair','FI','XX999','HEL','FI','LHR','GB',1834,'2026-06-15T08:00Z','2026-06-15T10:35Z','2026-06-15T00:00:00.000Z',NULL,'lookup','2026-06-15T00:00:00.000Z'),
+#     ('LH999-2026-06-20','flight','Lufthansa','DE','LH999','HEL','FI','MUC','DE',1585,'2026-06-20T08:00Z','2026-06-20T10:30Z','2026-06-20T00:00:00.000Z',NULL,'lookup','2026-06-20T00:00:00.000Z');
+#   INSERT OR REPLACE INTO disruptions (id, journey_id, type, delay_minutes, detected_at) VALUES
+#     ('delay-XX999-2026-06-15','XX999-2026-06-15','delay',195,'2026-06-15T12:00:00.000Z');
+#   INSERT OR REPLACE INTO claims (id, user_id, journey_id, regulation, amount, currency, status, sent_at, response_deadline, created_at) VALUES
+#     ('claim-XX999-2026-06-15',NULL,'XX999-2026-06-15','EU261',400,'EUR','sent','2026-08-28T10:00:00.000Z','2026-10-09T10:00:00.000Z','2026-08-28T10:00:00.000Z'),
+#     ('claim-LH999-2026-06-20',NULL,'LH999-2026-06-20','EU261',250,'EUR','sent','2026-07-01T10:00:00.000Z','2026-08-12T10:00:00.000Z','2026-07-01T10:00:00.000Z');"
+#
+# Clean up after:
+#   sqlite3 "$DB" "DELETE FROM claims WHERE id IN ('claim-XX999-2026-06-15','claim-LH999-2026-06-20');
+#     DELETE FROM disruptions WHERE journey_id='XX999-2026-06-15';
+#     DELETE FROM journeys WHERE id IN ('XX999-2026-06-15','LH999-2026-06-20');"
+#
+# Run: ~/.maestro/bin/maestro --device <iphone-udid> test .maestro/claim-outcomes.yaml
+#      (dev build installed + Metro on :8081; launchApp restarts so the live
+#      queries see the seeded rows)
+#
+# Gotchas: NativeTabs labels don't respond to Maestro taps on iOS 26 — reach
+# the tab via the deep link (same /claims URL the notifications use). And
+# the claim card's navigation Pressable and its "Record the airline's
+# response" link stay siblings on purpose — nesting the link inside the card
+# Pressable would flatten it out of the iOS a11y tree (the timeline-Undo trap).
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- openLink: "flyright://claims"
+- extendedWaitUntil:
+    visible: "In progress"
+    timeout: 15000
+# Chip states via the flattened card labels (chip text leads each one).
+- assertVisible: "Sent, EU261.*"
+- assertVisible: "Response overdue, EU261.*"
+- assertVisible:
+    text: "Record the airline's response"
+    index: 1
+- takeScreenshot: claims-in-progress
+# Walk the outcome graph from the verdict card (exactly one link there).
+- tapOn: "Sent, EU261.*"
+- extendedWaitUntil:
+    visible: "You're owed 400 EUR"
+    timeout: 15000
+- assertVisible: "Sent"
+- tapOn: "Record the airline's response"
+- extendedWaitUntil:
+    visible: "The airline rejected it"
+    timeout: 5000
+- tapOn: "The airline rejected it"
+- extendedWaitUntil:
+    visible: "Rejected by the airline.*"
+    timeout: 10000
+- takeScreenshot: verdict-rejected
+- tapOn: "Record the airline's response"
+- extendedWaitUntil:
+    visible: "I escalated to the enforcement body"
+    timeout: 5000
+- tapOn: "I escalated to the enforcement body"
+- extendedWaitUntil:
+    visible: "With the enforcement body now.*"
+    timeout: 10000
+- takeScreenshot: verdict-escalated
+- tapOn: "Record the airline's response"
+- extendedWaitUntil:
+    visible: "Compensation was paid"
+    timeout: 5000
+- tapOn: "Compensation was paid"
+- extendedWaitUntil:
+    visible: "Paid out.*"
+    timeout: 10000
+- takeScreenshot: verdict-paid
+# The tab reflects the walk: paid claim in Closed, stale one still open.
+- openLink: "flyright://claims"
+- extendedWaitUntil:
+    visible: "Closed"
+    timeout: 15000
+- assertVisible: "Paid, EU261.*"
+- assertVisible: "Response overdue, EU261.*"
+- takeScreenshot: claims-closed

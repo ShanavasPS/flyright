@@ -26,3 +26,5 @@ export async function saveClaim(_opts: {
 }): Promise<void> {
   throw new Error('Claims are not supported on web yet.');
 }
+
+export async function recordOutcome(_id: string, _next: string): Promise<void> {}
