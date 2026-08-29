@@ -1,2 +1,0 @@
-expo.modules.flyrightliveupdate
-drawable flyright_live_flight
