@@ -8,6 +8,7 @@ import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useCountUp } from '@/hooks/use-count-up';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { useJourneys, type JourneyRow } from '@/services/journeys';
@@ -19,6 +20,9 @@ export function TravelStats() {
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
   const recap = useMemo(() => travelRecap(journeys ?? []), [journeys]);
+  // The headline number counts up on entry — a logbook total should feel
+  // accumulated, not printed.
+  const shownKm = useCountUp(recap.totalKm, 1100);
 
   if (!recap.trips) {
     return (
@@ -37,7 +41,7 @@ export function TravelStats() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.list}>
         <View style={styles.hero}>
           <ThemedText type="display" themeColor="heading">
-            {recap.totalKm.toLocaleString()}
+            {shownKm.toLocaleString()}
           </ThemedText>
           <ThemedText themeColor="textSecondary">kilometres flown</ThemedText>
           {orbit && (

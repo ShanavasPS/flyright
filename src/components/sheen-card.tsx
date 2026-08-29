@@ -1,5 +1,14 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { ThemedView, type ThemedViewProps } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -86,6 +95,50 @@ export function IconBadge({
   );
 }
 
+// The one-shot sweep is brighter than the resting sheen — it has one frame
+// of attention to earn.
+const SWEEP = {
+  dark: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0) 100%)',
+  light:
+    'linear-gradient(90deg, rgba(30,107,224,0) 0%, rgba(30,107,224,0.09) 50%, rgba(30,107,224,0) 100%)',
+} as const;
+const SWEEP_WIDTH = 72;
+
+/** A highlight that sweeps across its parent card once on mount — the "ta-da"
+ * reserved for money moments. The parent needs `overflow: 'hidden'`; skipped
+ * entirely under reduce-motion. */
+export function SheenSweep({ delay = 350 }: { delay?: number }) {
+  const scheme = useScheme();
+  const reduceMotion = useReducedMotion();
+  const [width, setWidth] = useState(0);
+  const x = useSharedValue(-SWEEP_WIDTH * 3);
+
+  useEffect(() => {
+    if (!width || reduceMotion) return;
+    x.value = -SWEEP_WIDTH * 3;
+    x.value = withDelay(
+      delay,
+      withTiming(width + SWEEP_WIDTH, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+    );
+  }, [width, reduceMotion, delay, x]);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }, { rotate: '14deg' }],
+  }));
+
+  if (reduceMotion) return null;
+  return (
+    <View
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <Animated.View
+        style={[styles.sweep, { experimental_backgroundImage: SWEEP[scheme] }, style]}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     gap: Spacing.two,
@@ -96,5 +149,12 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sweep: {
+    position: 'absolute',
+    // Overshoot vertically so the 14° tilt still covers the card's corners.
+    top: -40,
+    bottom: -40,
+    width: SWEEP_WIDTH,
   },
 });

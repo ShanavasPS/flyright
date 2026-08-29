@@ -3,9 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   FadeInDown,
+  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withSpring,
+  withTiming,
+  ZoomIn,
 } from 'react-native-reanimated';
 
 import { Card } from '@/components/card';
@@ -14,6 +18,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatTime } from '@/services/dates';
+import { tapLight, tapMedium } from '@/services/haptics';
 import {
   FLIGHT_STAGES,
   STAGE_LABELS,
@@ -48,6 +53,10 @@ const STAGE_ICONS: Record<TravelStage, SymbolViewProps['name']> = {
 const ICON_COLUMN = 28;
 const RAIL_WIDTH = 3;
 const SPRING = { damping: 18, stiffness: 170 } as const;
+const POP_SPRING = { damping: 12, stiffness: 320 } as const;
+const PRESS_SPRING = { damping: 15, stiffness: 300 } as const;
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /** The travel-day walk as a vertical slider: flight facts up top, then the
  * eight stages strung on a rail. A tinted fill and a thumb spring to the
@@ -137,17 +146,24 @@ export function TravelDayTimeline({
 
       {chips.length > 0 && (
         <View style={styles.chipRow}>
+          {/* Fresh airport facts pop in and the row reflows around them —
+           * a new delay or gate should arrive, not materialize. */}
           {chips.map((chip) => (
-            <ThemedView key={chip.label} type="background" style={styles.chip}>
-              <ThemedText type="small" themeColor="textSecondary">
-                {chip.label}
-              </ThemedText>
-              <ThemedText
-                type="smallBold"
-                style={chip.tone === 'danger' ? { color: theme.danger } : undefined}>
-                {chip.value}
-              </ThemedText>
-            </ThemedView>
+            <Animated.View
+              key={chip.label}
+              entering={ZoomIn.springify().damping(16)}
+              layout={LinearTransition.springify().damping(18)}>
+              <ThemedView type="background" style={styles.chip}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {chip.label}
+                </ThemedText>
+                <ThemedText
+                  type="smallBold"
+                  style={chip.tone === 'danger' ? { color: theme.danger } : undefined}>
+                  {chip.value}
+                </ThemedText>
+              </ThemedView>
+            </Animated.View>
           ))}
         </View>
       )}
@@ -224,15 +240,12 @@ export function TravelDayTimeline({
 
           const rowContent = (
             <>
-              <View style={[styles.iconCircle, { backgroundColor: circleColor }]}>
-                <SymbolView
-                  name={STAGE_ICONS[stage]}
-                  size={18}
-                  tintColor={
-                    isCurrent ? '#FFFFFF' : skipped ? theme.backgroundSelected : color
-                  }
-                />
-              </View>
+              <StageIcon
+                name={STAGE_ICONS[stage]}
+                circleColor={circleColor}
+                tintColor={isCurrent ? '#FFFFFF' : skipped ? theme.backgroundSelected : color}
+                reached={reached}
+              />
               <ThemedText
                 type={isCurrent ? 'smallBold' : 'small'}
                 style={[styles.stageLabel, { color: skipped ? theme.textSecondary : color }]}>
@@ -299,15 +312,21 @@ export function TravelDayTimeline({
             );
           }
           return (
-            <Pressable
+            <StageRow
               key={stage}
-              accessibilityRole="button"
-              accessibilityLabel={advanceable ? rowLabel : `Go back to ${rowLabel}`}
+              label={advanceable ? rowLabel : `Go back to ${rowLabel}`}
               onLayout={onRowLayout}
-              onPress={() => (advanceable ? onAdvance!(stage) : onRewind!(stage))}
-              style={({ pressed }) => [styles.stageRow, pressed && styles.pressed]}>
+              onPress={() => {
+                if (advanceable) {
+                  tapMedium();
+                  onAdvance!(stage);
+                } else {
+                  tapLight();
+                  onRewind!(stage);
+                }
+              }}>
               {rowContent}
-            </Pressable>
+            </StageRow>
           );
         })}
       </View>
@@ -320,6 +339,75 @@ export function TravelDayTimeline({
         </ThemedText>
       )}
     </Card>
+  );
+}
+
+/** A stage's icon circle. Pops once with an overshoot the moment its stamp
+ * lands — the walk's little celebration — and stays quiet on rewinds and on
+ * reopening the screen (the ref starts at the current truth). */
+function StageIcon({
+  name,
+  circleColor,
+  tintColor,
+  reached,
+}: {
+  name: SymbolViewProps['name'];
+  circleColor: string;
+  tintColor: string;
+  reached: boolean;
+}) {
+  const scale = useSharedValue(1);
+  const wasReached = useRef(reached);
+  useEffect(() => {
+    if (reached && !wasReached.current) {
+      scale.value = withSequence(withSpring(1.22, POP_SPRING), withSpring(1, SPRING));
+    }
+    wasReached.current = reached;
+  }, [reached, scale]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <Animated.View style={[styles.iconCircle, { backgroundColor: circleColor }, style]}>
+      <SymbolView name={name} size={18} tintColor={tintColor} />
+    </Animated.View>
+  );
+}
+
+/** Tappable stage row with press physics: a quick settle-in on touch, a
+ * springy release — the slider should feel like a physical control, not a
+ * link. */
+function StageRow({
+  label,
+  onPress,
+  onLayout,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  onLayout: (e: LayoutChangeEvent) => void;
+  children: React.ReactNode;
+}) {
+  const press = useSharedValue(0);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - press.value * 0.03 }],
+    opacity: 1 - press.value * 0.1,
+  }));
+
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onLayout={onLayout}
+      onPressIn={() => {
+        press.value = withTiming(1, { duration: 90 });
+      }}
+      onPressOut={() => {
+        press.value = withSpring(0, PRESS_SPRING);
+      }}
+      onPress={onPress}
+      style={[styles.stageRow, style]}>
+      {children}
+    </AnimatedPressable>
   );
 }
 
@@ -381,8 +469,5 @@ const styles = StyleSheet.create({
   },
   stageLabel: {
     flex: 1,
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });

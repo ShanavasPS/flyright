@@ -1,11 +1,19 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
+  Easing,
+  FadeInDown,
+  interpolateColor,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withDelay,
   withRepeat,
+  withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -29,11 +37,14 @@ import {
   liveContent,
   travelWindow,
 } from '@/services/travel-day';
+import { noteWarning, tapLight } from '@/services/haptics';
 import { getFlightFacts } from '@/services/travel-day-lifecycle';
 import { useTravelDay } from '@/services/travel-day-store';
 
 const LIVE_GREEN = '#2FD68C';
 const DELAY_AMBER = '#F2B441';
+const SPRING = { damping: 18, stiffness: 170 } as const;
+const SHIMMER_WIDTH = 28;
 
 /** The single hero at the top of My travels — one premium navy object per
  * screen. On a travel day (T−24h through landing) the live flight and the
@@ -110,29 +121,25 @@ export function HomeHero({
           {content.subtitle}
         </ThemedText>
 
-        <View style={styles.track}>
-          <View
-            style={[
-              styles.fill,
-              {
-                // Never fully empty — a sliver of contrail shows it's alive.
-                width: `${Math.max(4, Math.round(content.progress * 100))}%`,
-                backgroundColor: content.emphasis === 'delay' ? DELAY_AMBER : COBALT,
-              },
-            ]}
-          />
-        </View>
+        <ProgressTrack progress={content.progress} delayed={content.emphasis === 'delay'} />
 
         <View style={styles.spacedRow}>
-          <ThemedText type="small" style={styles.factLine} numberOfLines={1}>
-            {[
-              content.flightLabel,
-              content.gate ? `Gate ${content.gate}` : null,
-              content.terminal ? `Terminal ${content.terminal}` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </ThemedText>
+          {/* Re-keying on gate/terminal makes fresh airport news slide in
+           * instead of silently repainting. */}
+          <Animated.View
+            key={`${content.gate ?? '·'}-${content.terminal ?? '·'}`}
+            entering={FadeInDown.duration(300)}
+            style={styles.factWrap}>
+            <ThemedText type="small" style={styles.factLine} numberOfLines={1}>
+              {[
+                content.flightLabel,
+                content.gate ? `Gate ${content.gate}` : null,
+                content.terminal ? `Terminal ${content.terminal}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </ThemedText>
+          </Animated.View>
           {/* Same disclosure affordance as the stats footer — this opens a screen. */}
           <SymbolView
             name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
@@ -154,8 +161,105 @@ export function HomeHero({
           </Pressable>
         </>
       )}
+
+      {/* Keyed by journey so a hero handover never inherits the previous
+       * flight's delay/gate memory and false-flashes. */}
+      <StatusFlash key={active.id} delayLabel={content.delayLabel} gate={content.gate} />
     </View>
   );
+}
+
+/** The boarding-pass progress bar, alive: the fill springs between stages,
+ * cross-fades cobalt → amber when a delay lands, and a soft glint sweeps the
+ * filled part every few seconds to say "this card is live". Mirrors the
+ * timeline's rule — the first measurement snaps, only changes animate. */
+function ProgressTrack({ progress, delayed }: { progress: number; delayed: boolean }) {
+  const reduceMotion = useReducedMotion();
+  const [trackWidth, setTrackWidth] = useState(0);
+  const fillWidth = useSharedValue(0);
+  const heat = useSharedValue(delayed ? 1 : 0);
+  const sweepX = useSharedValue(-SHIMMER_WIDTH);
+  const settled = useRef(false);
+
+  // Never fully empty — a sliver of contrail shows it's alive.
+  const fraction = Math.max(0.04, progress);
+
+  useEffect(() => {
+    if (!trackWidth) return;
+    const target = fraction * trackWidth;
+    if (!settled.current) {
+      settled.current = true;
+      fillWidth.value = target;
+      return;
+    }
+    fillWidth.value = withSpring(target, SPRING);
+  }, [trackWidth, fraction, fillWidth]);
+
+  useEffect(() => {
+    heat.value = withTiming(delayed ? 1 : 0, { duration: 450 });
+  }, [delayed, heat]);
+
+  useEffect(() => {
+    if (!trackWidth || reduceMotion) return;
+    sweepX.value = -SHIMMER_WIDTH;
+    sweepX.value = withRepeat(
+      withSequence(
+        withDelay(
+          2600,
+          withTiming(trackWidth + SHIMMER_WIDTH, {
+            duration: 1200,
+            easing: Easing.inOut(Easing.quad),
+          }),
+        ),
+        withTiming(-SHIMMER_WIDTH, { duration: 0 }),
+      ),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(sweepX);
+  }, [trackWidth, reduceMotion, sweepX]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: fillWidth.value,
+    backgroundColor: interpolateColor(heat.value, [0, 1], [COBALT, DELAY_AMBER]),
+  }));
+  const sweepStyle = useAnimatedStyle(() => ({ transform: [{ translateX: sweepX.value }] }));
+
+  return (
+    <View style={styles.track} onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}>
+      <Animated.View style={[styles.fill, fillStyle]}>
+        {!reduceMotion && <Animated.View style={[styles.shimmer, sweepStyle]} />}
+      </Animated.View>
+    </View>
+  );
+}
+
+/** Status changes should land, not repaint: a new or grown delay washes the
+ * card amber once with a warning haptic; a gate change gets a light tick (the
+ * fact line's re-entry handles the visual). Mount is silent — old news. */
+function StatusFlash({ delayLabel, gate }: { delayLabel: string | null; gate: string | null }) {
+  const wash = useSharedValue(0);
+  const prevDelay = useRef(delayLabel);
+  const prevGate = useRef(gate);
+
+  useEffect(() => {
+    if (delayLabel && delayLabel !== prevDelay.current) {
+      wash.value = withSequence(
+        withTiming(0.16, { duration: 250 }),
+        withTiming(0, { duration: 700 }),
+      );
+      noteWarning();
+    }
+    prevDelay.current = delayLabel;
+  }, [delayLabel, wash]);
+
+  useEffect(() => {
+    if (gate && gate !== prevGate.current) tapLight();
+    prevGate.current = gate;
+  }, [gate]);
+
+  const style = useAnimatedStyle(() => ({ opacity: wash.value }));
+  return <Animated.View pointerEvents="none" style={[styles.wash, style]} />;
 }
 
 /** The dotted contrail joining the route codes, plane mid-path — the same
@@ -186,10 +290,13 @@ function RoutePath({ delayed }: { delayed: boolean }) {
 
 /** Pulsing "live" marker — the quiet heartbeat that says this card updates. */
 function LiveDot() {
+  const reduceMotion = useReducedMotion();
   const pulse = useSharedValue(1);
   useEffect(() => {
+    if (reduceMotion) return;
     pulse.value = withRepeat(withTiming(0.35, { duration: 1000 }), -1, true);
-  }, [pulse]);
+    return () => cancelAnimation(pulse);
+  }, [pulse, reduceMotion]);
   const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   return (
@@ -322,9 +429,30 @@ const styles = StyleSheet.create({
   fill: {
     height: 4,
     borderRadius: 2,
+    overflow: 'hidden',
+  },
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: SHIMMER_WIDTH,
+    experimental_backgroundImage:
+      'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 100%)',
+  },
+  factWrap: {
+    flexShrink: 1,
   },
   factLine: {
     color: COBALT,
+  },
+  wash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: Spacing.four,
+    backgroundColor: DELAY_AMBER,
   },
   divider: {
     height: StyleSheet.hairlineWidth,

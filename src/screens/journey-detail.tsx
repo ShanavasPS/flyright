@@ -13,11 +13,13 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
+import { SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayShare } from '@/components/travel-day-share';
@@ -25,6 +27,7 @@ import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { CONVEX_URL } from '@/constants/config';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useCountUp } from '@/hooks/use-count-up';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
@@ -35,6 +38,7 @@ import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
+import { noteSuccess } from '@/services/haptics';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { hasPro } from '@/services/purchases';
 import { travelWindow, type TravelStage } from '@/services/travel-day';
@@ -318,6 +322,10 @@ function showTripMenu(journeyId: string, editable: boolean, router: ReturnType<t
   ]);
 }
 
+// One success buzz per journey per app session — the verdict is a thrill the
+// first time it appears, a fact every time after.
+const celebratedJourneys = new Set<string>();
+
 function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Disruption }) {
   const router = useRouter();
   const theme = useTheme();
@@ -325,6 +333,15 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   // Never set for the demo journey — there's no DB row to claim against.
   const claim = useClaimForJourney(journey.id);
   const claimSent = !!claim && claim.status !== 'draft';
+
+  const owed = verdict.eligible && verdict.compensation ? verdict.compensation.amount : 0;
+  const shownAmount = useCountUp(owed);
+  useEffect(() => {
+    if (owed && !celebratedJourneys.has(journey.id)) {
+      celebratedJourneys.add(journey.id);
+      noteSuccess();
+    }
+  }, [owed, journey.id]);
 
   const startClaim = async () => {
     const delay = String(disruption.delayMinutes ?? 0);
@@ -343,11 +360,13 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   };
 
   return (
-    <Card>
+    <Animated.View entering={FadeInUp.duration(400)}>
+    <Card style={verdict.eligible ? styles.verdictCard : undefined}>
       {verdict.eligible && verdict.compensation ? (
         <>
+          <SheenSweep />
           <ThemedText type="display" style={{ color: theme.success }}>
-            You&apos;re owed {verdict.compensation.amount} {verdict.compensation.currency}
+            You&apos;re owed {shownAmount} {verdict.compensation.currency}
           </ThemedText>
           <ThemedText type="small">{verdict.reason}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
@@ -378,12 +397,17 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
         </>
       )}
     </Card>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  // Clips the SheenSweep to the card's rounded corners.
+  verdictCard: {
+    overflow: 'hidden',
   },
   centered: {
     alignItems: 'center',
