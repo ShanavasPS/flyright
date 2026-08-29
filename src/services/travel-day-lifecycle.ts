@@ -1,8 +1,9 @@
-/** Keeps the travel-day OS surfaces in lockstep with the journal — today the
- * replace-in-place ongoing notification (both platforms), later the iOS Live
- * Activity. Reconcile is idempotent and serialized like its sibling
- * reconcileNotifications: read the DB, compute each flight's travel window,
- * present/update surfaces for in-window trips, tear down the rest.
+/** Keeps the travel-day OS surfaces in lockstep with the journal — the iOS
+ * Live Activity and the Android Live Update (promoted ongoing notification on
+ * 16+, classic progress notification below). Reconcile is idempotent and
+ * serialized like its sibling reconcileNotifications: read the DB, compute
+ * each flight's travel window, present/update surfaces for in-window trips,
+ * tear down the rest.
  *
  * Re-posting rule: a notification is only (re)posted when its rendered
  * content changes, so a user who swipes it away isn't nagged — the next
@@ -29,8 +30,14 @@ import {
   liveContent,
   travelWindow,
   type FlightFacts,
+  type LiveContent,
   type TravelJourney,
 } from '@/services/travel-day';
+import {
+  endTravelLiveUpdate,
+  postTravelLiveUpdate,
+  type LiveUpdateContent,
+} from '../../modules/flyright-live-update';
 import {
   allTravelDayRows,
   markActivity,
@@ -99,6 +106,21 @@ async function ensureChannel(): Promise<void> {
   });
 }
 
+/** The subset of LiveContent the Android native module renders. */
+const toLiveUpdate = (content: LiveContent): LiveUpdateContent => ({
+  title: content.title,
+  subtitle: content.subtitle,
+  fromCode: content.fromCode,
+  toCode: content.toCode,
+  flightLabel: content.flightLabel,
+  progress: content.progress,
+  compactLabel: content.compactLabel,
+  gate: content.gate,
+  terminal: content.terminal,
+  delayLabel: content.delayLabel,
+  emphasis: content.emphasis,
+});
+
 let reconciling: Promise<void> | null = null;
 
 /** Serialized like reconcileNotifications — mutations can fire it blindly. */
@@ -117,6 +139,9 @@ async function teardown(
 ): Promise<void> {
   await Notifications.dismissNotificationAsync(notificationId(journeyId));
   endTravelActivity(journeyId, finalContent);
+  // Android: a final card lingers dismissible when the window closed
+  // naturally; a disable removes the surface outright.
+  endTravelLiveUpdate(journeyId, finalContent && toLiveUpdate(finalContent));
   Storage.removeItemSync(postedKey(journeyId));
   if (reason === 'ended') {
     await markActivity(journeyId, { endedAt: new Date().toISOString() });
@@ -168,18 +193,12 @@ async function doReconcile(): Promise<void> {
         if (getActivityId(j.id)) updateTravelActivity(j.id, content);
         else startTravelActivity(j, content);
       } else {
-        await Notifications.scheduleNotificationAsync({
-          identifier: notificationId(j.id),
-          content: {
-            title: content.title,
-            body: content.subtitle,
-            sticky: true,
-            data: { url: `/journey/${j.id}` },
-          },
-          // Immediate delivery; the channel-aware trigger routes it onto the
-          // silent travel-day channel.
-          trigger: { channelId: CHANNEL_ID },
-        });
+        // Native Live Update: promoted ProgressStyle card on Android 16+,
+        // ongoing progress notification below. The dismiss clears the legacy
+        // expo-notifications sticky that pre-module builds posted under this
+        // id — a no-op everywhere else.
+        void Notifications.dismissNotificationAsync(notificationId(j.id)).catch(() => {});
+        postTravelLiveUpdate(j.id, toLiveUpdate(content));
       }
       Storage.setItemSync(postedKey(j.id), fingerprint);
       if (!row?.activityStartedAt) {

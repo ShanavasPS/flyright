@@ -1,0 +1,1 @@
+int drawable flyright_live_flight 0x0
