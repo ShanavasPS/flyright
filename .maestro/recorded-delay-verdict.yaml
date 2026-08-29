@@ -1,0 +1,43 @@
+# Recorded-delay fallback (iOS sim): a tracked flight the status provider has
+# forgotten (404) must still show the verdict card + claim CTA from the local
+# disruptions cache — the list badge and detail screen agree on the money.
+# Guards src/services/arrival-delay.ts resolveDelayMinutes + useDisruption.
+#
+# Seed the sim DB first — XX999 never resolves upstream, which is the point:
+#   DB="$(xcrun simctl get_app_container booted com.shanavasshaji.flyright data)/Documents/SQLite/flyright.db"
+#   sqlite3 "$DB" "INSERT OR REPLACE INTO journeys (id, mode, carrier, carrier_country, number, from_code, from_country, to_code, to_country, distance_km, scheduled_departure, scheduled_arrival, created_at, user_id, source, updated_at) VALUES ('XX999-2026-06-15','flight','Finnair','FI','XX999','HEL','FI','LHR','GB',1834,'2026-06-15T08:00Z','2026-06-15T10:35Z','2026-06-15T00:00:00.000Z',NULL,'lookup','2026-06-15T00:00:00.000Z');
+#     INSERT OR REPLACE INTO disruptions (id, journey_id, type, delay_minutes, detected_at) VALUES ('delay-XX999-2026-06-15','XX999-2026-06-15','delay',195,'2026-06-15T12:00:00.000Z');"
+#   (user_id NULL = anonymous rows; if the sim app is signed in, set it to that user.
+#    195 min on 1834 km HEL→LHR = 400 EUR under EU261. The detail screen ignores
+#    recorded delays older than ~3 years, so bump the dates once 2026-06-15 ages out.)
+#
+# Clean up after:
+#   sqlite3 "$DB" "DELETE FROM disruptions WHERE journey_id='XX999-2026-06-15'; DELETE FROM journeys WHERE id='XX999-2026-06-15';"
+#
+# Run: ~/.maestro/bin/maestro --device <iphone-udid> test .maestro/recorded-delay-verdict.yaml
+#      (dev build installed + Metro on :8084; keep ONE sim booted — two booted
+#      sims make Maestro route to the wrong one)
+#
+# Gotcha: iOS flattens each journey row into ONE a11y label starting with the
+# airline ("Finnair, Mon, Jun 15 · XX999, 400 EUR, owed, …") and Maestro text
+# matches are full-string regex — partial selectors like ".*XX999.*" tap the
+# row but flake; anchor from the start of the label.
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 20000
+# The row must already carry the money badge — the list resolves it from the
+# same disruptions cache, no network.
+- scrollUntilVisible:
+    element:
+      text: "Finnair, Mon, Jun 15 · XX999, 400 EUR, owed.*"
+    direction: DOWN
+    timeout: 15000
+- tapOn: "Finnair, Mon, Jun 15 · XX999.*"
+# Detail must render the verdict from the recorded delay despite the 404.
+- extendedWaitUntil:
+    visible: "You're owed.*"
+    timeout: 15000
+- assertVisible: "Generate my claim.*"
