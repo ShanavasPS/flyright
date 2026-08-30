@@ -13,9 +13,11 @@ appId: com.shanavasshaji.flyright
       notifications: allow # keep the post-track permission prompt out of the flow
 - openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 # clearState makes this a first launch, so the onboarding intro shows first.
+# clearState also wipes the dev client's cached bundle — the first Metro
+# download can sit on a splash well past 30s (same as the travel-day flows).
 - extendedWaitUntil:
     visible: "Skip"
-    timeout: 30000
+    timeout: 90000
 - tapOn: "Skip"
 - extendedWaitUntil:
     visible: "My travels"
@@ -47,7 +49,8 @@ appId: com.shanavasshaji.flyright
 - assertVisible: ".*AY1331.*"
 - tapOn: ".*AY1331.*"
 # Mock data (odd number, past date) yields the owed verdict; a live API key
-# returns the real flight, which is usually on time — accept either card.
+# returns the real flight, which is usually on time — a landed on-time flight
+# gets the "No compensation due" card, so accept any of the three.
 - extendedWaitUntil:
-    visible: "(You're owed|We're watching this flight).*"
+    visible: "(You're owed|We're watching this flight|No compensation due).*"
     timeout: 15000
