@@ -6,9 +6,11 @@ import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
 import type { Journey } from '@/rules/types';
 import { getPushEnabled, setUserTag } from '@/services/notifications';
+import type { InboundOutlook } from '@/services/inbound';
 import {
   delayNotification,
   delayTier,
+  inboundNotification,
   outranks,
   OWNED_ID,
   planReminders,
@@ -174,6 +176,26 @@ export async function maybeNotifyDelay(journey: Journey, delayMinutes: number): 
 
   if (!(await getPushEnabled())) return;
   const content = delayNotification(journey, delayMinutes, tier as Exclude<DelayTier, 'none'>);
+  await Notifications.scheduleNotificationAsync({
+    identifier: content.id,
+    content: { title: content.title, body: content.body, data: { url: content.url } },
+    trigger: null,
+  });
+}
+
+const inboundKey = (journeyId: string) => `inbound-alerted-${journeyId}`;
+
+/**
+ * One inbound heads-up per journey, ever — once the plane's lateness becomes
+ * an announced departure delay, the regular delay ladder takes over, and a
+ * prediction that keeps drifting must not drip notifications.
+ */
+export async function maybeNotifyInbound(journey: Journey, outlook: InboundOutlook): Promise<void> {
+  if (Storage.getItemSync(inboundKey(journey.id))) return;
+  Storage.setItemSync(inboundKey(journey.id), 'sent');
+
+  if (!(await getPushEnabled())) return;
+  const content = inboundNotification(journey, outlook);
   await Notifications.scheduleNotificationAsync({
     identifier: content.id,
     content: { title: content.title, body: content.body, data: { url: content.url } },

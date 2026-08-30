@@ -40,6 +40,8 @@ import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
+import { inboundNewsworthy, inboundOutlook, type InboundOutlook } from '@/services/inbound';
+import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
 import { noteSuccess } from '@/services/haptics';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { billingAvailable, hasPro } from '@/services/purchases';
@@ -108,7 +110,12 @@ export function JourneyDetail({
   // Live disruption data for tracked journeys; the demo uses a canned 195-min delay.
   const status = useQuery({
     queryKey: ['flight-status', journey?.number, journey?.scheduledDeparture.slice(0, 10)],
-    queryFn: () => lookupFlight(journey!.number, journey!.scheduledDeparture.slice(0, 10)),
+    queryFn: () =>
+      lookupFlight(journey!.number, journey!.scheduledDeparture.slice(0, 10), {
+        // Pre-departure only: past that, the rotation can't predict anything
+        // and the server would skip the extra provider call anyway.
+        inbound: Date.parse(journey!.scheduledDeparture) > now,
+      }),
     enabled: isLookupable,
     staleTime: 5 * 60 * 1000,
     retry: false,
@@ -225,6 +232,11 @@ export function JourneyDetail({
             </ThemedText>
           )}
         </View>
+
+        {status.data && (() => {
+          const outlook = inboundOutlook(status.data);
+          return outlook ? <InboundCard outlook={outlook} /> : null;
+        })()}
 
         {travelActive && row && (
           <TravelDayTimeline
@@ -347,6 +359,56 @@ function showTripMenu(journeyId: string, editable: boolean, router: ReturnType<t
     { text: 'Remove from My travels', style: 'destructive' as const, onPress: remove },
     { text: 'Cancel', style: 'cancel' as const },
   ]);
+}
+
+/** Where the aircraft flying this leg is right now — the delay signal the
+ * departure board doesn't show. Rendered pre-departure whenever the rotation
+ * is known, so the happy path ("your plane is on its way") builds trust in
+ * the late path ("departure may slip ~40 min"). */
+function InboundCard({ outlook }: { outlook: InboundOutlook }) {
+  const leg = inboundLegLabel(outlook);
+  const slip = outlook.predictedDepartureDelayMinutes;
+
+  if (outlook.landed) {
+    return (
+      <Card testID="inbound-card">
+        <ThemedText type="subtitle">Your plane is here</ThemedText>
+        <ThemedText type="small">
+          {`It landed${outlook.lateMinutes ? ` ${formatDelay(outlook.lateMinutes)} behind` : ''}, ${leg}.`}
+          {slip >= 15
+            ? ` Departure may still slip about ${formatDelay(slip)}.`
+            : ' Boarding should run on schedule.'}
+        </ThemedText>
+      </Card>
+    );
+  }
+
+  if (outlook.severity === 'none') {
+    return (
+      <Card testID="inbound-card">
+        <ThemedText type="subtitle">Your plane is on its way</ThemedText>
+        <ThemedText type="small">
+          {`It's ${leg}${
+            outlook.lateMinutes ? `, running ${formatDelay(outlook.lateMinutes)} behind` : ', on time'
+          } — the schedule has enough slack to hold.`}
+        </ThemedText>
+      </Card>
+    );
+  }
+
+  return (
+    <Card testID="inbound-card">
+      <ThemedText type="subtitle">Your plane is running late</ThemedText>
+      <ThemedText type="small">
+        {`It's ${leg}, ${formatDelay(outlook.lateMinutes)} behind — departure may slip about ${formatDelay(slip)}.`}
+      </ThemedText>
+      {inboundNewsworthy(outlook) && (
+        <ThemedText type="small" themeColor="textSecondary">
+          The airline hasn&apos;t updated the departure time yet.
+        </ThemedText>
+      )}
+    </Card>
+  );
 }
 
 // One success buzz per journey per app session — the verdict is a thrill the

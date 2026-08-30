@@ -28,6 +28,21 @@ export interface FlightStatus {
   actualDeparture?: string | null;
   estimatedArrival?: string | null;
   actualArrival?: string | null;
+  /** The operating airframe, when the provider knows it. */
+  aircraft?: { reg: string; model: string | null } | null;
+  /** The aircraft's previous rotation leg — only present when the lookup
+   * asked for it (`inbound: true`) and the flight hasn't departed yet. */
+  inbound?: InboundLeg | null;
+}
+
+export interface InboundLeg {
+  flight: string | null;
+  from: { code: string | null };
+  status: string;
+  landed: boolean;
+  scheduledArrival: string | null;
+  estimatedArrival: string | null;
+  actualArrival: string | null;
 }
 
 export class FlightLookupError extends Error {
@@ -48,9 +63,14 @@ export function normalizeFlightNumber(input: string): string | null {
   return FLIGHT_NUMBER.test(compact) ? compact : null;
 }
 
-export async function lookupFlight(flight: string, date: string): Promise<FlightStatus> {
+export async function lookupFlight(
+  flight: string,
+  date: string,
+  options?: { inbound?: boolean },
+): Promise<FlightStatus> {
+  const inbound = options?.inbound ? '&inbound=1' : '';
   const response = await fetch(
-    `/api/flight-status?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}`,
+    `/api/flight-status?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}${inbound}`,
   );
 
   if (!response.ok) {

@@ -6,6 +6,7 @@
 import { evaluate } from '@/rules/engine';
 import type { Journey } from '@/rules/types';
 import { formatDayLabel, formatTime } from '@/services/dates';
+import type { InboundOutlook } from '@/services/inbound';
 import type { JourneyRow } from '@/services/journeys';
 import { cityOf } from '@/services/timeline';
 
@@ -171,5 +172,35 @@ export function delayNotification(
     ...base,
     title: `${label} is running late`,
     body: `Current delay: ${formatDelay(delayMinutes)}. FlyRight will tell you if it reaches compensation territory.`,
+  };
+}
+
+/** "arriving as AY1330 from Stockholm" — whichever halves the data has. */
+export function inboundLegLabel(outlook: InboundOutlook): string {
+  const parts = [
+    outlook.flight ? `as ${outlook.flight}` : null,
+    outlook.fromCode ? `from ${cityOf(outlook.fromCode)}` : null,
+  ].filter(Boolean);
+  return parts.length ? `arriving ${parts.join(' ')}` : 'the inbound aircraft';
+}
+
+/** The proactive heads-up: the departure board still says on time, but the
+ * aircraft flying this leg is late enough that the schedule can't hold. */
+export function inboundNotification(
+  journey: Journey,
+  outlook: InboundOutlook,
+): { id: string; title: string; body: string; url: string } {
+  const label = journey.number || journey.carrier;
+  return {
+    // Distinct from `delay-${id}` so an airline-announced delay alert can
+    // still follow this heads-up; both live in the OWNED_ID namespace.
+    id: `delay-inbound-${journey.id}`,
+    url: `/journey/${journey.id}`,
+    title: `${label}'s plane is running late`,
+    body: `Your aircraft — ${inboundLegLabel(outlook)} — is ${formatDelay(
+      outlook.lateMinutes,
+    )} behind, so departure may slip about ${formatDelay(
+      outlook.predictedDepartureDelayMinutes,
+    )}. The airline hasn't updated the schedule yet.`,
   };
 }

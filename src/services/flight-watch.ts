@@ -6,8 +6,9 @@ import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import { recordDelay } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
+import { inboundNewsworthy, inboundOutlook } from '@/services/inbound';
 import { toDomainJourney } from '@/services/journeys';
-import { maybeNotifyDelay } from '@/services/notification-lifecycle';
+import { maybeNotifyDelay, maybeNotifyInbound } from '@/services/notification-lifecycle';
 import { noteFlightFacts, reconcileTravelDay } from '@/services/travel-day-lifecycle';
 
 /**
@@ -70,8 +71,17 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
 
   for (const row of watched) {
     try {
-      const status = await lookupFlight(row.number, row.scheduledDeparture.slice(0, 10));
+      // Pre-departure, also resolve the inbound rotation — where the plane
+      // is right now often predicts a delay before the airline announces it.
+      const upcoming = Date.parse(row.scheduledDeparture) > now.getTime();
+      const status = await lookupFlight(row.number, row.scheduledDeparture.slice(0, 10), {
+        inbound: upcoming,
+      });
       await noteFlightFacts(row.id, status);
+      const outlook = upcoming ? inboundOutlook(status) : null;
+      if (outlook && inboundNewsworthy(outlook)) {
+        await maybeNotifyInbound(toDomainJourney(row), outlook);
+      }
       if (status.delayMinutes == null) continue;
       await recordDelay(row.id, status.delayMinutes);
       await maybeNotifyDelay(toDomainJourney(row), status.delayMinutes);
