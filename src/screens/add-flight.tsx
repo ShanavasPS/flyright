@@ -3,6 +3,7 @@ import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,10 +16,20 @@ import {
 } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
+import { AirlineLogo } from '@/components/airline-logo';
 import { BoardingPassScanner } from '@/components/boarding-pass-scanner';
+import {
+  MicroLabel,
+  PassAction,
+  PassCard,
+  PassDivider,
+  PassRouteRow,
+  PASS_AMBER,
+} from '@/components/pass-card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
 import { carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -369,86 +380,102 @@ export function AddFlight() {
         {editId && step === 'manual' ? 'Update your trip details' : PROMPTS[step]}
       </ThemedText>
 
-      <View style={styles.tokenRow}>
-        {flightNumber && (
-          <Pressable onPress={editFlight}>
-            <ThemedView type="backgroundSelected" style={styles.chip}>
-              <ThemedText type="smallBold" themeColor="tint">
-                {flightNumber}
-              </ThemedText>
-            </ThemedView>
-          </Pressable>
-        )}
-        {date && (
-          <Pressable onPress={editDate}>
-            <ThemedView type="backgroundSelected" style={styles.chip}>
-              <ThemedText type="smallBold" themeColor="tint">
-                {/* Journal dates can be years back — ambiguity needs the year. */}
-                {date.slice(0, 4) === localDateString(today).slice(0, 4)
-                  ? formatDayLabel(date)
-                  : formatDayLabelWithYear(date)}
-              </ThemedText>
-            </ThemedView>
-          </Pressable>
-        )}
-        {step === 'flight' && (
-          <TextInput
-            autoFocus
-            autoCapitalize="characters"
-            autoCorrect={false}
-            value={flightInput}
-            onChangeText={setFlightInput}
-            onSubmitEditing={confirmFlight}
-            placeholder="AY1331 or LH873"
-            placeholderTextColor={theme.textSecondary}
-            returnKeyType="search"
-            style={[
-              styles.input,
-              { color: theme.text, backgroundColor: theme.backgroundElement },
-            ]}
-          />
-        )}
-      </View>
+      {/* Confirmed tokens as boarding-pass stubs — tap one to reopen its step. */}
+      {(flightNumber || date) && (
+        <View style={styles.tokenRow}>
+          {flightNumber && (
+            <Pressable onPress={editFlight}>
+              <View style={styles.chip}>
+                <SymbolView
+                  name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+                  size={12}
+                  tintColor={COBALT}
+                />
+                <ThemedText type="smallBold" style={styles.chipText}>
+                  {flightNumber}
+                </ThemedText>
+              </View>
+            </Pressable>
+          )}
+          {date && (
+            <Pressable onPress={editDate}>
+              <View style={styles.chip}>
+                <SymbolView
+                  name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }}
+                  size={12}
+                  tintColor={COBALT}
+                />
+                <ThemedText type="smallBold" style={styles.chipText}>
+                  {/* Journal dates can be years back — ambiguity needs the year. */}
+                  {date.slice(0, 4) === localDateString(today).slice(0, 4)
+                    ? formatDayLabel(date)
+                    : formatDayLabelWithYear(date)}
+                </ThemedText>
+              </View>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {/* Plain View on purpose: a ScrollView inside a formSheet is captured by
           the sheet's drag-to-resize integration and hoisted over the header. */}
       <View style={styles.body}>
         {step === 'flight' && (
           <View style={styles.rowGroup}>
-            {!scanning && inputCandidate && (
-              <Pressable onPress={confirmFlight}>
-                <ThemedView type="backgroundElement" style={styles.row}>
-                  <View>
-                    <ThemedText type="smallBold">{inputCandidate}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      Search this flight
-                    </ThemedText>
-                  </View>
-                  <ThemedText themeColor="tint">→</ThemedText>
-                </ThemedView>
-              </Pressable>
-            )}
-
-            {!scanning && !editId && Platform.OS !== 'web' && (
-              <Pressable
-                testID="scan-boarding-pass"
-                hitSlop={Spacing.two}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setScanning(true);
-                }}>
-                <ThemedText type="link">Scan your boarding pass →</ThemedText>
-              </Pressable>
+            {/* The blank boarding pass: the flight number gets written onto
+                the same night-sky card the travel-day hero renders, so adding
+                a flight already looks like the thing you'll travel with. */}
+            {!scanning && (
+              <PassCard>
+                <MicroLabel>Flight number</MicroLabel>
+                <TextInput
+                  autoFocus
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  value={flightInput}
+                  onChangeText={setFlightInput}
+                  onSubmitEditing={confirmFlight}
+                  placeholder="AY1331 or LH873"
+                  placeholderTextColor="rgba(242,246,251,0.35)"
+                  selectionColor={COBALT}
+                  returnKeyType="search"
+                  style={styles.passInput}
+                />
+                {inputCandidate ? (
+                  <PassAction label="Search this flight →" onPress={confirmFlight} />
+                ) : (
+                  <ThemedText type="small" style={styles.passHint}>
+                    The code on your ticket, booking email, or boarding pass.
+                  </ThemedText>
+                )}
+              </PassCard>
             )}
 
             {scanning && (
               <BoardingPassScanner onScan={applyScan} onClose={() => setScanning(false)} />
             )}
 
-            {!scanning && !inputCandidate && (
-              <Pressable onPress={startManual} hitSlop={Spacing.two}>
-                <ThemedText type="link">No flight number? Add a trip manually →</ThemedText>
-              </Pressable>
+            {!scanning && !editId && (
+              <View style={styles.tileRow}>
+                {Platform.OS !== 'web' && (
+                  <OptionTile
+                    testID="scan-boarding-pass"
+                    icon={{ ios: 'viewfinder', android: 'qr_code_scanner', web: 'qr_code_scanner' }}
+                    title="Scan your boarding pass"
+                    caption="Point the camera — it fills itself in"
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setScanning(true);
+                    }}
+                  />
+                )}
+                <OptionTile
+                  icon={{ ios: 'square.and.pencil', android: 'edit', web: 'edit' }}
+                  title="Add a trip manually"
+                  caption="No flight number needed"
+                  onPress={startManual}
+                />
+              </View>
             )}
           </View>
         )}
@@ -509,12 +536,12 @@ export function AddFlight() {
         )}
 
         {step === 'result' && lookup.isPending && (
-          <View style={styles.loading}>
-            <ActivityIndicator />
-            <ThemedText type="small" themeColor="textSecondary">
+          <PassCard style={styles.loadingCard}>
+            <ActivityIndicator color={WHITE} />
+            <ThemedText type="small" style={styles.passHint}>
               Looking up {flightNumber}…
             </ThemedText>
-          </View>
+          </PassCard>
         )}
 
         {step === 'result' && lookup.isError && (
@@ -650,37 +677,82 @@ export function AddFlight() {
         )}
 
         {step === 'result' && flight && (
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {flight.carrier.name} {flight.flight} · {formatDayLabel(flight.date)}
-            </ThemedText>
-            {routeKnown ? (
-              <>
-                <ThemedText type="subtitle" themeColor="heading">
-                  {flight.from.code} → {flight.to.code}
+          <Animated.View entering={ZoomIn.springify().duration(400)}>
+            <PassCard>
+              {/* Boarding-pass header: the airline's mark left, the day right. */}
+              <View style={styles.passHeader}>
+                <AirlineLogo number={flight.flight} carrier={flight.carrier.name} size={32} />
+                <MicroLabel>{formatDayLabel(flight.date)}</MicroLabel>
+              </View>
+              {routeKnown ? (
+                <>
+                  <PassRouteRow
+                    fromCode={flight.from.code!}
+                    toCode={flight.to.code!}
+                    depTime={
+                      flight.scheduledDeparture ? formatTime(flight.scheduledDeparture) : null
+                    }
+                    arrTime={flight.scheduledArrival ? formatTime(flight.scheduledArrival) : null}
+                    delayed={!flight.landed && (flight.delayMinutes ?? 0) > 0}
+                  />
+                  <View style={styles.passMeta}>
+                    <ThemedText type="small" style={styles.passCarrier} numberOfLines={1}>
+                      {flight.carrier.name} {flight.flight}
+                    </ThemedText>
+                    <StatusLine
+                      status={flight.status}
+                      delayMinutes={flight.delayMinutes}
+                      landed={flight.landed}
+                    />
+                  </View>
+                  <PassDivider />
+                  <PassAction label="Track this flight →" onPress={track} />
+                </>
+              ) : (
+                <ThemedText type="small" style={styles.passHint}>
+                  The provider returned no route for this flight — try another day.
                 </ThemedText>
-                <ThemedText type="small">
-                  Departs {formatTime(flight.scheduledDeparture)} · Arrives{' '}
-                  {formatTime(flight.scheduledArrival)}
-                </ThemedText>
-                <StatusLine
-                  status={flight.status}
-                  delayMinutes={flight.delayMinutes}
-                  landed={flight.landed}
-                />
-                <View style={styles.cta}>
-                  <PrimaryButton label="Track this flight →" onPress={track} />
-                </View>
-              </>
-            ) : (
-              <ThemedText type="small" themeColor="textSecondary">
-                The provider returned no route for this flight — try another day.
-              </ThemedText>
-            )}
-          </ThemedView>
+              )}
+            </PassCard>
+          </Animated.View>
         )}
       </View>
     </ThemedView>
+  );
+}
+
+/** Secondary entry paths as equal side-by-side tiles — icon, title, one-line
+ * promise — instead of bare text links. */
+function OptionTile({
+  icon,
+  title,
+  caption,
+  onPress,
+  testID,
+}: {
+  icon: SymbolViewProps['name'];
+  title: string;
+  caption: string;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      testID={testID}
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}>
+      <ThemedView type="backgroundElement" style={styles.tileInner}>
+        <View style={[styles.tileIcon, { backgroundColor: theme.backgroundSelected }]}>
+          <SymbolView name={icon} size={16} tintColor={theme.tint} />
+        </View>
+        <ThemedText type="smallBold">{title}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {caption}
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -717,6 +789,8 @@ function AirportSuggestions({
   );
 }
 
+/** Money-green when the arrival went well, amber when there's a delay story,
+ * dim white otherwise — the pass card's night palette, not the theme's. */
 function StatusLine({
   status,
   delayMinutes,
@@ -726,33 +800,31 @@ function StatusLine({
   delayMinutes: number | null;
   landed?: boolean;
 }) {
-  const theme = useTheme();
-
   // "Arrived" is only true once the flight has landed — before that a
   // delayMinutes value is a live prediction, not an arrival delay.
   if (landed) {
     if (delayMinutes != null && delayMinutes > 0) {
       return (
-        <ThemedText type="small" style={{ color: theme.danger }}>
+        <ThemedText type="small" style={{ color: PASS_AMBER }}>
           Arrived {delayMinutes} min late
         </ThemedText>
       );
     }
     return (
-      <ThemedText type="small" style={{ color: theme.success }}>
+      <ThemedText type="small" style={{ color: '#2FD68C' }}>
         Arrived on time
       </ThemedText>
     );
   }
   if (delayMinutes != null && delayMinutes > 0) {
     return (
-      <ThemedText type="small" style={{ color: theme.danger }}>
+      <ThemedText type="small" style={{ color: PASS_AMBER }}>
         Running {delayMinutes} min late — we&apos;ll watch the final arrival
       </ThemedText>
     );
   }
   return (
-    <ThemedText type="small" themeColor="textSecondary">
+    <ThemedText type="small" style={{ color: WHITE_DIM }}>
       {status === 'scheduled' || status === 'Expected'
         ? "Scheduled — we'll watch it for delays"
         : `Status: ${status}`}
@@ -784,10 +856,73 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     flexWrap: 'wrap',
   },
+  // Confirmed tokens as pass stubs: navy pills off the same night palette as
+  // the card below, so the tokens read as pieces torn off the pass.
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
+    backgroundColor: '#1C3459',
+    borderWidth: 1,
+    borderColor: WHITE_FAINT,
+  },
+  chipText: {
+    color: WHITE,
+  },
+  passInput: {
+    color: WHITE,
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: 700,
+    letterSpacing: 1.5,
+    paddingVertical: Spacing.one,
+  },
+  passHint: {
+    color: WHITE_DIM,
+  },
+  passHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  passMeta: {
+    gap: Spacing.half,
+  },
+  passCarrier: {
+    color: COBALT,
+  },
+  loadingCard: {
+    alignItems: 'center',
+    paddingVertical: Spacing.five,
+  },
+  tileRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  tile: {
+    flex: 1,
+  },
+  tilePressed: {
+    opacity: 0.85,
+  },
+  // Content-sized with a shared floor so the two pills read as one row even
+  // when their captions wrap differently.
+  tileInner: {
+    minHeight: 116,
+    gap: Spacing.one,
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+  },
+  tileIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
   },
   input: {
     flex: 1,
@@ -821,11 +956,6 @@ const styles = StyleSheet.create({
   calendar: {
     borderRadius: Spacing.three,
     padding: Spacing.two,
-  },
-  loading: {
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingVertical: Spacing.five,
   },
   card: {
     gap: Spacing.two,
