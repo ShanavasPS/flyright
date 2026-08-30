@@ -1,14 +1,21 @@
 # Paywall E2E: offering loads from RevenueCat and all three packages render.
 # Uses deep links; assertions stick to package names so they survive a
-# redesigned Paywalls v2 template.
-appId: com.sshanavas.owed
+# redesigned Paywalls v2 template. (Ported from the pre-rename Owed app —
+# appId, scheme and home title changed.)
+#
+# Needs network for the RevenueCat offerings fetch, and a build with billing
+# available (dev/Play — the galaxy variant hides all Pro UI by design).
+# Run: maestro --device <device> test .maestro/paywall.yaml
+#      (dev build installed + `npx expo start` on :8081)
+appId: com.shanavasshaji.flyright
 ---
 - launchApp
-- openLink: "com.sshanavas.owed://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# The dev-client link re-downloads the bundle — that can outlive 30s cold.
 - extendedWaitUntil:
-    visible: "Journeys"
-    timeout: 30000
-- openLink: "owed:///paywall"
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://paywall"
 - extendedWaitUntil:
     visible: "Monthly"
     timeout: 15000

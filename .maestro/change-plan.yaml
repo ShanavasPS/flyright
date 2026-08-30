@@ -1,32 +1,42 @@
-# Change-plan navigation, UI taps only (no deep links): Settings tab →
-# Manage subscription (Customer Center on a pushed route) → 'Change plan'
-# custom action → paywall opens immediately. On the free plan (test
-# subscriptions expire on their own) the path is Settings → Get Owed Pro.
-# The dev client auto-loads the last bundle on plain launch.
-appId: com.sshanavas.owed
+# Change-plan navigation: Settings → the Pro row → on the free plan it pushes
+# the paywall directly ("Get FlyRight Pro"); with an active sub it pushes
+# Manage subscription and its "Change plan" action opens the paywall's
+# offering variant. Either branch must end on a paywall with all three
+# packages. (Ported from the pre-rename Owed app — appId, scheme, titles and
+# the row labels changed; the sub/free branching survives.)
+#
+# The dev client auto-loads the last bundle on plain launch. Settings is
+# reached via deep link — NativeTabs labels don't respond to Maestro taps on
+# iOS 26 (see claim-outcomes.yaml). The Pro row flattens to ONE a11y label on
+# iOS ("FlyRight Pro, Renews …" / "Get FlyRight Pro, Free plan"), so both
+# selectors are start-anchored regexes; full-string matching keeps
+# "FlyRight Pro.*" from also matching the "Get …" row.
+# Run: maestro --device <device> test .maestro/change-plan.yaml
+appId: com.shanavasshaji.flyright
 ---
 - launchApp
+# Android debug cold starts (force-stopped app + bundle auto-load) outlive 30s.
 - extendedWaitUntil:
-    visible: "Journeys"
-    timeout: 30000
-- tapOn: "Settings"
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://settings"
 - extendedWaitUntil:
     visible: "Restore purchases"
     timeout: 10000
 - runFlow:
     when:
-      visible: "Manage subscription"
+      visible: "FlyRight Pro.*"
     commands:
-      - tapOn: "Manage subscription"
+      - tapOn: "FlyRight Pro.*"
       - extendedWaitUntil:
           visible: "Change plan"
           timeout: 15000
       - tapOn: "Change plan"
 - runFlow:
     when:
-      visible: "Get Owed Pro"
+      visible: "Get FlyRight Pro.*"
     commands:
-      - tapOn: "Get Owed Pro"
+      - tapOn: "Get FlyRight Pro.*"
 - extendedWaitUntil:
     visible: "Monthly"
     timeout: 15000
