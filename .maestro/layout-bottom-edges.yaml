@@ -1,0 +1,77 @@
+# Bottom-edge layout sweep: scroll journeys, claims and settings to their
+# ends and screenshot each, then the paywall sheet — the screenshots (in
+# .maestro/out/) are the artifact; eyeball that nothing hides behind the tab
+# bar, the Android nav bar, or the home indicator. Guards the paywall legal
+# row's inset padding, the [1.0] paywall detent, and the iOS 18
+# disableTransparentOnScrollEdge tab-bar fix (commit 1ad9360).
+#
+# Run on every combo that ships: iOS 26 + iOS 18 sims, Android gesture AND
+# 3-button nav (adb shell cmd overlay enable
+# com.android.internal.systemui.navbar.threebutton|gestural — REBOOT the
+# emulator after switching: on API ≤33 a hot switch leaves WindowInsets
+# stale at the old value, which looks exactly like an inset bug but isn't).
+#
+# Seed a scrolling journal first (dev build + Metro on :8081, app launched
+# once past onboarding). iOS:
+#   DB="$(xcrun simctl get_app_container booted com.shanavasshaji.flyright data)/Documents/SQLite/flyright.db"
+# Android (pull → edit → push, sqlite3 isn't on the device):
+#   adb shell "run-as com.shanavasshaji.flyright cat files/SQLite/flyright.db" > /tmp/fr.db
+#   ...seed /tmp/fr.db...; adb push /tmp/fr.db /data/local/tmp/fr.db
+#   adb shell "run-as com.shanavasshaji.flyright cp /data/local/tmp/fr.db files/SQLite/flyright.db"
+#   sqlite3 <db> "INSERT OR REPLACE INTO journeys (id, mode, carrier, carrier_country, number, from_code, from_country, to_code, to_country, distance_km, scheduled_departure, scheduled_arrival, created_at, user_id, source, updated_at) VALUES
+#     ('PAD-01','flight','Finnair','FI','AY101','HEL','FI','ARN','SE',397,'2025-09-05T08:00Z','2025-09-05T09:00Z','2025-09-05T00:00:00.000Z',NULL,'manual','2025-09-05T00:00:00.000Z'),
+#     ('PAD-03','flight','Lufthansa','DE','LH103','HEL','FI','FRA','DE',1519,'2025-10-03T08:00Z','2025-10-03T10:40Z','2025-10-03T00:00:00.000Z',NULL,'manual','2025-10-03T00:00:00.000Z'),
+#     ('PAD-05','flight','KLM','NL','KL105','HEL','FI','AMS','NL',1507,'2025-11-07T08:00Z','2025-11-07T10:35Z','2025-11-07T00:00:00.000Z',NULL,'manual','2025-11-07T00:00:00.000Z'),
+#     ('PAD-07','flight','SAS','SE','SK107','HEL','FI','CPH','DK',890,'2025-12-05T08:00Z','2025-12-05T09:40Z','2025-12-05T00:00:00.000Z',NULL,'manual','2025-12-05T00:00:00.000Z'),
+#     ('PAD-09','flight','Finnair','FI','AY109','HEL','FI','LHR','GB',1834,'2026-02-06T08:00Z','2026-02-06T10:35Z','2026-02-06T00:00:00.000Z',NULL,'manual','2026-02-06T00:00:00.000Z'),
+#     ('PAD-10','flight','Finnair','FI','AY110','LHR','GB','HEL','FI',1834,'2026-03-06T08:00Z','2026-03-06T12:35Z','2026-03-06T00:00:00.000Z',NULL,'manual','2026-03-06T00:00:00.000Z'),
+#     ('PAD-11','flight','Iberia','ES','IB111','HEL','FI','MAD','ES',2949,'2026-04-03T08:00Z','2026-04-03T12:10Z','2026-04-03T00:00:00.000Z',NULL,'manual','2026-04-03T00:00:00.000Z'),
+#     ('PAD-13','flight','Finnair','FI','AY113','HEL','FI','JFK','US',6608,'2026-06-05T08:00Z','2026-06-05T16:30Z','2026-06-05T00:00:00.000Z',NULL,'manual','2026-06-05T00:00:00.000Z');
+#     INSERT OR REPLACE INTO disruptions (id, journey_id, type, delay_minutes, detected_at) VALUES ('delay-PAD-13','PAD-13','delay',240,'2026-06-05T17:00:00.000Z');
+#     INSERT OR REPLACE INTO claims (id, user_id, journey_id, regulation, amount, currency, status, sent_at, response_deadline, created_at, sent_snapshot) VALUES ('claim-PAD-13',NULL,'PAD-13','EU261',600,'EUR','paid','2026-06-10T10:00:00.000Z','2026-07-22T10:00:00.000Z','2026-06-10T10:00:00.000Z',NULL);"
+#
+# Clean up after:
+#   sqlite3 <db> "DELETE FROM claims WHERE id LIKE 'claim-PAD-%'; DELETE FROM disruptions WHERE journey_id LIKE 'PAD-%'; DELETE FROM journeys WHERE id LIKE 'PAD-%';"
+#
+# Run: maestro --device <device> test .maestro/layout-bottom-edges.yaml
+#
+# Gotcha: the scroll count is a heuristic, not scroll-to-end — with a much
+# longer journal, add scrolls or judge from the scrollbar in the screenshot.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true # relaunch so live queries see externally seeded rows
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+# LogBox toast covers the tab bar on dev builds.
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scroll
+- scroll
+- scroll
+- scroll
+- takeScreenshot: .maestro/out/bottom-journeys
+- openLink: "flyright://claims"
+- extendedWaitUntil:
+    visible: "Claims"
+    timeout: 10000
+- scroll
+- takeScreenshot: .maestro/out/bottom-claims
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: "Appearance"
+    timeout: 10000
+- scroll
+- takeScreenshot: .maestro/out/bottom-settings
+# The paywall sheet: legal links must clear the nav bar / home indicator and
+# the purchase button must be whole (RC's template clips when short).
+- openLink: "flyright://paywall"
+- extendedWaitUntil:
+    visible: "Monthly"
+    timeout: 15000
+- assertVisible: ".*Unlock FlyRight Pro.*"
+- assertVisible: "Privacy policy"
+- assertVisible: "Terms of Use"
+- takeScreenshot: .maestro/out/bottom-paywall
