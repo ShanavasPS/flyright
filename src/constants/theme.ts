@@ -85,3 +85,9 @@ export const MaxContentWidth = 800;
  * unfolded foldables, split-screen halves on big tablets. Matches the
  * Android canonical medium-breakpoint. */
 export const WideWindowMinWidth = 600;
+
+/** Windows at least this wide (dp) get list+detail two-pane layouts —
+ * unfolded foldables in landscape, large tablets. Matches the Android
+ * canonical expanded-breakpoint, so a portrait unfolded foldable (~700dp)
+ * stays single-pane. */
+export const TwoPaneMinWidth = 840;

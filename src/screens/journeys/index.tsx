@@ -2,8 +2,8 @@ import { useAuth } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useMemo } from 'react';
-import { Pressable, SectionList, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, SectionList, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
@@ -14,7 +14,8 @@ import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
 import { HomeHero } from '@/components/travel-day-banner';
 import { CONVEX_URL } from '@/constants/config';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, TwoPaneMinWidth } from '@/constants/theme';
+import { JourneyDetail } from '@/screens/journey-detail';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
@@ -115,15 +116,25 @@ export function Journeys() {
       ? fold.hingeBounds
       : null;
 
-  return (
-    <ThemedView style={styles.container}>
-      {tabletopHinge && (
-        <View style={[styles.topPane, { height: tabletopHinge.top }]}>
-          <SafeAreaView edges={['top', 'left', 'right']} style={styles.topPaneSafe}>
-            <HomeHero journeys={journeys ?? []} stats={stats} variant="glance" />
-          </SafeAreaView>
-        </View>
-      )}
+  // Book posture / big screens: list on the left, the selected trip's detail
+  // on the right. Expanded-width windows only (unfolded foldable in
+  // landscape, big tablets); on a book-fold the pane seam sits exactly on
+  // the hinge. Tabletop wins when both could apply (a fold rotated to a
+  // horizontal hinge is a tabletop, not a book).
+  const { width: windowWidth } = useWindowDimensions();
+  const twoPane = !tabletopHinge && windowWidth >= TwoPaneMinWidth && !!journeys?.length;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const bookHinge =
+    fold.orientation === 'vertical' && fold.isSeparating ? fold.hingeBounds : null;
+  const listPaneWidth = bookHinge ? bookHinge.left : Math.round(windowWidth * 0.42);
+  const detailId = twoPane
+    ? journeys!.some((j) => j.id === selectedId)
+      ? selectedId
+      : (sections[0]?.data[0]?.id ?? null)
+    : null;
+
+  const listPane = (
+    <>
       {/* Top edge only: the list itself runs under the floating tab bar (the
           iOS 26 behavior — glass blurs the content scrolling beneath it). */}
       <SafeAreaView
@@ -171,6 +182,8 @@ export function Journeys() {
                 now={now}
                 claim={claimByJourney.get(item.id)}
                 owed={owedByJourney.get(item.id)}
+                onSelect={twoPane ? () => setSelectedId(item.id) : undefined}
+                selected={twoPane && detailId === item.id}
               />
             )}
           />
@@ -185,6 +198,31 @@ export function Journeys() {
           </Card>
         )}
       </SafeAreaView>
+    </>
+  );
+
+  return (
+    <ThemedView style={styles.container}>
+      {tabletopHinge && (
+        <View style={[styles.topPane, { height: tabletopHinge.top }]}>
+          <SafeAreaView edges={['top', 'left', 'right']} style={styles.topPaneSafe}>
+            <HomeHero journeys={journeys ?? []} stats={stats} variant="glance" />
+          </SafeAreaView>
+        </View>
+      )}
+      {twoPane ? (
+        <View style={styles.panes}>
+          <View style={{ width: listPaneWidth }}>{listPane}</View>
+          <ThemedView type="backgroundElement" style={styles.paneDivider} />
+          <View style={styles.detailPane}>
+            {/* Keyed so a new selection restarts the detail's entering
+                animations instead of morphing the previous trip's state. */}
+            {detailId && <JourneyDetail key={detailId} journeyId={detailId} embedded />}
+          </View>
+        </View>
+      ) : (
+        listPane
+      )}
     </ThemedView>
   );
 }
@@ -287,21 +325,32 @@ function JourneyItem({
   now,
   claim,
   owed,
+  onSelect,
+  selected,
 }: {
   row: JourneyRow;
   now: Date;
   claim?: ClaimRow;
   owed?: Money;
+  /** Two-pane mode: select into the detail pane instead of pushing a route. */
+  onSelect?: () => void;
+  selected?: boolean;
 }) {
+  const theme = useTheme();
   // Recent and upcoming trips get the live countdown; older ones read like a
   // journal entry — the calendar rail plus the year section header say enough.
   const isOld = now.getTime() - Date.parse(row.scheduledDeparture) > YEAR_MS;
   const timer = countdown(row.scheduledDeparture, now);
   const upcoming = Date.parse(row.scheduledDeparture) >= now.getTime();
-  return (
-    <Link href={{ pathname: '/journey/[id]', params: { id: row.id } }} asChild>
-      <Pressable style={({ pressed }) => pressed && styles.rowPressed}>
-        <SheenCard style={styles.rowCard}>
+  const card = (
+      <Pressable
+        onPress={onSelect}
+        style={({ pressed }) => pressed && styles.rowPressed}>
+        <SheenCard
+          style={[
+            styles.rowCard,
+            selected && { borderWidth: 1, borderColor: theme.tint },
+          ]}>
           <AirlineLogo number={row.number} carrier={row.carrier} />
           <View style={styles.rowBody}>
             {/* Countdown sits on the meta line's right (Flighty's date slot) so
@@ -345,6 +394,11 @@ function JourneyItem({
           </View>
         </SheenCard>
       </Pressable>
+  );
+  if (onSelect) return card;
+  return (
+    <Link href={{ pathname: '/journey/[id]', params: { id: row.id } }} asChild>
+      {card}
     </Link>
   );
 }
@@ -377,6 +431,18 @@ const styles = StyleSheet.create({
   // room of its own.
   belowHinge: {
     paddingTop: Spacing.three,
+  },
+  // Book posture / expanded windows: list left, selected trip's detail right,
+  // seam on the hinge when there is one.
+  panes: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  paneDivider: {
+    width: StyleSheet.hairlineWidth,
+  },
+  detailPane: {
+    flex: 1,
   },
   titleRow: {
     flexDirection: 'row',

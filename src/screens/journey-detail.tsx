@@ -80,7 +80,17 @@ function routeSentence(journey: Journey): string {
   return '';
 }
 
-export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) {
+export function JourneyDetail({
+  journeyId,
+  embedded = false,
+}: {
+  journeyId: string | undefined;
+  /** Rendered as the right pane of the journeys screen's two-pane layout
+   * (wide windows / book-postured foldables) instead of as a pushed route:
+   * no stack header to configure, so the ··· trip menu moves inline, and the
+   * left window inset belongs to the list pane. */
+  embedded?: boolean;
+}) {
   // Ticks so the travel-day timeline stays live while open; the coarser
   // claim-window math reads the same clock and doesn't mind the updates.
   const now = useNow(60_000).getTime();
@@ -174,7 +184,9 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
     <ThemedView style={styles.container}>
       {/* No top edge: the native stack header already owns that inset —
           including it doubled up as a blank band under the header. */}
-      <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
+      <SafeAreaView
+        edges={embedded ? ['top', 'bottom', 'right'] : ['bottom', 'left', 'right']}
+        style={styles.safeArea}>
         {/* The travel-day timeline made the tall path (title + timeline +
             verdict) overflow smaller screens — everything scrolls now. */}
         <ScrollView
@@ -186,6 +198,19 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
           <ThemedText type="title" themeColor="heading" style={styles.titleText}>
             {journey.number ? `${journey.carrier} ${journey.number}` : journey.carrier}
           </ThemedText>
+          {/* Embedded panes have no stack header, so the ··· menu sits inline. */}
+          {embedded && !isDemo && row && (
+            <Pressable
+              accessibilityLabel="Trip options"
+              hitSlop={Spacing.three}
+              onPress={() => showTripMenu(row.id, row.source === 'manual', router)}>
+              <SymbolView
+                name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
+                size={22}
+                tintColor={theme.tint}
+              />
+            </Pressable>
+          )}
         </View>
         <View style={styles.routeBlock}>
           <ThemedText>
@@ -257,7 +282,7 @@ export function JourneyDetail({ journeyId }: { journeyId: string | undefined }) 
         {/* Edit/remove live in a header "···" menu (the Flighty/Tripsy
             pattern): edit as a plain action, remove destructive and last,
             never side by side in the content. */}
-        {!isDemo && row && (
+        {!isDemo && row && !embedded && (
           <Stack.Screen
             options={{
               headerRight: () => (
