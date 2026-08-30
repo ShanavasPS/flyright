@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet } from 'react-native';
 
 import { MicroLabel, PassCard } from '@/components/pass-card';
 import { ThemedText } from '@/components/themed-text';
@@ -90,9 +90,17 @@ export function BoardingPassScanner({
       <MicroLabel>Scan boarding pass</MicroLabel>
       {/* No autofocus prop on purpose: the default 'off' is CONTINUOUS
           autofocus (the naming is inverted — 'on' focuses once and locks,
-          which blinds the scanner when the pass moves closer). */}
+          which blinds the scanner when the pass moves closer).
+
+          iOS gets a ~2x digital zoom: expo-camera opens the bare wide-angle
+          lens, which on recent iPhones cannot focus closer than ~20 cm (the
+          Camera app's macro trick needs a virtual multi-lens device). Zooming
+          lets the barcode fill the frame from a distance the lens can
+          actually focus at. zoom maps exponentially (factor = max^zoom), so
+          0.25 lands near 2x across devices. */}
       <CameraView
         style={styles.camera}
+        zoom={Platform.OS === 'ios' ? 0.25 : 0}
         barcodeScannerSettings={{ barcodeTypes: ['aztec', 'qr', 'pdf417', 'datamatrix'] }}
         onBarcodeScanned={({ data }) => handleScan(data)}
       />
@@ -100,8 +108,9 @@ export function BoardingPassScanner({
         {unrecognized
           ? "That code isn't a boarding pass — try the one on your pass."
           : // The long PDF417 stripe on printed passes needs to fill most of
-            // the frame before iOS detects it; square codes scan from afar.
-            'Fill the frame with the barcode — get close to the long stripe on printed passes.'}
+            // the frame; the camera is pre-zoomed so that works from a
+            // distance the lens can focus at — getting too close blurs it.
+            'Fill the frame with the barcode — no need to get close.'}
       </ThemedText>
       <Pressable hitSlop={Spacing.two} onPress={onClose}>
         <ThemedText type="smallBold" style={[styles.link, styles.centered]}>
