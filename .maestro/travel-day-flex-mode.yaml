@@ -1,0 +1,80 @@
+# Travel-day hero on a foldable: seed a real flight into the travel window,
+# then eyeball/screenshot the Flex-mode (tabletop) split on a half-open hinge.
+#
+# Device: the Galaxy_Flip_Test AVD (6.7in Horizontal Fold-in profile; creation
+# recipe + the avdmanager target=android-0 boot fix live in the project
+# memory). Dev build + `npx expo start` on :8081, same as smoke.yaml.
+#
+# Seeding needs a real AERODATABOX_API_KEY in .env.local. AY1331 is a real
+# HEL→LHR morning flight (08:00–11:10): run with DAY=Today before it lands,
+# or DAY=Tomorrow in the evening once tomorrow's instance is inside the
+# T−24h reminder window. The hero assert uses the banner's testID, so it
+# passes in both the "Travel day · LIVE" and "Departs tomorrow" states.
+#
+# The fold itself can't be scripted from Maestro — after this flow passes:
+#   adb -s <emulator> emu sensor set hinge-angle0 90    # half-open (tabletop)
+#   adb -s <emulator> emu sensor set hinge-angle0 180   # flat
+# Expected in tabletop: hero alone above the hinge (glance variant, no stats
+# footer), "My travels" title + journal list below it.
+#
+# Synthetic-AVD quirks: (1) androidx.window never reports halfOpened here and
+# isSeparating stays true even flat, so the split shows at any angle on this
+# emulator — real Samsung hardware only separates when half-open. (2) Gboard's
+# first-run stylus tutorial can cover the sheet on a fresh AVD; the optional
+# Cancel tap below dismisses it.
+#
+# Run: maestro --device <emulator> test .maestro/travel-day-flex-mode.yaml \
+#        [--env DAY=Tomorrow]
+appId: com.shanavasshaji.flyright
+env:
+  DAY: "Today"
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 90000
+- tapOn: "Continue"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Allow notifications"
+    timeout: 10000
+- tapOn: "Allow notifications"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+# Fresh-AVD Gboard stylus tutorial, if it appears.
+- tapOn:
+    text: "Cancel"
+    optional: true
+- tapOn: "AY1331 or LH873"
+- inputText: "AY1331"
+- hideKeyboard
+- extendedWaitUntil:
+    visible: ".*Search this flight.*"
+    timeout: 5000
+- tapOn: ".*Search this flight.*"
+- extendedWaitUntil:
+    visible: ".*${DAY}.*"
+    timeout: 8000
+- tapOn: ".*${DAY}.*"
+- extendedWaitUntil:
+    visible: ".*Track this flight.*"
+    timeout: 20000
+- tapOn: ".*Track this flight.*"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 10000
+# The boarding-pass hero, in whichever phase the seeded flight landed in.
+- extendedWaitUntil:
+    visible:
+      id: "travel-day-banner"
+    timeout: 15000
+- takeScreenshot: .maestro/out/travel-day-flex-mode
