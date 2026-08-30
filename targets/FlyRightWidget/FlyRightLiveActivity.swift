@@ -103,8 +103,20 @@ private struct TravelDayModel {
 
 struct OneSignalWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
+        // watchOS 11+ mirrors Live Activities into the watch Smart Stack;
+        // offering the .small family swaps the shrunken lock-screen card for
+        // the wrist-sized layout below. The modifier is iOS 18-only and this
+        // target deploys to 16.2, so branch — SE-0360 lets the #available
+        // arm return a different underlying WidgetConfiguration type.
+        if #available(iOS 18.0, *) {
+            return activityConfiguration.supplementalActivityFamilies([.small])
+        }
+        return activityConfiguration
+    }
+
+    private var activityConfiguration: some WidgetConfiguration {
         ActivityConfiguration(for: DefaultLiveActivityAttributes.self) { context in
-            LockScreenView(model: TravelDayModel(context: context))
+            TravelDayCard(model: TravelDayModel(context: context))
                 .widgetURL(TravelDayModel(context: context).deepLink)
         } dynamicIsland: { context in
             let model = TravelDayModel(context: context)
@@ -179,6 +191,87 @@ struct OneSignalWidgetLiveActivity: Widget {
             .widgetURL(model.deepLink)
             .keylineTint(Brand.cobalt)
         }
+    }
+}
+
+/// Routes the activity content by family: the boarding-pass card everywhere
+/// except the watch Smart Stack (.small), which gets the wrist layout.
+/// Pre-iOS 18 the family environment doesn't exist, so it's always the card.
+private struct TravelDayCard: View {
+    let model: TravelDayModel
+
+    var body: some View {
+        if #available(iOS 18.0, *) {
+            FamilyRoutedCard(model: model)
+        } else {
+            LockScreenView(model: model)
+        }
+    }
+}
+
+@available(iOS 18.0, *)
+private struct FamilyRoutedCard: View {
+    @Environment(\.activityFamily) private var family
+    let model: TravelDayModel
+
+    var body: some View {
+        switch family {
+        case .small:
+            SmartStackView(model: model)
+        default:
+            LockScreenView(model: model)
+        }
+    }
+}
+
+/// The watch Smart Stack tile — one glance: route, the single status that
+/// matters most (delay beats gate beats stage word), subtitle, progress.
+/// Wrist space is ~two text rows, so the boarding-pass hierarchy is out.
+@available(iOS 18.0, *)
+private struct SmartStackView: View {
+    let model: TravelDayModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                if let route = model.route {
+                    Text(route.from)
+                    Image(systemName: "airplane")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(model.delayed ? Brand.amber : Brand.cobalt)
+                    Text(route.to)
+                } else {
+                    Text(model.title)
+                }
+                Spacer(minLength: 4)
+                if let status {
+                    Text(status.text)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(status.color)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .font(.system(.subheadline, design: .rounded).weight(.bold))
+            .foregroundStyle(Brand.white)
+            .lineLimit(1)
+
+            Text(model.subtitle)
+                .font(.caption2)
+                .foregroundStyle(Brand.whiteDim)
+                .lineLimit(1)
+
+            ProgressTrack(progress: model.progress, delayed: model.delayed)
+        }
+        .padding(10)
+        .activityBackgroundTint(Brand.navy)
+        .activitySystemActionForegroundColor(Brand.white)
+    }
+
+    private var status: (text: String, color: Color)? {
+        if let delay = model.delayLabel { return (delay, Brand.amber) }
+        if let gate = model.gate { return ("Gate \(gate)", Brand.cobalt) }
+        if let word = model.compactLabel { return (word, Brand.cobalt) }
+        return nil
     }
 }
 
