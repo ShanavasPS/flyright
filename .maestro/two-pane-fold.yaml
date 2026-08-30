@@ -1,0 +1,55 @@
+# Book-posture / expanded-width two-pane: on windows ≥840dp wide (unfolded
+# Fold in landscape, big tablets) the journeys screen shows the journal list
+# beside the selected trip's embedded detail. This flow seeds a live flight
+# (via travel-day-flex-mode.yaml), adds tomorrow's instance through the "+"
+# button, and asserts both panes render at once.
+#
+# Device: Galaxy_Fold_Test (or any ≥840dp-wide window) — on phones and the
+# Flip this flow FAILS by design at the final assert, because two-pane must
+# not exist there. Same AERODATABOX/.env.local + time-of-day requirements as
+# travel-day-flex-mode.yaml.
+#
+# The two-pane assert: the list pane's "My travels" title and the detail
+# pane's "Finnair AY1331" trip title are visible simultaneously — impossible
+# in the single-pane layout, where the detail is a pushed route.
+#
+# Known flake: Gboard's "Try out your stylus" tutorial (fresh AVDs,
+# intermittent) covers the sheet and is INVISIBLE to the accessibility tree,
+# so no tapOn can dismiss it — if input steps fail, dismiss its Cancel by
+# screen coordinates (adb shell input tap) and re-run. Recipe in project
+# memory (flyright-galaxy-store).
+#
+# Run: maestro --device <emulator> test .maestro/two-pane-fold.yaml
+appId: com.shanavasshaji.flyright
+---
+- runFlow: travel-day-flex-mode.yaml
+# Second flight so selection has something to switch between: the title-row
+# "+" carries the same accessibility label as the empty-state CTA.
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+- tapOn: "AY1331 or LH873"
+- inputText: "AY1331"
+- hideKeyboard
+- extendedWaitUntil:
+    visible: ".*Search this flight.*"
+    timeout: 5000
+- tapOn: ".*Search this flight.*"
+- extendedWaitUntil:
+    visible: ".*Tomorrow.*"
+    timeout: 8000
+- tapOn: ".*Tomorrow.*"
+- extendedWaitUntil:
+    visible: ".*Track this flight.*"
+    timeout: 20000
+- tapOn: ".*Track this flight.*"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 10000
+# Two-pane proof: list title and the detail pane's trip title, together.
+- assertVisible: "My travels"
+- extendedWaitUntil:
+    visible: "Finnair AY1331"
+    timeout: 10000
+- takeScreenshot: .maestro/out/two-pane-fold
