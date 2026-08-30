@@ -102,7 +102,10 @@ export function BoardingPassScanner({
         style={styles.camera}
         zoom={Platform.OS === 'ios' ? 0.25 : 0}
         barcodeScannerSettings={{ barcodeTypes: ['aztec', 'qr', 'pdf417', 'datamatrix'] }}
-        onBarcodeScanned={({ data }) => handleScan(data)}
+        // Android puts ML Kit's cleaned-up displayValue in `data` — it mangles
+        // BCBP's whitespace-significant layout — and the intact payload in
+        // `raw`. iOS has no `raw` and its `data` is already intact.
+        onBarcodeScanned={({ data, raw }) => handleScan(raw || data)}
       />
       <ThemedText type="small" style={[styles.hintText, styles.centered]}>
         {unrecognized
