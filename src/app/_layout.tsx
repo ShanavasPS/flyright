@@ -192,7 +192,12 @@ function RootLayout() {
                   presentation: "formSheet",
                   headerShown: false,
                   sheetGrabberVisible: true,
-                  sheetAllowedDetents: [0.97],
+                  // Full height: the RC Paywalls v2 template clips from the
+                  // bottom (no internal scroll) when the sheet is shorter than
+                  // its natural height — at 0.97 the purchase button was cut
+                  // off on 18.x-era iPhones. The offering variant (change-plan)
+                  // still overrides this with a hugging 0.75 sheet.
+                  sheetAllowedDetents: [1.0],
                 }}
               />
               {/* No swipe-to-dismiss: AuthView's onDismiss fires on native view

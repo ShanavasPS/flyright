@@ -10,6 +10,10 @@ export default function TabsLayout() {
   return (
     <NativeTabs
       backgroundColor={colors.background}
+      // iOS 18: UITabBar's scroll-edge appearance is transparent, and with
+      // the lists running edge-to-edge the journal showed through the bar
+      // mid-scroll. iOS 26's floating glass bar is unaffected by this flag.
+      disableTransparentOnScrollEdge
       indicatorColor={colors.backgroundSelected}
       iconColor={{ default: colors.textSecondary, selected: colors.tint }}
       labelStyle={{ color: colors.textSecondary, selected: { color: colors.tint } }}>

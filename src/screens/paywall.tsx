@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import type { PurchasesOffering } from 'react-native-purchases';
 import RevenueCatUI from 'react-native-purchases-ui';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -29,6 +29,7 @@ import { entitledToPro, getOfferingByIdentifier, isPurchasesConfigured } from '@
  */
 export function Paywall() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { offering: offeringId, next } = useLocalSearchParams<{
     offering?: string;
     next?: string;
@@ -88,8 +89,12 @@ export function Paywall() {
         />
         {/* App Review 3.1.2: subscription paywalls must carry functional
             privacy policy + Terms of Use links in the app itself. The in-app
-            browser presents fine over this form sheet. */}
-        <View style={styles.legalRow}>
+            browser presents fine over this form sheet. The row pads itself
+            past the system bottom inset — edge-to-edge Android draws the
+            nav bar over the sheet, and the sheet reaches the home indicator
+            on iOS. */}
+        <View
+          style={[styles.legalRow, { paddingBottom: Math.max(insets.bottom, Spacing.four) }]}>
           <Pressable
             accessibilityRole="link"
             hitSlop={Spacing.two}
@@ -148,7 +153,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     paddingVertical: Spacing.two,
-    paddingBottom: Spacing.four,
   },
   centered: {
     alignItems: 'center',
