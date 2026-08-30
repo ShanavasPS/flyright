@@ -29,9 +29,13 @@ export function BoardingPassScanner({
   // exactly once, and don't re-buzz the warning for the same wrong code.
   const doneRef = useRef(false);
   const lastRejectRef = useRef<string | null>(null);
+  // Ask once per mount: on Android a denial keeps canAskAgain true, so a
+  // reactive ask would reopen the system dialog in a loop.
+  const askedRef = useRef(false);
 
   useEffect(() => {
-    if (permission && !permission.granted && permission.canAskAgain) {
+    if (permission && !permission.granted && permission.canAskAgain && !askedRef.current) {
+      askedRef.current = true;
       requestPermission().catch(() => {});
     }
   }, [permission, requestPermission]);
@@ -86,13 +90,16 @@ export function BoardingPassScanner({
       <MicroLabel>Scan boarding pass</MicroLabel>
       <CameraView
         style={styles.camera}
+        autofocus="on"
         barcodeScannerSettings={{ barcodeTypes: ['aztec', 'qr', 'pdf417', 'datamatrix'] }}
         onBarcodeScanned={({ data }) => handleScan(data)}
       />
       <ThemedText type="small" style={[styles.hintText, styles.centered]}>
         {unrecognized
           ? "That code isn't a boarding pass — try the one on your pass."
-          : 'Point at the barcode on a boarding pass.'}
+          : // The long PDF417 stripe on printed passes needs to fill most of
+            // the frame before iOS detects it; square codes scan from afar.
+            'Fill the frame with the barcode — get close to the long stripe on printed passes.'}
       </ThemedText>
       <Pressable hitSlop={Spacing.two} onPress={onClose}>
         <ThemedText type="smallBold" style={[styles.link, styles.centered]}>
@@ -105,7 +112,7 @@ export function BoardingPassScanner({
 
 const styles = StyleSheet.create({
   camera: {
-    height: 240,
+    height: 300,
     borderRadius: Spacing.three,
     overflow: 'hidden',
   },

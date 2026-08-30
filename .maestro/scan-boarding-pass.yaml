@@ -29,7 +29,7 @@ appId: com.shanavasshaji.flyright
 - tapOn: ".*Scan your boarding pass.*"
 # Viewfinder open: the hint replaces the entry links.
 - extendedWaitUntil:
-    visible: ".*Point at the barcode.*"
+    visible: ".*Fill the frame with the barcode.*"
     timeout: 10000
 - assertVisible: ".*Type the flight instead.*"
 # And close cleanly back to typed entry.
