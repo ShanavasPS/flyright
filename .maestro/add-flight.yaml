@@ -37,10 +37,10 @@ appId: com.shanavasshaji.flyright
     timeout: 5000
 - tapOn: ".*Yesterday.*"
 - extendedWaitUntil:
-    visible: ".*Track this flight.*"
+    visible: ".*Save to My travels.*"
     timeout: 15000
 - assertVisible: ".*HEL → .*"
-- tapOn: ".*Track this flight.*"
+- tapOn: ".*Save to My travels.*"
 # The "Added to My travels" confirmation auto-dismisses in 1.2s — faster than
 # iOS hierarchy polling — so the journeys row below is the success assertion.
 - extendedWaitUntil:

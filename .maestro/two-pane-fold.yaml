@@ -41,9 +41,9 @@ appId: com.shanavasshaji.flyright
     timeout: 8000
 - tapOn: ".*Tomorrow.*"
 - extendedWaitUntil:
-    visible: ".*Track this flight.*"
+    visible: ".*(Track this flight|Save to My travels).*"
     timeout: 20000
-- tapOn: ".*Track this flight.*"
+- tapOn: ".*(Track this flight|Save to My travels).*"
 - extendedWaitUntil:
     visible: "My travels"
     timeout: 10000

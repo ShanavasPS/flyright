@@ -209,6 +209,15 @@ export function AddFlight() {
   const flight = lookup.data;
   const routeKnown = !!flight?.from.code && !!flight?.to.code;
 
+  // A flight that already landed (or whose arrival is hours behind us) can't
+  // be "tracked" — it's journal and verdict material, so the CTA says save.
+  // In-progress flights stay trackable: their arrival delay is unwritten.
+  const flightPast =
+    !!flight &&
+    (flight.landed === true ||
+      (!!flight.scheduledArrival &&
+        Date.parse(flight.scheduledArrival) < today.getTime() - 6 * 3_600_000));
+
   // Funnel drop-off signal: they typed a flight and we couldn't show it.
   useEffect(() => {
     if (!lookup.error) return;
@@ -339,22 +348,59 @@ export function AddFlight() {
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (step !== 'added') return;
-    dismissTimer.current = setTimeout(() => router.back(), 1200);
+    dismissTimer.current = setTimeout(() => router.back(), 1600);
     return () => {
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
     };
   }, [step, router]);
 
   if (step === 'added') {
+    const savedRoute = manualMode
+      ? `${fromInput.toUpperCase()} → ${toInput.toUpperCase()}`
+      : routeKnown
+        ? `${flight!.from.code} → ${flight!.to.code}`
+        : null;
+    const savedLabel = [savedRoute, flightNumber].filter(Boolean).join(' · ');
+    const title = editId
+      ? 'Trip updated'
+      : manualMode || flightPast
+        ? 'Saved to My travels'
+        : 'Added to My travels';
+    const subtitle = editId
+      ? 'Your changes are saved.'
+      : manualMode
+        ? 'Your journal has the trip covered.'
+        : flightPast
+          ? 'If the flight was disrupted, your verdict is waiting on the trip page.'
+          : "We're watching it — you'll hear about delays, gates, and anything you're owed.";
+
     return (
       <ThemedView style={[styles.container, styles.addedContainer]}>
         <Animated.View entering={ZoomIn.springify()} style={styles.addedBadge}>
-          <ThemedText style={[styles.addedCheck, { color: theme.success }]}>✓</ThemedText>
-          <ThemedText type="subtitle">{editId ? 'Trip updated' : 'Added to My travels'}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {manualMode
-              ? `${fromInput.toUpperCase()} → ${toInput.toUpperCase()} is ${editId ? 'up to date' : 'in your journal'}.`
-              : `We're watching ${flightNumber} for you.`}
+          <View style={[styles.addedCircle, { backgroundColor: theme.success }]}>
+            <SymbolView
+              name={{ ios: 'checkmark', android: 'check', web: 'check' }}
+              size={40}
+              tintColor="#FFFFFF"
+            />
+          </View>
+          <ThemedText type="subtitle" themeColor="heading">
+            {title}
+          </ThemedText>
+          {!!savedLabel && (
+            <View style={styles.chip}>
+              <SymbolView
+                name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+                size={12}
+                tintColor={COBALT}
+              />
+              <ThemedText type="smallBold" style={styles.chipText}>
+                {savedLabel}
+              </ThemedText>
+            </View>
+          )}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.addedSub}>
+            {subtitle}
           </ThemedText>
         </Animated.View>
       </ThemedView>
@@ -706,7 +752,10 @@ export function AddFlight() {
                     />
                   </View>
                   <PassDivider />
-                  <PassAction label="Track this flight →" onPress={track} />
+                  <PassAction
+                    label={flightPast ? 'Save to My travels →' : 'Track this flight →'}
+                    onPress={track}
+                  />
                 </>
               ) : (
                 <ThemedText type="small" style={styles.passHint}>
@@ -984,10 +1033,23 @@ const styles = StyleSheet.create({
   },
   addedBadge: {
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.three,
   },
-  addedCheck: {
-    fontSize: 64,
-    lineHeight: 72,
+  addedCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
+    shadowColor: '#0FA362',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  addedSub: {
+    textAlign: 'center',
+    maxWidth: 300,
   },
 });
