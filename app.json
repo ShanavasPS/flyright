@@ -2,7 +2,7 @@
   "expo": {
     "name": "FlyRight",
     "slug": "flyright",
-    "version": "1.0.13",
+    "version": "1.0.14",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "flyright",
@@ -62,7 +62,7 @@
           ]
         }
       ],
-      "versionCode": 22
+      "versionCode": 26
     },
     "web": {
       "output": "server",
