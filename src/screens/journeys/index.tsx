@@ -31,6 +31,8 @@ import {
 } from '@/services/onboarding';
 import { cityOf, groupJourneys, travelStats } from '@/services/timeline';
 
+import { useFoldState } from '../../../modules/flyright-fold';
+
 const YEAR_MS = 365 * 86_400_000;
 
 /** The context line above the title — the next departure when one is booked
@@ -101,11 +103,32 @@ export function Journeys() {
     return map;
   }, [disruptionRows, journeys]);
 
+  // Samsung Flex mode / tabletop: the device is half-open with a horizontal
+  // hinge. The live hero moves to the top half (glanceable, like a departures
+  // board propped on a table) and the journal list gets the bottom half.
+  // `isSeparating` is androidx's own "split content across the fold" signal —
+  // it covers half-opened postures plus hinges that always divide the panes,
+  // and stays false on a foldable lying fully flat.
+  const fold = useFoldState();
+  const tabletopHinge =
+    fold.orientation === 'horizontal' && (fold.posture === 'halfOpened' || fold.isSeparating)
+      ? fold.hingeBounds
+      : null;
+
   return (
     <ThemedView style={styles.container}>
+      {tabletopHinge && (
+        <View style={[styles.topPane, { height: tabletopHinge.top }]}>
+          <SafeAreaView edges={['top', 'left', 'right']} style={styles.topPaneSafe}>
+            <HomeHero journeys={journeys ?? []} stats={stats} variant="glance" />
+          </SafeAreaView>
+        </View>
+      )}
       {/* Top edge only: the list itself runs under the floating tab bar (the
           iOS 26 behavior — glass blurs the content scrolling beneath it). */}
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <SafeAreaView
+        edges={tabletopHinge ? ['left', 'right'] : ['top', 'left', 'right']}
+        style={[styles.safeArea, !!tabletopHinge && styles.belowHinge]}>
         <View style={styles.titleRow}>
           <View style={styles.titleBlock}>
             <ThemedText
@@ -133,7 +156,7 @@ export function Journeys() {
             // share a single navy card; otherwise the stats card stands alone.
             ListHeaderComponent={
               <>
-                <HomeHero journeys={journeys} stats={stats} />
+                {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
                 {!!CONVEX_URL && <FollowingSection />}
               </>
             }
@@ -337,6 +360,23 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
+  },
+  // Tabletop (Flex mode): the pane above the hinge — hero centered in it.
+  topPane: {
+    width: '100%',
+  },
+  topPaneSafe: {
+    flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.four,
+    justifyContent: 'center',
+  },
+  // The list pane starts at the hinge, which provides no visual breathing
+  // room of its own.
+  belowHinge: {
+    paddingTop: Spacing.three,
   },
   titleRow: {
     flexDirection: 'row',

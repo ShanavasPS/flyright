@@ -54,9 +54,13 @@ const SHIMMER_WIDTH = 28;
 export function HomeHero({
   journeys,
   stats,
+  variant = 'full',
 }: {
   journeys: JourneyRow[];
   stats: TravelStats;
+  /** 'glance' = the tabletop (Flex mode) top pane: live section only, no
+   * stats footer — it must fit a half-screen without scrolling. */
+  variant?: 'full' | 'glance';
 }) {
   const router = useRouter();
   const now = useNow(60_000);
@@ -153,7 +157,7 @@ export function HomeHero({
         </View>
       </Pressable>
 
-      {!!stats.trips && (
+      {!!stats.trips && variant === 'full' && (
         <>
           <View style={styles.divider} />
           <Pressable
@@ -372,6 +376,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     marginTop: Spacing.one,
+    // On wide windows (tablet, unfolded foldable) an unclamped contrail
+    // strands the airport codes at the card's far edges — cap the route to a
+    // boarding-pass-plausible width. No-op on phones.
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
   },
   endpoint: {
     gap: Spacing.half,

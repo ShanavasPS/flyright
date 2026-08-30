@@ -17,6 +17,7 @@ import { LogBox } from "react-native";
 // the screens resolve the same scheme on web — RN's own hook leaves the header
 // stuck on the pre-hydration light theme while screens go dark.
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useOrientationPolicy } from "@/hooks/use-orientation-policy";
 
 import { NotificationRouter } from "@/components/notification-router";
 import { ThemedText } from "@/components/themed-text";
@@ -116,6 +117,7 @@ function navTheme(scheme: "light" | "dark") {
 function RootLayout() {
   const colorScheme = useColorScheme();
   const { success: dbReady, error: dbError } = useDbReady();
+  useOrientationPolicy();
 
   useEffect(() => {
     initPurchases();

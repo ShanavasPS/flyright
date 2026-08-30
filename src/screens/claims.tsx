@@ -25,7 +25,7 @@ export function Claims() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <ThemedText type="title" themeColor="heading">
           Claims
         </ThemedText>

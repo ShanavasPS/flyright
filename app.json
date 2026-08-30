@@ -3,7 +3,7 @@
     "name": "FlyRight",
     "slug": "flyright",
     "version": "1.0.13",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "flyright",
     "userInterfaceStyle": "automatic",
@@ -20,6 +20,9 @@
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait"
+        ],
         "UISupportedInterfaceOrientations~ipad": [
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationPortraitUpsideDown",

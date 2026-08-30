@@ -136,6 +136,8 @@ export function Onboarding() {
           {
             paddingTop: Math.max(insets.top, Spacing.three),
             paddingBottom: Math.max(insets.bottom, Spacing.three),
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
           },
         ]}>
         <View style={styles.skipRow}>

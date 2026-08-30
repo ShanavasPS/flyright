@@ -80,3 +80,8 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+/** Windows at least this wide (dp) get the 'wide' size class — tablets,
+ * unfolded foldables, split-screen halves on big tablets. Matches the
+ * Android canonical medium-breakpoint. */
+export const WideWindowMinWidth = 600;
