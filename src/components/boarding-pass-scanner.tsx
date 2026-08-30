@@ -88,9 +88,11 @@ export function BoardingPassScanner({
   return (
     <PassCard testID="boarding-pass-scanner">
       <MicroLabel>Scan boarding pass</MicroLabel>
+      {/* No autofocus prop on purpose: the default 'off' is CONTINUOUS
+          autofocus (the naming is inverted — 'on' focuses once and locks,
+          which blinds the scanner when the pass moves closer). */}
       <CameraView
         style={styles.camera}
-        autofocus="on"
         barcodeScannerSettings={{ barcodeTypes: ['aztec', 'qr', 'pdf417', 'datamatrix'] }}
         onBarcodeScanned={({ data }) => handleScan(data)}
       />
