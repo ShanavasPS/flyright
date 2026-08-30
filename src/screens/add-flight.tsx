@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
+import { BoardingPassScanner } from '@/components/boarding-pass-scanner';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -21,6 +23,7 @@ import { carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getAirport, searchAirports, type Airport } from '@/services/airports';
+import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
 import {
   formatDayLabel,
   formatDayLabelWithYear,
@@ -95,6 +98,9 @@ export function AddFlight() {
   const [depTime, setDepTime] = useState<string | null>(null);
   const [arrTime, setArrTime] = useState<string | null>(null);
   const [timePickerFor, setTimePickerFor] = useState<'dep' | 'arr' | null>(null);
+  // Boarding-pass scanner open on the flight step (native only — web camera
+  // barcode support is too patchy to offer).
+  const [scanning, setScanning] = useState(false);
 
   const inputCandidate = normalizeFlightNumber(flightInput);
   const today = new Date();
@@ -136,6 +142,25 @@ export function AddFlight() {
   const startManual = () => {
     setManualMode(true);
     setStep(date ? 'manual' : 'date');
+  };
+
+  // One scan fills every token at once: flight, date, and the route — the
+  // route so that when the lookup 404s (old pass, regional carrier), the
+  // manual fallback comes prefilled instead of empty.
+  const applyScan = (pass: BoardingPass) => {
+    const leg = pass.legs[0];
+    const designator = normalizeFlightNumber(leg.flight);
+    setScanning(false);
+    setFlightInput(leg.flight);
+    setFlightNumber(designator);
+    setFromInput(leg.fromCode);
+    setToInput(leg.toCode);
+    setDate(resolveFlightDate(leg.dayOfYear, today));
+    setManualMode(!designator);
+    setStep(designator ? 'result' : 'manual');
+    Observe.logEvent('flight.scanned', {
+      attributes: { legs: pass.legs.length, lookupable: !!designator },
+    });
   };
 
   const confirmDate = (day: string) => {
@@ -388,24 +413,44 @@ export function AddFlight() {
       {/* Plain View on purpose: a ScrollView inside a formSheet is captured by
           the sheet's drag-to-resize integration and hoisted over the header. */}
       <View style={styles.body}>
-        {step === 'flight' && inputCandidate && (
-          <Pressable onPress={confirmFlight}>
-            <ThemedView type="backgroundElement" style={styles.row}>
-              <View>
-                <ThemedText type="smallBold">{inputCandidate}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Search this flight
-                </ThemedText>
-              </View>
-              <ThemedText themeColor="tint">→</ThemedText>
-            </ThemedView>
-          </Pressable>
-        )}
+        {step === 'flight' && (
+          <View style={styles.rowGroup}>
+            {!scanning && inputCandidate && (
+              <Pressable onPress={confirmFlight}>
+                <ThemedView type="backgroundElement" style={styles.row}>
+                  <View>
+                    <ThemedText type="smallBold">{inputCandidate}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Search this flight
+                    </ThemedText>
+                  </View>
+                  <ThemedText themeColor="tint">→</ThemedText>
+                </ThemedView>
+              </Pressable>
+            )}
 
-        {step === 'flight' && !inputCandidate && (
-          <Pressable onPress={startManual} hitSlop={Spacing.two}>
-            <ThemedText type="link">No flight number? Add a trip manually →</ThemedText>
-          </Pressable>
+            {!scanning && !editId && Platform.OS !== 'web' && (
+              <Pressable
+                testID="scan-boarding-pass"
+                hitSlop={Spacing.two}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setScanning(true);
+                }}>
+                <ThemedText type="link">Scan your boarding pass →</ThemedText>
+              </Pressable>
+            )}
+
+            {scanning && (
+              <BoardingPassScanner onScan={applyScan} onClose={() => setScanning(false)} />
+            )}
+
+            {!scanning && !inputCandidate && (
+              <Pressable onPress={startManual} hitSlop={Spacing.two}>
+                <ThemedText type="link">No flight number? Add a trip manually →</ThemedText>
+              </Pressable>
+            )}
+          </View>
         )}
 
         {step === 'date' && (

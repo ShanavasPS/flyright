@@ -1,0 +1,40 @@
+# Boarding-pass scanner: the "Scan your boarding pass" entry on the add-flight
+# sheet opens the camera viewfinder and closes back to typed entry. A simulator
+# camera can't present a real barcode, so this covers the UI wiring only — the
+# BCBP parsing itself is unit-tested (src/services/bcbp.test.ts).
+# Run: maestro test .maestro/scan-boarding-pass.yaml   (requires a booted
+# simulator with the dev build installed and `npx expo start` serving :8081)
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true # deterministic: the journeys DB starts empty
+    permissions:
+      camera: allow # straight to the viewfinder, no system dialog mid-flow
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# clearState wipes the dev client's cached bundle — the first Metro download
+# can sit on a splash well past 30s (same as the other flows).
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+- assertVisible: ".*Scan your boarding pass.*"
+- tapOn: ".*Scan your boarding pass.*"
+# Viewfinder open: the hint replaces the entry links.
+- extendedWaitUntil:
+    visible: ".*Point at the barcode.*"
+    timeout: 10000
+- assertVisible: ".*Type the flight instead.*"
+# And close cleanly back to typed entry.
+- tapOn: ".*Type the flight instead.*"
+- extendedWaitUntil:
+    visible: ".*Scan your boarding pass.*"
+    timeout: 5000
+- assertVisible: ".*No flight number.*"
