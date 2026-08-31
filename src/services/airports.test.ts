@@ -41,6 +41,14 @@ describe('searchAirports', () => {
     for (const code of codes) expect(code.startsWith('HE')).toBe(true);
   });
 
+  it('ranks major hubs above other airports sharing the prefix', () => {
+    // OurAirports flags LAD (Luanda) and LAO (Laoag City) large just like
+    // LAX — the curated hub rank keeps the airports people mean on top.
+    const la = searchAirports('LA', 6).map((a) => a.iata);
+    expect(la.slice(0, 2)).toEqual(['LAS', 'LAX']);
+    expect(searchAirports('HE', 3)[0]!.iata).toBe('HEL');
+  });
+
   it('matches mid-name city words', () => {
     // "Helsinki (Vantaa)" — a word start inside the name, not a prefix.
     expect(searchAirports('Vantaa').map((a) => a.iata)).toContain('HEL');

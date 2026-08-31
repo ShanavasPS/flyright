@@ -6,9 +6,10 @@
  *   node scripts/build-airports.mjs
  *
  * Output shape, keyed by IATA code, ~270 KB for ~4,800 airports:
- *   { "HEL": [60.3172, 24.9633, "FI", "Helsinki", 1] } // [lat, lon, country, city, large?]
- * The trailing 1 marks large_airport rows (search ranks them first) and is
- * omitted for medium airports to keep the bundle small.
+ *   { "HEL": [60.3172, 24.9633, "FI", "Helsinki", 2] } // [lat, lon, country, city, rank?]
+ * The trailing rank drives search ordering: 2 = major hub (curated list
+ * below — OurAirports marks Laoag City "large" just like LAX, so its type
+ * column alone can't rank), 1 = large_airport, omitted = medium.
  *
  * The output is committed so builds stay offline and reproducible.
  */
@@ -19,6 +20,27 @@ import { fileURLToPath } from 'node:url';
 
 const SOURCE = 'https://davidmegginson.github.io/ourairports-data/airports.csv';
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '../assets/data/airports.json');
+
+/** The world's busiest passenger airports (roughly the global top ~180).
+ * Curated because OurAirports has no traffic data — its large_airport type
+ * spans everything from LAX to Laoag City. */
+const MAJOR_HUBS = new Set(`
+  ATL LAX ORD DFW DEN JFK SFO SEA LAS MCO EWR CLT PHX IAH MIA BOS MSP FLL DTW
+  PHL LGA BWI SLC SAN IAD DCA MDW TPA PDX HNL STL AUS BNA MSY RDU SJC SMF DAL
+  HOU OAK MCI CLE IND PIT CVG CMH SAT ANC
+  YYZ YVR YUL YYC YEG YOW
+  MEX CUN GDL MTY GRU GIG BSB CGH EZE AEP SCL LIM BOG MDE PTY UIO SJU
+  LHR CDG AMS FRA IST MAD BCN LGW MUC FCO MXP LIN DUB ZRH CPH OSL ARN HEL VIE
+  BRU GVA LIS OPO ATH PRG BUD WAW KRK OTP SOF BEG ZAG LJU TLL RIX VNO KEF EDI
+  GLA MAN BHX STN LTN LCY DUS BER HAM CGN STR NCE LYS MRS TLS BOD NTE SVO DME
+  LED
+  DXB AUH DOH JED RUH KWI BAH MCT AMM TLV CAI
+  JNB CPT NBO ADD LOS ACC CMN ALG TUN
+  HND NRT KIX ITM CTS FUK OKA ICN GMP PEK PKX PVG SHA CAN SZX CTU KMG XIY HGH
+  NKG WUH CKG TFU HKG TPE MFM BKK DMK KUL SIN CGK DPS SGN HAN MNL CRK DEL BOM
+  BLR MAA CCU HYD COK ISB KHI LHE DAC CMB KTM
+  SYD MEL BNE PER ADL AKL CHC WLG
+`.trim().split(/\s+/));
 
 /** Minimal CSV row parser that honours quoted fields with embedded commas. */
 function parseRow(line) {
@@ -80,7 +102,7 @@ for (const line of lines) {
       Math.round(lon * 10000) / 10000,
       row[col.iso_country] ?? '',
       row[col.municipality]?.trim() || row[col.name] || '',
-      ...(type === 'large_airport' ? [1] : []),
+      ...(MAJOR_HUBS.has(iata) ? [2] : type === 'large_airport' ? [1] : []),
     ],
   };
   kept++;

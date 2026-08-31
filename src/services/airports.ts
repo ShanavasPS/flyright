@@ -7,9 +7,10 @@ import data from '../../assets/data/airports.json';
 
 import { COUNTRY_NAMES } from '@/constants/countries';
 
-/** [lat, lon, ISO country, city, large?] — the compact tuple the build script
- * emits; the trailing 1 (omitted for medium airports) marks large_airport. */
-type AirportTuple = [number, number, string, string, 1?];
+/** [lat, lon, ISO country, city, rank?] — the compact tuple the build script
+ * emits; the trailing rank (2 = curated major hub, 1 = large_airport,
+ * omitted = medium) orders search suggestions. */
+type AirportTuple = [number, number, string, string, (1 | 2)?];
 
 const AIRPORTS = data as unknown as Record<string, AirportTuple>;
 
@@ -53,8 +54,9 @@ export function searchAirports(query: string, limit = 6): Airport[] {
 
   const exact = AIRPORTS[q];
   const results = exact ? [toAirport(q, exact)] : [];
-  // Each tier keeps [airport, isLarge] so large airports (HEL) sort above
-  // small ones sharing the prefix (HEH) without losing alphabetical order.
+  // Each tier keeps [airport, rank] so major hubs (LAX) sort above large
+  // airports (LAD Luanda) above small ones sharing the prefix (LAA Lamar),
+  // alphabetical within a rank (Array.sort is stable).
   const codePrefix: [Airport, number][] = [];
   const cityWord: [Airport, number][] = [];
   const citySubstring: [Airport, number][] = [];

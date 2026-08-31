@@ -846,7 +846,10 @@ function AirportSuggestions({
 }) {
   const q = query.trim();
   if (q.length < 2 || getAirport(q)) return null;
-  const matches = searchAirports(q, 3);
+  // Six, not three: prefix typing ("LA") fans out over many codes, and the
+  // step has the vertical room — the body scrolls and nothing renders below
+  // the suggestions until an airport resolves.
+  const matches = searchAirports(q, 6);
   if (!matches.length) return null;
 
   return (
