@@ -1,5 +1,4 @@
 import { useAuth, useUser } from '@clerk/expo';
-import { Host, Picker } from '@expo/ui';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
@@ -19,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ThemePicker } from '@/components/theme-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -149,7 +149,6 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 ];
 
 function AppearanceRow() {
-  const theme = useTheme();
   const [preference, setPreference] = useState(getThemePreference);
 
   const select = (value: ThemePreference) => {
@@ -167,41 +166,7 @@ function AppearanceRow() {
         <View style={styles.rowLabel}>
           <ThemedText>Appearance</ThemedText>
         </View>
-        {Platform.OS === 'ios' ? (
-          // A native menu picker stays compact at every window width — the old
-          // inline segmented control collided with the label in narrow iPad
-          // windows (App Review, Guideline 4). iOS-only: @expo/ui's Picker
-          // crashes on Android in SDK 57 (worklet shared-object error inside
-          // ExposedDropdownMenuBox), and Android phones never had the
-          // narrow-window problem, so they keep the segmented control.
-          <Host matchContents>
-            <Picker
-              selectedValue={preference}
-              onValueChange={(value) => select(value as ThemePreference)}>
-              {THEME_OPTIONS.map(({ value, label }) => (
-                <Picker.Item key={value} label={label} value={value} />
-              ))}
-            </Picker>
-          </Host>
-        ) : (
-          <View style={[styles.segments, { backgroundColor: theme.background }]}>
-            {THEME_OPTIONS.map(({ value, label }) => (
-              <Pressable
-                key={value}
-                onPress={() => select(value)}
-                style={[
-                  styles.segment,
-                  value === preference && { backgroundColor: theme.backgroundSelected },
-                ]}>
-                <ThemedText
-                  type="small"
-                  themeColor={value === preference ? 'text' : 'textSecondary'}>
-                  {label}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-        )}
+        <ThemePicker value={preference} options={THEME_OPTIONS} onSelect={select} />
       </View>
       <RowSeparator />
     </>
@@ -466,17 +431,6 @@ const styles = StyleSheet.create({
   separator: {
     height: StyleSheet.hairlineWidth,
     marginLeft: Spacing.four,
-  },
-  segments: {
-    flexDirection: 'row',
-    padding: Spacing.half,
-    borderRadius: Spacing.two + Spacing.half,
-    gap: Spacing.half,
-  },
-  segment: {
-    paddingHorizontal: Spacing.two + Spacing.one,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.two,
   },
   profileRow: {
     flexDirection: 'row',
