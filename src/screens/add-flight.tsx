@@ -3,21 +3,24 @@ import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { BoardingPassScanner } from '@/components/boarding-pass-scanner';
+import { CalendarMonth } from '@/components/calendar-month';
 import {
   MicroLabel,
   PassAction,
@@ -52,8 +55,8 @@ import {
 import { recordDelay } from '@/services/disruptions';
 import { addJourney, updateJourney, useJourney } from '@/services/journeys';
 
-// Progressive token entry, Flighty-style: each confirmed value becomes a chip
-// and the sheet moves to the next step. Tapping a chip reopens that step.
+// Progressive token entry: each confirmed value becomes a chip and the screen
+// moves to the next step. Tapping a chip reopens that step.
 // 'manual' is the journal path: any trip, any year, no lookup involved.
 type Step = 'flight' | 'date' | 'manual' | 'result' | 'added';
 
@@ -84,6 +87,10 @@ const PROMPTS: Record<Step, string> = {
 export function AddFlight() {
   const router = useRouter();
   const theme = useTheme();
+  // Full-screen modal, so the status bar is ours to clear. Explicit insets,
+  // not SafeAreaView — inside a fullScreenModal the native SafeAreaView can
+  // resolve its top inset as 0 on iOS (same workaround as onboarding).
+  const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   // Edit mode: the journey detail screen reopens this sheet with ?editId=<id>
   // for a manual entry, prefilled below. The row id stays stable across the
@@ -95,10 +102,8 @@ export function AddFlight() {
   const [flightInput, setFlightInput] = useState('');
   const [flightNumber, setFlightNumber] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  // Calendar picks are staged, not instant: the year/month wheels fire
-  // onValueChange on every spin, and decade-old journal dates need several
-  // spins before the user has actually chosen a day.
+  // Calendar picks are staged behind an explicit confirm — a mis-tap on a day
+  // cell shouldn't commit a decades-back journal date and jump the step.
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   // Journal path: entered via "add manually" (no flight number, or lookup failed).
   const [manualMode, setManualMode] = useState(false);
@@ -176,7 +181,6 @@ export function AddFlight() {
 
   const confirmDate = (day: string) => {
     setDate(day);
-    setCalendarOpen(false);
     setPendingDate(null);
     setStep(manualMode ? 'manual' : 'result');
   };
@@ -195,6 +199,8 @@ export function AddFlight() {
   };
 
   const editDate = () => {
+    // Stage the current date so the calendar reopens on it, pre-selected.
+    setPendingDate(date);
     setDate(null);
     setStep('date');
   };
@@ -375,7 +381,12 @@ export function AddFlight() {
           : "We're watching it — you'll hear about delays, gates, and anything you're owed.";
 
     return (
-      <ThemedView style={[styles.container, styles.addedContainer]}>
+      <ThemedView
+        style={[
+          styles.container,
+          { paddingTop: Math.max(insets.top, Spacing.four) },
+          styles.addedContainer,
+        ]}>
         <Animated.View entering={ZoomIn.springify()} style={styles.addedBadge}>
           <View style={[styles.addedCircle, { backgroundColor: theme.success }]}>
             <SymbolView
@@ -408,7 +419,8 @@ export function AddFlight() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView
+      style={[styles.container, { paddingTop: Math.max(insets.top, Spacing.four) }]}>
       <View style={styles.header}>
         <ThemedText type="subtitle" themeColor="heading">
           {editId ? 'Edit Trip' : 'Add Flight'}
@@ -463,19 +475,27 @@ export function AddFlight() {
         </View>
       )}
 
-      {/* Plain View on purpose: a ScrollView inside a formSheet is captured by
-          the sheet's drag-to-resize integration and hoisted over the header. */}
-      <View style={styles.body}>
+      {/* Every step scrolls: the calendar, the manual card with its time
+          spinner, and small screens all need the escape hatch. Taps must
+          survive an open keyboard so airport suggestions stay one-tap. */}
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
         {step === 'flight' && (
           <View style={styles.rowGroup}>
             {/* The blank boarding pass: the flight number gets written onto
                 the same night-sky card the travel-day hero renders, so adding
-                a flight already looks like the thing you'll travel with. */}
+                a flight already looks like the thing you'll travel with. The
+                pass's tear-off stub is the step's one loud action: scan while
+                the number slot is blank, search once it isn't — no autofocus,
+                so the camera path is in plain sight instead of under the
+                keyboard. */}
             {!scanning && (
               <PassCard>
                 <MicroLabel>Flight number</MicroLabel>
                 <TextInput
-                  autoFocus
                   autoCapitalize="characters"
                   autoCorrect={false}
                   value={flightInput}
@@ -487,12 +507,36 @@ export function AddFlight() {
                   returnKeyType="search"
                   style={styles.passInput}
                 />
-                {inputCandidate ? (
-                  <PassAction label="Search this flight →" onPress={confirmFlight} />
-                ) : (
+                {!inputCandidate && (
                   <ThemedText type="small" style={styles.passHint}>
                     The code on your ticket, booking email, or boarding pass.
                   </ThemedText>
+                )}
+                {inputCandidate ? (
+                  <>
+                    <PassDivider />
+                    <PassAction label="Search this flight →" onPress={confirmFlight} />
+                  </>
+                ) : (
+                  Platform.OS !== 'web' &&
+                  !editId && (
+                    <>
+                      <PassDivider />
+                      <PassAction
+                        testID="scan-boarding-pass"
+                        icon={{
+                          ios: 'viewfinder',
+                          android: 'qr_code_scanner',
+                          web: 'qr_code_scanner',
+                        }}
+                        label="Scan your boarding pass"
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setScanning(true);
+                        }}
+                      />
+                    </>
+                  )
                 )}
               </PassCard>
             )}
@@ -502,81 +546,95 @@ export function AddFlight() {
             )}
 
             {!scanning && !editId && (
-              <View style={styles.tileRow}>
-                {Platform.OS !== 'web' && (
-                  <OptionTile
-                    testID="scan-boarding-pass"
-                    icon={{ ios: 'viewfinder', android: 'qr_code_scanner', web: 'qr_code_scanner' }}
-                    title="Scan your boarding pass"
-                    caption="Point the camera — it fills itself in"
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setScanning(true);
-                    }}
+              <>
+                <Pressable
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    startManual();
+                  }}>
+                  <ThemedView type="backgroundElement" style={styles.row}>
+                    <View style={styles.rowLabels}>
+                      <ThemedText type="smallBold">Add a trip manually</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        No flight number needed — any date, any year
+                      </ThemedText>
+                    </View>
+                    <ThemedText themeColor="tint">→</ThemedText>
+                  </ThemedView>
+                </Pressable>
+                {/* The provider's memory, stated up front instead of at the
+                    404: lookups only reach so far in either direction. */}
+                <View style={styles.coverageNote}>
+                  <SymbolView
+                    name={{ ios: 'clock', android: 'schedule', web: 'schedule' }}
+                    size={14}
+                    tintColor={theme.textSecondary}
                   />
-                )}
-                <OptionTile
-                  icon={{ ios: 'square.and.pencil', android: 'edit', web: 'edit' }}
-                  title="Add a trip manually"
-                  caption="No flight number needed"
-                  onPress={startManual}
-                />
-              </View>
+                  <ThemedText
+                    type="small"
+                    themeColor="textSecondary"
+                    style={styles.coverageText}>
+                    Flight lookup covers about a year back and 11 months ahead — the
+                    journal takes older trips.
+                  </ThemedText>
+                </View>
+              </>
             )}
           </View>
         )}
 
         {step === 'date' && (
           <View style={styles.rowGroup}>
-            {(
-              [
-                { label: 'Today', day: localDateString(today) },
-                { label: 'Tomorrow', day: localDateString(today, 1) },
-                { label: 'Yesterday', day: localDateString(today, -1) },
-              ] as const
-            ).map(({ label, day }) => (
-              <Pressable key={label} onPress={() => confirmDate(day)}>
-                <ThemedView type="backgroundElement" style={styles.row}>
-                  <View>
+            {/* Quick picks as one compact chip row — the calendar below is the
+                step's real surface, so the shortcuts don't get three tall cards. */}
+            <View style={styles.quickDates}>
+              {(
+                [
+                  { label: 'Today', day: localDateString(today) },
+                  { label: 'Tomorrow', day: localDateString(today, 1) },
+                  { label: 'Yesterday', day: localDateString(today, -1) },
+                ] as const
+              ).map(({ label, day }) => (
+                <Pressable key={label} style={styles.quickDate} onPress={() => confirmDate(day)}>
+                  <ThemedView type="backgroundElement" style={styles.quickDateInner}>
                     <ThemedText type="smallBold">{label}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {formatDayLabel(day)}
+                      {formatDayLabel(day).replace(/^\w+, /, '')}
                     </ThemedText>
-                  </View>
-                  <ThemedText themeColor="tint">→</ThemedText>
-                </ThemedView>
-              </Pressable>
-            ))}
-            <Pressable onPress={() => setCalendarOpen((open) => !open)}>
-              <ThemedView type="backgroundElement" style={styles.row}>
-                <ThemedText type="smallBold">Pick a date</ThemedText>
-                <ThemedText themeColor="tint">{calendarOpen ? '▴' : '▾'}</ThemedText>
-              </ThemedView>
-            </Pressable>
-            {calendarOpen && pendingDate && (
-              <Pressable onPress={() => confirmDate(pendingDate)}>
-                <ThemedView type="backgroundSelected" style={styles.row}>
-                  <ThemedText type="smallBold" themeColor="tint">
-                    Use {formatDayLabelWithYear(pendingDate)}
+                  </ThemedView>
+                </Pressable>
+              ))}
+            </View>
+            {/* The journal reaches decades back; the lookup provider only
+                remembers ~a year, and schedules run ~11 months forward. */}
+            <CalendarMonth
+              value={pendingDate}
+              minDate={
+                manualMode
+                  ? new Date(today.getFullYear() - 30, today.getMonth(), today.getDate())
+                  : new Date(today.getFullYear() - 1, today.getMonth(), today.getDate())
+              }
+              maxDate={new Date(today.getFullYear(), today.getMonth() + 11, today.getDate())}
+              onSelect={setPendingDate}
+            />
+            <PrimaryButton
+              label={
+                pendingDate ? `Use ${formatDayLabelWithYear(pendingDate)} →` : 'Pick a day above'
+              }
+              disabled={!pendingDate}
+              onPress={() => pendingDate && confirmDate(pendingDate)}
+            />
+            {/* Lookup mode carries the provider's reach; the journal has none.
+                The link flips this same step into journal mode in place. */}
+            {!manualMode && !editId && (
+              <Pressable onPress={startManual} hitSlop={Spacing.two}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.dateHint}>
+                  We can look up flights from about the last 12 months.{' '}
+                  <ThemedText type="small" themeColor="tint">
+                    Older trip? Journal it instead →
                   </ThemedText>
-                  <ThemedText themeColor="tint">→</ThemedText>
-                </ThemedView>
+                </ThemedText>
               </Pressable>
-            )}
-            {calendarOpen && (
-              <ThemedView type="backgroundElement" style={styles.calendar}>
-                <DateTimePicker
-                  value={pendingDate ? new Date(`${pendingDate}T12:00:00`) : today}
-                  mode="date"
-                  display="inline"
-                  presentation="inline"
-                  // The journal reaches decades back; schedules only ~11 months forward.
-                  minimumDate={new Date(today.getFullYear() - 30, today.getMonth(), today.getDate())}
-                  maximumDate={new Date(today.getFullYear(), today.getMonth() + 11, today.getDate())}
-                  accentColor={theme.tint}
-                  onValueChange={(_event, picked) => setPendingDate(localDateString(picked))}
-                />
-              </ThemedView>
             )}
           </View>
         )}
@@ -598,8 +656,8 @@ export function AddFlight() {
                 : 'Flight lookup failed — try again.'}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Older flights often aren&apos;t in the provider&apos;s records — you can
-              still add this trip to your journal.
+              Flight records only reach back about a year — you can still add this
+              trip to your journal.
             </ThemedText>
             <Pressable onPress={startManual} hitSlop={Spacing.two}>
               <ThemedText type="link">Add it manually instead →</ThemedText>
@@ -701,13 +759,20 @@ export function AddFlight() {
                     }
                     mode="time"
                     display="spinner"
-                    presentation="inline"
+                    // iOS: compact inline spinner under the chips. Android has
+                    // no inline spinner — its "inline" fallback is a full
+                    // Material clock face that dwarfs the card, so it gets the
+                    // platform's self-contained time dialog instead.
+                    presentation={Platform.OS === 'android' ? 'dialog' : 'inline'}
                     accentColor={theme.tint}
                     onDismiss={() => setTimePickerFor(null)}
                     onValueChange={(_event, picked) => {
                       const clock = `${`${picked.getHours()}`.padStart(2, '0')}:${`${picked.getMinutes()}`.padStart(2, '0')}`;
                       if (timePickerFor === 'dep') setDepTime(clock);
                       else setArrTime(clock);
+                      // The dialog closes itself on OK — drop the open flag so
+                      // the chip doesn't stay highlighted with nothing shown.
+                      if (Platform.OS === 'android') setTimePickerFor(null);
                     }}
                   />
                 )}
@@ -765,43 +830,8 @@ export function AddFlight() {
             </PassCard>
           </Animated.View>
         )}
-      </View>
+      </ScrollView>
     </ThemedView>
-  );
-}
-
-/** Secondary entry paths as equal side-by-side tiles — icon, title, one-line
- * promise — instead of bare text links. */
-function OptionTile({
-  icon,
-  title,
-  caption,
-  onPress,
-  testID,
-}: {
-  icon: SymbolViewProps['name'];
-  title: string;
-  caption: string;
-  onPress: () => void;
-  testID?: string;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      testID={testID}
-      onPress={onPress}
-      style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}>
-      <ThemedView type="backgroundElement" style={styles.tileInner}>
-        <View style={[styles.tileIcon, { backgroundColor: theme.backgroundSelected }]}>
-          <SymbolView name={icon} size={16} tintColor={theme.tint} />
-        </View>
-        <ThemedText type="smallBold">{title}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {caption}
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
   );
 }
 
@@ -947,31 +977,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.five,
   },
-  tileRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
+  rowLabels: {
+    flex: 1,
+    gap: Spacing.half,
+    marginRight: Spacing.two,
   },
-  tile: {
+  coverageNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.one,
+    marginTop: Spacing.one,
+  },
+  coverageText: {
     flex: 1,
   },
-  tilePressed: {
-    opacity: 0.85,
-  },
-  // Content-sized with a shared floor so the two pills read as one row even
-  // when their captions wrap differently.
-  tileInner: {
-    minHeight: 116,
-    gap: Spacing.one,
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-  },
-  tileIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.one,
+  dateHint: {
+    paddingHorizontal: Spacing.one,
+    marginTop: Spacing.one,
   },
   input: {
     flex: 1,
@@ -980,12 +1003,36 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
+    // Explicit values, not omitted: Fabric on iOS recycles native views, and
+    // a TextInput recycled from the flight-number input (letterSpacing 1.5,
+    // lineHeight 36) keeps the old kern and line height in its placeholder
+    // attributes unless new values overwrite them — the placeholder rendered
+    // stretched and bottom-shifted (RN #42589).
+    letterSpacing: 0,
+    lineHeight: 20,
   },
   body: {
     flex: 1,
   },
+  bodyContent: {
+    paddingBottom: Spacing.six,
+  },
   rowGroup: {
     gap: Spacing.two,
+  },
+  quickDates: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  quickDate: {
+    flex: 1,
+  },
+  quickDateInner: {
+    alignItems: 'center',
+    gap: Spacing.half,
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.one,
   },
   airportInputs: {
     flexDirection: 'row',
@@ -1001,10 +1048,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Spacing.three,
     padding: Spacing.three,
-  },
-  calendar: {
-    borderRadius: Spacing.three,
-    padding: Spacing.two,
   },
   card: {
     gap: Spacing.two,

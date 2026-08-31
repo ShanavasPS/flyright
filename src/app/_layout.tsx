@@ -158,13 +158,15 @@ function RootLayout() {
           <VersionGate>
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              {/* Full screen, not a sheet: the flow hosts a camera viewfinder,
+                a calendar, and the keyboard — in a 0.9 sheet the keyboard
+                buried the scan entry. The ✕ and the post-save timer are the
+                exits (root-stack modal, so router.back() stays NativeTabs-safe). */}
               <Stack.Screen
                 name="add-flight"
                 options={{
-                  presentation: "formSheet",
+                  presentation: "fullScreenModal",
                   headerShown: false,
-                  sheetGrabberVisible: true,
-                  sheetAllowedDetents: [0.9],
                 }}
               />
               <Stack.Screen

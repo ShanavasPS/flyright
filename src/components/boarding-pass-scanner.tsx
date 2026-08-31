@@ -115,6 +115,12 @@ export function BoardingPassScanner({
             // distance the lens can focus at — getting too close blurs it.
             'Fill the frame with the barcode — no need to get close.'}
       </ThemedText>
+      {/* BCBP encodes only a day-of-year: the date is matched to the nearest
+          year, so passes from another year land on the wrong flight. */}
+      <ThemedText type="small" style={[styles.subHint, styles.centered]}>
+        Recent passes work best — barcodes don&apos;t carry a year, so we match the
+        closest date.
+      </ThemedText>
       <Pressable hitSlop={Spacing.two} onPress={onClose}>
         <ThemedText type="smallBold" style={[styles.link, styles.centered]}>
           Type the flight instead →
@@ -135,6 +141,12 @@ const styles = StyleSheet.create({
   },
   hintText: {
     color: WHITE_DIM,
+  },
+  subHint: {
+    color: WHITE_DIM,
+    opacity: 0.7,
+    fontSize: 12,
+    lineHeight: 16,
   },
   link: {
     color: COBALT,

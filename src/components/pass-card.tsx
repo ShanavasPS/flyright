@@ -1,4 +1,4 @@
-import { SymbolView } from 'expo-symbols';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -117,11 +117,13 @@ export function PassAction({
   onPress,
   disabled,
   testID,
+  icon,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   testID?: string;
+  icon?: SymbolViewProps['name'];
 }) {
   return (
     <Pressable
@@ -130,6 +132,7 @@ export function PassAction({
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [styles.action, { opacity: disabled ? 0.5 : pressed ? 0.85 : 1 }]}>
+      {icon && <SymbolView name={icon} size={17} tintColor="#0C1B36" />}
       <Text style={styles.actionLabel}>{label}</Text>
     </Pressable>
   );
@@ -221,6 +224,9 @@ const styles = StyleSheet.create({
     borderColor: WHITE_FAINT,
   },
   action: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.two,
     alignItems: 'center',
     borderRadius: Spacing.three,
     paddingVertical: Spacing.three,
