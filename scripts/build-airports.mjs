@@ -6,7 +6,9 @@
  *   node scripts/build-airports.mjs
  *
  * Output shape, keyed by IATA code, ~270 KB for ~4,800 airports:
- *   { "HEL": [60.3172, 24.9633, "FI", "Helsinki"] }   // [lat, lon, country, city]
+ *   { "HEL": [60.3172, 24.9633, "FI", "Helsinki", 1] } // [lat, lon, country, city, large?]
+ * The trailing 1 marks large_airport rows (search ranks them first) and is
+ * omitted for medium airports to keep the bundle small.
  *
  * The output is committed so builds stay offline and reproducible.
  */
@@ -78,6 +80,7 @@ for (const line of lines) {
       Math.round(lon * 10000) / 10000,
       row[col.iso_country] ?? '',
       row[col.municipality]?.trim() || row[col.name] || '',
+      ...(type === 'large_airport' ? [1] : []),
     ],
   };
   kept++;

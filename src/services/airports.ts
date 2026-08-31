@@ -7,8 +7,9 @@ import data from '../../assets/data/airports.json';
 
 import { COUNTRY_NAMES } from '@/constants/countries';
 
-/** [lat, lon, ISO country, city] — the compact tuple the build script emits. */
-type AirportTuple = [number, number, string, string];
+/** [lat, lon, ISO country, city, large?] — the compact tuple the build script
+ * emits; the trailing 1 (omitted for medium airports) marks large_airport. */
+type AirportTuple = [number, number, string, string, 1?];
 
 const AIRPORTS = data as unknown as Record<string, AirportTuple>;
 
@@ -42,21 +43,38 @@ export function isValidIata(input: string): boolean {
   return /^[A-Z]{3}$/.test(code) && code in AIRPORTS;
 }
 
-/** Prefix match on the IATA code plus substring match on the city name. */
+/** Ranked search: exact code, then code prefixes, then cities with a word
+ * starting on the query, then bare substrings. Tiers matter — a flat scan
+ * let alphabetically early substring hits (ABE, "Bethlehem") fill the list
+ * before the obvious code match (HEL) was ever reached. */
 export function searchAirports(query: string, limit = 6): Airport[] {
   const q = query.trim().toUpperCase();
   if (!q) return [];
 
-  const results: Airport[] = [];
   const exact = AIRPORTS[q];
-  if (exact) results.push(toAirport(q, exact));
+  const results = exact ? [toAirport(q, exact)] : [];
+  // Each tier keeps [airport, isLarge] so large airports (HEL) sort above
+  // small ones sharing the prefix (HEH) without losing alphabetical order.
+  const codePrefix: [Airport, number][] = [];
+  const cityWord: [Airport, number][] = [];
+  const citySubstring: [Airport, number][] = [];
 
   for (const [iata, tuple] of Object.entries(AIRPORTS)) {
-    if (results.length >= limit) break;
     if (iata === q) continue;
-    if (iata.startsWith(q) || tuple[3].toUpperCase().includes(q)) {
-      results.push(toAirport(iata, tuple));
+    const city = tuple[3].toUpperCase();
+    if (iata.startsWith(q)) {
+      codePrefix.push([toAirport(iata, tuple), tuple[4] ?? 0]);
+    } else if (city.split(/[^A-Z]+/).some((w) => w.startsWith(q))) {
+      cityWord.push([toAirport(iata, tuple), tuple[4] ?? 0]);
+    } else if (city.includes(q)) {
+      citySubstring.push([toAirport(iata, tuple), tuple[4] ?? 0]);
     }
   }
-  return results.slice(0, limit);
+
+  const ranked = (tier: [Airport, number][]) =>
+    tier.sort((a, b) => b[1] - a[1]).map(([airport]) => airport);
+
+  return results
+    .concat(ranked(codePrefix), ranked(cityWord), ranked(citySubstring))
+    .slice(0, limit);
 }

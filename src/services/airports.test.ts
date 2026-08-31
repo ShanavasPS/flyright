@@ -34,6 +34,18 @@ describe('searchAirports', () => {
     expect(results.map((a) => a.iata)).toContain('TLL');
   });
 
+  it('ranks code prefixes above city substrings', () => {
+    // "HE" once returned ABE/AEG/AHE (cities containing "he") and never HEL.
+    const codes = searchAirports('HE', 3).map((a) => a.iata);
+    expect(codes).toContain('HEL');
+    for (const code of codes) expect(code.startsWith('HE')).toBe(true);
+  });
+
+  it('matches mid-name city words', () => {
+    // "Helsinki (Vantaa)" — a word start inside the name, not a prefix.
+    expect(searchAirports('Vantaa').map((a) => a.iata)).toContain('HEL');
+  });
+
   it('respects the limit and empty queries', () => {
     expect(searchAirports('A', 3)).toHaveLength(3);
     expect(searchAirports('  ')).toHaveLength(0);
