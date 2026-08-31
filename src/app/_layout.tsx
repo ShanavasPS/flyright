@@ -10,6 +10,7 @@ import { CONVEX_URL } from "@/constants/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Observe, ObserveRoot } from "expo-observe";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { LogBox } from "react-native";
 
@@ -154,6 +155,11 @@ function RootLayout() {
       <ThemeProvider
         value={navTheme(colorScheme === "dark" ? "dark" : "light")}
       >
+        {/* "auto" resolves through useColorScheme, so it follows the in-app
+          Appearance override from Settings, not just the OS theme. Without a
+          mounted StatusBar, Android's edge-to-edge theme never sets
+          windowLightStatusBar and keeps white icons over the light theme. */}
+        <StatusBar style="auto" />
         <QueryClientProvider client={queryClient}>
           <VersionGate>
             <Stack>
