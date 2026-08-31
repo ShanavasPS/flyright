@@ -1,0 +1,49 @@
+# World tab: the tab renders, the map screen shows its header, and the empty
+# state's "Add a flight" CTA opens the add-flight flow. Deterministic via
+# clearState (empty journal → empty-state card), same pattern as smoke.yaml.
+#
+# The route arcs themselves are SVG with no accessibility text, so the seeded
+# path can only be eyeballed. To see real routes instead of the empty state,
+# seed the journal first (then relaunch — the live query never sees external
+# sqlite writes) and SKIP the clearState launch below:
+#   DB="$(xcrun simctl get_app_container booted com.shanavasshaji.flyright data)/Documents/SQLite"
+#   # Android: adb shell "run-as com.shanavasshaji.flyright sqlite3 files/SQLite/flyright.db \"<same insert>\""
+#   sqlite3 "$DB/flyright.db" "INSERT OR REPLACE INTO journeys (id, mode, carrier, carrier_country, number, from_code, from_country, to_code, to_country, distance_km, scheduled_departure, scheduled_arrival, created_at, user_id, source, updated_at) VALUES
+#     ('TEST-DXB-LAX','flight','Emirates','AE','EK215','DXB','AE','LAX','US',13400,'2025-11-02T08:45Z','2025-11-02T13:30Z','2026-08-31T09:00:00.000Z',NULL,'manual','2026-08-31T09:00:00.000Z'),
+#     ('TEST-LAX-NRT','flight','ANA','JP','NH105','LAX','US','NRT','JP',8770,'2025-11-10T11:30Z','2025-11-11T15:40Z','2026-08-31T09:01:00.000Z',NULL,'manual','2026-08-31T09:01:00.000Z');"
+#   (LAX–NRT doubles as the antimeridian-split check; a future-dated row draws dashed.)
+#   With routes present the stats pill replaces the empty card — assert "trips".
+#
+# Run: maestro --device <device> test .maestro/world-map.yaml
+#      (dev build installed and `npx expo start` serving the bundle on :8081)
+#
+# Gotchas: NativeTabs labels don't respond to Maestro taps on iOS 26 (see
+# claim-outcomes.yaml), so navigation goes through the flyright://world deep
+# link. The recenter button only exists after a pan/zoom, so it isn't asserted.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true # deterministic: the journeys DB starts empty
+    permissions:
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# clearState makes this a first launch, so the onboarding intro shows first.
+# The first Metro download after a state wipe can sit on the splash well past
+# 30s (same as the other flows).
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- openLink: "flyright://world"
+- extendedWaitUntil:
+    visible: "Everywhere your journeys have taken you"
+    timeout: 15000
+# Empty journal → the empty-state card with its add-flight CTA.
+- assertVisible: "Your world map awaits"
+- tapOn: "Add a flight"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000

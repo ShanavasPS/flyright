@@ -25,6 +25,14 @@ export default function TabsLayout() {
         />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="world">
+        <NativeTabs.Trigger.Label>World</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/world.png')}
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="claims">
         <NativeTabs.Trigger.Label>Claims</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
