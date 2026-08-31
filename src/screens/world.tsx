@@ -1,198 +1,227 @@
 import { useAuth } from '@clerk/expo';
 import { Link } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import MapView, {
+  Marker,
+  PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
+  Polyline,
+  type Region,
+} from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
-import { WorldMap, mapColors } from '@/components/world-map';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { WORLD, buildWorldMap, fitViewBox, type ViewBox } from '@/services/geo';
+import { buildWorldRoutes, type LatLng } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
 import { travelRecap } from '@/services/timeline';
 
-/** Deepest zoom-in: 1/16 of the world across the screen — enough to separate
- * co-located city airports without outrunning the 1:110m coastline data. */
-const MIN_BOX_WIDTH = WORLD.width / 16;
+/** Region containing every coordinate, wraparound-aware. The camera is set
+ * from this instead of `fitToCoordinates` because antimeridian-split routes
+ * defeat a naive bounding box (their ±180° endpoints make it span the whole
+ * world and the SDKs then pick an arbitrary window). The longitude window is
+ * the complement of the largest empty gap between route samples — the
+ * standard fix for bounds on a circle. With no coordinates it falls back to
+ * a whole-world view. The 1.4/1.3 factors pad the fit clear of the header
+ * and the stats card. */
+function regionFor(coords: LatLng[]): Region {
+  if (!coords.length) return { latitude: 30, longitude: 0, latitudeDelta: 100, longitudeDelta: 120 };
+  let minLat = 90;
+  let maxLat = -90;
+  for (const c of coords) {
+    minLat = Math.min(minLat, c.latitude);
+    maxLat = Math.max(maxLat, c.latitude);
+  }
+  const lons = coords.map((c) => c.longitude).sort((a, b) => a - b);
+  let gapStart = lons[lons.length - 1];
+  let gapSize = lons[0] + 360 - gapStart;
+  for (let i = 1; i < lons.length; i += 1) {
+    const gap = lons[i] - lons[i - 1];
+    if (gap > gapSize) {
+      gapSize = gap;
+      gapStart = lons[i - 1];
+    }
+  }
+  const lonSpan = 360 - gapSize;
+  const rawCenter = gapStart + gapSize + lonSpan / 2;
+  // Clamped hard: MKMapView throws NSException on longitudeDelta > 360 or a
+  // span poking past the poles.
+  const latitudeDelta = Math.min(120, Math.max(6, (maxLat - minLat) * 1.4));
+  const maxCenterLat = 85 - latitudeDelta / 2;
+  return {
+    latitude: Math.min(maxCenterLat, Math.max(-maxCenterLat, (minLat + maxLat) / 2)),
+    longitude: ((rawCenter % 360) + 540) % 360 - 180,
+    latitudeDelta,
+    longitudeDelta: Math.min(359, Math.max(6, lonSpan * 1.3)),
+  };
+}
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max);
+/** Google's night-mode base palette, plus POI/transit clutter removal (the
+ * clutter rules also apply in light mode — this is a travel map, not a city
+ * guide). Apple Maps ignores this and follows `userInterfaceStyle` instead. */
+const CLUTTER_OFF = [
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+];
+const GOOGLE_NIGHT = [
+  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+  { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] },
+  ...CLUTTER_OFF,
+];
 
-/** Your travels on a world map: every airport visited, every route flown as
- * a great-circle arc — solid once flown, dashed while still ahead. */
+/** Your travels on a real map — Apple Maps on iOS, Google Maps on Android —
+ * with every route flown drawn as a great-circle arc between its origin and
+ * destination (solid once flown, dashed while still ahead). Pan/zoom is the
+ * map SDK's own. */
 export function World() {
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
+  const dark = useColorScheme() === 'dark';
+  const theme = useTheme();
 
   // "Flown vs upcoming" cutoff, frozen per mount — a live clock would redraw
   // the map mid-session for no visible gain.
   const [now] = useState(() => new Date());
-  const data = useMemo(() => buildWorldMap(journeys ?? [], now), [journeys, now]);
+  const data = useMemo(() => buildWorldRoutes(journeys ?? [], now), [journeys, now]);
   const recap = useMemo(() => travelRecap(journeys ?? []), [journeys]);
 
-  const { sea } = mapColors(useColorScheme() === 'dark');
-  const [layout, setLayout] = useState<{ width: number; height: number } | null>(null);
-  const aspect = layout ? layout.width / layout.height : 0;
-  const fitted = useMemo(() => fitViewBox(data.fitPoints, aspect), [data, aspect]);
+  const mapRef = useRef<MapView>(null);
+  // True once the user pans/zooms away from the fitted view; new flights
+  // stop re-fitting the camera the moment the user takes the wheel. Detected
+  // by comparing regions against the last fit, not `details.isGesture` —
+  // Apple Maps doesn't report that flag.
+  const [moved, setMoved] = useState(false);
+  const fitting = useRef(false);
+  const fitted = useRef<Region | null>(null);
 
-  // Where the user panned/zoomed to; null means "follow the fitted view"
-  // (so new flights re-fit the map until the user takes the wheel).
-  const [userBox, setUserBox] = useState<ViewBox | null>(null);
-  const box = userBox ?? fitted;
-
-  // Live gesture state, applied as a plain view transform while fingers are
-  // down. On release it's committed into the SVG viewBox (a crisp vector
-  // re-render at the new zoom) and the transform resets to identity.
-  const scale = useSharedValue(1);
-  const focalX = useSharedValue(0);
-  const focalY = useSharedValue(0);
-  const panX = useSharedValue(0);
-  const panY = useSharedValue(0);
-  const pinchActive = useSharedValue(false);
-  const panActive = useSharedValue(false);
-
-  const commit = (s: number, tx: number, ty: number, fx: number, fy: number) => {
-    if (!layout) return;
-    const width = clamp(box.width / s, MIN_BOX_WIDTH, WORLD.width);
-    const sEff = box.width / width; // s after the zoom clamps
-    const k = layout.width / box.width; // px per map unit
-    // Screen-space offset of the gesture transform: p' = sEff·p + o.
-    const ox = (1 - sEff) * fx + tx;
-    const oy = (1 - sEff) * fy + ty;
-    const height = width / (layout.width / layout.height);
-    const x = clamp(box.x - ox / (sEff * k), 0, Math.max(0, WORLD.width - width));
-    const y =
-      height >= WORLD.height
-        ? (WORLD.height - height) / 2
-        : clamp(box.y - oy / (sEff * k), 0, WORLD.height - height);
-    // Commit the gesture into the viewBox (a crisp vector re-render) and zero
-    // the live transform in the same JS task, so both land on the same frame.
-    // A commit the clamping reduced to a no-op (panning at full zoom-out) keeps
-    // following the fitted view instead of pinning a stale userBox.
-    const moved =
-      Math.abs(x - box.x) > 0.01 ||
-      Math.abs(y - box.y) > 0.01 ||
-      Math.abs(width - box.width) > 0.01;
-    if (moved) setUserBox({ x, y, width, height });
-    scale.value = 1;
-    focalX.value = 0;
-    focalY.value = 0;
-    panX.value = 0;
-    panY.value = 0;
+  const fit = (animated: boolean) => {
+    if (!data.fitCoords.length) return;
+    fitting.current = true;
+    mapRef.current?.animateToRegion(regionFor(data.fitCoords), animated ? 600 : 0);
   };
 
-  const settle = () => {
-    'worklet';
-    if (pinchActive.value || panActive.value) return;
-    runOnJS(commit)(scale.value, panX.value, panY.value, focalX.value, focalY.value);
-  };
-
-  const pinch = Gesture.Pinch()
-    .onStart((e) => {
-      pinchActive.value = true;
-      focalX.value = e.focalX;
-      focalY.value = e.focalY;
-    })
-    .onUpdate((e) => {
-      scale.value = e.scale;
-    })
-    .onFinalize(() => {
-      pinchActive.value = false;
-      settle();
-    });
-
-  const pan = Gesture.Pan()
-    .maxPointers(2)
-    .onStart(() => {
-      panActive.value = true;
-    })
-    .onUpdate((e) => {
-      panX.value = e.translationX;
-      panY.value = e.translationY;
-    })
-    .onFinalize(() => {
-      panActive.value = false;
-      settle();
-    });
-
-  const centerX = (layout?.width ?? 0) / 2;
-  const centerY = (layout?.height ?? 0) / 2;
-  const animatedStyle = useAnimatedStyle(() => {
-    const s = scale.value;
-    return {
-      transform: [
-        { translateX: (1 - s) * (focalX.value - centerX) + panX.value },
-        { translateY: (1 - s) * (focalY.value - centerY) + panY.value },
-        { scale: s },
-      ],
-    };
-  });
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (ready && !moved) fit(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on new data only
+  }, [ready, data]);
 
   const empty = journeys != null && data.routes.length === 0;
 
   return (
-    <GestureHandlerRootView style={styles.flex}>
-      {/* Sea-colored root, not the page background: the map letterboxes on
-          tall screens and shrinks during pinch-out, and every exposed sliver
-          must read as ocean (the mismatch showed as a "white status bar"). */}
-      <View style={[styles.flex, { backgroundColor: sea }]}>
-        <View
-          style={styles.map}
-          onLayout={(e) => {
-            const { width, height } = e.nativeEvent.layout;
-            setLayout(width && height ? { width, height } : null);
-          }}>
-          {layout && (
-            <GestureDetector gesture={Gesture.Simultaneous(pinch, pan)}>
-              <Animated.View style={[styles.flex, animatedStyle]}>
-                <WorldMap
-                  box={box}
-                  pxWidth={layout.width}
-                  routes={data.routes}
-                  airports={data.airports}
-                />
-              </Animated.View>
-            </GestureDetector>
+    <View style={styles.flex}>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+        initialRegion={regionFor(data.fitCoords)}
+        onMapReady={() => setReady(true)}
+        onRegionChangeComplete={(region, details) => {
+          if (fitting.current) {
+            // The settle of our own animateToRegion — record what the SDK
+            // actually granted (it clamps extreme spans) as the baseline.
+            fitting.current = false;
+            fitted.current = region;
+            return;
+          }
+          if (details?.isGesture) {
+            setMoved(true);
+            return;
+          }
+          const base = fitted.current;
+          if (!base) return;
+          const tolerance = Math.max(base.latitudeDelta, base.longitudeDelta) * 0.02;
+          if (
+            Math.abs(region.latitude - base.latitude) > tolerance ||
+            Math.abs(region.longitude - base.longitude) > tolerance ||
+            Math.abs(region.latitudeDelta - base.latitudeDelta) > tolerance ||
+            Math.abs(region.longitudeDelta - base.longitudeDelta) > tolerance
+          ) {
+            setMoved(true);
+          }
+        }}
+        customMapStyle={dark ? GOOGLE_NIGHT : CLUTTER_OFF}
+        userInterfaceStyle={dark ? 'dark' : 'light'}
+        showsPointsOfInterests={false}
+        showsMyLocationButton={false}
+        toolbarEnabled={false}
+        rotateEnabled={false}
+        pitchEnabled={false}>
+        {data.routes.map((route) =>
+          route.segments.map((coordinates, i) => (
+            <Polyline
+              key={`${route.key}-${i}`}
+              coordinates={coordinates}
+              strokeColor={theme.tint}
+              strokeWidth={2.5 + Math.min(route.count - 1, 4) * 0.5}
+              lineCap="round"
+              lineDashPattern={route.upcomingOnly ? [10, 8] : undefined}
+            />
+          )),
+        )}
+        {data.airports.map((airport) => (
+          <Marker
+            key={airport.iata}
+            coordinate={{ latitude: airport.lat, longitude: airport.lon }}
+            title={airport.iata}
+            description={airport.city}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}>
+            <View style={[styles.dot, { borderColor: theme.tint }]} />
+          </Marker>
+        ))}
+      </MapView>
+
+      <SafeAreaView style={styles.overlay} edges={['top']} pointerEvents="box-none">
+        <View style={styles.header} pointerEvents="box-none">
+          <View pointerEvents="none">
+            <ThemedText type="title" themeColor="heading">
+              World
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Everywhere your journeys have taken you
+            </ThemedText>
+          </View>
+          {moved && (
+            <RecenterButton
+              onPress={() => {
+                setMoved(false);
+                fit(true);
+              }}
+            />
           )}
         </View>
+      </SafeAreaView>
 
-        <SafeAreaView style={styles.overlay} edges={['top']} pointerEvents="box-none">
-          <View style={styles.header} pointerEvents="box-none">
-            <View pointerEvents="none">
-              <ThemedText type="title" themeColor="heading">
-                World
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Everywhere your journeys have taken you
-              </ThemedText>
-            </View>
-            {userBox && <RecenterButton onPress={() => setUserBox(null)} />}
-          </View>
-        </SafeAreaView>
-
-        <SafeAreaView style={styles.footer} edges={['bottom']} pointerEvents="box-none">
-          {empty ? (
-            <EmptyCard />
-          ) : recap.trips > 0 ? (
-            <Card style={styles.stats}>
-              <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
-              <Stat value={recap.airports} label={recap.airports === 1 ? 'airport' : 'airports'} />
-              <Stat
-                value={recap.countries}
-                label={recap.countries === 1 ? 'country' : 'countries'}
-              />
-              <Stat value={recap.totalKm} label="km" />
-            </Card>
-          ) : null}
-        </SafeAreaView>
-      </View>
-    </GestureHandlerRootView>
+      <SafeAreaView style={styles.footer} edges={['bottom']} pointerEvents="box-none">
+        {empty ? (
+          <EmptyCard />
+        ) : recap.trips > 0 ? (
+          <Card style={styles.stats}>
+            <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
+            <Stat value={recap.airports} label={recap.airports === 1 ? 'airport' : 'airports'} />
+            <Stat value={recap.countries} label={recap.countries === 1 ? 'country' : 'countries'} />
+            <Stat value={recap.totalKm} label="km" />
+          </Card>
+        ) : null}
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -267,7 +296,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    overflow: 'hidden',
+  },
+  dot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 3,
+    backgroundColor: '#FFFFFF',
+    // Marker views render on the map surface, not our theme background — a
+    // constant white core reads correctly on both map color schemes.
   },
   overlay: {
     position: 'absolute',

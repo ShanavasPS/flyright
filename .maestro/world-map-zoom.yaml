@@ -1,0 +1,34 @@
+# World tab pan/zoom: double-tap zooms the native map in and the recenter
+# control appears once the camera leaves the fitted view; tapping it re-fits
+# and hides itself again.
+#
+# PRECONDITION: seeded journeys (recipe in world-map.yaml's header) — with an
+# empty journal there is no fitted view to deviate from, so the recenter
+# button never appears and the flow fails. Run with the dev build installed
+# and `npx expo start` serving :8081.
+#
+# Run: maestro --device <device> test .maestro/world-map-zoom.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "World"
+    timeout: 90000
+- openLink: "flyright://world"
+- extendedWaitUntil:
+    visible: "Everywhere your journeys have taken you"
+    timeout: 15000
+# Two double-taps = two native zoom-in steps (same recognizer family as
+# pinch, which Maestro can't synthesize).
+- doubleTapOn:
+    point: "50%,40%"
+- doubleTapOn:
+    point: "50%,40%"
+- extendedWaitUntil:
+    visible: "Recenter the map on your travels"
+    timeout: 10000
+- tapOn: "Recenter the map on your travels"
+- extendedWaitUntil:
+    notVisible: "Recenter the map on your travels"
+    timeout: 10000

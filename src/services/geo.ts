@@ -88,12 +88,18 @@ export function greatCircle(
   return points;
 }
 
-/** Projected polyline(s) for one great-circle arc. Usually a single segment;
- * arcs that wrap the antimeridian (LAX–NRT) come back as two, each extended
- * to its map edge so the line visibly runs off one side and onto the other. */
-export function arcSegments(from: Airport, to: Airport): MapPoint[][] {
+/** Coordinate pair in react-native-maps shape. */
+export interface LatLng {
+  latitude: number;
+  longitude: number;
+}
+
+/** Great-circle arc as map-SDK polyline coordinates. Usually one segment;
+ * arcs that wrap the antimeridian (LAX–NRT) split into two, each ending
+ * exactly at ±180° so neither polyline draws the long way around the globe. */
+export function arcCoordinates(from: Airport, to: Airport): LatLng[][] {
   const samples = greatCircle(from.lat, from.lon, to.lat, to.lon);
-  const segments: MapPoint[][] = [[]];
+  const segments: LatLng[][] = [[]];
   for (let i = 0; i < samples.length; i += 1) {
     const [lat, lon] = samples[i];
     if (i > 0) {
@@ -103,13 +109,23 @@ export function arcSegments(from: Airport, to: Airport): MapPoint[][] {
         const unwrapped = lon + (lon < prevLon ? 360 : -360);
         const t = (180 * Math.sign(prevLon) - prevLon) / (unwrapped - prevLon);
         const latAtEdge = prevLat + (lat - prevLat) * t;
-        segments[segments.length - 1].push(project(latAtEdge, 180 * Math.sign(prevLon)));
-        segments.push([project(latAtEdge, 180 * Math.sign(lon))]);
+        segments[segments.length - 1].push({
+          latitude: latAtEdge,
+          longitude: 180 * Math.sign(prevLon),
+        });
+        segments.push([{ latitude: latAtEdge, longitude: 180 * Math.sign(lon) }]);
       }
     }
-    segments[segments.length - 1].push(project(lat, lon));
+    segments[segments.length - 1].push({ latitude: lat, longitude: lon });
   }
   return segments.filter((points) => points.length > 1);
+}
+
+/** `arcCoordinates` projected into the SVG world map (the web fallback). */
+export function arcSegments(from: Airport, to: Airport): MapPoint[][] {
+  return arcCoordinates(from, to).map((segment) =>
+    segment.map((c) => project(c.latitude, c.longitude)),
+  );
 }
 
 /** `arcSegments` rendered as SVG path `d` strings. */
@@ -119,38 +135,41 @@ export function arcPaths(from: Airport, to: Airport): string[] {
   );
 }
 
-export interface MapRoute {
+export interface GeoRoute {
   /** Direction-insensitive pair key, e.g. "DXB-LAX". */
   key: string;
+  /** Origin of the first journey seen on the pair (the arc itself is
+   * symmetric — both directions trace the same great circle). */
   from: Airport;
   to: Airport;
   /** How many journeys fly this pair (either direction). */
   count: number;
   /** True when every journey on the pair is still ahead — drawn dashed. */
   upcomingOnly: boolean;
-  paths: string[];
+  segments: LatLng[][];
 }
 
-export interface MapAirport extends Airport, MapPoint {
+export interface GeoAirport extends Airport {
   /** Journeys touching this airport — sizes the dot. */
   count: number;
 }
 
-export interface WorldMapData {
-  routes: MapRoute[];
-  airports: MapAirport[];
+export interface WorldRoutesData {
+  routes: GeoRoute[];
+  airports: GeoAirport[];
   /** Sparse samples of everything drawn — arcs bow poleward past their
-   * endpoints, so the initial fit must cover these, not just the airports. */
-  fitPoints: MapPoint[];
+   * endpoints, so the initial camera fit must cover these, not just the
+   * airports. */
+  fitCoords: LatLng[];
 }
 
 /** Collapse journeys into distinct route arcs + visited airports. Rows whose
  * codes aren't in the bundled airport set (manual train/bus entries with
  * non-IATA codes) are skipped — no coordinates, nothing to draw. */
-export function buildWorldMap(rows: JourneyRow[], now: Date): WorldMapData {
-  const routes = new Map<string, MapRoute>();
-  const airports = new Map<string, MapAirport>();
-  const fitPoints: MapPoint[] = [];
+export function buildWorldRoutes(rows: JourneyRow[], now: Date): WorldRoutesData {
+  const routes = new Map<string, GeoRoute>();
+  const airports = new Map<string, GeoAirport>();
+  const fitCoords: LatLng[] = [];
 
   for (const row of rows) {
     const from = getAirport(row.fromCode);
@@ -161,7 +180,7 @@ export function buildWorldMap(rows: JourneyRow[], now: Date): WorldMapData {
     for (const airport of [from, to]) {
       const entry = airports.get(airport.iata);
       if (entry) entry.count += 1;
-      else airports.set(airport.iata, { ...airport, ...project(airport.lat, airport.lon), count: 1 });
+      else airports.set(airport.iata, { ...airport, count: 1 });
     }
 
     const key = [from.iata, to.iata].sort().join('-');
@@ -170,25 +189,52 @@ export function buildWorldMap(rows: JourneyRow[], now: Date): WorldMapData {
       route.count += 1;
       route.upcomingOnly = route.upcomingOnly && !flown;
     } else {
-      const segments = arcSegments(from, to);
+      const segments = arcCoordinates(from, to);
       for (const segment of segments) {
-        for (let i = 0; i < segment.length; i += 4) fitPoints.push(segment[i]);
-        fitPoints.push(segment[segment.length - 1]);
+        for (let i = 0; i < segment.length; i += 4) fitCoords.push(segment[i]);
+        fitCoords.push(segment[segment.length - 1]);
       }
-      routes.set(key, {
-        key,
-        from,
-        to,
-        count: 1,
-        upcomingOnly: !flown,
-        paths: segments.map((points) =>
-          points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(''),
-        ),
-      });
+      routes.set(key, { key, from, to, count: 1, upcomingOnly: !flown, segments });
     }
   }
 
-  return { routes: [...routes.values()], airports: [...airports.values()], fitPoints };
+  return { routes: [...routes.values()], airports: [...airports.values()], fitCoords };
+}
+
+// —— SVG derivations, used by the web fallback map ——
+
+export interface MapRoute extends Omit<GeoRoute, 'segments'> {
+  paths: string[];
+}
+
+export interface MapAirport extends Airport, MapPoint {
+  count: number;
+}
+
+export interface WorldMapData {
+  routes: MapRoute[];
+  airports: MapAirport[];
+  fitPoints: MapPoint[];
+}
+
+/** `buildWorldRoutes` projected into the SVG world map. */
+export function buildWorldMap(rows: JourneyRow[], now: Date): WorldMapData {
+  const { routes, airports, fitCoords } = buildWorldRoutes(rows, now);
+  return {
+    routes: routes.map(({ segments, ...route }) => ({
+      ...route,
+      paths: segments.map((points) =>
+        points
+          .map((c, i) => {
+            const p = project(c.latitude, c.longitude);
+            return `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+          })
+          .join(''),
+      ),
+    })),
+    airports: airports.map((airport) => ({ ...airport, ...project(airport.lat, airport.lon) })),
+    fitPoints: fitCoords.map((c) => project(c.latitude, c.longitude)),
+  };
 }
 
 export interface ViewBox {

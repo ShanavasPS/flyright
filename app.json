@@ -2,7 +2,7 @@
   "expo": {
     "name": "FlyRight",
     "slug": "flyright",
-    "version": "1.0.17",
+    "version": "1.0.18",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "flyright",
@@ -31,7 +31,7 @@
         ],
         "NSLocationWhenInUseUsageDescription": "FlyRight does not request your location. This notice is required because a bundled notification SDK references location APIs."
       },
-      "buildNumber": "28"
+      "buildNumber": "29"
     },
     "android": {
       "package": "com.shanavasshaji.flyright",
@@ -62,7 +62,7 @@
           ]
         }
       ],
-      "versionCode": 29
+      "versionCode": 30
     },
     "web": {
       "output": "server",
@@ -122,6 +122,12 @@
       ],
       "expo-mail-composer",
       "expo-sharing",
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "AIzaSyCxvuNHoVN-19YYEF7wCMTXqbHPO5b01us"
+        }
+      ],
       "./plugins/with-pods-uuid-fix.js"
     ],
     "experiments": {

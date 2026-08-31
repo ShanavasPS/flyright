@@ -49,6 +49,8 @@ revenuecat-service-account.json
 asc-api-key.p8
 .backup-pre-stripe-projects/
 
+.maestro/out/
+
 .projects/cache
 .projects/vault
 .projects/state.test.json
@@ -56,4 +58,3 @@ asc-api-key.p8
 .env
 .env.*
 !.env.example
-.maestro/out/

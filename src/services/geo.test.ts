@@ -1,8 +1,10 @@
 import { getAirport } from '@/services/airports';
 import {
   WORLD,
+  arcCoordinates,
   arcPaths,
   buildWorldMap,
+  buildWorldRoutes,
   fitViewBox,
   greatCircle,
   haversineKm,
@@ -93,6 +95,46 @@ describe('greatCircle', () => {
   it('handles co-located endpoints without NaNs', () => {
     const points = greatCircle(10, 20, 10, 20);
     expect(points.every(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon))).toBe(true);
+  });
+});
+
+describe('arcCoordinates', () => {
+  it('starts at the origin and ends at the destination', () => {
+    const dxb = getAirport('DXB')!;
+    const lax = getAirport('LAX')!;
+    const [segment] = arcCoordinates(dxb, lax);
+    expect(segment[0].latitude).toBeCloseTo(dxb.lat);
+    expect(segment[0].longitude).toBeCloseTo(dxb.lon);
+    expect(segment[segment.length - 1].latitude).toBeCloseTo(lax.lat);
+    expect(segment[segment.length - 1].longitude).toBeCloseTo(lax.lon);
+  });
+
+  it('splits a transpacific route into segments ending at ±180°', () => {
+    const segments = arcCoordinates(getAirport('LAX')!, getAirport('NRT')!);
+    expect(segments).toHaveLength(2);
+    // Westbound out of LAX: the first piece exits at -180° and the second
+    // re-enters from +180°, at the same latitude.
+    expect(segments[0][segments[0].length - 1].longitude).toBe(-180);
+    expect(segments[1][0].longitude).toBe(180);
+    expect(segments[0][segments[0].length - 1].latitude).toBeCloseTo(segments[1][0].latitude);
+  });
+});
+
+describe('buildWorldRoutes', () => {
+  it('keeps origin and destination airports on the route', () => {
+    const { routes } = buildWorldRoutes([row({})], NOW);
+    expect(routes).toHaveLength(1);
+    expect(routes[0].from.iata).toBe('DXB');
+    expect(routes[0].to.iata).toBe('LAX');
+    const [segment] = routes[0].segments;
+    expect(segment[0].latitude).toBeCloseTo(routes[0].from.lat);
+    expect(segment[segment.length - 1].longitude).toBeCloseTo(routes[0].to.lon);
+  });
+
+  it('collects fit coordinates covering the arc, not just the endpoints', () => {
+    const { fitCoords } = buildWorldRoutes([row({})], NOW);
+    // The DXB–LAX great circle bows far north of either endpoint.
+    expect(Math.max(...fitCoords.map((c) => c.latitude))).toBeGreaterThan(60);
   });
 });
 
