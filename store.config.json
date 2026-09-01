@@ -1,7 +1,7 @@
 {
   "configVersion": 0,
   "apple": {
-    "version": "1.0.4",
+    "version": "1.0.18",
     "copyright": "© 2026 Shanavas Shaji",
     "categories": [
       "TRAVEL"
@@ -28,18 +28,20 @@
         "privacyPolicyUrl": "https://flyright.expo.app/privacy",
         "screenshots": {
           "APP_IPAD_PRO_3GEN_129": [
-            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-01.png",
-            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-02.png",
-            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-03.png",
-            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/tablet10-04.png"
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/ipad-shot-1-journal.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/ipad-shot-2-detail.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/ipad-shot-3-settings.png"
           ],
           "APP_IPHONE_65": [
             "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-01.png",
             "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-02.png",
             "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-03.png",
-            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-04.png"
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-04.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-05.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-06.png"
           ]
-        }
+        },
+        "releaseNotes": "The biggest FlyRight update yet:\n\n• Scan your boarding pass — point the camera at any pass and the flight is added instantly.\n• World map — every journey you've flown, drawn as flight routes on a zoomable globe-style map.\n• Earlier delay warnings — FlyRight watches your aircraft's inbound rotation and can flag a likely delay before departure.\n• Apple Watch — your travel day now appears in the Smart Stack on your wrist.\n• Redesigned Add flight with a proper calendar and boarding-pass styling.\n• Claim tracking — record airline replies (acknowledged, paid, rejected) and re-read the exact claim email you sent.\n• Save past flights straight to My travels, smarter airport search, side-by-side layout on iPad, and lots of polish and fixes."
       }
     },
     "advisory": {
@@ -76,10 +78,9 @@
       "lastName": "Shaji",
       "email": "shanavascruise@gmail.com",
       "phone": "+358504757771",
-      "demoUsername": "reviewer+clerk_test@getflyright.com",
-      "demoPassword": "424242",
-      "demoRequired": false,
-      "notes": "RESUBMISSION 1.0.7 — fixes for the 1.0.5 review issues:\n- Guideline 4 (iPad): every screen now scrolls correctly in compatibility mode (Settings, subscription management, trip details). Verified on iPad Air 11-inch (M3), iPadOS 26.\n- Guideline 3.1.2(c): functional Terms of Use (EULA) and Privacy Policy links now appear directly on the subscription paywall, and the App Description links both (https://getflyright.com/terms, https://getflyright.com/privacy).\n- Guideline 2.1(b): the three in-app purchase products are included in this submission. To reach the paywall in the app: Settings > Get FlyRight Pro. A screen recording of a successful sandbox purchase captured on a physical device is attached.\n\nSIGN-IN DEMO: the app is passwordless and all core functionality (flight tracking, EU261 compensation verdicts, travel-day timeline) works without signing in. To review the optional account features: tap Settings > Sign in, choose Continue with email, enter the demo username above, then enter 424242 as the verification code (the demo password field repeats this code; no email is sent for this test address)."
+      "demoUsername": "appreview@getflyright.com",
+      "demoRequired": true,
+      "notes": "FlyRight 1.0.18 — feature update (new: boarding-pass scanner, World map tab, inbound-aircraft delay prediction, Apple Watch Smart Stack support, redesigned Add flight, claim outcome tracking).\n\nDEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> 'Sign in or create account' -> enter the email above -> tap Continue -> tap 'Use another method' -> 'Sign in with your password' -> enter the password. No email code is needed for this account. (The demo password is maintained directly in App Store Connect, not in this file.)\n\nThis account's FlyRight Pro subscription (promotional, yearly entitlement) has already EXPIRED, so the expired-subscription purchase flow is reviewable: Settings -> 'Get FlyRight Pro' shows the paywall again, and Restore purchases finds no active purchase. New purchases can be tested with the App Store sandbox as usual.\n\nNotes:\n- The app is fully usable without sign-in; purchases are device/receipt based (RevenueCat). The account only backs up travel history and links web purchases.\n- The boarding-pass scanner requires the camera; any airline boarding pass (paper or screen) with a PDF417/Aztec barcode works. Flights can always be added manually with just a flight number.\n- The camera/location usage strings are declared; the app never requests location (a bundled notification SDK references the API, hence the notice)."
     }
   }
 }

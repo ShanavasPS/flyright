@@ -26,9 +26,19 @@ const SHOTS = [
     sub: 'Your travel journal with live delay tracking',
   },
   {
+    raw: 'phone-05-travel-day.png',
+    headline: 'Your travel day, live',
+    sub: 'A boarding pass that counts you down to departure',
+  },
+  {
     raw: 'phone-03-verdict.png',
     headline: "Know what you're owed",
     sub: 'Instant EU261 compensation verdicts',
+  },
+  {
+    raw: 'phone-06-world.png',
+    headline: 'Your world, mapped',
+    sub: "Every route you've flown, on one map",
   },
   {
     raw: 'phone-02-stats.png',
@@ -37,8 +47,8 @@ const SHOTS = [
   },
   {
     raw: 'phone-04-add-flight.png',
-    headline: 'Add a flight in seconds',
-    sub: 'Just the flight number — past trips too',
+    headline: 'Add flights in seconds',
+    sub: 'Scan your boarding pass — or just type the number',
   },
 ];
 
@@ -181,8 +191,10 @@ const IPHONE_DIR = 'store/apple/screenshot/en-US/APP_IPHONE_65';
 const IPAD_DIR = 'store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129';
 await mkdir(IPHONE_DIR, { recursive: true });
 await mkdir(IPAD_DIR, { recursive: true });
+// The iPad set is NOT mirrored from framed tablet panels anymore: App Review
+// requires real iPad captures, so store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129
+// holds the ipad-shot-* files uploaded to ASC on 2026-08-28. Leave it alone.
 for (let i = 1; i <= SHOTS.length; i++) {
   await copyFile(`store-assets/appstore-65-0${i}.png`, `${IPHONE_DIR}/appstore-65-0${i}.png`);
-  await copyFile(`store-assets/tablet10-0${i}.png`, `${IPAD_DIR}/tablet10-0${i}.png`);
 }
 console.log('mirrored Apple sets into store/apple');
