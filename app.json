@@ -122,12 +122,7 @@
       ],
       "expo-mail-composer",
       "expo-sharing",
-      [
-        "react-native-maps",
-        {
-          "androidGoogleMapsApiKey": "AIzaSyCxvuNHoVN-19YYEF7wCMTXqbHPO5b01us"
-        }
-      ],
+      "react-native-maps",
       "./plugins/with-pods-uuid-fix.js"
     ],
     "experiments": {

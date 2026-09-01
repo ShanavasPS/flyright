@@ -30,6 +30,20 @@ When the user asks for an EAS build, do ALL of this without being reminded:
    The explicit `prebuild` step is load-bearing: `expo run:ios`/`run:android` silently REUSE an existing `ios/`/`android/` directory without re-running prebuild, so version numbers and app.json/plugin config changes never reach the installed app unless prebuild runs first. Both directories are gitignored/generated, and the version string in Settings comes from the installed native binary — a JS reload never updates it. After installing, verify the version on the device actually matches `app.json` before calling it done.
 5. **Commit and push** the version bump — local git must end up in sync with the remote (`git push`, don't leave commits unpushed).
 
+# Android Maps key
+
+`app.config.js` injects `GOOGLE_MAPS_ANDROID_API_KEY` into the `react-native-maps`
+plugin — the key is deliberately NOT in `app.json`, because this repo is public.
+It lives in `.env` (gitignored, for local prebuilds) and in the EAS `production`,
+`preview`, and `development` environments. EAS CLI resolves the app config before
+injecting env vars, so a missing key only throws on the build worker (`EAS_BUILD`);
+locally it warns. If the Android map ever renders blank, check that variable first.
+
+The key is API-restricted to `maps-android-backend.googleapis.com` (Maps SDK for
+Android, which Google bills at zero), so it shipping inside the APK costs nothing.
+It still has no Android application restriction — adding one needs the Play app
+signing SHA-1 from Play Console, and a wrong value blanks the map for testers.
+
 <!-- stripe-projects-cli managed:agents-md:start -->
 ## Stripe Projects CLI
 
