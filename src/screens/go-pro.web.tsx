@@ -5,9 +5,10 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { Card } from '@/components/card';
 import { ExternalLink } from '@/components/external-link';
 import { PrimaryButton } from '@/components/primary-button';
+import { SiteChrome } from '@/components/site-chrome';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WEB_PURCHASE_LINK } from '@/constants/config';
+import { PRO_PRICE_FROM, WEB_PURCHASE_LINK } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -26,43 +27,57 @@ export function GoPro() {
   const { isLoaded, isSignedIn, user } = useUser();
 
   return (
-    <ThemedView style={styles.page}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.content}>
-          <View style={styles.hero}>
-            <ThemedText type="title" themeColor="heading">
-              FlyRight Pro
-            </ThemedText>
-            <ThemedText themeColor="textSecondary">
-              One delayed flight pays for years of Pro.
-            </ThemedText>
-          </View>
-
-          <Card>
-            {BENEFITS.map((benefit) => (
-              <ThemedText key={benefit} type="small">
-                ✓ {benefit}
+    <SiteChrome>
+      <ThemedView style={styles.page}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View style={styles.content}>
+            <View style={styles.hero}>
+              <ThemedText type="title" themeColor="heading">
+                FlyRight Pro
               </ThemedText>
-            ))}
-          </Card>
-
-          {!isLoaded ? (
-            <Card style={styles.centered}>
-              <ActivityIndicator />
-            </Card>
-          ) : isSignedIn ? (
-            <Checkout userId={user.id} email={user.primaryEmailAddress?.emailAddress} />
-          ) : (
-            <View style={styles.signIn}>
-              <ThemedText type="smallBold">
-                Sign in first — it&apos;s how your Pro unlocks in the app
+              <ThemedText themeColor="textSecondary">
+                One delayed flight pays for years of Pro.
               </ThemedText>
-              <ClerkSignIn />
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                {PRO_PRICE_FROM} · annual and lifetime at checkout · cancel anytime
+              </ThemedText>
             </View>
-          )}
-        </View>
-      </ScrollView>
-    </ThemedView>
+
+            <Card>
+              {BENEFITS.map((benefit) => (
+                <ThemedText key={benefit} type="small">
+                  ✓ {benefit}
+                </ThemedText>
+              ))}
+            </Card>
+
+            {!isLoaded ? (
+              <Card style={styles.centered}>
+                <ActivityIndicator />
+              </Card>
+            ) : isSignedIn ? (
+              <Checkout userId={user.id} email={user.primaryEmailAddress?.emailAddress} />
+            ) : (
+              <View style={styles.signIn}>
+                <ThemedText type="smallBold">
+                  Sign in first — it&apos;s how your Pro unlocks in the app
+                </ThemedText>
+                {/* Come back HERE, not to Clerk's default "/" — which the router
+                  redirects to /check, dropping the buyer back on the funnel's
+                  first step with no sign of being signed in. Force (not
+                  fallback) so a stale redirect_url search param can't win, and
+                  cover the sign-up path too: most buyers arrive without an
+                  account. */}
+                <ClerkSignIn
+                  forceRedirectUrl="/go-pro"
+                  signUpForceRedirectUrl="/go-pro"
+                />
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </ThemedView>
+    </SiteChrome>
   );
 }
 

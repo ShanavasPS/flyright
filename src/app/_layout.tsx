@@ -12,7 +12,7 @@ import { Observe, ObserveRoot } from "expo-observe";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { LogBox } from "react-native";
+import { LogBox, Platform } from "react-native";
 
 // The hydration-aware hook (not react-native's) so the navigation chrome and
 // the screens resolve the same scheme on web — RN's own hook leaves the header
@@ -245,14 +245,28 @@ function RootLayout() {
               {/* Web funnel: landing → checkout → post-purchase. Present on
                 native too (go-pro forwards to the paywall) but only linked
                 from the web build. */}
+              {/* headerShown: SiteChrome supplies the web header, so the stack
+                bar would double up. `title` still sets the document title. */}
               <Stack.Screen
                 name="check"
-                options={{ title: "Check your flight" }}
+                options={{
+                  title: "Check your flight",
+                  headerShown: Platform.OS !== "web",
+                }}
               />
-              <Stack.Screen name="go-pro" options={{ title: "FlyRight Pro" }} />
+              <Stack.Screen
+                name="go-pro"
+                options={{
+                  title: "FlyRight Pro",
+                  headerShown: Platform.OS !== "web",
+                }}
+              />
               <Stack.Screen
                 name="welcome"
-                options={{ title: "Welcome to Pro" }}
+                options={{
+                  title: "Welcome to Pro",
+                  headerShown: Platform.OS !== "web",
+                }}
               />
               <Stack.Screen
                 name="privacy"

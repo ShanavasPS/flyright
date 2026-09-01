@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View }
 
 import { Card } from '@/components/card';
 import { ExternalLink } from '@/components/external-link';
+import { SiteChrome } from '@/components/site-chrome';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -86,82 +87,84 @@ export function CheckFlight() {
   ];
 
   return (
-    <ThemedView style={styles.page}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.content}>
-          <View style={styles.hero}>
-            <ThemedText type="title" themeColor="heading">
-              Flight delayed or cancelled?
-            </ThemedText>
-            <ThemedText themeColor="textSecondary">
-              Airlines owe up to €600 per passenger under EU261 — and most people never
-              claim it. Check your flight in ten seconds.
-            </ThemedText>
-          </View>
-
-          <Card>
-            <ThemedText type="smallBold">Your flight</ThemedText>
-            <TextInput
-              autoCapitalize="characters"
-              autoCorrect={false}
-              value={flightInput}
-              onChangeText={setFlightInput}
-              placeholder="AY1331 or LH873"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
-            />
-            <ThemedText type="smallBold">Departure date</ThemedText>
-            <View style={styles.dateRow}>
-              {quickDates.map(({ label, day }) => (
-                <Pressable key={label} onPress={() => setDateInput(day)}>
-                  <ThemedView
-                    type={dateInput === day ? 'backgroundSelected' : 'background'}
-                    style={styles.chip}>
-                    <ThemedText type="smallBold" themeColor={dateInput === day ? 'tint' : 'text'}>
-                      {label} · {formatDayLabel(day)}
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
-              ))}
+    <SiteChrome>
+      <ThemedView style={styles.page}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View style={styles.content}>
+            <View style={styles.hero}>
+              <ThemedText type="title" themeColor="heading">
+                Flight delayed or cancelled?
+              </ThemedText>
+              <ThemedText themeColor="textSecondary">
+                Airlines owe up to €600 per passenger under EU261 — and most people never
+                claim it. Check your flight in ten seconds.
+              </ThemedText>
             </View>
-            <TextInput
-              autoCorrect={false}
-              value={dateInput}
-              onChangeText={setDateInput}
-              placeholder={`Or type a date · ${localDateString(today, -3)}`}
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
-            />
-            <PrimaryButton
-              label="Check my compensation →"
-              disabled={!flightNumber || !date}
-              onPress={check}
-            />
-            <Pressable onPress={() => setDemo(true)} hitSlop={Spacing.two}>
-              <ThemedText type="link">No flight handy? See an example verdict →</ThemedText>
-            </Pressable>
-          </Card>
 
-          {demo && (
-            <VerdictBlock
-              journey={DEMO_JOURNEY}
-              disruption={DEMO_DISRUPTION}
-              exampleNote={`Example: ${DEMO_JOURNEY.carrier} ${DEMO_JOURNEY.number} ${DEMO_JOURNEY.from.code} → ${DEMO_JOURNEY.to.code}, landed 3 h 15 m late`}
-            />
-          )}
+            <Card>
+              <ThemedText type="smallBold">Your flight</ThemedText>
+              <TextInput
+                autoCapitalize="characters"
+                autoCorrect={false}
+                value={flightInput}
+                onChangeText={setFlightInput}
+                placeholder="AY1331 or LH873"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+              />
+              <ThemedText type="smallBold">Departure date</ThemedText>
+              <View style={styles.dateRow}>
+                {quickDates.map(({ label, day }) => (
+                  <Pressable key={label} onPress={() => setDateInput(day)}>
+                    <ThemedView
+                      type={dateInput === day ? 'backgroundSelected' : 'background'}
+                      style={styles.chip}>
+                      <ThemedText type="smallBold" themeColor={dateInput === day ? 'tint' : 'text'}>
+                        {label} · {formatDayLabel(day)}
+                      </ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                autoCorrect={false}
+                value={dateInput}
+                onChangeText={setDateInput}
+                placeholder={`Or type a date · ${localDateString(today, -3)}`}
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+              />
+              <PrimaryButton
+                label="Check my compensation →"
+                disabled={!flightNumber || !date}
+                onPress={check}
+              />
+              <Pressable onPress={() => setDemo(true)} hitSlop={Spacing.two}>
+                <ThemedText type="link">No flight handy? See an example verdict →</ThemedText>
+              </Pressable>
+            </Card>
 
-          {!demo && checked && <LookupResult lookup={lookup} />}
+            {demo && (
+              <VerdictBlock
+                journey={DEMO_JOURNEY}
+                disruption={DEMO_DISRUPTION}
+                exampleNote={`Example: ${DEMO_JOURNEY.carrier} ${DEMO_JOURNEY.number} ${DEMO_JOURNEY.from.code} → ${DEMO_JOURNEY.to.code}, landed 3 h 15 m late`}
+              />
+            )}
 
-          <View style={styles.footer}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Verdicts follow EU Regulation 261/2004 and its UK equivalent: delays of 3+
-              hours, cancellations, and denied boarding on covered routes. FlyRight is not
-              a law firm — it writes the claim, the airline pays you directly.
-            </ThemedText>
+            {!demo && checked && <LookupResult lookup={lookup} />}
+
+            <View style={styles.footer}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Verdicts follow EU Regulation 261/2004 and its UK equivalent: delays of 3+
+                hours, cancellations, and denied boarding on covered routes. FlyRight is not
+                a law firm — it writes the claim, the airline pays you directly.
+              </ThemedText>
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </ThemedView>
+        </ScrollView>
+      </ThemedView>
+    </SiteChrome>
   );
 }
 
