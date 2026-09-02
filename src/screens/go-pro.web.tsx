@@ -8,9 +8,10 @@ import { PrimaryButton } from '@/components/primary-button';
 import { SiteChrome } from '@/components/site-chrome';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { PRO_PRICE_FROM, WEB_PURCHASE_LINK } from '@/constants/config';
+import { WEB_PURCHASE_LINK } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { proPriceFrom } from '@/services/web-pricing';
 
 /** Web checkout step: sign in with Clerk, then hand off to the RevenueCat Web
  * Purchase Link keyed by the Clerk user id. Clerk id = RevenueCat app_user_id
@@ -39,7 +40,7 @@ export function GoPro() {
                 One delayed flight pays for years of Pro.
               </ThemedText>
               <ThemedText type="smallBold" themeColor="textSecondary">
-                {PRO_PRICE_FROM} · annual and lifetime at checkout · cancel anytime
+                {proPriceFrom(navigator.language)} · annual and lifetime at checkout · cancel anytime
               </ThemedText>
             </View>
 

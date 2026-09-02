@@ -8,10 +8,10 @@ import { StyleSheet, View } from 'react-native';
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { PRO_PRICE_FROM } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { proPriceFrom } from '@/services/web-pricing';
 
 /** Persistent header + footer for the web funnel (/check, /go-pro, /welcome).
  *
@@ -92,7 +92,7 @@ function SiteFooter() {
       <View style={styles.footerContent}>
         <View style={styles.links}>
           <Link href="/go-pro">
-            <ThemedText type="link">FlyRight Pro — {PRO_PRICE_FROM}</ThemedText>
+            <ThemedText type="link">FlyRight Pro — {proPriceFrom(navigator.language)}</ThemedText>
           </Link>
           <ExternalLink href={STORE_URLS.ios}>
             <ThemedText type="link">App Store</ThemedText>
