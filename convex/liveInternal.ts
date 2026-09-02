@@ -39,8 +39,16 @@ export const getNotifyTargets = internalQuery({
       .query('profiles')
       .withIndex('by_user', (q) => q.eq('userId', session.userId))
       .unique();
+    // Circle-level mute: the member keeps seeing the trip, just no pushes.
+    const circle = await ctx.db
+      .query('circle')
+      .withIndex('by_owner', (q) => q.eq('ownerId', session.userId))
+      .collect();
+    const mutedByCircle = new Set(circle.filter((c) => c.muted).map((c) => c.memberId));
     return {
-      externalIds: follows.filter((f) => !f.muted).map((f) => f.followerId),
+      externalIds: follows
+        .filter((f) => !f.muted && !mutedByCircle.has(f.followerId))
+        .map((f) => f.followerId),
       travelerName: profile?.name ?? 'Your traveler',
       session: toPublicSession(session, profile?.name ?? null, follows.length),
       token: session.shareToken,
@@ -192,7 +200,11 @@ export const notifyFollowers = internalAction({
     const name = targets.travelerName;
     const flight = s.number || s.carrier;
     let body: string;
-    if (kind === 'delay') {
+    if (kind === 'headsUp') {
+      const hours = Math.round((Date.parse(s.scheduledDeparture) - Date.now()) / 3_600_000);
+      const when = hours >= 20 ? 'tomorrow' : hours > 1 ? `in ${hours}h` : 'soon';
+      body = `${name} flies to ${s.toCode} ${when}. You'll get updates through travel day.`;
+    } else if (kind === 'delay') {
       body = `${flight} is running ${s.delayMinutes} min late.`;
     } else if (kind === 'gate') {
       body = `${flight} now departs from gate ${s.gate}.`;

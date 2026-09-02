@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import { armHeadsUp } from './liveHelpers';
 
 /** Row shape the client pushes — deliberately has NO userId field: the server
  * stamps identity.subject, so a client can never write another user's rows. */
@@ -42,10 +43,22 @@ export const push = mutation({
         )
         .unique();
 
+      let journeyId = existing?._id ?? null;
+      let scheduleChanged = false;
       if (!existing) {
-        await ctx.db.insert('journeys', { ...row, userId: identity.subject });
+        journeyId = await ctx.db.insert('journeys', { ...row, userId: identity.subject });
+        scheduleChanged = true;
       } else if (row.updatedAt > existing.updatedAt) {
         await ctx.db.patch(existing._id, row);
+        scheduleChanged =
+          row.scheduledDeparture !== existing.scheduledDeparture ||
+          !!row.deletedAt !== !!existing.deletedAt;
+      }
+      // New trip, moved departure, or deletion → the circle's T−24h
+      // heads-up follows (see liveHelpers.armHeadsUp).
+      if (scheduleChanged && journeyId) {
+        const fresh = await ctx.db.get(journeyId);
+        if (fresh) await armHeadsUp(ctx, fresh);
       }
 
       // A deleted trip takes its live session down with it — followers see

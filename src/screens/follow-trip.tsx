@@ -122,7 +122,7 @@ export function FollowTrip({ token }: { token: string }) {
         <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />
 
         {isSignedIn && Platform.OS !== 'web' ? (
-          followed ? (
+          followed || session.viewerFollows ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centeredText}>
               Following — you&apos;ll get updates as {who} moves through the airport.
             </ThemedText>
@@ -145,7 +145,10 @@ export function FollowTrip({ token }: { token: string }) {
             </View>
           </Card>
         ) : (
-          <PrimaryButton label="Sign in to follow" onPress={() => router.push('/sign-in')} />
+          <PrimaryButton
+            label="Sign in to follow"
+            onPress={() => router.push({ pathname: '/sign-in', params: { next: `/t/${token}` } })}
+          />
         )}
       </>
     );

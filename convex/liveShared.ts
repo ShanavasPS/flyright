@@ -17,13 +17,17 @@ export const STAGE_ORDER = [
 export const stageIndex = (stage: string | null): number =>
   stage === null ? -1 : STAGE_ORDER.indexOf(stage as (typeof STAGE_ORDER)[number]);
 
-/** Stages worth a follower push. Everything else only updates the widget
- * and the reactive timeline. */
-export const NOTIFY_STAGES = new Set(['at_airport', 'security', 'boarded', 'departed', 'landed']);
+/** Every stage pushes to followers — the whole point of a circle is that
+ * nobody has to text "boarded yet?". Each stage pushes at most once per
+ * session (notifiedStages), and quick successive taps debounce into one. */
+export const NOTIFY_STAGES = new Set<string>(STAGE_ORDER);
 
 export const STAGE_PUSH_COPY: Record<string, (name: string, to: string) => string> = {
   at_airport: (n) => `${n} is at the airport`,
+  checked_in: (n) => `${n} has checked in`,
+  bag_dropped: (n) => `${n} has dropped the bags`,
   security: (n) => `${n} is through security`,
+  immigration: (n) => `${n} is through immigration`,
   boarded: (n) => `${n} is on board`,
   departed: (n, to) => `${n} is in the air to ${to}`,
   landed: (n, to) => `${n} landed in ${to}`,

@@ -5,6 +5,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
+import { ProfileSync } from "@/components/profile-sync";
 import { TravelDaySync } from "@/components/travel-day-sync";
 import { CONVEX_URL } from "@/constants/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -85,6 +86,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
     <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
       <JourneySync />
       <TravelDaySync />
+      <ProfileSync />
       {children}
     </ConvexProviderWithClerk>
   );
@@ -285,6 +287,17 @@ function RootLayout() {
                 options={{ title: "Delete account" }}
               />
               <Stack.Screen name="support" options={{ title: "Support" }} />
+              {/* Universal-link landings pushed over the tabs: a plain back
+                chevron, since the route group name is the only "title" the
+                previous screen has. */}
+              <Stack.Screen
+                name="t/[token]"
+                options={{ title: "Live trip", headerBackButtonDisplayMode: "minimal" }}
+              />
+              <Stack.Screen
+                name="i/[token]"
+                options={{ title: "Invitation", headerBackButtonDisplayMode: "minimal" }}
+              />
             </Stack>
           </VersionGate>
         </QueryClientProvider>

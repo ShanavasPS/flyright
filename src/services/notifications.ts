@@ -149,3 +149,16 @@ export function logOutNotifications() {
   if (!ONESIGNAL_APP_ID) return;
   OneSignal.logout();
 }
+
+/** Remote push taps. OneSignal delivers its own click events — they never
+ * reach expo-notifications' response hook — so the router subscribes here
+ * too. The payload's `data.url` (see convex/onesignal.ts) is passed through. */
+export function addPushClickListener(onUrl: (url: string) => void): () => void {
+  if (!ONESIGNAL_APP_ID) return () => {};
+  const handler = (event: { notification: { additionalData?: unknown } }) => {
+    const data = event.notification.additionalData as { url?: unknown } | undefined;
+    if (typeof data?.url === 'string') onUrl(data.url);
+  };
+  OneSignal.Notifications.addEventListener('click', handler);
+  return () => OneSignal.Notifications.removeEventListener('click', handler);
+}

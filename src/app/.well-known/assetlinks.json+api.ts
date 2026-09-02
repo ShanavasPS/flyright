@@ -1,6 +1,6 @@
 /**
  * GET /.well-known/assetlinks.json — Android App Links verification for
- * getflyright.com (travel-day share links, /t/<token>).
+ * getflyright.com (travel-day share links /t/<token>, circle invites /i/<token>).
  *
  * The SHA-256 fingerprints come from the ASSETLINKS_SHA256 env var on EAS
  * Hosting (comma-separated). Play App Signing re-signs release builds, so the

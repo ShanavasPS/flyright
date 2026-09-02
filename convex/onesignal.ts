@@ -33,7 +33,12 @@ export async function sendFollowerPush(
       data: { url },
     }),
   });
-  if (!res.ok) console.warn('[onesignal] push failed', res.status, (await res.text()).slice(0, 200));
+  const text = (await res.text()).slice(0, 300);
+  // OneSignal answers 200 with an empty id when no alias is subscribed
+  // (e.g. every target is a simulator) — surface that too.
+  if (!res.ok || !/"id":"[^"]+"/.test(text)) {
+    console.warn('[onesignal] push not delivered', res.status, text);
+  }
 }
 
 /** Update or end the traveler's lock-screen Live Activity. */

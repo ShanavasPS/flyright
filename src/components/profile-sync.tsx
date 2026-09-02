@@ -1,0 +1,23 @@
+import { useUser } from '@clerk/expo';
+import { useConvexAuth, useMutation } from 'convex/react';
+import { useEffect } from 'react';
+
+import { api } from '../../convex/_generated/api';
+
+/** Mirrors the Clerk display name/photo into Convex `profiles` — the
+ * webhook does this too; this is the belt to its braces (see
+ * users.syncMyProfile). Renders nothing; mounted inside CloudSync. */
+export function ProfileSync() {
+  const { user } = useUser();
+  const { isAuthenticated } = useConvexAuth();
+  const sync = useMutation(api.users.syncMyProfile);
+  const name = user?.firstName?.trim() || user?.username?.trim() || '';
+  const imageUrl = user?.hasImage ? user.imageUrl : null;
+
+  useEffect(() => {
+    if (!isAuthenticated || !name) return;
+    sync({ name, imageUrl }).catch(() => {});
+  }, [isAuthenticated, name, imageUrl, sync]);
+
+  return null;
+}

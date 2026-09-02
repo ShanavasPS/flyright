@@ -29,6 +29,13 @@ export default defineSchema({
     createdAt: v.string(),
     updatedAt: v.string(),
     deletedAt: v.union(v.string(), v.null()),
+    /** The pending T−24h circle heads-up for this trip (see
+     * circleInternal.headsUp). Optional: rows synced before circles existed
+     * have none. */
+    headsUpScheduledId: v.optional(v.union(v.id('_scheduled_functions'), v.null())),
+    /** Set once the heads-up went out — a later departure edit must not
+     * re-announce the same trip. */
+    headsUpSentAt: v.optional(v.union(v.string(), v.null())),
   })
     .index('by_user', ['userId'])
     .index('by_user_key', ['userId', 'naturalKey']),
@@ -100,6 +107,36 @@ export default defineSchema({
     .index('by_session', ['sessionId'])
     .index('by_follower', ['followerId'])
     .index('by_session_follower', ['sessionId', 'followerId'])
+    .index('by_owner', ['ownerId']),
+
+  /** Find My-style persistent sharing: `memberId` follows every trip
+   * `ownerId` takes, present and future. One row per direction — a couple
+   * sharing both ways has two rows. Materialized into `follows` per session
+   * (on accept, on session start, on the T−24h heads-up), so the fan-out
+   * path stays one table wide. */
+  circle: defineTable({
+    ownerId: v.string(),
+    memberId: v.string(),
+    /** Member-side: still see the trip, skip the pushes. */
+    muted: v.boolean(),
+    createdAt: v.string(),
+  })
+    .index('by_owner', ['ownerId'])
+    .index('by_member', ['memberId'])
+    .index('by_owner_member', ['ownerId', 'memberId']),
+
+  /** Personal invite links (getflyright.com/i/<token>). Time-limited (7 days,
+   * long enough to install the app and come back) and use-capped: anyone
+   * holding the link joins the owner's circle, so a leaked link stays a
+   * bounded problem. */
+  circleInvites: defineTable({
+    ownerId: v.string(),
+    token: v.string(),
+    uses: v.number(),
+    expiresAt: v.string(),
+    createdAt: v.string(),
+  })
+    .index('by_token', ['token'])
     .index('by_owner', ['ownerId']),
 
   /** Display names for "Sam is through security" — fed by the Clerk webhook

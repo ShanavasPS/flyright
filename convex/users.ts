@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
-import { internalMutation } from './_generated/server';
+import { internalMutation, mutation } from './_generated/server';
 
 /** Hard-deletes everything a user synced — called from the Clerk
  * user.deleted webhook (see http.ts), so account deletion leaves no
@@ -46,6 +46,24 @@ export const purge = internalMutation({
       .collect();
     for (const f of theirFollows) await ctx.db.delete(f._id);
 
+    // Circle rows in both directions, and any invite links they minted.
+    for (const index of ['by_owner', 'by_member'] as const) {
+      const field = index === 'by_owner' ? 'ownerId' : 'memberId';
+      const rows = await ctx.db
+        .query('circle')
+        .withIndex(index, (q) => q.eq(field, userId))
+        .collect();
+      for (const r of rows) await ctx.db.delete(r._id);
+    }
+    const invites = await ctx.db
+      .query('circleInvites')
+      .withIndex('by_owner', (q) => q.eq('ownerId', userId))
+      .collect();
+    for (const i of invites) await ctx.db.delete(i._id);
+    for (const row of rows) {
+      if (row.headsUpScheduledId) await ctx.scheduler.cancel(row.headsUpScheduledId).catch(() => {});
+    }
+
     const profile = await ctx.db
       .query('profiles')
       .withIndex('by_user', (q) => q.eq('userId', userId))
@@ -68,5 +86,27 @@ export const upsertProfile = internalMutation({
     const updatedAt = new Date().toISOString();
     if (existing) await ctx.db.patch(existing._id, { name, imageUrl, updatedAt });
     else await ctx.db.insert('profiles', { userId, name, imageUrl, updatedAt });
+  },
+});
+
+/** Client-side fallback for the webhook: the signed-in app pushes its own
+ * Clerk name/photo so circle members see "Sam", not "A traveler", even if
+ * a webhook was missed or the deployment (dev) has none configured. Only
+ * ever writes the caller's own row. */
+export const syncMyProfile = mutation({
+  args: { name: v.string(), imageUrl: v.union(v.string(), v.null()) },
+  handler: async (ctx, { name, imageUrl }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const existing = await ctx.db
+      .query('profiles')
+      .withIndex('by_user', (q) => q.eq('userId', identity.subject))
+      .unique();
+    if (existing && existing.name === trimmed && existing.imageUrl === imageUrl) return;
+    const updatedAt = new Date().toISOString();
+    if (existing) await ctx.db.patch(existing._id, { name: trimmed, imageUrl, updatedAt });
+    else await ctx.db.insert('profiles', { userId: identity.subject, name: trimmed, imageUrl, updatedAt });
   },
 });

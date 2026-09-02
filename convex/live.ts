@@ -1,58 +1,26 @@
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
-import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
-import { makeToken, nextPollDelayMs, stageIndex, NOTIFY_STAGES, toPublicSession } from './liveShared';
+import {
+  activeSessionForKey,
+  circleMembers,
+  createSession,
+  followerCount,
+  journeyForKey,
+  travelerName,
+} from './liveHelpers';
+import { stageIndex, NOTIFY_STAGES, toPublicSession } from './liveShared';
 
 /** Travel-day live sessions: the traveler's device is the only writer of
  * stage state; followers and the public token page read reactively. All
  * mutations require auth and throw — they run behind explicit user actions,
  * never during auth settling (unlike journeys.list's deliberate []). */
 
-const HOUR_MS = 3_600_000;
-
 async function requireIdentity(ctx: MutationCtx | QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error('Not authenticated');
   return identity;
-}
-
-async function activeSessionForKey(ctx: MutationCtx | QueryCtx, userId: string, naturalKey: string) {
-  const sessions = await ctx.db
-    .query('liveSessions')
-    .withIndex('by_user_key', (q) => q.eq('userId', userId).eq('naturalKey', naturalKey))
-    .collect();
-  return sessions.find((s) => s.status === 'active') ?? null;
-}
-
-async function followerCount(ctx: MutationCtx | QueryCtx, sessionId: Id<'liveSessions'>) {
-  const rows = await ctx.db
-    .query('follows')
-    .withIndex('by_session', (q) => q.eq('sessionId', sessionId))
-    .collect();
-  return rows.length;
-}
-
-async function travelerName(ctx: MutationCtx | QueryCtx, userId: string) {
-  const profile = await ctx.db
-    .query('profiles')
-    .withIndex('by_user', (q) => q.eq('userId', userId))
-    .unique();
-  return profile?.name ?? null;
-}
-
-/** (Re)arm the self-rescheduling poll chain for a session. */
-async function schedulePoll(ctx: MutationCtx, session: Doc<'liveSessions'>) {
-  if (session.pollScheduledId) {
-    await ctx.scheduler.cancel(session.pollScheduledId).catch(() => {});
-  }
-  const delay = nextPollDelayMs(session, Date.now());
-  const pollScheduledId =
-    delay === null
-      ? null
-      : await ctx.scheduler.runAfter(delay, internal.liveInternal.poll, { sessionId: session._id });
-  await ctx.db.patch(session._id, { pollScheduledId });
 }
 
 /** Start (or return) the live session for a trip the caller owns. Snapshot
@@ -75,62 +43,16 @@ export const start = mutation({
       return { token: existing.shareToken };
     }
 
-    const journey = await ctx.db
-      .query('journeys')
-      .withIndex('by_user_key', (q) =>
-        q.eq('userId', identity.subject).eq('naturalKey', naturalKey),
-      )
-      .unique();
-    if (!journey || journey.deletedAt) throw new Error('Trip not found');
-
-    const now = new Date().toISOString();
-    const arrival = Date.parse(journey.scheduledArrival);
-    const expiresAt = new Date(
-      (Number.isNaN(arrival) ? Date.now() : arrival) + 48 * HOUR_MS,
-    ).toISOString();
-
-    const sessionId = await ctx.db.insert('liveSessions', {
-      userId: identity.subject,
-      naturalKey,
-      status: 'active',
-      carrier: journey.carrier,
-      number: journey.number,
-      fromCode: journey.fromCode,
-      toCode: journey.toCode,
-      scheduledDeparture: journey.scheduledDeparture,
-      scheduledArrival: journey.scheduledArrival,
-      currentStage: stage,
-      stageTimes: stamps,
-      flightStatus: null,
-      delayMinutes: null,
-      gate: null,
-      terminal: null,
-      baggageBelt: null,
-      estimatedDeparture: null,
-      actualDeparture: null,
-      estimatedArrival: null,
-      actualArrival: null,
-      lastCheckedAt: null,
-      activityId,
-      shareToken: makeToken(),
-      expiresAt,
-      notifiedStages: {},
-      notifiedDelayBucket: null,
-      notifiedGate: null,
-      pendingNotify: false,
-      pollScheduledId: null,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const session = (await ctx.db.get(sessionId))!;
-    if (journey.source === 'lookup' && journey.number) await schedulePoll(ctx, session);
+    const journey = await journeyForKey(ctx, identity.subject, naturalKey);
+    if (!journey) throw new Error('Trip not found');
+    const session = await createSession(ctx, journey, { stage, stamps, activityId });
     return { token: session.shareToken };
   },
 });
 
-/** The traveler device pushes its local stage state. No session → no-op
- * (the trip simply isn't shared). Flight-driven stages never regress. */
+/** The traveler device pushes its local stage state. No session and no
+ * circle → no-op (the trip simply isn't shared). Flight-driven stages never
+ * regress. */
 export const setStage = mutation({
   args: {
     naturalKey: v.string(),
@@ -140,8 +62,17 @@ export const setStage = mutation({
   },
   handler: async (ctx, { naturalKey, stage, stamps, activityId }) => {
     const identity = await requireIdentity(ctx);
-    const session = await activeSessionForKey(ctx, identity.subject, naturalKey);
-    if (!session) return { shared: false };
+    let session = await activeSessionForKey(ctx, identity.subject, naturalKey);
+    if (!session) {
+      // A circle is a standing audience: the first stage tap on a trip
+      // nobody explicitly shared still has to reach them. Without one,
+      // the trip simply isn't shared.
+      const members = await circleMembers(ctx, identity.subject);
+      if (!members.length) return { shared: false };
+      const journey = await journeyForKey(ctx, identity.subject, naturalKey);
+      if (!journey) return { shared: false };
+      session = await createSession(ctx, journey, { stage: null, stamps: {}, activityId });
+    }
 
     // Keep server-observed flight stages even if the client lags.
     const flightStage =
@@ -277,15 +208,31 @@ export const byToken = query({
       .withIndex('by_token', (q) => q.eq('shareToken', token))
       .unique();
     if (!session || session.status !== 'active') return { gone: true as const };
-    return toPublicSession(
-      session,
-      await travelerName(ctx, session.userId),
-      await followerCount(ctx, session._id),
-    );
+    // Signed-in viewers learn whether they already follow (circle members
+    // arrive following) so the page doesn't offer a redundant button.
+    const identity = await ctx.auth.getUserIdentity();
+    let viewerFollows = false;
+    if (identity) {
+      const row = await ctx.db
+        .query('follows')
+        .withIndex('by_session_follower', (q) =>
+          q.eq('sessionId', session._id).eq('followerId', identity.subject),
+        )
+        .unique();
+      viewerFollows = !!row || session.userId === identity.subject;
+    }
+    return {
+      ...toPublicSession(
+        session,
+        await travelerName(ctx, session.userId),
+        await followerCount(ctx, session._id),
+      ),
+      viewerFollows,
+    };
   },
 });
 
-/** The traveler's own session (incl. token). Null while signed out — the
+/** The traveler's own session (incl. token and who's watching). Null while signed out — the
  * client passes 'skip' until Clerk settles. */
 export const mine = query({
   args: { naturalKey: v.string() },
@@ -294,9 +241,18 @@ export const mine = query({
     if (!identity) return null;
     const session = await activeSessionForKey(ctx, identity.subject, naturalKey);
     if (!session) return null;
+    const follows = await ctx.db
+      .query('follows')
+      .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+      .collect();
+    const followers = [];
+    for (const f of follows) {
+      followers.push({ userId: f.followerId, name: await travelerName(ctx, f.followerId) });
+    }
     return {
       token: session.shareToken,
-      followerCount: await followerCount(ctx, session._id),
+      followerCount: follows.length,
+      followers,
       status: session.status,
     };
   },

@@ -54,6 +54,11 @@
               "scheme": "https",
               "host": "getflyright.com",
               "pathPrefix": "/t"
+            },
+            {
+              "scheme": "https",
+              "host": "getflyright.com",
+              "pathPrefix": "/i"
             }
           ],
           "category": [

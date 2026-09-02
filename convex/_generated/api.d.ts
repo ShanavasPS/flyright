@@ -8,11 +8,14 @@
  * @module
  */
 
+import type * as circle from "../circle.js";
+import type * as circleInternal from "../circleInternal.js";
 import type * as crons from "../crons.js";
 import type * as flightData from "../flightData.js";
 import type * as http from "../http.js";
 import type * as journeys from "../journeys.js";
 import type * as live from "../live.js";
+import type * as liveHelpers from "../liveHelpers.js";
 import type * as liveInternal from "../liveInternal.js";
 import type * as liveShared from "../liveShared.js";
 import type * as onesignal from "../onesignal.js";
@@ -25,11 +28,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  circle: typeof circle;
+  circleInternal: typeof circleInternal;
   crons: typeof crons;
   flightData: typeof flightData;
   http: typeof http;
   journeys: typeof journeys;
   live: typeof live;
+  liveHelpers: typeof liveHelpers;
   liveInternal: typeof liveInternal;
   liveShared: typeof liveShared;
   onesignal: typeof onesignal;

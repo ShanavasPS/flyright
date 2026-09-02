@@ -1,7 +1,8 @@
 /**
  * GET /.well-known/apple-app-site-association — universal links for
  * getflyright.com. Apple's CDN requires a 200 with application/json and no
- * redirect. Paths cover the travel-day share links (/t/<token>).
+ * redirect. Paths cover the travel-day share links (/t/<token>) and the
+ * circle invites (/i/<token>).
  *
  * Team id 7NNC4W2FUU = the FlyRight (FI) Apple developer team.
  */
@@ -15,9 +16,12 @@ export function GET() {
       details: [
         {
           appIDs: [APP_ID],
-          components: [{ '/': '/t/*', comment: 'Travel-day share links' }],
+          components: [
+            { '/': '/t/*', comment: 'Travel-day share links' },
+            { '/': '/i/*', comment: 'Circle invite links' },
+          ],
           // Older iOS versions read the legacy key.
-          paths: ['/t/*'],
+          paths: ['/t/*', '/i/*'],
         },
       ],
     },

@@ -13,11 +13,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
+import { followingLabel } from '@/services/circle';
 import { getActivityId } from '@/services/live-activity';
 import { useTravelDay } from '@/services/travel-day-store';
 
-/** The traveler's "share this trip live" pill on the travel-day card. Shows
- * the follower count once people are watching. Render only under CloudSync
+/** The traveler's "share this trip live" pill on the travel-day card. Names
+ * the followers once people are watching. Render only under CloudSync
  * (Convex configured) — the hooks need the provider. */
 export function TravelDayShare({ journeyId }: { journeyId: string }) {
   const theme = useTheme();
@@ -55,9 +56,7 @@ export function TravelDayShare({ journeyId }: { journeyId: string }) {
     }
   };
 
-  const label = session?.followerCount
-    ? `${session.followerCount} following`
-    : 'Share live';
+  const label = followingLabel(session?.followers ?? []);
 
   return (
     <Pressable accessibilityRole="button" disabled={busy} onPress={onShare} hitSlop={Spacing.two}>

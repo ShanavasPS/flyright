@@ -1,0 +1,18 @@
+# People tab (Find My-style circles) renders for a signed-out user and the
+# invite deep link lands on the invitation page. Signed-in states need two
+# Clerk dev users (see memory: sam/anna +clerk_test) and aren't covered here.
+# Tab switch via deep link: NativeTabs labels ignore Maestro taps on iOS 26.
+appId: com.shanavasshaji.flyright
+tags:
+  - people
+---
+- launchApp
+- openLink: flyright://people
+- extendedWaitUntil:
+    visible: "People"
+    timeout: 30000
+- assertVisible: ".*(Invite someone|Sign in|Nobody).*"
+- openLink: flyright://i/not-a-real-token
+- extendedWaitUntil:
+    visible: ".*(expired|invited you).*"
+    timeout: 30000
