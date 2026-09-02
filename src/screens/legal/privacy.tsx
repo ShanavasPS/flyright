@@ -8,7 +8,11 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 const SECTIONS: { title: string; body: string }[] = [
   {
     title: 'Your journeys stay on your device',
-    body: 'Flights and trains you track, disruption records, claims, and any photos of boarding passes or receipts are stored in a local database on your device. We do not run user accounts and we do not upload this data to our own servers.',
+    body: 'Flights and trains you track, disruption records, claims, and any photos of boarding passes or receipts are stored in a local database on your device. Signing in is optional — without an account, nothing about your trips leaves your phone.',
+  },
+  {
+    title: 'Accounts and cloud sync',
+    body: 'If you sign in (email code, Apple or Google, handled by Clerk), we keep your email address and name for the account, and your journeys — flights, dates and routes, never photos or claim letters — are synced to our cloud database (Convex) so they follow you across devices. Sharing a live trip publishes that flight’s progress to anyone with the link while the trip lasts. Deleting your account removes all of it, in Settings or at getflyright.com/delete-account.',
   },
   {
     title: 'Flight lookups',
@@ -27,8 +31,12 @@ const SECTIONS: { title: string; body: string }[] = [
     body: 'The camera is used only to scan boarding passes and photograph claim evidence. Photos remain on your device.',
   },
   {
+    title: 'Analytics',
+    body: 'FlyRight uses Layers to count installs, screens and purchases, so we can see what works and which links or campaigns bring travellers to the app. Events carry a random install id — and your account id once you sign in — never your flights, claims or photos. On iOS the advertising identifier is used only if you allow tracking when asked; change your mind any time under Settings → Privacy & Security → Tracking.',
+  },
+  {
     title: 'What we don’t do',
-    body: 'No ads, no analytics brokers, no sale of personal data, no tracking across other apps or websites.',
+    body: 'No ads, no data brokers, no sale of personal data. Your travel history is never shared with anyone.',
   },
   {
     title: 'Contact',
@@ -44,7 +52,7 @@ export function Privacy() {
           Privacy Policy
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          FlyRight — effective 5 August 2026
+          FlyRight — effective 2 September 2026
         </ThemedText>
         {SECTIONS.map(({ title, body }) => (
           <ThemedView key={title} type="backgroundElement" style={styles.card}>

@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { requestTrackingConsent, trackEvent } from '@/services/analytics';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
 import { markOnboardingSeen, markPushRemindLater } from '@/services/onboarding';
@@ -34,6 +35,10 @@ type Page = {
 /** Readable column for the intro copy and CTA on tablet-width screens —
  * tighter than MaxContentWidth because these are single short paragraphs. */
 const PageMaxWidth = 480;
+
+/** Lets the fullScreenModal finish dismissing before the iOS tracking prompt
+ * is requested — a system alert asked for mid-transition can be dropped. */
+const TRACKING_PROMPT_DELAY_MS = 600;
 
 const PAGES: Page[] = [
   {
@@ -78,9 +83,14 @@ export function Onboarding() {
     markOnboardingSeen();
   }, []);
 
-  /** Dismiss to the journeys tab — every path out of the intro ends here. */
-  function finish() {
+  /** Dismiss to the journeys tab — every path out of the intro ends here.
+   * `exit` records how (analytics), and the iOS tracking prompt follows once
+   * the modal is gone: the one permission ask that belongs after the intro
+   * rather than inside it. */
+  function finish(exit: 'skip' | 'push_allowed' | 'push_later') {
+    trackEvent('tutorial_complete', { exit, page });
     router.back();
+    void requestTrackingConsent(TRACKING_PROMPT_DELAY_MS);
   }
 
   function advance() {
@@ -103,7 +113,7 @@ export function Onboarding() {
       await reconcileNotifications();
     } finally {
       setBusy(false);
-      finish();
+      finish('push_allowed');
     }
   }
 
@@ -112,7 +122,7 @@ export function Onboarding() {
    * one-shot OS prompt is still unspent. */
   function remindLater() {
     markPushRemindLater();
-    finish();
+    finish('push_later');
   }
 
   // Explicit insets, not SafeAreaView: inside a fullScreenModal the native
@@ -143,7 +153,7 @@ export function Onboarding() {
         <View style={styles.skipRow}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => finish()}
+            onPress={() => finish('skip')}
             disabled={isPush}
             style={isPush && styles.hidden}>
             <ThemedText type="link">Skip</ThemedText>

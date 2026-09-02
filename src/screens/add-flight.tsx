@@ -37,6 +37,7 @@ import { carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getAirport, searchAirports, type Airport } from '@/services/airports';
+import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
 import {
   formatDayLabel,
@@ -177,6 +178,7 @@ export function AddFlight() {
     Observe.logEvent('flight.scanned', {
       attributes: { legs: pass.legs.length, lookupable: !!designator },
     });
+    trackEvent('boarding_pass_scanned', { legs: pass.legs.length, lookupable: !!designator });
   };
 
   const confirmDate = (day: string) => {
@@ -253,6 +255,7 @@ export function AddFlight() {
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
       createdAt: new Date().toISOString(),
     });
+    trackEvent('flight_added', { source: 'lookup' });
     // The lookup already knows the arrival delay — cache it so the journeys
     // list can badge an owed row without another status call.
     if (flight.delayMinutes != null) {
@@ -340,6 +343,7 @@ export function AddFlight() {
       createdAt: new Date().toISOString(),
     });
     setStep('added');
+    trackEvent('flight_added', { source: 'manual' });
     Observe.logEvent('flight.added_manually', {
       attributes: {
         route: `${fromAirport.iata}-${toAirport.iata}`,

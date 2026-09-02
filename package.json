@@ -1,10 +1,12 @@
 {
   "name": "flyright",
   "main": "expo-router/entry",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "dependencies": {
     "@clerk/expo": "^4.3.0",
     "@expo/ui": "~57.0.14",
+    "@layers/expo": "^3.3.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@tanstack/react-query": "^5.101.4",
     "convex": "^1.44.0",
     "drizzle-orm": "^0.45.2",
@@ -36,6 +38,7 @@
     "expo-symbols": "~57.0.1",
     "expo-system-ui": "~57.0.3",
     "expo-task-manager": "~57.0.14",
+    "expo-tracking-transparency": "~57.0.1",
     "expo-web-browser": "~57.0.2",
     "i18next": "^26.3.6",
     "onesignal-expo-plugin": "^2.7.0",

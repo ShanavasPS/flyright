@@ -6,10 +6,16 @@ import Purchases, {
   type PurchasesError,
   type PurchasesOffering,
   type PurchasesPackage,
+  type PurchasesStoreTransaction,
 } from 'react-native-purchases';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { create } from 'zustand';
 
+import {
+  connectPurchasesAnalytics,
+  setAnalyticsUserProperties,
+  trackPurchaseCompleted,
+} from '@/services/analytics';
 import {
   IS_GALAXY_BUILD,
   RC_API_KEY_ANDROID,
@@ -60,6 +66,49 @@ export const useProEntitlement = () =>
 
 const NO_SUBSCRIPTIONS: string[] = [];
 
+// Analytics user property: 'free' or the Pro product granting the entitlement
+// (monthly / yearly / lifetime). Derived from every store update so it tracks
+// purchases, renewals, restores and account switches alike; re-sent only when
+// it actually changes.
+let lastReportedTier: string | null = null;
+usePurchasesStore.subscribe(({ customerInfo }) => {
+  if (!customerInfo) return;
+  const tier = customerInfo.entitlements.active[ENTITLEMENT_PRO]?.productIdentifier ?? 'free';
+  if (tier === lastReportedTier) return;
+  lastReportedTier = tier;
+  setAnalyticsUserProperties({ subscription_tier: tier });
+});
+
+/**
+ * Report a completed store purchase to analytics. The transaction knows the
+ * product and its id but not the money, so price/currency come from the
+ * package the buyer picked; the trial flag comes from the resulting
+ * CustomerInfo, whose subscription record knows the period type (Android keys
+ * it "product:basePlan", hence the prefix match). Both paywall surfaces call
+ * this — the embedded RevenueCatUI paywall and purchase() below.
+ */
+export function reportPurchase(
+  pkg: PurchasesPackage | null | undefined,
+  transaction: PurchasesStoreTransaction | null | undefined,
+  customerInfo: CustomerInfo,
+): void {
+  const productId = transaction?.productIdentifier || pkg?.product.identifier;
+  if (!productId) return;
+  const subscription = Object.entries(customerInfo.subscriptionsByProductIdentifier).find(
+    ([key]) => key === productId || key.startsWith(`${productId}:`),
+  )?.[1];
+  const product = pkg?.product;
+  trackPurchaseCompleted({
+    productId,
+    price: product?.price ?? 0,
+    currency: product?.currencyCode ?? '',
+    transactionId: transaction?.transactionIdentifier || undefined,
+    period: product?.subscriptionPeriod ?? undefined,
+    kind: subscription || product?.subscriptionPeriod ? 'subscription' : 'one_time',
+    isTrial: subscription?.periodType === 'TRIAL',
+  });
+}
+
 /**
  * Product ids of all active store subscriptions. More than one can be active
  * in the Test Store, where a plan change stacks instead of replacing (real
@@ -94,6 +143,15 @@ export function initPurchases() {
 
   Purchases.addCustomerInfoUpdateListener((customerInfo) => {
     usePurchasesStore.setState({ customerInfo });
+  });
+  // Layers watches the same stream: a newly appearing subscription becomes a
+  // subscription_start analytics event on the attributed install. Duck-typed
+  // bridge so react-native-purchases stays behind this module's boundary
+  // (Layers destructures { customerInfo } from getCustomerInfo's result).
+  void connectPurchasesAnalytics({
+    addCustomerInfoUpdateListener: (listener) =>
+      Purchases.addCustomerInfoUpdateListener(listener),
+    getCustomerInfo: async () => ({ customerInfo: await Purchases.getCustomerInfo() }),
   });
   // Prime the store from cache/network; the listener keeps it fresh afterwards.
   Purchases.getCustomerInfo()
@@ -180,8 +238,9 @@ export type PurchaseOutcome =
 export async function purchase(pkg: PurchasesPackage): Promise<PurchaseOutcome> {
   if (!configured) return { status: 'error', message: 'Purchases not configured' };
   try {
-    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    const { customerInfo, transaction } = await Purchases.purchasePackage(pkg);
     usePurchasesStore.setState({ customerInfo });
+    reportPurchase(pkg, transaction, customerInfo);
     return { status: 'purchased', customerInfo };
   } catch (e) {
     const err = e as PurchasesError;

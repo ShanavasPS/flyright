@@ -29,6 +29,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption } from '@/rules/types';
+import { trackEvent } from '@/services/analytics';
 import { canEmail, emailClaim, generateClaimPdf, shareClaim } from '@/services/claim-delivery';
 import type { SentSnapshot } from '@/services/claim-status';
 import { RESPONSE_WINDOW_DAYS, saveClaim } from '@/services/claims';
@@ -90,6 +91,7 @@ export function ClaimWizard() {
 
   useEffect(() => {
     Observe.logEvent('claim.started', { attributes: { demo: isDemo } });
+    trackEvent('claim_started', { demo: isDemo });
   }, [isDemo]);
 
   if (!journey) {

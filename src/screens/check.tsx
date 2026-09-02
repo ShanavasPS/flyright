@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -15,6 +15,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
+import { trackEvent } from '@/services/analytics';
 import { getAirport } from '@/services/airports';
 import { formatDayLabel, localDateString } from '@/services/dates';
 import {
@@ -270,6 +271,17 @@ function VerdictBlock({
 }) {
   const theme = useTheme();
   const verdict = evaluate(journey, disruption);
+  const eligible = !!(verdict.eligible && verdict.compensation);
+  const amount = verdict.compensation?.amount ?? 0;
+  const currency = verdict.compensation?.currency ?? '';
+
+  // Growth-loop activation signal: one event per checked flight. journey.id is
+  // the flight's stable identity and evaluate() is pure, so the payload can't
+  // change under the same id. No-op on web (analytics.web.ts).
+  useEffect(() => {
+    trackEvent('verdict_shown', { eligible, amount, currency, example: !!exampleNote });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journey.id]);
 
   if (!verdict.eligible || !verdict.compensation) {
     return (

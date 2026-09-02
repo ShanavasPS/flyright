@@ -26,5 +26,10 @@ export const WEB_PURCHASE_LINK = process.env.EXPO_PUBLIC_WEB_PURCHASE_LINK ?? ''
  * in the visitor's own currency. Re-check this string when those change. */
 export const PRO_PRICE_FROM = 'from €4.99/month';
 
+// Layers (growth analytics / install attribution) app id — see
+// src/services/analytics.ts. Empty → the SDK never initializes and every
+// trackEvent call is a no-op.
+export const LAYERS_APP_ID = process.env.EXPO_PUBLIC_LAYERS_APP_ID ?? '';
+
 // Shown on the privacy/support pages and in store listings.
 export const SUPPORT_EMAIL = 'shanavascruise@gmail.com';

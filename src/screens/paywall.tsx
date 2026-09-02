@@ -2,14 +2,20 @@ import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import type { PurchasesOffering } from 'react-native-purchases';
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import RevenueCatUI from 'react-native-purchases-ui';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { entitledToPro, getOfferingByIdentifier, isPurchasesConfigured } from '@/services/purchases';
+import { trackEvent } from '@/services/analytics';
+import {
+  entitledToPro,
+  getOfferingByIdentifier,
+  isPurchasesConfigured,
+  reportPurchase,
+} from '@/services/purchases';
 
 /**
  * The paywall itself is remote-configured in RevenueCat (Paywalls v2) and
@@ -38,6 +44,19 @@ export function Paywall() {
   const wantsOffering = typeof offeringId === 'string' && offeringId.length > 0;
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [resolving, setResolving] = useState(wantsOffering);
+
+  // Funnel step for the purchase events below: one per presentation.
+  useEffect(() => {
+    trackEvent('paywall_shown', {
+      offering: wantsOffering ? offeringId : 'default',
+      configured: isPurchasesConfigured(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The package the buyer tapped: onPurchaseCompleted's transaction carries
+  // no price, so the analytics revenue comes from here.
+  const pendingPackage = useRef<PurchasesPackage | null>(null);
 
   useEffect(() => {
     if (!wantsOffering) return;
@@ -79,7 +98,13 @@ export function Paywall() {
         <RevenueCatUI.Paywall
           style={styles.paywall}
           options={{ offering }}
-          onPurchaseCompleted={unlocked}
+          onPurchaseStarted={({ packageBeingPurchased }) => {
+            pendingPackage.current = packageBeingPurchased;
+          }}
+          onPurchaseCompleted={({ customerInfo, storeTransaction }) => {
+            reportPurchase(pendingPackage.current, storeTransaction, customerInfo);
+            unlocked();
+          }}
           // A restore can complete without granting Pro (nothing to restore) —
           // only an entitling one continues; otherwise the paywall stays up.
           onRestoreCompleted={({ customerInfo }) => {

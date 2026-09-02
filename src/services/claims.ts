@@ -1,6 +1,7 @@
 import { desc, eq, isNull, or } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 
+import { trackEvent } from '@/services/analytics';
 import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
 import type { Verdict } from '@/rules/types';
@@ -81,6 +82,11 @@ export async function saveClaim(opts: {
         sentSnapshot: snapshot ? JSON.stringify(snapshot) : null,
       })
       .where(eq(claims.id, id));
+    trackEvent('claim_sent', {
+      regulation: verdict.regulation ?? '',
+      amount: verdict.compensation.amount,
+      currency: verdict.compensation.currency,
+    });
     void reconcileNotifications();
     return;
   }
@@ -97,6 +103,11 @@ export async function saveClaim(opts: {
     responseDeadline: sent ? deadline.toISOString() : null,
     sentSnapshot: sent && snapshot ? JSON.stringify(snapshot) : null,
     createdAt: now.toISOString(),
+  });
+  trackEvent(sent ? 'claim_sent' : 'claim_drafted', {
+    regulation: verdict.regulation ?? '',
+    amount: verdict.compensation.amount,
+    currency: verdict.compensation.currency,
   });
   void reconcileNotifications();
 }

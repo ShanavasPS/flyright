@@ -25,6 +25,7 @@ import { ThemedText } from "@/components/themed-text";
 import { UpdateRequired } from "@/components/update-required";
 import { Colors } from "@/constants/theme";
 import { useVersionGate } from "@/hooks/use-version-gate";
+import { initAnalytics, useAnalyticsScreenTracking } from "@/services/analytics";
 import { registerFlightWatch } from "@/services/flight-watch";
 import { useDbReady } from "@/services/journeys";
 import {
@@ -119,8 +120,11 @@ function RootLayout() {
   const colorScheme = useColorScheme();
   const { success: dbReady, error: dbError } = useDbReady();
   useOrientationPolicy();
+  // $screen_view on every route change (no-op on web / without a Layers key).
+  useAnalyticsScreenTracking();
 
   useEffect(() => {
+    void initAnalytics();
     initPurchases();
     initNotifications();
     initNotificationLifecycle();

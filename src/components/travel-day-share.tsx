@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { trackEvent } from '@/services/analytics';
 import { getActivityId } from '@/services/live-activity';
 import { useTravelDay } from '@/services/travel-day-store';
 
@@ -43,6 +44,7 @@ export function TravelDayShare({ journeyId }: { journeyId: string }) {
       });
       if (!token) return;
       Observe.logEvent('travel_day.shared');
+      trackEvent('trip_shared');
       await Share.share({
         message: `Follow my flight live: https://getflyright.com/t/${token}`,
       });

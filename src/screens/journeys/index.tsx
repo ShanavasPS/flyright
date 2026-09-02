@@ -19,6 +19,7 @@ import { JourneyDetail } from '@/screens/journey-detail';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
+import { requestTrackingConsent } from '@/services/analytics';
 import { useClaims, type ClaimRow } from '@/services/claims';
 import { countdown, formatDayLabel, formatTime } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
@@ -59,11 +60,22 @@ export function Journeys() {
   // First launch decides once the journal has loaded: a brand-new user (no
   // rows, intro never shown) gets the onboarding pages; a user whose journal
   // already has entries predates the intro and is waived, not interrupted.
+  // The iOS tracking prompt comes after the intro — onboarding itself asks
+  // on the way out; everyone else (already introduced or waived) is asked
+  // here, which is an instant no-op once the one-shot prompt has been answered.
   const loaded = journeys != null;
   useEffect(() => {
-    if (!loaded || onboardingSeen()) return;
-    if (journeys!.length) markOnboardingSeen();
-    else router.push('/onboarding');
+    if (!loaded) return;
+    if (onboardingSeen()) {
+      void requestTrackingConsent();
+      return;
+    }
+    if (journeys!.length) {
+      markOnboardingSeen();
+      void requestTrackingConsent();
+    } else {
+      router.push('/onboarding');
+    }
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The "Remind me later" promise from onboarding's push pitch: one follow-up
