@@ -20,8 +20,14 @@ export const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL ?? '';
 export const WEB_PURCHASE_LINK = process.env.EXPO_PUBLIC_WEB_PURCHASE_LINK ?? '';
 
 /** Cheapest plan in the fallback currency, for copy that can't ask the
- * visitor's locale. The web funnel uses services/web-pricing.ts instead,
- * which localizes the same RevenueCat Web Billing prices. */
+ * visitor's locale. Hand-kept: the authoritative prices live in the
+ * RevenueCat default offering's web products (as of 2026-09-02, EUR:
+ * $rc_monthly €1.99/mo intro ×3 then €4.99 / $rc_annual €19.99 first year
+ * then €29.99 / $rc_lifetime €49.99 via flyright_pro_lifetime_web_v2), each
+ * priced in 18 currencies — Web Billing picks the visitor's, EUR is the
+ * fallback. Web Billing prices are immutable once saved, so a price change
+ * means a new product swapped into the offering. The web funnel renders
+ * services/web-pricing.ts instead, which localizes the same numbers. */
 export const PRO_PRICE_FROM = 'from €1.99/month';
 
 // Layers (growth analytics / install attribution) app id — see

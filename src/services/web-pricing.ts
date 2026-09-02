@@ -5,7 +5,9 @@
  * the checkout itself resolves the currency from the visitor's location, so
  * this only has to be close enough that the teaser and the checkout agree.
  * Unknown regions fall back to EUR, exactly like Web Billing does.
- * Re-check when the dashboard prices change. */
+ * Re-check when the dashboard prices change. Full ladder per currency (EUR):
+ * monthly 4.99 (intro 1.99 ×3) · yearly 29.99 (intro 19.99 first year) ·
+ * lifetime 49.99 (flyright_pro_lifetime_web_v2, since 2026-09-02). */
 
 export const MONTHLY_INTRO_PRICE: Record<string, number> = {
   EUR: 1.99,
