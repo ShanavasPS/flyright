@@ -21,10 +21,11 @@ export const WEB_PURCHASE_LINK = process.env.EXPO_PUBLIC_WEB_PURCHASE_LINK ?? ''
 
 /** Cheapest plan, for the web funnel's chrome and pre-checkout copy — so /go-pro
  * isn't a blind click into Stripe. Hand-kept: the authoritative prices live in the
- * RevenueCat default offering ($rc_monthly €4.99 / $rc_annual €29.99 /
- * $rc_lifetime €49.51 as of 2026-09-01) and the checkout page shows all three
- * in the visitor's own currency. Re-check this string when those change. */
-export const PRO_PRICE_FROM = 'from €4.99/month';
+ * RevenueCat default offering ($rc_monthly €1.99/mo intro ×3 then €4.99 /
+ * $rc_annual €19.99 first year then €29.99 / $rc_lifetime €49.51 as of
+ * 2026-09-02) and the checkout page shows all three in the visitor's own
+ * currency. Re-check this string when those change. */
+export const PRO_PRICE_FROM = 'from €1.99/month';
 
 // Layers (growth analytics / install attribution) app id — see
 // src/services/analytics.ts. Empty → the SDK never initializes and every
