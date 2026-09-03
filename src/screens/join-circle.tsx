@@ -16,9 +16,11 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { DETOUR_LINK_BASE } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { trackEvent } from '@/services/analytics';
 import { INVITE_URL } from '@/services/circle';
+import { storeLink } from '@/services/deferred-links';
 import { requestPushPermission } from '@/services/notifications';
 import { useProLocked } from '@/services/purchases';
 
@@ -112,18 +114,21 @@ export function JoinCircle({ token }: { token: string }) {
     const name = invite.ownerName;
     let action: React.ReactNode;
     if (Platform.OS === 'web') {
+      // Through Detour on a phone, so the install lands back on this invite.
+      const store = (platform: 'ios' | 'android') =>
+        storeLink(platform, `/i/${token}`, { base: DETOUR_LINK_BASE, userAgent: navigator.userAgent });
       action = (
         <Card>
           <ThemedText type="subtitle">Follow along in FlyRight</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Get the app, then tap this link again to follow {name}. Free on both stores; the
-            invite stays valid for 7 days.
+            Get the app and it opens on this invite. Free on both stores; the invite stays
+            valid for 7 days.
           </ThemedText>
           <View style={styles.storeRow}>
-            <Pressable onPress={() => window.open(STORE_URLS.ios, '_blank')}>
+            <Pressable onPress={() => window.open(store('ios'), '_blank')}>
               <ThemedText type="linkPrimary">App Store</ThemedText>
             </Pressable>
-            <Pressable onPress={() => window.open(STORE_URLS.android, '_blank')}>
+            <Pressable onPress={() => window.open(store('android'), '_blank')}>
               <ThemedText type="linkPrimary">Google Play</ThemedText>
             </Pressable>
           </View>

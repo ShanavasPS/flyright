@@ -15,8 +15,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { STORE_URLS } from '@/constants/store-links';
+import { DETOUR_LINK_BASE } from '@/constants/config';
 import { formatDayLabelWithYear } from '@/services/dates';
+import { storeLink } from '@/services/deferred-links';
 import {
   EMPTY_FACTS,
   type FlightFacts,
@@ -101,6 +102,9 @@ export function FollowTrip({ token }: { token: string }) {
     const session = result;
     const { journey, state, facts } = adapt(session);
     const who = session.travelerName ?? 'Your traveler';
+    // Through Detour on a phone, so the install lands back on this trip.
+    const store = (platform: 'ios' | 'android') =>
+      storeLink(platform, `/t/${token}`, { base: DETOUR_LINK_BASE, userAgent: navigator.userAgent });
     body = (
       <>
         <View style={styles.titleRow}>
@@ -136,10 +140,10 @@ export function FollowTrip({ token }: { token: string }) {
               Get a push the moment {who} is through security, on board, and landed.
             </ThemedText>
             <View style={styles.storeRow}>
-              <Pressable onPress={() => window.open(STORE_URLS.ios, '_blank')}>
+              <Pressable onPress={() => window.open(store('ios'), '_blank')}>
                 <ThemedText type="linkPrimary">App Store</ThemedText>
               </Pressable>
-              <Pressable onPress={() => window.open(STORE_URLS.android, '_blank')}>
+              <Pressable onPress={() => window.open(store('android'), '_blank')}>
                 <ThemedText type="linkPrimary">Google Play</ThemedText>
               </Pressable>
             </View>

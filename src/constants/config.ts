@@ -37,3 +37,13 @@ export const LAYERS_APP_ID = process.env.EXPO_PUBLIC_LAYERS_APP_ID ?? '';
 
 // Shown on the privacy/support pages and in store listings.
 export const SUPPORT_EMAIL = 'shanavascruise@gmail.com';
+
+// Detour (Software Mansion) deferred deep links — an invitee who installs the
+// app from a share link lands on that link's screen on first launch. Empty →
+// the provider is skipped and the web landings link straight to the stores.
+// See src/components/deferred-link-router.tsx and src/services/deferred-links.ts.
+export const DETOUR_API_KEY = process.env.EXPO_PUBLIC_DETOUR_API_KEY ?? '';
+export const DETOUR_APP_ID = process.env.EXPO_PUBLIC_DETOUR_APP_ID ?? '';
+// The app's deferred-link base, https://<org>.godetour.link/<app-hash>; the
+// web landings append the in-app path (/i/<token>, /t/<token>).
+export const DETOUR_LINK_BASE = process.env.EXPO_PUBLIC_DETOUR_LINK_BASE ?? '';

@@ -3,6 +3,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
+import { DeferredLinks } from "@/components/deferred-link-router";
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
 import { EntitlementSync } from "@/components/entitlement-sync";
@@ -159,6 +160,7 @@ function RootLayout() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <IdentitySync />
       <NotificationRouter />
+      <DeferredLinks>
       <CloudSync>
       <ThemeProvider
         value={navTheme(colorScheme === "dark" ? "dark" : "light")}
@@ -305,6 +307,7 @@ function RootLayout() {
         </QueryClientProvider>
       </ThemeProvider>
       </CloudSync>
+      </DeferredLinks>
     </ClerkProvider>
   );
 }
