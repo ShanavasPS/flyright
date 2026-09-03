@@ -1,6 +1,8 @@
 import { useAuth, useUser } from '@clerk/expo';
+import { setStringAsync } from 'expo-clipboard';
 import { Observe } from 'expo-observe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,11 +21,13 @@ import {
   claimPdfName,
   formattedAmount,
   renderClaimLetter,
+  renderClaimLetterText,
   type Claimant,
 } from '@/claims/letter';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { claimChannelFor } from '@/constants/carrier-claims';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,14 +35,15 @@ import { evaluate } from '@/rules/engine';
 import type { Disruption } from '@/rules/types';
 import { trackEvent } from '@/services/analytics';
 import { canEmail, emailClaim, generateClaimPdf, shareClaim } from '@/services/claim-delivery';
-import type { SentSnapshot } from '@/services/claim-status';
+import type { SentSnapshot, SentVia } from '@/services/claim-status';
 import { RESPONSE_WINDOW_DAYS, saveClaim } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { toDomainJourney, useJourney } from '@/services/journeys';
 
-// details → review → (share sheet only: confirm) → sent. The confirm step
-// exists because the share sheet — and Android's mail intent — never says
-// whether anything was actually sent; we ask instead of guessing.
+// details → review → (share sheet / web form only: confirm) → sent. The
+// confirm step exists because the share sheet, the airline's web form and
+// Android's mail intent never say whether anything was actually sent; we ask
+// instead of guessing.
 type Step = 'details' | 'review' | 'confirm' | 'sent';
 
 // Module-level so the react-hooks purity rule sees the component itself stays
@@ -84,6 +89,9 @@ export function ClaimWizard() {
   // What deliver() handed to the composer/share sheet, awaiting persist() —
   // a ref because the confirm step commits it in a later event handler.
   const pendingSnapshot = useRef<SentSnapshot | null>(null);
+  // How the pending letter left, mirrored in state so the confirm step can
+  // word itself without reading the ref during render.
+  const [pendingVia, setPendingVia] = useState<SentVia>('share');
 
   useEffect(() => {
     canEmail().then(setMailAvailable);
@@ -120,6 +128,15 @@ export function ClaimWizard() {
     );
   }
 
+  // Where this airline actually takes claims. Most only accept their own web
+  // form (and some bin emailed claims), so the channel decides which button
+  // leads — never send the user to a composer the airline will ignore.
+  const channel = claimChannelFor(journey.number, journey.carrier);
+  const emailTo = channel?.email && !channel.emailRefused ? channel.email : null;
+  const formUrl = channel?.formUrl ?? null;
+  // The form leads unless the airline takes email AND this device can send it.
+  const formLeads = !!formUrl && !(emailTo && mailAvailable);
+
   const claimant: Claimant = {
     fullName: fullName.trim(),
     email: email.trim(),
@@ -140,7 +157,7 @@ export function ClaimWizard() {
     }
   };
 
-  const finishSent = async (method: 'email' | 'share') => {
+  const finishSent = async (method: SentVia) => {
     setResponseDeadline(deadlineFromNow());
     await persist(true);
     Observe.logEvent('claim.sent', {
@@ -160,30 +177,52 @@ export function ClaimWizard() {
     setStep('review');
   };
 
-  const deliver = async (method: 'email' | 'share') => {
+  const deliver = async (method: SentVia) => {
     setBusy(true);
     try {
       const letterHtml = renderClaimLetter(journey, verdict, claimant);
       const pdfName = claimPdfName(journey, verdict);
       // Freeze what's going out BEFORE handing off to the composer/share
-      // sheet — persist() stores this alongside the sent status so the user
-      // can re-read exactly what the carrier received.
+      // sheet/browser — persist() stores this alongside the sent status so
+      // the user can re-read exactly what the carrier received.
       pendingSnapshot.current = {
         subject: claimEmailSubject(journey, verdict),
         body: claimEmailBody(journey, verdict, claimant),
         letterHtml,
-        recipient: `Customer Relations — ${journey.carrier}`,
+        recipient:
+          method === 'email' && emailTo
+            ? emailTo
+            : method === 'form'
+              ? `${journey.carrier}'s online claim form`
+              : `Customer Relations — ${journey.carrier}`,
         claimantName: claimant.fullName,
         claimantEmail: claimant.email,
         pdfName,
         via: method,
       };
-      const pdfUri = await generateClaimPdf(letterHtml, pdfName);
+      setPendingVia(method);
       Observe.logEvent('claim.letter_generated', {
-        attributes: { method, regulation: verdict.regulation ?? '', demo: isDemo },
+        attributes: {
+          method,
+          regulation: verdict.regulation ?? '',
+          demo: isDemo,
+          channel: emailTo ? 'email' : formUrl ? 'form' : 'unknown',
+        },
       });
+      if (method === 'form' && formUrl) {
+        // The airline's form has its own fields, so the letter travels on the
+        // clipboard for its free-text box; the PDF stays a tap away via
+        // "share" for forms that take attachments. The browser resolves on
+        // dismiss, then the confirm step asks whether it was submitted.
+        await setStringAsync(renderClaimLetterText(journey, verdict, claimant));
+        await openBrowserAsync(formUrl);
+        setStep('confirm');
+        return;
+      }
+      const pdfUri = await generateClaimPdf(letterHtml, pdfName);
       if (method === 'email') {
         const outcome = await emailClaim({
+          recipients: emailTo ? [emailTo] : undefined,
           subject: claimEmailSubject(journey, verdict),
           body: claimEmailBody(journey, verdict, claimant),
           attachmentUri: pdfUri,
@@ -311,6 +350,13 @@ export function ClaimWizard() {
               weeks without a substantive reply, the claim escalates to the{' '}
               {verdict.escalationBody ?? 'national enforcement body'}.
             </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {emailTo
+                ? `Goes to ${emailTo}, ${journey.carrier}'s claims address.`
+                : formUrl
+                  ? `${journey.carrier} only takes claims through its online form — we'll copy your letter so you can paste it in.${channel?.notes ? ` ${channel.notes}` : ''}`
+                  : `We don't have ${journey.carrier}'s claims address yet — look for “Complaints” or “Compensation” on their site; airlines flying in the EU must publish a way to claim.`}
+            </ThemedText>
             <Pressable onPress={() => setStep('details')} hitSlop={Spacing.two}>
               <ThemedText type="link">Edit my details →</ThemedText>
             </Pressable>
@@ -330,12 +376,26 @@ export function ClaimWizard() {
                   Preparing your letter…
                 </ThemedText>
               </View>
+            ) : formLeads ? (
+              <>
+                <PrimaryButton
+                  label={`Open ${journey.carrier}'s claim form →`}
+                  onPress={() => deliver('form')}
+                />
+                <Pressable onPress={() => deliver('share')} hitSlop={Spacing.two}>
+                  <ThemedText type="link" style={styles.centeredText}>
+                    Save the PDF to attach →
+                  </ThemedText>
+                </Pressable>
+              </>
             ) : mailAvailable ? (
               <>
                 <PrimaryButton label="Email my claim →" onPress={() => deliver('email')} />
-                <Pressable onPress={() => deliver('share')} hitSlop={Spacing.two}>
+                <Pressable
+                  onPress={() => deliver(formUrl ? 'form' : 'share')}
+                  hitSlop={Spacing.two}>
                   <ThemedText type="link" style={styles.centeredText}>
-                    Share the PDF another way →
+                    {formUrl ? 'Use their claim form instead →' : 'Share the PDF another way →'}
                   </ThemedText>
                 </Pressable>
               </>
@@ -349,11 +409,15 @@ export function ClaimWizard() {
       {step === 'confirm' && (
         <View style={styles.form}>
           <ThemedText type="small" themeColor="textSecondary">
-            If you emailed or messaged the letter to {journey.carrier}, we’ll start the 6-week
-            response clock.
+            {pendingVia === 'form'
+              ? `If you submitted the claim through ${journey.carrier}’s form, we’ll start the 6-week response clock.`
+              : `If you emailed or messaged the letter to ${journey.carrier}, we’ll start the 6-week response clock.`}
           </ThemedText>
           <View style={styles.cta}>
-            <PrimaryButton label="I sent it ✓" onPress={() => finishSent('share')} />
+            <PrimaryButton
+              label="I sent it ✓"
+              onPress={() => finishSent(pendingVia)}
+            />
             <Pressable onPress={keepDraft} hitSlop={Spacing.two}>
               <ThemedText type="link" style={styles.centeredText}>
                 Not yet — keep it as a draft

@@ -53,7 +53,11 @@ export function ClaimLetter() {
     // wizard and add-flight); the content must fit the sheet.
     <ThemedView style={[styles.container, styles.content]}>
         <ThemedText type="title" themeColor="heading">
-          {snapshot.via === 'email' ? 'The email you sent' : 'The letter you shared'}
+          {snapshot.via === 'email'
+            ? 'The email you sent'
+            : snapshot.via === 'form'
+              ? 'The claim you submitted'
+              : 'The letter you shared'}
         </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.card}>
@@ -80,6 +84,12 @@ export function ClaimLetter() {
           <ThemedText type="small" themeColor="textSecondary">
             This claim left the app through the share sheet, so the recipient came from the app
             you shared it to.
+          </ThemedText>
+        )}
+        {snapshot.via === 'form' && (
+          <ThemedText type="small" themeColor="textSecondary">
+            This claim went in through the airline’s own web form, with the letter text pasted
+            into it — the form’s confirmation email is your receipt.
           </ThemedText>
         )}
 

@@ -59,8 +59,12 @@ export interface SentSnapshot {
   claimantName: string;
   claimantEmail: string;
   pdfName: string;
-  via: 'email' | 'share';
+  via: SentVia;
 }
+
+/** How the letter left the app: the mail composer, the share sheet, or the
+ * airline's own web form (letter on the clipboard). */
+export type SentVia = 'email' | 'share' | 'form';
 
 export function parseSentSnapshot(json: string | null | undefined): SentSnapshot | null {
   if (!json) return null;

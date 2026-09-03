@@ -43,6 +43,28 @@ function serviceLabel(journey: Journey): string {
   return journey.number ? `${journey.mode} ${journey.number}` : `your ${journey.mode} service`;
 }
 
+/** The letter's paragraphs, in order, with inline emphasis marked as
+ * `**bold**` — rendered to HTML for the PDF and to plain text for pasting
+ * into an airline's web form, so both say exactly the same thing. */
+function letterParagraphs(journey: Journey, verdict: Verdict, claimant: Claimant): string[] {
+  const basis = LEGAL_BASIS[verdict.regulation ?? ''] ?? fallbackBasis(verdict.regulation ?? '');
+  const date = journey.scheduledDeparture.slice(0, 10);
+  const booking = claimant.bookingReference
+    ? ` (booking reference **${claimant.bookingReference}**)`
+    : '';
+
+  return [
+    `To the Customer Relations department of ${journey.carrier},`,
+    `Claim for compensation under ${basis.instrument}`,
+    `I was booked on ${serviceLabel(journey)} from ${journey.from.code} to ${journey.to.code} on ${date}${booking}.`,
+    verdict.reason,
+    `I hereby claim compensation of **${formattedAmount(verdict)}** per passenger under ${basis.compensationArticle}.`,
+    `Please pay this amount by bank transfer within 14 days. If I do not receive a substantive response within 6 weeks, I will refer this claim to the ${verdict.escalationBody ?? 'competent national enforcement body'} and reserve the right to pursue it through the courts, including claiming interest and costs.`,
+  ];
+}
+
+const BOLD = /\*\*(.+?)\*\*/g;
+
 /**
  * HTML claim letter — rendered to PDF with expo-print and attached to a
  * pre-filled email to the carrier's claims address.
@@ -52,37 +74,34 @@ export function renderClaimLetter(
   verdict: Verdict,
   claimant: Claimant,
 ): string {
-  const basis = LEGAL_BASIS[verdict.regulation ?? ''] ?? fallbackBasis(verdict.regulation ?? '');
-  const date = journey.scheduledDeparture.slice(0, 10);
+  const [salutation, heading, ...body] = letterParagraphs(journey, verdict, claimant);
+  const html = (text: string) => text.replace(BOLD, '<strong>$1</strong>');
 
   return `<!DOCTYPE html>
 <html><body style="font-family: -apple-system, Helvetica, sans-serif; line-height: 1.5; padding: 40px;">
-  <p>To the Customer Relations department of ${journey.carrier},</p>
+  <p>${html(salutation)}</p>
 
-  <h3>Claim for compensation under ${basis.instrument}</h3>
+  <h3>${html(heading)}</h3>
 
-  <p>
-    I was booked on ${serviceLabel(journey)} from ${journey.from.code}
-    to ${journey.to.code} on ${date}
-    ${claimant.bookingReference ? `(booking reference <strong>${claimant.bookingReference}</strong>)` : ''}.
-  </p>
-
-  <p>${verdict.reason}</p>
-
-  <p>
-    I hereby claim compensation of <strong>${formattedAmount(verdict)}</strong> per passenger
-    under ${basis.compensationArticle}.
-  </p>
-
-  <p>
-    Please pay this amount by bank transfer within 14 days. If I do not receive a
-    substantive response within 6 weeks, I will refer this claim to the
-    ${verdict.escalationBody ?? 'competent national enforcement body'} and reserve
-    the right to pursue it through the courts, including claiming interest and costs.
-  </p>
+${body.map((text) => `  <p>${html(text)}</p>`).join('\n\n')}
 
   <p>Yours faithfully,<br/>${claimant.fullName}<br/>${claimant.email}</p>
 </body></html>`;
+}
+
+/** The same letter as plain text — for carriers that only take claims through
+ * a web form, where the user pastes this into the description field. */
+export function renderClaimLetterText(
+  journey: Journey,
+  verdict: Verdict,
+  claimant: Claimant,
+): string {
+  const paragraphs = letterParagraphs(journey, verdict, claimant).map((text) =>
+    text.replace(BOLD, '$1'),
+  );
+  return [...paragraphs, `Yours faithfully,\n${claimant.fullName}\n${claimant.email}`].join(
+    '\n\n',
+  );
 }
 
 /** "EU261 claim — Lufthansa LH873, 2026-08-10" */

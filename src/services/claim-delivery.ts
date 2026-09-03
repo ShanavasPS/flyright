@@ -27,11 +27,14 @@ export type EmailOutcome = 'sent' | 'dismissed';
 /** iOS reports SENT/SAVED/CANCELLED faithfully; Android always says SENT, so
  * callers should still confirm with the user before trusting 'sent' there. */
 export async function emailClaim(opts: {
+  /** The airline's published claims address, when we know it. */
+  recipients?: string[];
   subject: string;
   body: string;
   attachmentUri: string;
 }): Promise<EmailOutcome> {
   const result = await MailComposer.composeAsync({
+    recipients: opts.recipients,
     subject: opts.subject,
     body: opts.body,
     attachments: [opts.attachmentUri],
