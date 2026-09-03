@@ -54,7 +54,7 @@ Delayed, cancelled, or bumped from your flight? Airlines owe you real money. Fly
 - Age rating questionnaire: everyone / no objectionable content (mirror Play answers)
 - Supported devices: Phone + Tablet (Galaxy Z foldables included via phone)
 - Countries: all available (mirror Play distribution)
-- Support email: sshanavas@coinmotion.com
+- Support email: support@getflyright.com
 - Privacy policy URL: https://getflyright.com/privacy
 - Support URL: https://flyright.expo.app/support
 

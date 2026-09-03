@@ -141,6 +141,25 @@ export default defineSchema({
 
   /** Display names for "Sam is through security" — fed by the Clerk webhook
    * (user.created/updated); Convex JWTs only carry the subject. */
+  /** In-app "Contact support" messages. Each row is delivered to the support
+   * inbox by support.deliver (Cloudflare Email Sending); deliveredAt stays
+   * null until that succeeds so a failed send can be retried from the CLI
+   * (support:retryUndelivered) instead of being lost. */
+  supportMessages: defineTable({
+    /** Clerk user id when signed in, else null (anonymous-first app). */
+    userId: v.union(v.string(), v.null()),
+    /** Reply address: the Clerk identity's email, or what the user typed. */
+    email: v.string(),
+    message: v.string(),
+    platform: v.string(),
+    appVersion: v.string(),
+    createdAt: v.string(),
+    deliveredAt: v.union(v.string(), v.null()),
+    deliveryError: v.union(v.string(), v.null()),
+  })
+    .index('by_email_created', ['email', 'createdAt'])
+    .index('by_delivered', ['deliveredAt']),
+
   profiles: defineTable({
     userId: v.string(),
     name: v.string(),

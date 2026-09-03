@@ -8,6 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SUPPORT_EMAIL } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -105,6 +106,12 @@ function SiteFooter() {
           </Link>
           <Link href="/terms">
             <ThemedText type="link">Terms</ThemedText>
+          </Link>
+          <Link href="/support">
+            <ThemedText type="link">Support</ThemedText>
+          </Link>
+          <Link href={`mailto:${SUPPORT_EMAIL}`}>
+            <ThemedText type="link">Contact</ThemedText>
           </Link>
         </View>
         <ThemedText type="small" themeColor="textSecondary">

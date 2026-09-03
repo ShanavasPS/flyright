@@ -1,0 +1,37 @@
+# Settings → Contact support: the in-app message form (convex/support.ts).
+# Sends a real message to the dev deployment — the row is emailed to the
+# support inbox when CLOUDFLARE_EMAIL_TOKEN is set there, otherwise it stays
+# in supportMessages with deliveryError set (check: npx convex data supportMessages).
+# Run: maestro test .maestro/contact-support.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible:
+      id: "contact-support"
+    timeout: 10000
+- tapOn:
+    id: "contact-support"
+- extendedWaitUntil:
+    visible: "What can we help with?"
+    timeout: 10000
+# Signed-out on the sim, so the reply-address field is shown.
+- runFlow:
+    when:
+      visible: "Your email, so we can reply"
+    commands:
+      - tapOn: "Your email, so we can reply"
+      - inputText: "maestro@example.com"
+- tapOn: "What can we help with?"
+- inputText: "Maestro test message from the contact form — please ignore."
+# hideKeyboard is flaky on the iOS simulator; the form's KeyboardAvoidingView
+# keeps the button reachable, so scroll to it instead.
+- scrollUntilVisible:
+    element: "Send message"
+    direction: DOWN
+- tapOn: "Send message"
+- extendedWaitUntil:
+    visible: "Message sent"
+    timeout: 15000
+- takeScreenshot: .maestro/out/contact-support-sent

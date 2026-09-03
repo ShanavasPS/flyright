@@ -371,6 +371,21 @@ export function Settings() {
               </Pressable>
             </>
           )}
+
+          <RowSeparator />
+
+          <Pressable
+            testID="contact-support"
+            onPress={() => router.push('/contact')}
+            style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+            <View style={styles.rowLabel}>
+              <ThemedText>Contact support</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Send us a message — we reply by email.
+              </ThemedText>
+            </View>
+            {chevron}
+          </Pressable>
         </ThemedView>
 
         {pro && activeSubscriptions.length > 1 && (

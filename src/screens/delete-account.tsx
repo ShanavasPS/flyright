@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SUPPORT_EMAIL } from '@/constants/config';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -91,7 +92,7 @@ export function DeleteAccount() {
         )}
         {state === 'error' && (
           <ThemedText type="small" style={{ color: theme.danger }}>
-            Deletion failed — please try again, or contact support@getflyright.com.
+            Deletion failed — please try again, or contact {SUPPORT_EMAIL}.
           </ThemedText>
         )}
       </Card>

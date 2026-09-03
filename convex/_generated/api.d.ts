@@ -22,6 +22,7 @@ import type * as liveHelpers from "../liveHelpers.js";
 import type * as liveInternal from "../liveInternal.js";
 import type * as liveShared from "../liveShared.js";
 import type * as onesignal from "../onesignal.js";
+import type * as support from "../support.js";
 import type * as users from "../users.js";
 
 import type {
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   liveInternal: typeof liveInternal;
   liveShared: typeof liveShared;
   onesignal: typeof onesignal;
+  support: typeof support;
   users: typeof users;
 }>;
 

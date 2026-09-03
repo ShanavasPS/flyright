@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,9 +16,14 @@ export function Support() {
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="smallBold">Get help</ThemedText>
           <ThemedText type="small">
-            Email {SUPPORT_EMAIL} — include your flight number and the day it flew if
-            your question is about a verdict or claim.
+            Email us — include your flight number and the day it flew if your question
+            is about a verdict or claim.
           </ThemedText>
+          {/* A scheme href: expo-router hands it to the OS mail client on native
+            and renders a plain mailto anchor on web. */}
+          <Link href={`mailto:${SUPPORT_EMAIL}`}>
+            <ThemedText type="link">{SUPPORT_EMAIL}</ThemedText>
+          </Link>
         </ThemedView>
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="smallBold">Subscriptions</ThemedText>

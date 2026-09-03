@@ -36,7 +36,7 @@ export const PRO_PRICE_FROM = 'from €1.99/month';
 export const LAYERS_APP_ID = process.env.EXPO_PUBLIC_LAYERS_APP_ID ?? '';
 
 // Shown on the privacy/support pages and in store listings.
-export const SUPPORT_EMAIL = 'shanavascruise@gmail.com';
+export const SUPPORT_EMAIL = 'support@getflyright.com';
 
 // Detour (Software Mansion) deferred deep links — an invitee who installs the
 // app from a share link lands on that link's screen on first launch. Empty →
