@@ -63,7 +63,8 @@ export const push = mutation({
 
       // A deleted trip takes its live session down with it — followers see
       // the page expire and the lock-screen widget ends, independent of any
-      // further client cooperation.
+      // further client cooperation. Whoever was following hears about it
+      // once, so the trip doesn't just vanish from their People tab.
       if (row.deletedAt) {
         const sessions = await ctx.db
           .query('liveSessions')
@@ -86,6 +87,10 @@ export const push = mutation({
               sessionId: session._id,
             });
           }
+          await ctx.scheduler.runAfter(0, internal.liveInternal.notifyFollowers, {
+            sessionId: session._id,
+            kind: 'removed',
+          });
         }
       }
     }

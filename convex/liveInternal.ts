@@ -194,13 +194,18 @@ export const notifyFollowers = internalAction({
   handler: async (ctx, { sessionId, kind }) => {
     const targets = await ctx.runQuery(internal.liveInternal.getNotifyTargets, { sessionId });
     await ctx.runMutation(internal.liveInternal.clearPendingNotify, { sessionId });
-    if (!targets || targets.externalIds.length === 0 || !targets.token) return;
+    if (!targets || targets.externalIds.length === 0) return;
+    // A removed trip has no token left (journeys.push nulled it with the
+    // session) and nothing to open — send that one to People instead.
+    if (kind !== 'removed' && !targets.token) return;
 
     const s = targets.session;
     const name = targets.travelerName;
     const flight = s.number || s.carrier;
     let body: string;
-    if (kind === 'headsUp') {
+    if (kind === 'removed') {
+      body = `${name} removed this trip. No more updates for it.`;
+    } else if (kind === 'headsUp') {
       const hours = Math.round((Date.parse(s.scheduledDeparture) - Date.now()) / 3_600_000);
       const when = hours >= 20 ? 'tomorrow' : hours > 1 ? `in ${hours}h` : 'soon';
       body = `${name} flies to ${s.toCode} ${when}. You'll get updates through travel day.`;
@@ -216,7 +221,9 @@ export const notifyFollowers = internalAction({
       targets.externalIds,
       `${flight} · ${s.fromCode} → ${s.toCode}`,
       body,
-      `https://getflyright.com/t/${targets.token}`,
+      kind === 'removed'
+        ? 'https://getflyright.com/people'
+        : `https://getflyright.com/t/${targets.token}`,
     );
   },
 });
