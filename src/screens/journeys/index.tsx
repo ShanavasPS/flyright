@@ -16,7 +16,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
-import { HowRow } from '@/components/how-row';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -222,7 +221,6 @@ export function Journeys() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
             <JournalHero onAdd={() => router.push('/add-flight')} />
-            <HowItWorks />
           </ScrollView>
         )}
       </SafeAreaView>
@@ -285,8 +283,8 @@ function JournalHero({ onAdd }: { onAdd: () => void }) {
       <View style={styles.heroCopy}>
         <Text style={styles.heroHeadline}>Where have you flown?</Text>
         <Text style={styles.heroPitch}>
-          Log any flight — next month&apos;s trip or one from years back. Distance, countries,
-          airlines: your travel story adds up here.
+          Next month&apos;s trip or one from years back — distance, countries and airlines add
+          up here.
         </Text>
       </View>
       <PassDivider />
@@ -318,33 +316,6 @@ function GhostDots() {
   );
 }
 
-/** Three beats of the pitch as icon rows instead of a paragraph. */
-function HowItWorks() {
-  return (
-    <SheenCard style={styles.howCard}>
-      <HowRow
-        symbol={{
-          ios: 'barcode.viewfinder',
-          android: 'qr_code_scanner',
-          web: 'qr_code_scanner',
-        }}
-        title="Scan a boarding pass"
-        detail="Flight, date and route fill in from the barcode — or type them in."
-      />
-      <HowRow
-        symbol={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-        climbing
-        title="Travel day, live"
-        detail="Gate, delays and every step of the day, on your lock screen."
-      />
-      <HowRow
-        symbol={{ ios: 'eurosign.circle', android: 'payments', web: 'payments' }}
-        title="Know what you're owed"
-        detail="Three hours late in the EU is worth up to €600. We tell you the moment it counts."
-      />
-    </SheenCard>
-  );
-}
 
 /** Header-style "+" on the title row's right edge — the standard list-screen
  * add affordance, same placement on every platform. Liquid Glass where the OS
@@ -708,9 +679,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: 500,
-  },
-  howCard: {
-    gap: Spacing.three,
-    marginTop: Spacing.two,
   },
 });

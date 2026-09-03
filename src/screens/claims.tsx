@@ -6,9 +6,7 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
-import { HowRow } from '@/components/how-row';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
-import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
@@ -84,7 +82,6 @@ export function Claims() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
             <ClaimsHero onDemo={() => router.push('/journey/demo')} />
-            <HowItWorks />
           </ScrollView>
         )}
       </SafeAreaView>
@@ -110,8 +107,8 @@ function ClaimsHero({ onDemo }: { onDemo: () => void }) {
       <View style={styles.heroCopy}>
         <Text style={styles.heroHeadline}>No claims yet</Text>
         <Text style={styles.heroPitch}>
-          Three hours late, or cancelled? EU261 pays €250–600 per passenger (UK261 in pounds).
-          When a flight in your journal qualifies, the claim starts here.
+          Delayed 3h+ or cancelled? EU261 and UK261 pay €250–600. When a journal flight
+          qualifies, the claim starts here.
         </Text>
       </View>
       <PassDivider />
@@ -124,32 +121,6 @@ function ClaimsHero({ onDemo }: { onDemo: () => void }) {
   );
 }
 
-/** Three beats of the pitch as icon rows instead of a paragraph. */
-function HowItWorks() {
-  return (
-    <SheenCard style={styles.howCard}>
-      <HowRow
-        symbol={{
-          ios: 'clock.badge.exclamationmark',
-          android: 'schedule',
-          web: 'schedule',
-        }}
-        title="We spot the delay"
-        detail="Every flight in your journal is checked against the rules the moment it's disrupted."
-      />
-      <HowRow
-        symbol={{ ios: 'doc.text', android: 'description', web: 'description' }}
-        title="The letter writes itself"
-        detail="Airline, flight, distance and the article that applies — ready to send in a tap."
-      />
-      <HowRow
-        symbol={{ ios: 'calendar.badge.clock', android: 'event', web: 'event' }}
-        title="We keep the airline honest"
-        detail="Response deadlines, reminders and every outcome, tracked right here."
-      />
-    </SheenCard>
-  );
-}
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -318,9 +289,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: 500,
-  },
-  howCard: {
-    gap: Spacing.three,
-    marginTop: Spacing.two,
   },
 });

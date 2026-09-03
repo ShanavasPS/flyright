@@ -21,7 +21,6 @@ import { api } from '../../convex/_generated/api';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
-import { HowRow } from '@/components/how-row';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -100,11 +99,10 @@ export function People() {
       <>
         <CircleHero
           headline="Travel together, apart"
-          pitch="Family and friends follow your trips — a heads-up the day before, a nudge at every step, and nobody has to ask “landed yet?”"
+          pitch="Family and friends follow your trips, step by step — nobody has to ask “landed yet?”"
           action="Sign in to invite"
           onAction={invite}
         />
-        <HowItWorks />
       </>
     );
   } else if (data == null) {
@@ -120,7 +118,6 @@ export function People() {
           busy={busy}
           onAction={invite}
         />
-        <HowItWorks />
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           Invite links expire after 7 days. Anyone you invite can share their trips back.
         </ThemedText>
@@ -268,29 +265,6 @@ function CircleHero({
   );
 }
 
-/** Three beats of the pitch as icon rows instead of a paragraph. */
-function HowItWorks() {
-  return (
-    <SheenCard style={styles.howCard}>
-      <HowRow
-        symbol={{ ios: 'bell.badge', android: 'notifications_active', web: 'notifications_active' }}
-        title="The day before"
-        detail="A heads-up that you fly tomorrow, with the route."
-      />
-      <HowRow
-        symbol={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-        climbing
-        title="Every step of travel day"
-        detail="At the airport, through security, on board, landed — as it happens."
-      />
-      <HowRow
-        symbol={{ ios: 'lock.shield', android: 'shield', web: 'shield' }}
-        title="You stay in control"
-        detail="Only people you invite. Remove anyone, any time."
-      />
-    </SheenCard>
-  );
-}
 
 /** Someone whose trips I follow. Live trip → a mini night-sky pass that opens
  * it; otherwise a sheen row with the next flight (or nothing) as the status
@@ -593,10 +567,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: 500,
-  },
-  howCard: {
-    gap: Spacing.three,
-    marginTop: Spacing.two,
   },
   row: {
     flexDirection: 'row',
