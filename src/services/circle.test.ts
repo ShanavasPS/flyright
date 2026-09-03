@@ -1,17 +1,19 @@
-import { followingLabel, INVITE_URL, toInAppPath } from './circle';
+import { INVITE_URL, toInAppPath, watcherNames } from './circle';
 
-describe('followingLabel', () => {
-  it('names one, two, and many followers', () => {
-    expect(followingLabel([])).toBe('Share live');
-    expect(followingLabel([{ name: 'Anna' }])).toBe('Anna following');
-    expect(followingLabel([{ name: 'Anna' }, { name: 'Ben' }])).toBe('Anna & Ben following');
-    expect(followingLabel([{ name: 'Anna' }, { name: 'Ben' }, { name: 'Cy' }])).toBe(
-      'Anna +2 following',
+describe('watcherNames', () => {
+  it('names one, two, three, and many watchers by first name', () => {
+    expect(watcherNames([{ name: 'Anna Berg' }])).toBe('Anna');
+    expect(watcherNames([{ name: 'Anna' }, { name: 'Ben' }])).toBe('Anna & Ben');
+    expect(watcherNames([{ name: 'Anna' }, { name: 'Ben' }, { name: 'Cy' }])).toBe(
+      'Anna, Ben & Cy',
     );
+    expect(
+      watcherNames([{ name: 'Anna' }, { name: 'Ben' }, { name: 'Cy' }, { name: 'Di' }]),
+    ).toBe('Anna, Ben & 2 more');
   });
 
-  it('falls back for followers without a profile name', () => {
-    expect(followingLabel([{ name: null }])).toBe('Someone following');
+  it('falls back for watchers without a profile name', () => {
+    expect(watcherNames([{ name: null }, { name: '  ' }])).toBe('Someone & Someone');
   });
 });
 

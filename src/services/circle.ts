@@ -3,14 +3,13 @@
 
 export const INVITE_URL = (token: string) => `https://getflyright.com/i/${token}`;
 
-/** "Anna following" / "Anna & Ben following" / "Anna +2 following" — the
- * Find My cue that someone is watching, by name. */
-export function followingLabel(followers: { name: string | null }[]): string {
-  const names = followers.map((f) => f.name ?? 'Someone');
-  if (names.length === 0) return 'Share live';
-  if (names.length === 1) return `${names[0]} following`;
-  if (names.length === 2) return `${names[0]} & ${names[1]} following`;
-  return `${names[0]} +${names.length - 1} following`;
+/** "Anna, Sam & 2 more" — who follows a trip, first names only, for the
+ * journey detail's watchers card. Profiles without a name read as "Someone". */
+export function watcherNames(watchers: { name: string | null }[]): string {
+  const names = watchers.map((w) => (w.name ?? 'Someone').trim().split(/\s+/)[0] || 'Someone');
+  if (names.length <= 2) return names.join(' & ');
+  if (names.length === 3) return `${names[0]}, ${names[1]} & ${names[2]}`;
+  return `${names[0]}, ${names[1]} & ${names.length - 2} more`;
 }
 
 /** Server pushes carry absolute getflyright.com links (they double as web

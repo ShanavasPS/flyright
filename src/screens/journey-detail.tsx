@@ -25,8 +25,8 @@ import { RouteMap } from '@/components/route-map';
 import { SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TravelDayShare } from '@/components/travel-day-share';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { TripWatchers } from '@/components/trip-watchers';
 import { CONVEX_URL } from '@/constants/config';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -306,7 +306,6 @@ export function JourneyDetail({
             journey={row}
             state={travelState}
             facts={getFlightFacts(row.id)}
-            action={CONVEX_URL ? <TravelDayShare journeyId={row.id} /> : undefined}
             onAdvance={(stage: TravelStage) => {
               void advanceStage(row.id, stage, row.source === 'manual').then(() =>
                 reconcileTravelDay(),
@@ -328,10 +327,11 @@ export function JourneyDetail({
         ) : travelActive ? null : journalOnly ? (
           <Card>
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
-              Trip log
+              {tripAge > 0 ? 'Trip log' : 'Upcoming trip'}
             </ThemedText>
             <ThemedText>
-              You flew {Math.round(journey.distanceKm).toLocaleString()} km
+              {tripAge > 0 ? 'You flew' : "You'll fly"}{' '}
+              {Math.round(journey.distanceKm).toLocaleString()} km
               {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
             </ThemedText>
             {tripAge > CLAIM_WINDOW_MS && (
@@ -352,6 +352,11 @@ export function JourneyDetail({
           </Card>
         )}
 
+        {/* Who follows this trip + the one place to share it. Only while
+            there's something left to watch; the demo has no row to share. */}
+        {CONVEX_URL && !isDemo && row && (travelActive || tripAge <= 0) && (
+          <TripWatchers journeyId={row.id} live={travelActive} />
+        )}
         </ScrollView>
 
         {/* Share and the "···" trip menu at the right — edit/remove live in
