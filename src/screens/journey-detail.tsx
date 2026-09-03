@@ -269,10 +269,11 @@ export function JourneyDetail({
   return (
     <ThemedView style={styles.container}>
       {/* No top edge: the native stack header already owns that inset —
-          including it doubled up as a blank band under the header. */}
-      <SafeAreaView
-        edges={embedded ? ['top', 'bottom', 'right'] : ['bottom', 'left', 'right']}
-        style={styles.safeArea}>
+          including it doubled up as a blank band under the header. No bottom
+          edge either: the scroll view's automatic inset already clears the
+          tab bar + home indicator, so a bottom edge here was a second blank
+          band the content stopped above instead of scrolling under. */}
+      <SafeAreaView edges={embedded ? ['top', 'right'] : ['left', 'right']} style={styles.safeArea}>
         {/* The travel-day timeline made the tall path (title + timeline +
             verdict) overflow smaller screens — everything scrolls now. */}
         <ScrollView
@@ -810,7 +811,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingTop: Spacing.three,
     paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.five,
+    paddingBottom: Spacing.four,
     gap: Spacing.three,
   },
   headerActions: {
