@@ -17,6 +17,9 @@ export const billingAvailable = true;
 
 export const useCustomerInfo = (): CustomerInfo | null => null;
 export const useHasPro = () => false;
+/** Web has no entitlement state, so Pro features read as locked — the
+ * teasers double as the pitch for the /go-pro funnel. */
+export const useProLocked = () => true;
 export const useProEntitlement = () => null;
 
 const NO_SUBSCRIPTIONS: string[] = [];
@@ -32,6 +35,10 @@ export async function logOutPurchases() {}
 
 export async function hasPro(): Promise<boolean> {
   return false;
+}
+
+export async function proLocked(): Promise<boolean> {
+  return true;
 }
 
 export async function getCurrentOffering(): Promise<PurchasesOffering | null> {

@@ -46,7 +46,7 @@ import { inboundNewsworthy, inboundOutlook, type InboundOutlook } from '@/servic
 import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
 import { noteSuccess } from '@/services/haptics';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
-import { billingAvailable, hasPro } from '@/services/purchases';
+import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
 import { travelWindow, type TravelStage } from '@/services/travel-day';
 import { focusWorldOn } from '@/services/world-focus';
 import {
@@ -144,14 +144,26 @@ export function JourneyDetail({
   // demo must never hit the status API.
   const isLookupable = !isDemo && !!journey && row?.source === 'lookup' && !!journey.number;
 
+  // The inbound-aircraft prediction is Pro. Free users get the teaser card
+  // instead, and the status call skips the rotation lookup entirely — the
+  // key change refetches with it the moment an unlock lands.
+  const proLocked = useProLocked();
+  const upcoming = !!journey && Date.parse(journey.scheduledDeparture) > now;
+  const inboundUnlocked = upcoming && !proLocked;
+
   // Live disruption data for tracked journeys; the demo uses a canned 195-min delay.
   const status = useQuery({
-    queryKey: ['flight-status', journey?.number, journey?.scheduledDeparture.slice(0, 10)],
+    queryKey: [
+      'flight-status',
+      journey?.number,
+      journey?.scheduledDeparture.slice(0, 10),
+      inboundUnlocked,
+    ],
     queryFn: () =>
       lookupFlight(journey!.number, journey!.scheduledDeparture.slice(0, 10), {
         // Pre-departure only: past that, the rotation can't predict anything
         // and the server would skip the extra provider call anyway.
-        inbound: Date.parse(journey!.scheduledDeparture) > now,
+        inbound: inboundUnlocked,
       }),
     enabled: isLookupable,
     staleTime: 5 * 60 * 1000,
@@ -304,6 +316,7 @@ export function JourneyDetail({
           }
         />
 
+        {isLookupable && upcoming && proLocked && <InboundTeaserCard />}
         {status.data && (() => {
           const outlook = inboundOutlook(status.data);
           return outlook ? <InboundCard outlook={outlook} /> : null;
@@ -620,6 +633,33 @@ function InboundCard({ outlook }: { outlook: InboundOutlook }) {
         </ThemedText>
       )}
     </Card>
+  );
+}
+
+/** The free user's stand-in for InboundCard: the same slot, the same
+ * question, and the Pro pitch at the one moment it's concrete — a flight of
+ * theirs is about to depart. The paywall closes back here; useProLocked
+ * flips and the real card takes over. */
+function InboundTeaserCard() {
+  const router = useRouter();
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Unlock the inbound-aircraft prediction with Pro"
+      onPress={() => router.push('/paywall')}
+      style={({ pressed }) => pressed && { opacity: 0.85 }}>
+      <Card testID="inbound-teaser">
+        <ThemedText type="subtitle">Where&apos;s your plane?</ThemedText>
+        <ThemedText type="small">
+          Pro shows where your aircraft is right now and whether departure will slip — and
+          warns you before the airline updates the board.
+        </ThemedText>
+        <ThemedText type="smallBold" style={{ color: theme.tint }}>
+          See Pro →
+        </ThemedText>
+      </Card>
+    </Pressable>
   );
 }
 

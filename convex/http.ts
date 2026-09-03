@@ -66,4 +66,58 @@ http.route({
   }),
 });
 
+/**
+ * RevenueCat webhook receiver — mirrors the 'Owed Pro' entitlement into the
+ * entitlements table so server-enforced limits (free circle size) can check
+ * it. Configure in RevenueCat (Integrations → Webhooks) pointing at
+ * https://<deployment>.convex.site/rc-webhook with an Authorization header
+ * value, and set that same value as REVENUECAT_WEBHOOK_AUTH on the
+ * deployment. RC retries non-2xx responses, so a misconfigured secret shows
+ * up as a growing retry queue in their dashboard rather than silent loss.
+ */
+http.route({
+  path: '/rc-webhook',
+  method: 'POST',
+  handler: httpAction(async (ctx, request) => {
+    const secret = process.env.REVENUECAT_WEBHOOK_AUTH;
+    if (!secret) return new Response('webhook not configured', { status: 503 });
+    if (request.headers.get('authorization') !== secret) {
+      return new Response('unauthorized', { status: 401 });
+    }
+
+    let event: {
+      type?: string;
+      app_user_id?: string;
+      aliases?: string[] | null;
+      entitlement_ids?: string[] | null;
+      expiration_at_ms?: number | null;
+      transferred_from?: string[] | null;
+      transferred_to?: string[] | null;
+    };
+    try {
+      event = (await request.json()).event ?? {};
+    } catch {
+      return new Response('invalid json', { status: 400 });
+    }
+    if (typeof event.type !== 'string' || typeof event.app_user_id !== 'string') {
+      // TEST pings from the dashboard have both; anything else is noise.
+      return new Response(null, { status: 200 });
+    }
+
+    const touched = await ctx.runMutation(internal.entitlements.applyRevenueCatEvent, {
+      event: {
+        type: event.type,
+        app_user_id: event.app_user_id,
+        aliases: event.aliases ?? null,
+        entitlement_ids: event.entitlement_ids ?? null,
+        expiration_at_ms: event.expiration_at_ms ?? null,
+        transferred_from: event.transferred_from ?? null,
+        transferred_to: event.transferred_to ?? null,
+      },
+    });
+    console.log(`[rc-webhook] ${event.type} ${event.app_user_id}: ${touched} row(s)`);
+    return new Response(null, { status: 200 });
+  }),
+});
+
 export default http;

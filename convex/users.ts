@@ -70,6 +70,12 @@ export const purge = internalMutation({
       .unique();
     if (profile) await ctx.db.delete(profile._id);
 
+    const entitlement = await ctx.db
+      .query('entitlements')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique();
+    if (entitlement) await ctx.db.delete(entitlement._id);
+
     return rows.length;
   },
 });

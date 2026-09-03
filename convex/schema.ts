@@ -147,4 +147,19 @@ export default defineSchema({
     imageUrl: v.union(v.string(), v.null()),
     updatedAt: v.string(),
   }).index('by_user', ['userId']),
+
+  /** Server-side mirror of the RevenueCat 'Owed Pro' entitlement, fed by the
+   * RC webhook (http.ts /rc-webhook) — the client's SDK state can't be
+   * trusted for server-enforced limits like the free circle size. One row per
+   * RC app_user_id (Clerk ids and RC anonymous ids alike, since RC events
+   * list every alias). */
+  entitlements: defineTable({
+    userId: v.string(),
+    /** ISO instant Pro lapses; null = never had it or revoked. Lifetime
+     * purchases store a far-future date. */
+    proUntil: v.union(v.string(), v.null()),
+    /** Last RC event type that touched this row, for debugging. */
+    source: v.string(),
+    updatedAt: v.string(),
+  }).index('by_user', ['userId']),
 });

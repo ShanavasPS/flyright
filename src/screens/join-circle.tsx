@@ -1,5 +1,6 @@
 import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
+import { ConvexError } from 'convex/values';
 import { Observe } from 'expo-observe';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -7,6 +8,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
+import { CIRCLE_FULL } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
@@ -18,6 +20,7 @@ import { STORE_URLS } from '@/constants/store-links';
 import { trackEvent } from '@/services/analytics';
 import { INVITE_URL } from '@/services/circle';
 import { requestPushPermission } from '@/services/notifications';
+import { useProLocked } from '@/services/purchases';
 
 const APP_STORE_ID = STORE_URLS.ios.match(/id(\d+)/)?.[1] ?? '';
 
@@ -32,6 +35,10 @@ export function JoinCircle({ token }: { token: string }) {
   const shareBack = useMutation(api.circle.shareBack);
   const [busy, setBusy] = useState(false);
   const [joined, setJoined] = useState<{ ownerId: string; sharingBack: boolean } | null>(null);
+  // Owner hit the free cap between minting the link and this tap — the
+  // reactive query normally catches it first (invite.full).
+  const [ownerFull, setOwnerFull] = useState(false);
+  const proLocked = useProLocked();
 
   // Back to the People tab, wherever this page was pushed from.
   const done = () => router.replace('/(tabs)/(people)/people');
@@ -49,8 +56,9 @@ export function JoinCircle({ token }: { token: string }) {
       await requestPushPermission();
       setJoined(result);
       if (result.sharingBack) done();
-    } catch {
-      // Expired mid-view; the reactive query flips to gone.
+    } catch (e) {
+      if (e instanceof ConvexError && e.data === CIRCLE_FULL) setOwnerFull(true);
+      // Otherwise expired mid-view; the reactive query flips to gone.
     } finally {
       setBusy(false);
     }
@@ -62,8 +70,15 @@ export function JoinCircle({ token }: { token: string }) {
     try {
       await shareBack({ userId: joined.ownerId });
       trackEvent('circle_shared_back');
-    } catch {
-      // Already severed on their side — nothing to share back to.
+    } catch (e) {
+      // My own circle is at the free cap. Offer Pro; the paywall lands on
+      // People either way, which is where `done` was heading.
+      if (e instanceof ConvexError && e.data === CIRCLE_FULL && proLocked) {
+        setBusy(false);
+        router.replace({ pathname: '/paywall', params: { next: '/people' } });
+        return;
+      }
+      // Otherwise already severed on their side — nothing to share back to.
     } finally {
       setBusy(false);
       done();
@@ -145,6 +160,17 @@ export function JoinCircle({ token }: { token: string }) {
         <>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             You already follow {name}&apos;s trips.
+          </ThemedText>
+          <PrimaryButton label="Open People" onPress={done} />
+        </>
+      );
+    } else if (invite.full || ownerFull) {
+      // The owner's problem to solve, not the invitee's — no upsell here.
+      action = (
+        <>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+            {name}&apos;s circle is full for now. Free accounts share with one person; {name} can
+            add more people with FlyRight Pro.
           </ThemedText>
           <PrimaryButton label="Open People" onPress={done} />
         </>

@@ -125,6 +125,23 @@ export const useActiveSubscriptions = () =>
  */
 export const billingAvailable = !IS_GALAXY_BUILD;
 
+/**
+ * Whether a Pro-only feature is locked for this user right now. Pro gates
+ * three things: filing a real claim, the inbound-aircraft prediction (with
+ * its early-warning push) and a circle bigger than FREE_CIRCLE_SIZE. Builds
+ * that can't sell Pro never lock anything — a paywall nobody can pass is
+ * worse than giving the feature away.
+ */
+export const useProLocked = () => {
+  const pro = useHasPro();
+  return billingAvailable && !pro;
+};
+
+/** Imperative twin of useProLocked, for background work (flight-watch). */
+export async function proLocked(): Promise<boolean> {
+  return billingAvailable && !(await hasPro());
+}
+
 export function initPurchases() {
   if (Platform.OS === 'web') return; // web build is informational; no billing
   if (!billingAvailable) return; // Galaxy Store build ships without billing

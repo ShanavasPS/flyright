@@ -1,5 +1,6 @@
 import { useAuth, useUser } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
+import { ConvexError } from 'convex/values';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
+import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
@@ -36,6 +38,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { shareInvite } from '@/services/circle-share';
 import { formatDayLabel } from '@/services/dates';
+import { useProLocked } from '@/services/purchases';
 import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
 
 type CircleList = NonNullable<ReturnType<typeof useQuery<typeof api.circle.list>>>;
@@ -49,11 +52,13 @@ const LIVE_GREEN = '#2FD68C';
 
 /** Mint an invite link and hand it to the share sheet — the only way into
  * someone's circle. Signed-out users go through sign-in first: followers
- * are addressed by Clerk id. */
-function useInvite() {
+ * are addressed by Clerk id. A free account at FREE_CIRCLE_SIZE followers
+ * goes to the paywall instead — the server refuses the link anyway. */
+function useInvite(full: boolean) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { user } = useUser();
+  const proLocked = useProLocked();
   const createInvite = useMutation(api.circle.createInvite);
   const [busy, setBusy] = useState(false);
 
@@ -62,13 +67,27 @@ function useInvite() {
       router.push({ pathname: '/sign-in', params: { next: '/people' } });
       return;
     }
+    if (full && proLocked) {
+      router.push({ pathname: '/paywall', params: { next: '/people' } });
+      return;
+    }
     setBusy(true);
     try {
       const { token } = await createInvite({});
       Observe.logEvent('circle.invited');
       await shareInvite(token, user?.firstName);
-    } catch {
-      // Offline — the button stays, retry works.
+    } catch (e) {
+      // The SDK says Pro but the webhook mirror hasn't caught up yet (or a
+      // build that can't sell Pro is at the cap) — say so rather than spin.
+      if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
+        Alert.alert(
+          'Your circle is full',
+          proLocked
+            ? `Free accounts share with ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`}. Pro lets your whole family follow.`
+            : 'Your Pro purchase is still syncing — try again in a moment.',
+        );
+      }
+      // Otherwise offline — the button stays, retry works.
     } finally {
       setBusy(false);
     }
@@ -91,7 +110,8 @@ function circleEyebrow(data: CircleList | null | undefined): string {
 export function People() {
   const { isSignedIn } = useAuth();
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
-  const { invite, busy } = useInvite();
+  const { invite, busy } = useInvite(!!data?.full);
+  const proLocked = useProLocked();
 
   let body: React.ReactNode;
   if (!isSignedIn) {
@@ -138,7 +158,7 @@ export function People() {
         {data.followers.map((p) => (
           <FollowerRow key={p.userId} person={p} />
         ))}
-        <InviteRow busy={busy} onInvite={invite} />
+        <InviteRow busy={busy} locked={data.full && proLocked} onInvite={invite} />
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           People you share with see your upcoming flights and get updates on travel day. Remove
           anyone at any time.
@@ -457,23 +477,42 @@ function FollowerRow({ person }: { person: Follower }) {
   );
 }
 
-/** Dashed "add another" row closing the list. */
-function InviteRow({ busy, onInvite }: { busy: boolean; onInvite: () => void }) {
+/** Dashed "add another" row closing the list. `locked` is the free cap:
+ * same row, Pro pitch, and the tap opens the paywall (see useInvite). */
+function InviteRow({
+  busy,
+  locked,
+  onInvite,
+}: {
+  busy: boolean;
+  locked: boolean;
+  onInvite: () => void;
+}) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       disabled={busy}
       onPress={onInvite}
+      testID={locked ? 'invite-row-locked' : 'invite-row'}
       style={({ pressed }) => pressed && styles.pressed}>
       <View style={[styles.rowCard, styles.inviteRow, { borderColor: `${theme.tint}66` }]}>
-        <IconBadge symbol={{ ios: 'plus', android: 'add', web: 'add' }} size={44} />
+        <IconBadge
+          symbol={
+            locked
+              ? { ios: 'lock.fill', android: 'lock', web: 'lock' }
+              : { ios: 'plus', android: 'add', web: 'add' }
+          }
+          size={44}
+        />
         <View style={styles.rowBody}>
           <ThemedText type="smallBold" style={{ color: theme.tint }}>
-            Invite someone
+            {locked ? 'Add your whole family with Pro' : 'Invite someone'}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            Share a link — it works for 7 days
+            {locked
+              ? `Free includes ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`} — Pro has no limit`
+              : 'Share a link — it works for 7 days'}
           </ThemedText>
         </View>
       </View>

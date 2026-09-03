@@ -5,6 +5,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
+import { EntitlementSync } from "@/components/entitlement-sync";
 import { ProfileSync } from "@/components/profile-sync";
 import { TravelDaySync } from "@/components/travel-day-sync";
 import { CONVEX_URL } from "@/constants/config";
@@ -87,6 +88,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
       <JourneySync />
       <TravelDaySync />
       <ProfileSync />
+      <EntitlementSync />
       {children}
     </ConvexProviderWithClerk>
   );

@@ -9,6 +9,7 @@ import { lookupFlight } from '@/services/flight-lookup';
 import { inboundNewsworthy, inboundOutlook } from '@/services/inbound';
 import { toDomainJourney } from '@/services/journeys';
 import { maybeNotifyDelay, maybeNotifyInbound } from '@/services/notification-lifecycle';
+import { proLocked } from '@/services/purchases';
 import { noteFlightFacts, reconcileTravelDay } from '@/services/travel-day-lifecycle';
 
 /**
@@ -69,13 +70,17 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
     );
   });
 
+  // The inbound prediction and its early-warning push are Pro; skipping the
+  // extra provider call for free users is what keeps the feature cheap.
+  const inboundUnlocked = watched.length > 0 && !(await proLocked());
+
   for (const row of watched) {
     try {
       // Pre-departure, also resolve the inbound rotation — where the plane
       // is right now often predicts a delay before the airline announces it.
       const upcoming = Date.parse(row.scheduledDeparture) > now.getTime();
       const status = await lookupFlight(row.number, row.scheduledDeparture.slice(0, 10), {
-        inbound: upcoming,
+        inbound: upcoming && inboundUnlocked,
       });
       await noteFlightFacts(row.id, status);
       const outlook = upcoming ? inboundOutlook(status) : null;

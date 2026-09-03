@@ -1,6 +1,8 @@
-import { v } from 'convex/values';
+import { ConvexError, v } from 'convex/values';
 
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from './circleShared';
+import { isPro } from './entitlements';
 import {
   armHeadsUpsForOwner,
   circleMembers,
@@ -30,6 +32,14 @@ async function person(ctx: QueryCtx | MutationCtx, userId: string) {
   return { userId, name: profile?.name ?? 'A traveler', imageUrl: profile?.imageUrl ?? null };
 }
 
+/** Free accounts share with FREE_CIRCLE_SIZE people; Pro is unlimited. The
+ * SDK-side entitlement never reaches here — only the webhook mirror counts,
+ * so a fresh purchase gates until RC's event lands (seconds, normally). */
+async function circleFull(ctx: QueryCtx | MutationCtx, ownerId: string) {
+  const members = await circleMembers(ctx, ownerId);
+  return members.length >= FREE_CIRCLE_SIZE && !(await isPro(ctx, ownerId));
+}
+
 function inviteUsable(invite: { uses: number; expiresAt: string } | null) {
   return (
     !!invite && invite.uses < INVITE_MAX_USES && Date.parse(invite.expiresAt) > Date.now()
@@ -41,6 +51,7 @@ export const createInvite = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
+    if (await circleFull(ctx, identity.subject)) throw new ConvexError(CIRCLE_FULL);
     const existing = await ctx.db
       .query('circleInvites')
       .withIndex('by_owner', (q) => q.eq('ownerId', identity.subject))
@@ -87,7 +98,10 @@ export const inviteByToken = query({
         .unique();
       if (row) relation = 'member';
     }
-    return { ownerName: owner.name, ownerImageUrl: owner.imageUrl, relation };
+    // A link minted before the owner hit the free cap (or before a lapse)
+    // still resolves — the page says the circle is full instead of 404ing.
+    const full = relation === 'none' && (await circleFull(ctx, invite!.ownerId));
+    return { ownerName: owner.name, ownerImageUrl: owner.imageUrl, relation, full };
   },
 });
 
@@ -97,6 +111,7 @@ async function join(ctx: MutationCtx, ownerId: string, memberId: string) {
     .withIndex('by_owner_member', (q) => q.eq('ownerId', ownerId).eq('memberId', memberId))
     .unique();
   if (!existing) {
+    if (await circleFull(ctx, ownerId)) throw new ConvexError(CIRCLE_FULL);
     await ctx.db.insert('circle', {
       ownerId,
       memberId,
@@ -261,6 +276,8 @@ export const list = query({
 
     following.sort((a, b) => (a.live ? 0 : 1) - (b.live ? 0 : 1) || a.name.localeCompare(b.name));
     followers.sort((a, b) => a.name.localeCompare(b.name));
-    return { following, followers };
+    // Server truth for the cap — the client's SDK entitlement can lead it
+    // (purchase just made) but never the other way round.
+    return { following, followers, full: await circleFull(ctx, me) };
   },
 });
