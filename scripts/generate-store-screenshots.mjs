@@ -1,7 +1,10 @@
 /**
- * Frames raw simulator captures (store-assets/raw/*.png, 1206×2622) into
- * store-ready marketing screenshots on the brand's night-sky gradient, plus
- * the Play Store icon and feature graphic. Run after re-capturing raws:
+ * Frames raw device captures into store-ready marketing screenshots on the
+ * brand's night-sky gradient, plus the Play Store icon and feature graphic.
+ * Each store gets its own device: the App Store set is framed in an iPhone
+ * (store-assets/raw/*.png, iPhone 17 sim, 1206×2622) and the Play set in a
+ * Pixel (store-assets/raw/pixel/*.png, Pixel 9a emulator, 1080×2424) so the
+ * Play listing never shows a Dynamic Island. Run after re-capturing raws:
  *   node scripts/generate-store-screenshots.mjs
  *
  * Outputs: store-assets/* (Play) and store/apple/screenshot/en-US/* (pushed
@@ -52,8 +55,12 @@ const SHOTS = [
   },
 ];
 
-const RAW_W = 1206;
-const RAW_H = 2622;
+/** Raw capture geometry + bezel proportions per device mockup. */
+const DEVICES = {
+  iphone: { rawDir: 'store-assets/raw', rawW: 1206, rawH: 2622, bezel: 0.03, radius: 0.14 },
+  // Pixel 9a: slimmer bezel, tighter corners, centred punch-hole camera.
+  pixel: { rawDir: 'store-assets/raw/pixel', rawW: 1080, rawH: 2424, bezel: 0.022, radius: 0.1, punchHole: true },
+};
 
 const bgDefs = `
   <linearGradient id="bg" x1="0" y1="1" x2="0.85" y2="0">
@@ -75,7 +82,8 @@ const routeArcs = (W, H) => `
     stroke-width="${W * 0.006}" stroke-dasharray="${W * 0.0008} ${W * 0.02}" stroke-linecap="round"/>`;
 
 /** One framed screenshot: caption on top, device mockup below. */
-async function frame({ W, H, raw, headline, sub, out }) {
+async function frame({ W, H, raw, headline, sub, out, device }) {
+  const { rawDir, rawW: RAW_W, rawH: RAW_H, punchHole } = DEVICES[device];
   const headSize = Math.round(W * 0.055);
   const subSize = Math.round(W * 0.028);
   const headY = Math.round(H * 0.062);
@@ -90,12 +98,12 @@ async function frame({ W, H, raw, headline, sub, out }) {
     shotW = Math.round(W * 0.82);
     shotH = Math.round((shotW * RAW_H) / RAW_W);
   }
-  const bezel = Math.round(shotW * 0.03);
+  const bezel = Math.round(shotW * DEVICES[device].bezel);
   const devW = shotW + bezel * 2;
   const devH = shotH + bezel * 2;
   const devX = Math.round((W - devW) / 2);
   const devY = Math.round(captionBottom + (areaH - devH) / 2 + H * 0.01);
-  const devR = Math.round(shotW * 0.14);
+  const devR = Math.round(shotW * DEVICES[device].radius);
   const shotR = devR - bezel;
 
   const base = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
@@ -116,7 +124,7 @@ async function frame({ W, H, raw, headline, sub, out }) {
       fill="#0A1424" filter="url(#devShadow)"/>
   </svg>`);
 
-  const screenshot = await sharp(`store-assets/raw/${raw}`)
+  const screenshot = await sharp(`${rawDir}/${raw}`)
     .resize(shotW, shotH)
     .composite([
       {
@@ -129,10 +137,21 @@ async function frame({ W, H, raw, headline, sub, out }) {
     .png()
     .toBuffer();
 
-  await sharp(base)
-    .composite([{ input: screenshot, left: devX + bezel, top: devY + bezel }])
-    .png()
-    .toFile(out);
+  const layers = [{ input: screenshot, left: devX + bezel, top: devY + bezel }];
+  if (punchHole) {
+    // Camera sits in the status bar, level with the clock.
+    const r = Math.round(shotW * 0.02);
+    const cy = Math.round(shotH * 0.024);
+    layers.push({
+      input: Buffer.from(
+        `<svg width="${shotW}" height="${shotH}"><circle cx="${shotW / 2}" cy="${cy}" r="${r}" fill="#0A1424"/></svg>`,
+      ),
+      left: devX + bezel,
+      top: devY + bezel,
+    });
+  }
+
+  await sharp(base).composite(layers).png().toFile(out);
   console.log('wrote', out);
 }
 
@@ -170,15 +189,15 @@ async function featureGraphic(out) {
 }
 
 const TARGETS = [
-  { dir: 'store-assets', prefix: 'appstore-65', W: 1284, H: 2778 },
-  { dir: 'store-assets', prefix: 'phone', W: 1080, H: 1920 },
-  { dir: 'store-assets', prefix: 'tablet7', W: 1600, H: 2560 },
-  { dir: 'store-assets', prefix: 'tablet10', W: 2048, H: 2732 },
+  { dir: 'store-assets', prefix: 'appstore-65', W: 1284, H: 2778, device: 'iphone' },
+  { dir: 'store-assets', prefix: 'phone', W: 1080, H: 1920, device: 'pixel' },
+  { dir: 'store-assets', prefix: 'tablet7', W: 1600, H: 2560, device: 'pixel' },
+  { dir: 'store-assets', prefix: 'tablet10', W: 2048, H: 2732, device: 'pixel' },
 ];
 
-for (const { dir, prefix, W, H } of TARGETS) {
+for (const { dir, prefix, W, H, device } of TARGETS) {
   for (const [i, shot] of SHOTS.entries()) {
-    await frame({ W, H, ...shot, out: `${dir}/${prefix}-0${i + 1}.png` });
+    await frame({ W, H, device, ...shot, out: `${dir}/${prefix}-0${i + 1}.png` });
   }
 }
 
