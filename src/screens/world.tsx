@@ -7,7 +7,7 @@ import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline, type Region } fro
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
-import { airlineCode } from '@/components/airline-logo';
+import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { AirportMarker, PlaneMarker, alphaHex } from '@/components/map-layers';
 import { ThemedText } from '@/components/themed-text';
 import { mapColors } from '@/components/world-map';
@@ -24,6 +24,7 @@ import {
   routePlane,
   type GeoRoute,
   type LatLng,
+  type RouteLeg,
   type RoutePlane,
 } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
@@ -34,7 +35,7 @@ import {
   learnZoomFloor,
   regionFor,
 } from '@/services/map-region';
-import { travelRecap } from '@/services/timeline';
+import { cityOf, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 
 /** Overlay heights below the safe areas, for `mapPadding`. Header: eyebrow
@@ -418,8 +419,20 @@ export function World() {
   );
 }
 
+/** "AY1331 · Finnair"; just the number when the carrier is only its IATA code
+ * (lookup rows store the code); the carrier alone for entries without one. */
+function legLabel(leg: RouteLeg): string {
+  const carrier = leg.carrier.trim();
+  if (!leg.number) return carrier;
+  if (!carrier || carrier.toUpperCase() === airlineCode(leg.number)) return leg.number;
+  return `${leg.number} · ${carrier}`;
+}
+
 /** Detail card for a tapped plane, docked where the stats card sits: the
- * pair, its distance, and every journey on it as a row into the journey. */
+ * pair read the way the plane flies, cities and distance, then every flight
+ * on it as a row into the journey — airline logo, number, when. The codes
+ * repeat on the rows only when the pair has been flown both ways, since
+ * that's the one case a row's direction isn't the header's. */
 function RouteCard({
   route,
   plane,
@@ -440,6 +453,14 @@ function RouteCard({
       ? b.scheduledDeparture.localeCompare(a.scheduledDeparture)
       : a.scheduledDeparture.localeCompare(b.scheduledDeparture);
   });
+  const bothWays = legs.some((leg) => leg.from.iata !== from.iata);
+  const summary = [
+    `${cityOf(from.iata)} → ${cityOf(to.iata)}`,
+    `${km.toLocaleString()} km`,
+    legs.length > 1 ? `${legs.length} flights` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <Card style={styles.routeCard}>
       <View style={styles.routeHeader}>
@@ -448,7 +469,7 @@ function RouteCard({
             {from.iata} → {to.iata}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {km.toLocaleString()} km · {from.city} → {to.city}
+            {summary}
           </ThemedText>
         </View>
         <Pressable
@@ -482,21 +503,19 @@ function RouteCard({
             <Pressable
               accessibilityRole="button"
               style={StyleSheet.flatten([styles.leg, { borderTopColor: theme.hairline }])}>
+              <AirlineLogo number={leg.number} carrier={leg.carrier} size={32} />
               <View style={styles.legCopy}>
                 <ThemedText type="smallBold" numberOfLines={1}>
-                  {leg.from.iata} → {leg.to.iata} · {leg.number}
+                  {legLabel(leg)}
                 </ThemedText>
                 <ThemedText
                   type="small"
                   themeColor={leg.flown ? 'textSecondary' : 'tint'}
                   numberOfLines={1}>
+                  {bothWays ? `${leg.from.iata} → ${leg.to.iata} · ` : ''}
                   {leg.flown
-                    ? formatDayLabelWithYear(leg.scheduledDeparture)
+                    ? `Flown · ${formatDayLabelWithYear(leg.scheduledDeparture)}`
                     : `Upcoming · ${formatDayLabel(leg.scheduledDeparture)}`}
-                  {/* Lookup rows store the carrier as its IATA code — already in the number. */}
-                  {leg.carrier && leg.carrier.toUpperCase() !== airlineCode(leg.number)
-                    ? ` · ${leg.carrier}`
-                    : ''}
                 </ThemedText>
               </View>
               <SymbolView
@@ -718,7 +737,7 @@ const styles = StyleSheet.create({
   leg: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two + Spacing.half,
     paddingVertical: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
     minHeight: 52,
