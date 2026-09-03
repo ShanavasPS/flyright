@@ -1,5 +1,5 @@
 # World tab: the tab renders, the map screen shows its header, and the empty
-# state's "Add a flight" CTA opens the add-flight flow. Deterministic via
+# state's "Add flight" CTA opens the add-flight flow. Deterministic via
 # clearState (empty journal → empty-state card), same pattern as smoke.yaml.
 #
 # The route arcs are native map polylines (react-native-maps; Apple/Google
@@ -30,6 +30,19 @@ appId: com.shanavasshaji.flyright
     permissions:
       notifications: allow
 - openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# First launch also raises the ATT prompt (simctl can't pre-grant it); clear
+# it when it shows so it doesn't sit over onboarding.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
 # clearState makes this a first launch, so the onboarding intro shows first.
 # The first Metro download after a state wipe can sit on the splash well past
 # 30s (same as the other flows).
@@ -42,11 +55,11 @@ appId: com.shanavasshaji.flyright
     timeout: 30000
 - openLink: "flyright://world"
 - extendedWaitUntil:
-    visible: "Everywhere your journeys have taken you"
+    visible: "Everywhere you've been"
     timeout: 15000
 # Empty journal → the empty-state card with its add-flight CTA.
 - assertVisible: "Your world map awaits"
-- tapOn: "Add a flight"
+- tapOn: "Add flight"
 - extendedWaitUntil:
     visible: "Add Flight"
     timeout: 10000

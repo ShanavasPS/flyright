@@ -10,33 +10,43 @@ import MapView, {
   Polyline,
   type Region,
 } from 'react-native-maps';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { buildWorldRoutes, type LatLng } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
 import { travelRecap } from '@/services/timeline';
 
+/** Latitude cap for fitting. Polar great-circle apexes reach ~85°, which in
+ * Mercator is nearly the top of the world — fitting them forces a zoom that
+ * shows almost no longitude. Capping here lets a polar arc leave the top of
+ * the screen instead, which reads fine. */
+const MAX_LAT = 75;
+/** Longitude padding factor so endpoints sit clear of the screen edges. */
+const LON_PAD = 1.3;
+const toMercator = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+const fromMercator = (y: number) => ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
+
 /** Region containing every coordinate, wraparound-aware. The camera is set
  * from this instead of `fitToCoordinates` because antimeridian-split routes
  * defeat a naive bounding box (their ±180° endpoints make it span the whole
  * world and the SDKs then pick an arbitrary window). The longitude window is
  * the complement of the largest empty gap between route samples — the
- * standard fix for bounds on a circle. With no coordinates it falls back to
- * a whole-world view. The 1.4/1.3 factors pad the fit clear of the header
- * and the stats card. */
-function regionFor(coords: LatLng[]): Region {
+ * standard fix for bounds on a circle.
+ *
+ * Both SDKs have a zoom-out floor (MapKit's camera-altitude ceiling shows
+ * ~89° of longitude on an iPhone; Google's min zoom is similar), so a
+ * far-flung set of routes can't all fit. Rather than let the SDK pick an
+ * arbitrary window, anything wider than `maxLonSpan` gets the window holding
+ * the most route samples — the user's densest region — and the recenter
+ * button/panning covers the rest. Latitude is padded in Mercator space and
+ * clamped inside MAX_LAT. */
+function regionFor(coords: LatLng[], airportLons: number[], maxLonSpan: number): Region {
   if (!coords.length) return { latitude: 30, longitude: 0, latitudeDelta: 100, longitudeDelta: 120 };
-  let minLat = 90;
-  let maxLat = -90;
-  for (const c of coords) {
-    minLat = Math.min(minLat, c.latitude);
-    maxLat = Math.max(maxLat, c.latitude);
-  }
   const lons = coords.map((c) => c.longitude).sort((a, b) => a - b);
   let gapStart = lons[lons.length - 1];
   let gapSize = lons[0] + 360 - gapStart;
@@ -47,19 +57,68 @@ function regionFor(coords: LatLng[]): Region {
       gapStart = lons[i - 1];
     }
   }
-  const lonSpan = 360 - gapSize;
-  const rawCenter = gapStart + gapSize + lonSpan / 2;
-  // Clamped hard: MKMapView throws NSException on longitudeDelta > 360 or a
-  // span poking past the poles.
-  const latitudeDelta = Math.min(120, Math.max(6, (maxLat - minLat) * 1.4));
-  const maxCenterLat = 85 - latitudeDelta / 2;
+  let lonSpan = 360 - gapSize;
+  let lonStart = gapStart + gapSize;
+  let lonDelta = Math.min(359, Math.max(6, lonSpan * LON_PAD));
+  let visible = coords;
+
+  if (lonDelta > maxLonSpan) {
+    // At the floor the SDK shows exactly maxLonSpan, so use all of it: slide
+    // a window that wide around the circle and keep the start holding the
+    // most airports (arc samples would let one long haul outvote a cluster),
+    // then centre the airports it caught within it.
+    const width = maxLonSpan;
+    const anchors = (airportLons.length ? [...airportLons] : lons).sort((a, b) => a - b);
+    const doubled = [...anchors, ...anchors.map((l) => l + 360)];
+    let best = 0;
+    let bestStart = anchors[0];
+    let bestEnd = anchors[0];
+    let j = 0;
+    for (let i = 0; i < anchors.length; i += 1) {
+      while (j < doubled.length && doubled[j] <= anchors[i] + width) j += 1;
+      if (j - i > best) {
+        best = j - i;
+        bestStart = anchors[i];
+        bestEnd = doubled[j - 1];
+      }
+    }
+    lonStart = bestStart - (width - (bestEnd - bestStart)) / 2;
+    lonSpan = width;
+    lonDelta = width;
+    visible = coords.filter((c) => (((c.longitude - lonStart) % 360) + 360) % 360 <= width);
+  }
+
+  let yMin = toMercator(MAX_LAT);
+  let yMax = toMercator(-MAX_LAT);
+  for (const c of visible) {
+    const y = toMercator(Math.min(MAX_LAT, Math.max(-MAX_LAT, c.latitude)));
+    yMin = Math.min(yMin, y);
+    yMax = Math.max(yMax, y);
+  }
+  const yPad = Math.max(0.05, (yMax - yMin) * 0.12);
+  const yTop = Math.min(toMercator(MAX_LAT), yMax + yPad);
+  const yBottom = Math.max(toMercator(-MAX_LAT), yMin - yPad);
+
+  // Both SDKs turn a region back into bounds as latitude ± latitudeDelta/2 in
+  // plain degrees, so the centre is the degree midpoint, not the Mercator one.
+  const latTop = fromMercator(yTop);
+  const latBottom = fromMercator(yBottom);
+  const rawCenter = lonStart + lonSpan / 2;
   return {
-    latitude: Math.min(maxCenterLat, Math.max(-maxCenterLat, (minLat + maxLat) / 2)),
+    latitude: (latTop + latBottom) / 2,
     longitude: ((rawCenter % 360) + 540) % 360 - 180,
-    latitudeDelta,
-    longitudeDelta: Math.min(359, Math.max(6, lonSpan * 1.3)),
+    latitudeDelta: Math.max(4, latTop - latBottom),
+    longitudeDelta: lonDelta,
   };
 }
+
+let zoomFloorLon = 359;
+
+/** Overlay heights below the safe areas, for `mapPadding`. Header: eyebrow
+ * (16) + gap (2) + title (41) + vertical padding (8 + 16). Card: numerals
+ * (28) + label (20) + vertical padding (32). */
+const HEADER_HEIGHT = 83;
+const STATS_CARD_HEIGHT = 80;
 
 /** Google's night-mode base palette, plus POI/transit clutter removal (the
  * clutter rules also apply in light mode — this is a travel map, not a city
@@ -100,6 +159,7 @@ export function World() {
   const [now] = useState(() => new Date());
   const data = useMemo(() => buildWorldRoutes(journeys ?? [], now), [journeys, now]);
   const recap = useMemo(() => travelRecap(journeys ?? []), [journeys]);
+  const airportLons = useMemo(() => data.airports.map((a) => a.lon), [data]);
 
   const mapRef = useRef<MapView>(null);
   // True once the user pans/zooms away from the fitted view; new flights
@@ -110,17 +170,43 @@ export function World() {
   const fitting = useRef(false);
   const fitted = useRef<Region | null>(null);
 
+  // The SDK's zoom-out floor in degrees of longitude — see regionFor. Learned
+  // from the first fit the SDK narrows (it grants exactly the floor), kept
+  // for the session so later mounts open on the right window straight away.
+  const [maxLonSpan, setMaxLonSpan] = useState(zoomFloorLon);
+  const requested = useRef<Region | null>(null);
+
   const fit = (animated: boolean) => {
     if (!data.fitCoords.length) return;
     fitting.current = true;
-    mapRef.current?.animateToRegion(regionFor(data.fitCoords), animated ? 600 : 0);
+    requested.current = regionFor(data.fitCoords, airportLons, maxLonSpan);
+    mapRef.current?.animateToRegion(requested.current, animated ? 600 : 0);
   };
 
   const [ready, setReady] = useState(false);
+
+  // The header fade and the stats card cover the map's top and bottom. Their
+  // heights are derived, not measured: a padding that changes after the first
+  // fit makes Google Maps re-seat the camera and shift the fitted view, and
+  // the shift then reads as a user pan. Fits centre in the strip between them
+  // and the SDK's legal label sits above the card.
+  const insets = useSafeAreaInsets();
+  // iOS: the map runs under the tab bar (iOS 26 glass) or ends at it (iOS 18),
+  // and insets.bottom reflects whichever — use it. Android: the native tab
+  // bar already sits above the system bar and the screen ends at the tab
+  // bar, yet insets.bottom still reports the system bar; adding it would
+  // float the card a nav-bar height too high.
+  const footerInset = (Platform.OS === 'ios' ? insets.bottom : 0) + Spacing.three;
+  const mapPadding = {
+    top: insets.top + HEADER_HEIGHT,
+    bottom: footerInset + STATS_CARD_HEIGHT,
+    left: 0,
+    right: 0,
+  };
   useEffect(() => {
     if (ready && !moved) fit(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on new data only
-  }, [ready, data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on new data or view size only
+  }, [ready, data, maxLonSpan]);
 
   const empty = journeys != null && data.routes.length === 0;
 
@@ -130,14 +216,22 @@ export function World() {
         ref={mapRef}
         style={styles.map}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-        initialRegion={regionFor(data.fitCoords)}
+        initialRegion={regionFor(data.fitCoords, airportLons, maxLonSpan)}
         onMapReady={() => setReady(true)}
+        // Gated on ready: the Android bridge calls GoogleMap.setPadding on a
+        // null map if the prop changes between layout and onMapReady.
+        mapPadding={ready ? mapPadding : undefined}
         onRegionChangeComplete={(region, details) => {
           if (fitting.current) {
             // The settle of our own animateToRegion — record what the SDK
             // actually granted (it clamps extreme spans) as the baseline.
             fitting.current = false;
             fitted.current = region;
+            const asked = requested.current?.longitudeDelta ?? 0;
+            if (region.longitudeDelta < asked * 0.9 && region.longitudeDelta < maxLonSpan) {
+              zoomFloorLon = region.longitudeDelta;
+              setMaxLonSpan(region.longitudeDelta);
+            }
             return;
           }
           if (details?.isGesture) {
@@ -189,13 +283,22 @@ export function World() {
       </MapView>
 
       <SafeAreaView style={styles.overlay} edges={['top']} pointerEvents="box-none">
+        <View
+          pointerEvents="none"
+          style={[
+            styles.fade,
+            {
+              experimental_backgroundImage: `linear-gradient(180deg, ${theme.background} 0%, ${theme.background}D9 45%, ${theme.background}00 100%)`,
+            },
+          ]}
+        />
         <View style={styles.header} pointerEvents="box-none">
-          <View pointerEvents="none">
+          <View style={styles.titleBlock} pointerEvents="none">
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
+              Everywhere you&apos;ve been
+            </ThemedText>
             <ThemedText type="title" themeColor="heading">
               World
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Everywhere your journeys have taken you
             </ThemedText>
           </View>
           {moved && (
@@ -209,7 +312,9 @@ export function World() {
         </View>
       </SafeAreaView>
 
-      <SafeAreaView style={styles.footer} edges={['bottom']} pointerEvents="box-none">
+      <View
+        style={[styles.footer, { paddingBottom: footerInset }]}
+        pointerEvents="box-none">
         {empty ? (
           <EmptyCard />
         ) : recap.trips > 0 ? (
@@ -220,7 +325,7 @@ export function World() {
             <Stat value={recap.totalKm} label="km" />
           </Card>
         ) : null}
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -228,7 +333,7 @@ export function World() {
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <View style={styles.stat}>
-      <ThemedText type="smallBold" themeColor="heading">
+      <ThemedText themeColor="heading" style={styles.statValue}>
         {value.toLocaleString()}
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
@@ -238,23 +343,27 @@ function Stat({ value, label }: { value: number; label: string }) {
   );
 }
 
+/** Same footprint as the stats card (see STATS_CARD_HEIGHT), so one
+ * `mapPadding` serves both states. */
 function EmptyCard() {
   const theme = useTheme();
   return (
     <Card style={styles.emptyCard}>
-      <ThemedText type="subtitle" themeColor="heading">
-        Your world map awaits
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.emptyCopy}>
-        Add a flight — past or future — and watch its route draw itself across the map.
-      </ThemedText>
+      <View style={styles.emptyCopy}>
+        <ThemedText themeColor="heading" style={styles.emptyTitle}>
+          Your world map awaits
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          Every route you log, drawn here.
+        </ThemedText>
+      </View>
       <Link href="/add-flight" asChild>
         {/* Link's asChild Slot rejects array styles — keep this one flat. */}
         <Pressable
           accessibilityRole="button"
           style={StyleSheet.flatten([styles.emptyButton, { backgroundColor: theme.tint }])}>
           <ThemedText type="smallBold" style={styles.emptyButtonLabel}>
-            Add a flight
+            Add flight
           </ThemedText>
         </Pressable>
       </Link>
@@ -309,17 +418,35 @@ const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
     top: 0,
-    bottom: 0,
     left: 0,
     right: 0,
   },
+  fade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    // Runs past the header so the fade tails off over open map, not text.
+    bottom: -Spacing.six,
+  },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    gap: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
+    gap: Spacing.three,
+  },
+  titleBlock: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  eyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   recenter: {
     width: 40,
@@ -340,31 +467,43 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: 'center',
+    paddingHorizontal: Spacing.three,
   },
   stats: {
     flexDirection: 'row',
-    gap: Spacing.four,
+    alignSelf: 'stretch',
+    maxWidth: 480,
     paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    marginBottom: BottomTabInset + Spacing.three,
-    borderRadius: Spacing.five,
+    paddingHorizontal: Spacing.two,
   },
   stat: {
+    flex: 1,
     alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 700,
   },
   emptyCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: Spacing.five,
-    marginBottom: BottomTabInset + Spacing.five,
-    maxWidth: 340,
+    alignSelf: 'stretch',
+    maxWidth: 480,
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
   },
   emptyCopy: {
-    textAlign: 'center',
+    flex: 1,
+    gap: Spacing.half,
+  },
+  emptyTitle: {
+    fontWeight: 700,
   },
   emptyButton: {
-    marginTop: Spacing.two,
     paddingVertical: Spacing.two + Spacing.half,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     borderRadius: Spacing.five,
   },
   emptyButtonLabel: {

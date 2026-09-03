@@ -17,7 +17,7 @@ appId: com.shanavasshaji.flyright
     timeout: 90000
 - openLink: "flyright://world"
 - extendedWaitUntil:
-    visible: "Everywhere your journeys have taken you"
+    visible: "Everywhere you've been"
     timeout: 15000
 # Two double-taps = two native zoom-in steps (same recognizer family as
 # pinch, which Maestro can't synthesize).

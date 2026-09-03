@@ -6,6 +6,19 @@ appId: com.shanavasshaji.flyright
 - launchApp:
     clearState: true # deterministic: the journeys DB starts empty
 - openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# First launch also raises the ATT prompt (simctl can't pre-grant it); clear
+# it when it shows so it doesn't sit over onboarding.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
 # A cleared state means a first launch, so the onboarding intro covers the
 # tabs — its render doubles as the boot check before Skip reveals the journal.
 - extendedWaitUntil:
