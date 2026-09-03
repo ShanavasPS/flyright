@@ -1,8 +1,8 @@
 import { useAuth } from '@clerk/expo';
-import { Link } from 'expo-router';
+import { Link, useIsFocused } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import MapView, {
   Marker,
   PROVIDER_DEFAULT,
@@ -11,13 +11,25 @@ import MapView, {
   type Region,
 } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { buildWorldRoutes, type LatLng } from '@/services/geo';
+import { formatDayLabel, formatDayLabelWithYear } from '@/services/dates';
+import {
+  COMET_LENGTH,
+  buildWorldRoutes,
+  cometSegments,
+  haversineKm,
+  nearestRoute,
+  routePlane,
+  type GeoRoute,
+  type LatLng,
+  type RoutePlane,
+} from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
 import { travelRecap } from '@/services/timeline';
 
@@ -120,6 +132,22 @@ let zoomFloorLon = 359;
 const HEADER_HEIGHT = 83;
 const STATS_CARD_HEIGHT = 80;
 
+/** Upcoming routes draw faint and let the travelling comet carry the colour;
+ * two hex digits of alpha appended to the theme tint. */
+const UPCOMING_ALPHA = '59';
+/** Animation clock tick — comets and the pulse both update at this rate. Each
+ * tick re-sends a handful of short polylines over the bridge, so 30 fps is
+ * plenty and far cheaper than 60. */
+const TICK_MS = 33;
+/** One comet pass, origin to clear of the destination, in ms. Longer arcs get
+ * a little longer so the light doesn't race across a long haul. */
+const cometPeriod = (samples: number) => Math.min(5200, 2400 + samples * 12);
+const PULSE_PERIOD_MS = 1400;
+/** How close, in screen points, a tap must land to a route to select it. */
+const ROUTE_TAP_TOLERANCE = 22;
+/** Offset of the probe point used to measure the map's local scale. */
+const SCALE_PROBE_PT = 50;
+
 /** Google's night-mode base palette, plus POI/transit clutter removal (the
  * clutter rules also apply in light mode — this is a travel map, not a city
  * guide). Apple Maps ignores this and follows `userInterfaceStyle` instead. */
@@ -145,9 +173,12 @@ const GOOGLE_NIGHT = [
 ];
 
 /** Your travels on a real map — Apple Maps on iOS, Google Maps on Android —
- * with every route flown drawn as a great-circle arc between its origin and
- * destination (solid once flown, dashed while still ahead). Pan/zoom is the
- * map SDK's own. */
+ * with every route drawn as a great-circle arc between its origin and
+ * destination. Flown routes are solid with a plane mid-arc showing the way
+ * the latest leg flew; upcoming ones are faint with a light running toward
+ * the destination and a pulsing plane waiting by the origin. Tapping a plane
+ * docks the route's journeys where the stats card sits. Pan/zoom is the map
+ * SDK's own. */
 export function World() {
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
@@ -184,6 +215,33 @@ export function World() {
   };
 
   const [ready, setReady] = useState(false);
+  const mapSize = useRef({ width: 0, height: 0 });
+
+  /** Select whichever route the tap landed on, or clear. The map's degrees-
+   * per-point scale is measured live from two probe points at the view centre
+   * (`coordinateForPoint`, so mapPadding can't skew it), with latitude
+   * corrected to the tap's Mercator stretch. */
+  const selectAt = async (tap: LatLng) => {
+    const map = mapRef.current;
+    const { width, height } = mapSize.current;
+    if (!map || !width) return setSelectedKey(null);
+    try {
+      const centre = { x: width / 2, y: height / 2 };
+      const [c0, c1] = await Promise.all([
+        map.coordinateForPoint(centre),
+        map.coordinateForPoint({ x: centre.x + SCALE_PROBE_PT, y: centre.y + SCALE_PROBE_PT }),
+      ]);
+      const toRad = Math.PI / 180;
+      const stretch = Math.cos(tap.latitude * toRad) / Math.cos(c0.latitude * toRad);
+      const scale = {
+        lon: Math.abs(c1.longitude - c0.longitude) / SCALE_PROBE_PT,
+        lat: (Math.abs(c1.latitude - c0.latitude) / SCALE_PROBE_PT) * stretch,
+      };
+      setSelectedKey(nearestRoute(data.routes, tap, scale, ROUTE_TAP_TOLERANCE));
+    } catch {
+      setSelectedKey(null);
+    }
+  };
 
   // The header fade and the stats card cover the map's top and bottom. Their
   // heights are derived, not measured: a padding that changes after the first
@@ -209,6 +267,63 @@ export function World() {
   }, [ready, data, maxLonSpan]);
 
   const empty = journeys != null && data.routes.length === 0;
+
+  // One plane per route; direction comes from the journeys (see routePlane).
+  const planes = useMemo(
+    () => data.routes.map((route) => ({ route, plane: routePlane(route) })),
+    [data],
+  );
+  const upcoming = useMemo(() => planes.filter(({ plane }) => plane.upcoming), [planes]);
+
+  // Tapping a plane docks a detail card in the stats card's slot; tapping the
+  // map or its close button brings the stats back.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const selected = planes.find(({ route }) => route.key === selectedKey) ?? null;
+
+  // Animation clock for the comets and the pulsing undeparted planes. Runs
+  // only while there is something to animate and the tab is on screen in a
+  // foregrounded app — background polyline updates would burn battery for
+  // nobody. Comets are derived from the clock, never accumulated, so pauses
+  // resume seamlessly.
+  const focused = useIsFocused();
+  const [clock, setClock] = useState(0);
+  useEffect(() => {
+    if (!focused || !upcoming.length) return;
+    let active = AppState.currentState === 'active';
+    let last = 0;
+    let frame = 0;
+    const tick = (t: number) => {
+      if (active && t - last >= TICK_MS) {
+        last = t;
+        setClock(t);
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    const appState = AppState.addEventListener('change', (state) => {
+      active = state === 'active';
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      appState.remove();
+    };
+  }, [focused, upcoming.length]);
+
+  const comets = useMemo(
+    () =>
+      upcoming.map(({ route, plane }, i) => {
+        const samples = route.segments.reduce((n, segment) => n + segment.length, 0);
+        const period = cometPeriod(samples);
+        // Stagger passes so several upcoming routes don't move in lockstep.
+        const head = (((clock + i * 700) % period) / period) * (1 + COMET_LENGTH);
+        return { key: route.key, segments: cometSegments(route.segments, plane.forward, head) };
+      }),
+    [upcoming, clock],
+  );
+  // Soft pulse between 35% and 100%, driven by the same clock so it pauses
+  // with it. Marker opacity is a native prop — no view re-snapshot per frame.
+  const pulse =
+    Math.round((0.675 + 0.325 * Math.sin((clock / PULSE_PERIOD_MS) * 2 * Math.PI)) * 100) / 100;
 
   return (
     <View style={styles.flex}>
@@ -250,6 +365,13 @@ export function World() {
             setMoved(true);
           }
         }}
+        onLayout={(e) => {
+          mapSize.current = e.nativeEvent.layout;
+        }}
+        onPress={(e) => {
+          // Android reports marker taps here too, tagged — leave those to the marker.
+          if (e.nativeEvent.action !== 'marker-press') void selectAt(e.nativeEvent.coordinate);
+        }}
         customMapStyle={dark ? GOOGLE_NIGHT : CLUTTER_OFF}
         userInterfaceStyle={dark ? 'dark' : 'light'}
         showsPointsOfInterests={false}
@@ -262,13 +384,34 @@ export function World() {
             <Polyline
               key={`${route.key}-${i}`}
               coordinates={coordinates}
-              strokeColor={theme.tint}
-              strokeWidth={2.5 + Math.min(route.count - 1, 4) * 0.5}
+              strokeColor={route.upcomingOnly ? `${theme.tint}${UPCOMING_ALPHA}` : theme.tint}
+              strokeWidth={
+                2.5 + Math.min(route.count - 1, 4) * 0.5 + (route.key === selectedKey ? 1.5 : 0)
+              }
               lineCap="round"
-              lineDashPattern={route.upcomingOnly ? [10, 8] : undefined}
             />
           )),
         )}
+        {comets.map(({ key, segments }) =>
+          segments.map((points, i) => (
+            <Polyline
+              key={`comet-${key}-${i}`}
+              coordinates={points}
+              strokeColor={theme.tint}
+              strokeColors={points.map((p) => `${theme.tint}${alphaHex(p.alpha ?? 1)}`)}
+              strokeWidth={3.5}
+              lineCap="round"
+            />
+          )),
+        )}
+        {planes.map(({ route, plane }) => (
+          <PlaneMarker
+            key={route.key}
+            plane={plane}
+            opacity={plane.upcoming ? pulse : 1}
+            onPress={() => setSelectedKey(route.key)}
+          />
+        ))}
         {data.airports.map((airport) => (
           <Marker
             key={airport.iata}
@@ -317,6 +460,12 @@ export function World() {
         pointerEvents="box-none">
         {empty ? (
           <EmptyCard />
+        ) : selected ? (
+          <RouteCard
+            route={selected.route}
+            plane={selected.plane}
+            onClose={() => setSelectedKey(null)}
+          />
         ) : recap.trips > 0 ? (
           <Card style={styles.stats}>
             <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
@@ -327,6 +476,168 @@ export function World() {
         ) : null}
       </View>
     </View>
+  );
+}
+
+/** 0–1 → two hex digits, for appending alpha to a #RRGGBB colour. */
+function alphaHex(alpha: number): string {
+  return Math.round(Math.min(1, Math.max(0, alpha)) * 255)
+    .toString(16)
+    .padStart(2, '0');
+}
+
+/** Material "flight" glyph, nose up, in a 24×24 box. */
+const PLANE_PATH =
+  'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z';
+
+/** Same glyph as a bitmap, for Android — see scripts/generate-plane-marker.mjs. */
+const PLANE_IMAGE = {
+  light: require('../../assets/images/plane-marker-light.png'),
+  dark: require('../../assets/images/plane-marker-dark.png'),
+};
+
+/** The plane on a route, nose along the direction of travel, in a
+ * transparent 40pt frame that serves as the tap target.
+ *
+ * Android gets a ready bitmap plus the marker's native `rotation`: Google
+ * Maps snapshots a custom marker view once, before react-native-svg has
+ * drawn, which left a blank or clipped icon. Apple Maps ignores `rotation`,
+ * so iOS keeps the live SVG and rotates the view itself; the heading is
+ * baked into the key so a changed heading re-snapshots. */
+function PlaneMarker({
+  plane,
+  opacity,
+  onPress,
+}: {
+  plane: RoutePlane;
+  opacity: number;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const dark = useColorScheme() === 'dark';
+  const heading = Math.round(plane.heading);
+  if (Platform.OS === 'android') {
+    return (
+      <Marker
+        coordinate={plane.coordinate}
+        image={dark ? PLANE_IMAGE.dark : PLANE_IMAGE.light}
+        rotation={heading}
+        flat
+        anchor={{ x: 0.5, y: 0.5 }}
+        opacity={opacity}
+        onPress={onPress}
+        tracksViewChanges={false}
+        zIndex={2}
+      />
+    );
+  }
+  return (
+    <Marker
+      key={`${plane.leg.id}-${heading}`}
+      coordinate={plane.coordinate}
+      anchor={{ x: 0.5, y: 0.5 }}
+      opacity={opacity}
+      onPress={onPress}
+      tracksViewChanges={false}
+      zIndex={2}>
+      <View style={styles.planeFrame}>
+        <Svg
+          width={22}
+          height={22}
+          viewBox="0 0 24 24"
+          style={{ transform: [{ rotate: `${heading}deg` }] }}>
+          {/* White halo so the glyph separates from the line and both map schemes. */}
+          <Path d={PLANE_PATH} stroke="#FFFFFF" strokeWidth={3} strokeLinejoin="round" fill="none" />
+          <Path d={PLANE_PATH} fill={theme.tint} />
+        </Svg>
+      </View>
+    </Marker>
+  );
+}
+
+/** Detail card for a tapped plane, docked where the stats card sits: the
+ * pair, its distance, and every journey on it as a row into the journey. */
+function RouteCard({
+  route,
+  plane,
+  onClose,
+}: {
+  route: GeoRoute;
+  plane: RoutePlane;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  // Read the pair in the direction the plane flies.
+  const [from, to] = plane.forward ? [route.from, route.to] : [route.to, route.from];
+  const km = haversineKm(from.lat, from.lon, to.lat, to.lon);
+  // Upcoming first (soonest at the top), then flown, most recent first.
+  const legs = [...route.legs].sort((a, b) => {
+    if (a.flown !== b.flown) return a.flown ? 1 : -1;
+    return a.flown
+      ? b.scheduledDeparture.localeCompare(a.scheduledDeparture)
+      : a.scheduledDeparture.localeCompare(b.scheduledDeparture);
+  });
+  return (
+    <Card style={styles.routeCard}>
+      <View style={styles.routeHeader}>
+        <View style={styles.routeTitle}>
+          <ThemedText themeColor="heading" style={styles.routeCodes}>
+            {from.iata} → {to.iata}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {km.toLocaleString()} km · {from.city} → {to.city}
+          </ThemedText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          hitSlop={8}
+          onPress={onClose}
+          style={[styles.closeButton, { backgroundColor: theme.field }]}>
+          <SymbolView
+            name={{ ios: 'xmark', android: 'close', web: 'close' }}
+            size={14}
+            weight="bold"
+            tintColor={theme.textSecondary}
+          />
+        </Pressable>
+      </View>
+      <ScrollView
+        style={styles.legs}
+        contentContainerStyle={styles.legsContent}
+        bounces={false}
+        showsVerticalScrollIndicator={legs.length > 3}>
+        {legs.map((leg) => (
+          <Link key={leg.id} href={{ pathname: '/journey/[id]', params: { id: leg.id } }} asChild>
+            {/* Link's asChild Slot rejects array styles — keep this one flat. */}
+            <Pressable
+              accessibilityRole="button"
+              style={StyleSheet.flatten([styles.leg, { borderTopColor: theme.hairline }])}>
+              <View style={styles.legCopy}>
+                <ThemedText type="smallBold" numberOfLines={1}>
+                  {leg.from.iata} → {leg.to.iata} · {leg.number}
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  themeColor={leg.flown ? 'textSecondary' : 'tint'}
+                  numberOfLines={1}>
+                  {leg.flown
+                    ? formatDayLabelWithYear(leg.scheduledDeparture)
+                    : `Upcoming · ${formatDayLabel(leg.scheduledDeparture)}`}
+                  {leg.carrier ? ` · ${leg.carrier}` : ''}
+                </ThemedText>
+              </View>
+              <SymbolView
+                name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+                size={14}
+                weight="semibold"
+                tintColor={theme.textSecondary}
+              />
+            </Pressable>
+          </Link>
+        ))}
+      </ScrollView>
+    </Card>
   );
 }
 
@@ -468,6 +779,60 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
+  },
+  planeFrame: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeCard: {
+    alignSelf: 'stretch',
+    maxWidth: 480,
+    gap: 0,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
+  },
+  routeHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  routeTitle: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  routeCodes: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: 700,
+  },
+  closeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legs: {
+    // Three rows before it scrolls, so a busy pair never swallows the map.
+    maxHeight: 3 * 52,
+  },
+  legsContent: {
+    flexGrow: 0,
+  },
+  leg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    minHeight: 52,
+  },
+  legCopy: {
+    flex: 1,
+    gap: Spacing.half,
   },
   stats: {
     flexDirection: 'row',

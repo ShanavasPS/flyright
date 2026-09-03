@@ -94,31 +94,109 @@ export interface LatLng {
   longitude: number;
 }
 
+/** Initial compass bearing from `a` to `b` in degrees clockwise from north.
+ * Mercator is conformal, so this is also the on-screen angle of the arc. */
+export function bearing(a: LatLng, b: LatLng): number {
+  const φ1 = toRad(a.latitude);
+  const φ2 = toRad(b.latitude);
+  const Δλ = toRad(b.longitude - a.longitude);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+/** A polyline point with an optional per-point alpha (0–1) for gradient strokes. */
+export interface ShadedLatLng extends LatLng {
+  alpha?: number;
+}
+
+/** Split a sequence of coordinates wherever it wraps the antimeridian, so no
+ * segment draws the long way around the globe. Each side ends exactly at
+ * ±180°, with latitude (and alpha) interpolated to the edge. */
+export function splitAtAntimeridian<T extends ShadedLatLng>(points: T[]): T[][] {
+  const segments: T[][] = [[]];
+  for (let i = 0; i < points.length; i += 1) {
+    const point = points[i];
+    if (i > 0) {
+      const prev = points[i - 1];
+      if (Math.abs(point.longitude - prev.longitude) > 180) {
+        // Interpolate the ±180° crossing so both segments reach the edge.
+        const unwrapped = point.longitude + (point.longitude < prev.longitude ? 360 : -360);
+        const t = (180 * Math.sign(prev.longitude) - prev.longitude) / (unwrapped - prev.longitude);
+        const latitude = prev.latitude + (point.latitude - prev.latitude) * t;
+        const alpha =
+          prev.alpha != null && point.alpha != null
+            ? prev.alpha + (point.alpha - prev.alpha) * t
+            : undefined;
+        segments[segments.length - 1].push({
+          ...prev,
+          latitude,
+          longitude: 180 * Math.sign(prev.longitude),
+          alpha,
+        });
+        segments.push([{ ...point, latitude, longitude: 180 * Math.sign(point.longitude), alpha }]);
+      }
+    }
+    segments[segments.length - 1].push(point);
+  }
+  return segments.filter((segment) => segment.length > 1);
+}
+
 /** Great-circle arc as map-SDK polyline coordinates. Usually one segment;
  * arcs that wrap the antimeridian (LAX–NRT) split into two, each ending
  * exactly at ±180° so neither polyline draws the long way around the globe. */
 export function arcCoordinates(from: Airport, to: Airport): LatLng[][] {
-  const samples = greatCircle(from.lat, from.lon, to.lat, to.lon);
-  const segments: LatLng[][] = [[]];
-  for (let i = 0; i < samples.length; i += 1) {
-    const [lat, lon] = samples[i];
-    if (i > 0) {
-      const [prevLat, prevLon] = samples[i - 1];
-      if (Math.abs(lon - prevLon) > 180) {
-        // Interpolate the ±180° crossing so both segments reach the edge.
-        const unwrapped = lon + (lon < prevLon ? 360 : -360);
-        const t = (180 * Math.sign(prevLon) - prevLon) / (unwrapped - prevLon);
-        const latAtEdge = prevLat + (lat - prevLat) * t;
-        segments[segments.length - 1].push({
-          latitude: latAtEdge,
-          longitude: 180 * Math.sign(prevLon),
-        });
-        segments.push([{ latitude: latAtEdge, longitude: 180 * Math.sign(lon) }]);
-      }
+  return splitAtAntimeridian(
+    greatCircle(from.lat, from.lon, to.lat, to.lon).map(([latitude, longitude]) => ({
+      latitude,
+      longitude,
+    })),
+  );
+}
+
+/** The arc's raw samples in drawing order, undoing the antimeridian split
+ * (the two edge points collapse back into one hop). Samples are evenly spaced
+ * in angle, so a fractional index is a fraction of the arc. */
+function arcSamples(segments: LatLng[][]): LatLng[] {
+  const samples: LatLng[] = [];
+  for (const segment of segments) {
+    for (const point of segment) {
+      const prev = samples[samples.length - 1];
+      if (prev && prev.latitude === point.latitude && Math.abs(prev.longitude) === 180) continue;
+      samples.push(point);
     }
-    segments[segments.length - 1].push({ latitude: lat, longitude: lon });
   }
-  return segments.filter((points) => points.length > 1);
+  return samples;
+}
+
+/** Whether two consecutive samples straddle the antimeridian — linear
+ * interpolation between them would cross the whole map. */
+const wraps = (a: LatLng, b: LatLng) => Math.abs(a.longitude - b.longitude) > 180;
+
+/** The point a fraction `t` (0–1) along the samples, plus the arc's heading
+ * there. Between a wrapping pair the point snaps to the nearer sample. */
+function alongSamples(samples: LatLng[], t: number): { coordinate: LatLng; heading: number } {
+  const last = samples.length - 1;
+  const position = Math.min(Math.max(t, 0), 1) * last;
+  const i = Math.min(Math.floor(position), last - 1);
+  const f = position - i;
+  const a = samples[i];
+  const b = samples[i + 1];
+  const coordinate = wraps(a, b)
+    ? f < 0.5
+      ? a
+      : b
+    : {
+        latitude: a.latitude + (b.latitude - a.latitude) * f,
+        longitude: a.longitude + (b.longitude - a.longitude) * f,
+      };
+  return { coordinate, heading: bearing(a, b) };
+}
+
+/** Where along an arc a fraction `t` (0 = `from`, 1 = `to`) falls, and the
+ * direction of travel there. Used to place and rotate route planes. */
+export function pointAlong(segments: LatLng[][], t: number): { coordinate: LatLng; heading: number } {
+  return alongSamples(arcSamples(segments), t);
 }
 
 /** `arcCoordinates` projected into the SVG world map (the web fallback). */
@@ -135,6 +213,18 @@ export function arcPaths(from: Airport, to: Airport): string[] {
   );
 }
 
+/** One journey on a route pair, as the World tab's detail card lists it. */
+export interface RouteLeg {
+  id: string;
+  from: Airport;
+  to: Airport;
+  number: string;
+  carrier: string;
+  scheduledDeparture: string;
+  /** Departure is in the past. */
+  flown: boolean;
+}
+
 export interface GeoRoute {
   /** Direction-insensitive pair key, e.g. "DXB-LAX". */
   key: string;
@@ -144,9 +234,134 @@ export interface GeoRoute {
   to: Airport;
   /** How many journeys fly this pair (either direction). */
   count: number;
-  /** True when every journey on the pair is still ahead — drawn dashed. */
+  /** True when every journey on the pair is still ahead — drawn animated. */
   upcomingOnly: boolean;
   segments: LatLng[][];
+  /** Every journey on the pair, earliest departure first. */
+  legs: RouteLeg[];
+}
+
+/** The plane glyph drawn on a route: its position, heading and which leg it
+ * stands for. */
+export interface RoutePlane {
+  coordinate: LatLng;
+  /** Compass heading, degrees clockwise from north. */
+  heading: number;
+  /** A departure still ahead — the plane waits by its origin and pulses. */
+  upcoming: boolean;
+  /** The leg the plane represents: the next one to fly, else the latest flown. */
+  leg: RouteLeg;
+  /** True when `leg` flies from `route.from` to `route.to` (the arc's sample
+   * order); false when it flies the pair the other way. */
+  forward: boolean;
+}
+
+/** How far along the arc an undeparted plane waits: about ORIGIN_OFFSET_KM
+ * out, so it reads as "not left yet" without hiding the airport dot, and
+ * several departures from one hub fan out by heading instead of stacking.
+ * Clamped to a fraction of the arc so a long haul's plane still hugs its
+ * origin and a short hop's isn't pushed to the midpoint. */
+const ORIGIN_OFFSET_KM = 250;
+const ORIGIN_OFFSET_MIN = 0.07;
+const ORIGIN_OFFSET_MAX = 0.3;
+
+function originOffset(route: GeoRoute): number {
+  const km = haversineKm(route.from.lat, route.from.lon, route.to.lat, route.to.lon);
+  return Math.min(ORIGIN_OFFSET_MAX, Math.max(ORIGIN_OFFSET_MIN, ORIGIN_OFFSET_KM / km));
+}
+
+/** Where the route's plane sits. Direction comes from the journeys, not the
+ * (undirected) pair: the next upcoming leg wins, else the most recent one. */
+export function routePlane(route: GeoRoute): RoutePlane {
+  const next = route.legs.find((leg) => !leg.flown);
+  const leg = next ?? route.legs[route.legs.length - 1];
+  const forward = leg.from.iata === route.from.iata;
+  const t = next ? originOffset(route) : 0.5;
+  const { coordinate, heading } = pointAlong(route.segments, forward ? t : 1 - t);
+  return {
+    coordinate,
+    heading: forward ? heading : (heading + 180) % 360,
+    upcoming: next != null,
+    leg,
+    forward,
+  };
+}
+
+/** Local map scale at a tap: degrees of longitude / latitude per screen point,
+ * the latitude figure taken at the tap's own latitude (Mercator stretches it
+ * poleward). */
+export interface DegreesPerPoint {
+  lon: number;
+  lat: number;
+}
+
+/** The route whose arc passes within `tolerance` screen points of `tap`, or
+ * null. Distances are point-to-segment in a locally flat screen space, which
+ * is exact enough within a fingertip. Neither map SDK gives reliable overlay
+ * taps (Google needs a fat stroke, Apple needs `tappable` plumbing), so the
+ * screen hit-tests routes itself from the map's tap event. */
+export function nearestRoute(
+  routes: GeoRoute[],
+  tap: LatLng,
+  scale: DegreesPerPoint,
+  tolerance: number,
+): string | null {
+  const toPoint = (c: LatLng) => {
+    const dLon = ((c.longitude - tap.longitude + 540) % 360) - 180;
+    return { x: dLon / scale.lon, y: (c.latitude - tap.latitude) / scale.lat };
+  };
+  let best: string | null = null;
+  let bestDistance = tolerance;
+  for (const route of routes) {
+    for (const segment of route.segments) {
+      let a = toPoint(segment[0]);
+      for (let i = 1; i < segment.length; i += 1) {
+        const b = toPoint(segment[i]);
+        const abx = b.x - a.x;
+        const aby = b.y - a.y;
+        const lengthSq = abx * abx + aby * aby;
+        // Projection of the tap (the origin) onto ab, clamped to the segment.
+        const t = lengthSq ? Math.min(1, Math.max(0, -(a.x * abx + a.y * aby) / lengthSq)) : 0;
+        const px = a.x + abx * t;
+        const py = a.y + aby * t;
+        const distance = Math.hypot(px, py);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = route.key;
+        }
+        a = b;
+      }
+    }
+  }
+  return best;
+}
+
+/** Fraction of the arc the travelling highlight spans. */
+export const COMET_LENGTH = 0.28;
+
+/** The bright "comet" that runs along an upcoming route toward its
+ * destination: the stretch of arc from `head - COMET_LENGTH` to `head`, both
+ * fractions of the arc in the leg's direction of travel. `head` runs from 0
+ * to 1 + COMET_LENGTH so the tail clears the destination before the next
+ * pass. Each point carries an alpha ramping 0 at the tail to 1 at the head;
+ * antimeridian-wrapping stretches come back split. */
+export function cometSegments(segments: LatLng[][], forward: boolean, head: number): ShadedLatLng[][] {
+  const samples = arcSamples(segments);
+  if (!forward) samples.reverse();
+  const last = samples.length - 1;
+  const t0 = Math.max(0, head - COMET_LENGTH);
+  const t1 = Math.min(1, head);
+  if (t1 - t0 < 0.005) return [];
+
+  const alphaAt = (t: number) => (t - (head - COMET_LENGTH)) / COMET_LENGTH;
+  const points: ShadedLatLng[] = [{ ...alongSamples(samples, t0).coordinate, alpha: alphaAt(t0) }];
+  const first = Math.floor(t0 * last) + 1;
+  const stop = Math.ceil(t1 * last) - 1;
+  for (let i = first; i <= stop; i += 1) {
+    points.push({ ...samples[i], alpha: alphaAt(i / last) });
+  }
+  points.push({ ...alongSamples(samples, t1).coordinate, alpha: alphaAt(t1) });
+  return splitAtAntimeridian(points);
 }
 
 export interface GeoAirport extends Airport {
@@ -183,21 +398,34 @@ export function buildWorldRoutes(rows: JourneyRow[], now: Date): WorldRoutesData
       else airports.set(airport.iata, { ...airport, count: 1 });
     }
 
+    const leg: RouteLeg = {
+      id: row.id,
+      from,
+      to,
+      number: row.number,
+      carrier: row.carrier,
+      scheduledDeparture: row.scheduledDeparture,
+      flown,
+    };
     const key = [from.iata, to.iata].sort().join('-');
     const route = routes.get(key);
     if (route) {
       route.count += 1;
       route.upcomingOnly = route.upcomingOnly && !flown;
+      route.legs.push(leg);
     } else {
       const segments = arcCoordinates(from, to);
       for (const segment of segments) {
         for (let i = 0; i < segment.length; i += 4) fitCoords.push(segment[i]);
         fitCoords.push(segment[segment.length - 1]);
       }
-      routes.set(key, { key, from, to, count: 1, upcomingOnly: !flown, segments });
+      routes.set(key, { key, from, to, count: 1, upcomingOnly: !flown, segments, legs: [leg] });
     }
   }
 
+  for (const route of routes.values()) {
+    route.legs.sort((a, b) => a.scheduledDeparture.localeCompare(b.scheduledDeparture));
+  }
   return { routes: [...routes.values()], airports: [...airports.values()], fitCoords };
 }
 

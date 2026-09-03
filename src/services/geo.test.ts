@@ -3,12 +3,18 @@ import {
   WORLD,
   arcCoordinates,
   arcPaths,
+  bearing,
   buildWorldMap,
   buildWorldRoutes,
+  COMET_LENGTH,
+  cometSegments,
   fitViewBox,
   greatCircle,
   haversineKm,
+  nearestRoute,
+  pointAlong,
   project,
+  routePlane,
 } from '@/services/geo';
 import type { JourneyRow } from '@/services/journeys';
 
@@ -135,6 +141,176 @@ describe('buildWorldRoutes', () => {
     const { fitCoords } = buildWorldRoutes([row({})], NOW);
     // The DXB–LAX great circle bows far north of either endpoint.
     expect(Math.max(...fitCoords.map((c) => c.latitude))).toBeGreaterThan(60);
+  });
+});
+
+describe('bearing', () => {
+  it('points the compass directions', () => {
+    const origin = { latitude: 0, longitude: 0 };
+    expect(bearing(origin, { latitude: 10, longitude: 0 })).toBeCloseTo(0);
+    expect(bearing(origin, { latitude: 0, longitude: 10 })).toBeCloseTo(90);
+    expect(bearing(origin, { latitude: -10, longitude: 0 })).toBeCloseTo(180);
+    expect(bearing(origin, { latitude: 0, longitude: -10 })).toBeCloseTo(270);
+  });
+
+  it('crosses the antimeridian the short way', () => {
+    expect(bearing({ latitude: 0, longitude: 179 }, { latitude: 0, longitude: -179 })).toBeCloseTo(90);
+  });
+});
+
+describe('pointAlong', () => {
+  const hel = getAirport('HEL')!;
+  const fra = getAirport('FRA')!;
+  const segments = arcCoordinates(hel, fra);
+
+  it('returns the endpoints at 0 and 1', () => {
+    expect(pointAlong(segments, 0).coordinate.latitude).toBeCloseTo(hel.lat, 3);
+    expect(pointAlong(segments, 1).coordinate.longitude).toBeCloseTo(fra.lon, 3);
+  });
+
+  it('heads south-west from Helsinki toward Frankfurt', () => {
+    const { heading } = pointAlong(segments, 0);
+    expect(heading).toBeGreaterThan(200);
+    expect(heading).toBeLessThan(260);
+  });
+
+  it('interpolates between samples', () => {
+    const mid = pointAlong(segments, 0.5).coordinate;
+    expect(mid.latitude).toBeLessThan(hel.lat);
+    expect(mid.latitude).toBeGreaterThan(fra.lat);
+  });
+
+  it('follows a transpacific arc across the split without a wild jump', () => {
+    const lax = getAirport('LAX')!;
+    const nrt = getAirport('NRT')!;
+    const split = arcCoordinates(lax, nrt);
+    let prev = pointAlong(split, 0).coordinate;
+    for (let t = 0.02; t <= 1; t += 0.02) {
+      const next = pointAlong(split, t).coordinate;
+      const dLon = Math.abs(next.longitude - prev.longitude);
+      expect(Math.min(dLon, 360 - dLon)).toBeLessThan(6);
+      prev = next;
+    }
+  });
+});
+
+describe('routePlane', () => {
+  it('waits just off the origin of the next upcoming leg, heading out', () => {
+    const { routes } = buildWorldRoutes(
+      [
+        row({ id: 'a', fromCode: 'HEL', toCode: 'FRA', scheduledDeparture: '2026-01-01T08:00:00Z' }),
+        row({ id: 'b', fromCode: 'FRA', toCode: 'HEL', scheduledDeparture: '2026-12-01T08:00:00Z' }),
+      ],
+      NOW,
+    );
+    const plane = routePlane(routes[0]);
+    const fra = getAirport('FRA')!;
+    expect(plane.upcoming).toBe(true);
+    expect(plane.leg.id).toBe('b');
+    expect(plane.forward).toBe(false);
+    // Close to Frankfurt, nudged toward Helsinki (north-east).
+    expect(Math.abs(plane.coordinate.latitude - fra.lat)).toBeLessThan(2);
+    expect(plane.coordinate.latitude).toBeGreaterThan(fra.lat);
+    expect(plane.heading).toBeGreaterThan(20);
+    expect(plane.heading).toBeLessThan(80);
+  });
+
+  it('sits mid-arc on a flown route, heading the way the latest leg flew', () => {
+    const { routes } = buildWorldRoutes(
+      [
+        row({ id: 'a', fromCode: 'HEL', toCode: 'FRA', scheduledDeparture: '2026-01-01T08:00:00Z' }),
+        row({ id: 'b', fromCode: 'FRA', toCode: 'HEL', scheduledDeparture: '2026-02-01T08:00:00Z' }),
+      ],
+      NOW,
+    );
+    const plane = routePlane(routes[0]);
+    expect(plane.upcoming).toBe(false);
+    expect(plane.leg.id).toBe('b');
+    expect(plane.heading).toBeGreaterThan(20);
+    expect(plane.heading).toBeLessThan(80);
+    const mid = pointAlong(routes[0].segments, 0.5).coordinate;
+    expect(plane.coordinate.latitude).toBeCloseTo(mid.latitude, 5);
+  });
+});
+
+describe('cometSegments', () => {
+  const segments = arcCoordinates(getAirport('HEL')!, getAirport('FRA')!);
+
+  it('is empty before the head has left the origin', () => {
+    expect(cometSegments(segments, true, 0)).toEqual([]);
+  });
+
+  it('fades from the tail to a fully lit head', () => {
+    const [points] = cometSegments(segments, true, 0.6);
+    expect(points[0].alpha).toBeCloseTo(0);
+    expect(points[points.length - 1].alpha).toBeCloseTo(1);
+    for (let i = 1; i < points.length; i += 1) {
+      expect(points[i].alpha!).toBeGreaterThanOrEqual(points[i - 1].alpha!);
+    }
+  });
+
+  it('runs out through the destination', () => {
+    const [points] = cometSegments(segments, true, 1 + COMET_LENGTH * 0.5);
+    const fra = getAirport('FRA')!;
+    expect(points[points.length - 1].longitude).toBeCloseTo(fra.lon, 3);
+    expect(points[points.length - 1].alpha).toBeCloseTo(0.5);
+  });
+
+  it('reverses direction for a backwards leg', () => {
+    // Backwards = FRA → HEL, so an early comet starts by Frankfurt heading north.
+    const [points] = cometSegments(segments, false, 0.2);
+    const fra = getAirport('FRA')!;
+    expect(Math.abs(points[0].latitude - fra.lat)).toBeLessThan(0.01);
+    expect(points[points.length - 1].latitude).toBeGreaterThan(points[0].latitude);
+  });
+
+  it('splits at the antimeridian on a transpacific route', () => {
+    const split = arcCoordinates(getAirport('LAX')!, getAirport('NRT')!);
+    let sawSplit = false;
+    for (let head = 0.05; head <= 1.2; head += 0.05) {
+      const comet = cometSegments(split, true, head);
+      if (comet.length === 2) {
+        sawSplit = true;
+        expect(Math.abs(comet[0][comet[0].length - 1].longitude)).toBe(180);
+        expect(Math.abs(comet[1][0].longitude)).toBe(180);
+      }
+    }
+    expect(sawSplit).toBe(true);
+  });
+});
+
+describe('nearestRoute', () => {
+  const { routes } = buildWorldRoutes(
+    [
+      row({ id: 'a', fromCode: 'HEL', toCode: 'FRA' }),
+      row({ id: 'b', fromCode: 'HEL', toCode: 'MAD' }),
+    ],
+    NOW,
+  );
+  // 0.1° per point at ~50°N: roughly a country-level zoom.
+  const scale = { lon: 0.1, lat: 0.064 };
+
+  it('picks the route under the finger', () => {
+    const fra = routes.find((r) => r.key.includes('FRA'))!;
+    const mid = pointAlong(fra.segments, 0.5).coordinate;
+    expect(nearestRoute(routes, mid, scale, 22)).toBe(fra.key);
+  });
+
+  it('tolerates a near miss but not a far one', () => {
+    const fra = routes.find((r) => r.key.includes('FRA'))!;
+    const mid = pointAlong(fra.segments, 0.5).coordinate;
+    const near = { latitude: mid.latitude, longitude: mid.longitude + 0.1 * 10 }; // 10pt east
+    const far = { latitude: mid.latitude, longitude: mid.longitude + 0.1 * 60 }; // 60pt east
+    expect(nearestRoute(routes, near, scale, 22)).toBe(fra.key);
+    expect(nearestRoute(routes, far, scale, 22)).toBeNull();
+  });
+
+  it('measures across the antimeridian', () => {
+    const split = buildWorldRoutes([row({ fromCode: 'LAX', toCode: 'NRT' })], NOW).routes;
+    const edge = split[0].segments[0].at(-1)!; // on the +180° line
+    expect(nearestRoute(split, { ...edge, longitude: -179.9 }, { lon: 0.1, lat: 0.1 }, 22)).toBe(
+      split[0].key,
+    );
   });
 });
 
