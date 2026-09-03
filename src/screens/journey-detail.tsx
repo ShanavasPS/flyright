@@ -26,7 +26,7 @@ import { SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
-import { TripWatchers } from '@/components/trip-watchers';
+import { TripShareActions } from '@/components/trip-share';
 import { CONVEX_URL } from '@/constants/config';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -236,6 +236,14 @@ export function JourneyDetail({
           arrival: formatTime(journey.scheduledArrival),
         };
 
+  // Share + circle pills for the trip cards' headers, while there's something
+  // left to follow; the demo has no row to share, and the web build has no
+  // Convex provider.
+  const shareActions =
+    CONVEX_URL && !isDemo && row && (travelActive || tripAge <= 0) ? (
+      <TripShareActions journeyId={row.id} />
+    ) : undefined;
+
   // What the inset map draws: the DB row, or the demo journey shaped like one.
   const mapSource = row ?? {
     id: journey.id,
@@ -306,6 +314,7 @@ export function JourneyDetail({
             journey={row}
             state={travelState}
             facts={getFlightFacts(row.id)}
+            action={shareActions}
             onAdvance={(stage: TravelStage) => {
               void advanceStage(row.id, stage, row.source === 'manual').then(() =>
                 reconcileTravelDay(),
@@ -326,9 +335,12 @@ export function JourneyDetail({
           <VerdictCard journey={journey} disruption={disruption} />
         ) : travelActive ? null : journalOnly ? (
           <Card>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
-              {tripAge > 0 ? 'Trip log' : 'Upcoming trip'}
-            </ThemedText>
+            <View style={styles.cardHeader}>
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
+                {tripAge > 0 ? 'Trip log' : 'Upcoming trip'}
+              </ThemedText>
+              {shareActions}
+            </View>
             <ThemedText>
               {tripAge > 0 ? 'You flew' : "You'll fly"}{' '}
               {Math.round(journey.distanceKm).toLocaleString()} km
@@ -343,6 +355,12 @@ export function JourneyDetail({
           </Card>
         ) : (
           <Card>
+            <View style={styles.cardHeader}>
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
+                Upcoming trip
+              </ThemedText>
+              {shareActions}
+            </View>
             <ThemedText type="subtitle">We&apos;re watching this flight</ThemedText>
             <ThemedText type="small">
               {status.isPending && !isDemo
@@ -352,11 +370,6 @@ export function JourneyDetail({
           </Card>
         )}
 
-        {/* Who follows this trip + the one place to share it. Only while
-            there's something left to watch; the demo has no row to share. */}
-        {CONVEX_URL && !isDemo && row && (travelActive || tripAge <= 0) && (
-          <TripWatchers journeyId={row.id} live={travelActive} />
-        )}
         </ScrollView>
 
         {/* Share and the "···" trip menu at the right — edit/remove live in
@@ -821,6 +834,13 @@ const styles = StyleSheet.create({
   },
   meta: {
     textAlign: 'center',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    minHeight: 26,
   },
   cardEyebrow: {
     fontSize: 12,
