@@ -15,7 +15,7 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "My travels"
     timeout: 30000
-- assertVisible: "Your travel journal"
+- assertVisible: "Where have you flown?"
 # NativeTabs labels don't respond to Maestro taps on iOS 26 (see
 # claim-outcomes.yaml) — reach the tab via the same deep link the
 # notifications use; it works on Android too.

@@ -3,16 +3,33 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  SectionList,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
-import { Card } from '@/components/card';
+import { HowRow } from '@/components/how-row';
+import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
 import { HomeHero } from '@/components/travel-day-banner';
+import {
+  COBALT,
+  MiniContrail,
+  WHITE,
+  WHITE_DIM,
+  WHITE_FAINT,
+} from '@/components/travel-stats-header';
 import { CONVEX_URL } from '@/constants/config';
 import { MaxContentWidth, Spacing, TwoPaneMinWidth } from '@/constants/theme';
 import { JourneyDetail } from '@/screens/journey-detail';
@@ -200,14 +217,13 @@ export function Journeys() {
             )}
           />
         ) : (
-          // Pure travel-journal pitch — claims live in their own tab.
-          <Card>
-            <ThemedText type="subtitle">Your travel journal</ThemedText>
-            <ThemedText type="small">
-              Log any flight — next month&apos;s trip or one from years back. Distance,
-              countries, airlines: your travel story adds up here.
-            </ThemedText>
-          </Card>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}>
+            <JournalHero onAdd={() => router.push('/add-flight')} />
+            <HowItWorks />
+          </ScrollView>
         )}
       </SafeAreaView>
     </>
@@ -236,6 +252,97 @@ export function Journeys() {
         listPane
       )}
     </ThemedView>
+  );
+}
+
+/** The empty journal's hero: a blank boarding pass in the night-sky language
+ * of the travel-day card, with dashed slots where the route codes will go —
+ * the same "placeholder for what isn't there yet" the People tab uses for
+ * its circle. Pure travel-journal pitch; claims live in their own tab. */
+function JournalHero({ onAdd }: { onAdd: () => void }) {
+  return (
+    <PassCard>
+      <View style={styles.spacedRow}>
+        <MicroLabel>Your travel journal</MicroLabel>
+        <MiniContrail />
+      </View>
+      <View style={styles.ghostRoute}>
+        <GhostCode label="From" />
+        <View style={styles.ghostPath}>
+          <View style={styles.ghostEndDot} />
+          <GhostDots />
+          <SymbolView
+            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+            size={18}
+            tintColor={COBALT}
+            style={Platform.OS === 'ios' ? undefined : styles.rotated}
+          />
+          <GhostDots />
+          <View style={styles.ghostEndDot} />
+        </View>
+        <GhostCode label="To" />
+      </View>
+      <View style={styles.heroCopy}>
+        <Text style={styles.heroHeadline}>Where have you flown?</Text>
+        <Text style={styles.heroPitch}>
+          Log any flight — next month&apos;s trip or one from years back. Distance, countries,
+          airlines: your travel story adds up here.
+        </Text>
+      </View>
+      <PassDivider />
+      <PassAction
+        label="Add your first flight"
+        onPress={onAdd}
+        icon={{ ios: 'plus', android: 'add', web: 'add' }}
+      />
+    </PassCard>
+  );
+}
+
+/** A dashed slot the size of a route code, captioned like a form field. */
+function GhostCode({ label }: { label: string }) {
+  return (
+    <View style={styles.ghostCode}>
+      <Text style={styles.ghostCodeLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function GhostDots() {
+  return (
+    <View style={styles.ghostDots}>
+      {Array.from({ length: 3 }, (_, i) => (
+        <View key={i} style={styles.ghostDot} />
+      ))}
+    </View>
+  );
+}
+
+/** Three beats of the pitch as icon rows instead of a paragraph. */
+function HowItWorks() {
+  return (
+    <SheenCard style={styles.howCard}>
+      <HowRow
+        symbol={{
+          ios: 'barcode.viewfinder',
+          android: 'qr_code_scanner',
+          web: 'qr_code_scanner',
+        }}
+        title="Scan a boarding pass"
+        detail="Flight, date and route fill in from the barcode — or type them in."
+      />
+      <HowRow
+        symbol={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+        climbing
+        title="Travel day, live"
+        detail="Gate, delays and every step of the day, on your lock screen."
+      />
+      <HowRow
+        symbol={{ ios: 'eurosign.circle', android: 'payments', web: 'payments' }}
+        title="Know what you're owed"
+        detail="Three hours late in the EU is worth up to €600. We tell you the moment it counts."
+      />
+    </SheenCard>
   );
 }
 
@@ -528,5 +635,82 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: Spacing.two,
     gap: Spacing.one,
+  },
+  spacedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ghostRoute: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginTop: Spacing.one,
+  },
+  ghostCode: {
+    width: 76,
+    height: 48,
+    borderRadius: Spacing.two + 2,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: WHITE_FAINT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ghostCodeLabel: {
+    color: WHITE_DIM,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  ghostPath: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  ghostDots: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+  },
+  ghostDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: WHITE_DIM,
+    opacity: 0.55,
+  },
+  ghostEndDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: WHITE_DIM,
+  },
+  rotated: {
+    transform: [{ rotate: '90deg' }],
+  },
+  heroCopy: {
+    gap: Spacing.two,
+  },
+  heroHeadline: {
+    color: WHITE,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: 700,
+    letterSpacing: -0.3,
+  },
+  heroPitch: {
+    color: WHITE_DIM,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: 500,
+  },
+  howCard: {
+    gap: Spacing.three,
+    marginTop: Spacing.two,
   },
 });

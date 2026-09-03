@@ -1,20 +1,46 @@
 import { useAuth } from '@clerk/expo';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
+import { HowRow } from '@/components/how-row';
+import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
+import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { NEXT_STATUSES, isClosed, parseSentSnapshot } from '@/services/claim-status';
 import { useClaims, type ClaimWithJourney } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
 
+// Payout green on the night sky — the same value the dark theme's `success`
+// and the People tab's live ring use, so money reads as money on navy.
+const PAYOUT_GREEN = '#2FD68C';
+
+/** "400 EUR in progress · 1 closed" — the header eyebrow, My travels-style.
+ * Open claims total up when they share a currency; otherwise just count. */
+function claimsEyebrow(open: ClaimWithJourney[], closed: ClaimWithJourney[]): string {
+  const parts: string[] = [];
+  if (open.length) {
+    const currency = open[0].claims.currency;
+    const same = open.every((row) => row.claims.currency === currency);
+    parts.push(
+      same
+        ? `${open.reduce((sum, row) => sum + row.claims.amount, 0)} ${currency} in progress`
+        : `${open.length} in progress`,
+    );
+  }
+  if (closed.length) parts.push(`${closed.length} closed`);
+  return parts.join(' · ') || "What you're owed";
+}
+
 export function Claims() {
+  const router = useRouter();
   const { userId } = useAuth();
   const { data: rows } = useClaims(userId);
   // Frozen at mount — overdue-ness doesn't need to tick while the tab is open.
@@ -26,9 +52,18 @@ export function Claims() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-        <ThemedText type="title" themeColor="heading">
-          Claims
-        </ThemedText>
+        <View style={styles.titleBlock}>
+          <ThemedText
+            type="smallBold"
+            themeColor="textSecondary"
+            style={styles.eyebrow}
+            numberOfLines={1}>
+            {claimsEyebrow(open, closed)}
+          </ThemedText>
+          <ThemedText type="title" themeColor="heading">
+            Claims
+          </ThemedText>
+        </View>
         {rows?.length ? (
           <ScrollView
             contentInsetAdjustmentBehavior="automatic"
@@ -44,21 +79,75 @@ export function Claims() {
             ))}
           </ScrollView>
         ) : (
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="subtitle">No claims yet</ThemedText>
-            <ThemedText type="small">
-              When a delayed journey qualifies for compensation, generate the claim from its
-              detail screen — the letter, deadline, and the airline&apos;s response get tracked
-              here.
-            </ThemedText>
-            {/* Demo journey exercises the whole verdict flow without live data. */}
-            <Link href="/journey/demo">
-              <ThemedText type="link">See a demo verdict →</ThemedText>
-            </Link>
-          </ThemedView>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}>
+            <ClaimsHero onDemo={() => router.push('/journey/demo')} />
+            <HowItWorks />
+          </ScrollView>
         )}
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+/** The empty tab's hero, in the boarding-pass language of the other tabs, led
+ * by the number that makes the pitch: up to €600 per passenger. The demo
+ * journey exercises the whole verdict → claim flow without live data. */
+function ClaimsHero({ onDemo }: { onDemo: () => void }) {
+  return (
+    <PassCard>
+      <View style={styles.spacedRow}>
+        <MicroLabel>Compensation</MicroLabel>
+        <MiniContrail />
+      </View>
+      <View style={styles.amountRow}>
+        <Text style={styles.amountLead}>up to</Text>
+        <Text style={styles.amount}>€600</Text>
+        <Text style={styles.amountLead}>per passenger</Text>
+      </View>
+      <View style={styles.heroCopy}>
+        <Text style={styles.heroHeadline}>No claims yet</Text>
+        <Text style={styles.heroPitch}>
+          Three hours late, or cancelled? EU261 pays €250–600 per passenger (UK261 in pounds).
+          When a flight in your journal qualifies, the claim starts here.
+        </Text>
+      </View>
+      <PassDivider />
+      <PassAction
+        label="See a demo verdict"
+        onPress={onDemo}
+        icon={{ ios: 'doc.text.magnifyingglass', android: 'receipt_long', web: 'receipt_long' }}
+      />
+    </PassCard>
+  );
+}
+
+/** Three beats of the pitch as icon rows instead of a paragraph. */
+function HowItWorks() {
+  return (
+    <SheenCard style={styles.howCard}>
+      <HowRow
+        symbol={{
+          ios: 'clock.badge.exclamationmark',
+          android: 'schedule',
+          web: 'schedule',
+        }}
+        title="We spot the delay"
+        detail="Every flight in your journal is checked against the rules the moment it's disrupted."
+      />
+      <HowRow
+        symbol={{ ios: 'doc.text', android: 'description', web: 'description' }}
+        title="The letter writes itself"
+        detail="Airline, flight, distance and the article that applies — ready to send in a tap."
+      />
+      <HowRow
+        symbol={{ ios: 'calendar.badge.clock', android: 'event', web: 'event' }}
+        title="We keep the airline honest"
+        detail="Response deadlines, reminders and every outcome, tracked right here."
+      />
+    </SheenCard>
   );
 }
 
@@ -154,6 +243,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
   },
+  titleBlock: {
+    gap: Spacing.half,
+  },
+  eyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
   list: {
     gap: Spacing.three,
     paddingBottom: Spacing.four,
@@ -179,5 +277,50 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.9,
+  },
+  spacedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  amountLead: {
+    color: WHITE_DIM,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: 500,
+  },
+  amount: {
+    color: PAYOUT_GREEN,
+    fontSize: 44,
+    lineHeight: 50,
+    fontWeight: 700,
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
+  heroCopy: {
+    gap: Spacing.two,
+  },
+  heroHeadline: {
+    color: WHITE,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: 700,
+    letterSpacing: -0.3,
+  },
+  heroPitch: {
+    color: WHITE_DIM,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: 500,
+  },
+  howCard: {
+    gap: Spacing.three,
+    marginTop: Spacing.two,
   },
 });

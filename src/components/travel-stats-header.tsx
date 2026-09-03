@@ -124,7 +124,7 @@ function Stat({
 }
 
 /** Tiny echo of the record cards' dotted contrail — pure ornament. */
-function MiniContrail() {
+export function MiniContrail() {
   return (
     <View style={styles.contrail}>
       {Array.from({ length: 5 }, (_, i) => (
