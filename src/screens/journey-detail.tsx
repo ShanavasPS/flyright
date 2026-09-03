@@ -22,7 +22,7 @@ import { Card } from '@/components/card';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PrimaryButton } from '@/components/primary-button';
 import { RouteMap } from '@/components/route-map';
-import { SheenSweep } from '@/components/sheen-card';
+import { IconBadge, SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
@@ -636,28 +636,35 @@ function InboundCard({ outlook }: { outlook: InboundOutlook }) {
   );
 }
 
-/** The free user's stand-in for InboundCard: the same slot, the same
- * question, and the Pro pitch at the one moment it's concrete — a flight of
- * theirs is about to depart. The paywall closes back here; useProLocked
- * flips and the real card takes over. */
+/** The free user's stand-in for InboundCard — one compact row, not a pitch:
+ * the question, a Pro tag, a chevron. The real details below keep the
+ * screen; the paywall does the selling. Closing it comes back here, where
+ * useProLocked has flipped and the full card takes the slot. */
 function InboundTeaserCard() {
   const router = useRouter();
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Unlock the inbound-aircraft prediction with Pro"
+      accessibilityLabel="Where's your plane? Unlock with Pro"
       onPress={() => router.push('/paywall')}
       style={({ pressed }) => pressed && { opacity: 0.85 }}>
-      <Card testID="inbound-teaser">
-        <ThemedText type="subtitle">Where&apos;s your plane?</ThemedText>
-        <ThemedText type="small">
-          Pro shows where your aircraft is right now and whether departure will slip — and
-          warns you before the airline updates the board.
+      <Card testID="inbound-teaser" style={styles.teaserRow}>
+        <IconBadge symbol={{ ios: 'airplane', android: 'flight', web: 'flight' }} size={32} />
+        <ThemedText themeColor="heading" style={styles.teaserTitle} numberOfLines={1}>
+          Where&apos;s your plane?
         </ThemedText>
-        <ThemedText type="smallBold" style={{ color: theme.tint }}>
-          See Pro →
-        </ThemedText>
+        <View style={[styles.proPill, { backgroundColor: `${theme.tint}1A` }]}>
+          <ThemedText type="smallBold" style={{ color: theme.tint }}>
+            Pro
+          </ThemedText>
+        </View>
+        <SymbolView
+          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+          size={14}
+          weight="semibold"
+          tintColor={theme.textSecondary}
+        />
       </Card>
     </Pressable>
   );
@@ -771,6 +778,20 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  teaserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  teaserTitle: {
+    flex: 1,
+  },
+  proPill: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: Spacing.three,
   },
   // Clips the SheenSweep to the card's rounded corners.
   verdictCard: {
