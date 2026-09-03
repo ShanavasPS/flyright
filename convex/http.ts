@@ -120,4 +120,39 @@ http.route({
   }),
 });
 
+/**
+ * Inbound support email, posted by the support-mail Email Worker
+ * (workers/support-mail) for anything addressed to support+<token>@. Shared
+ * secret lives as SUPPORT_INBOUND_SECRET here and INBOUND_SECRET on the Worker.
+ */
+http.route({
+  path: '/support-inbound',
+  method: 'POST',
+  handler: httpAction(async (ctx, request) => {
+    const secret = process.env.SUPPORT_INBOUND_SECRET;
+    if (!secret) return new Response('inbound not configured', { status: 503 });
+    if (request.headers.get('authorization') !== `Bearer ${secret}`) {
+      return new Response('unauthorized', { status: 401 });
+    }
+    let body: { token?: string; from?: string; subject?: string; text?: string; emailId?: string | null };
+    try {
+      body = await request.json();
+    } catch {
+      return new Response('invalid json', { status: 400 });
+    }
+    if (typeof body.token !== 'string' || typeof body.from !== 'string') {
+      return new Response('token and from required', { status: 400 });
+    }
+    const outcome = await ctx.runMutation(internal.support.inbound, {
+      token: body.token,
+      from: body.from,
+      subject: typeof body.subject === 'string' ? body.subject : '',
+      text: typeof body.text === 'string' ? body.text : '',
+      emailId: typeof body.emailId === 'string' ? body.emailId : null,
+    });
+    console.log(`[support-inbound] ${body.token}: ${outcome}`);
+    return Response.json({ outcome }, { status: outcome === 'no-thread' ? 404 : 200 });
+  }),
+});
+
 export default http;

@@ -14,6 +14,14 @@ export default function SettingsStack() {
         name="contact"
         options={{ title: 'Contact support', headerBackButtonDisplayMode: 'minimal' }}
       />
+      <Stack.Screen
+        name="messages/index"
+        options={{ title: 'Support', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen
+        name="messages/[id]"
+        options={{ title: 'Conversation', headerBackButtonDisplayMode: 'minimal' }}
+      />
       {/* On native, Clerk's UserProfileView brings its own navigation chrome;
           the route header is hidden and onHostBack (see screens/account.tsx)
           pops the route, so there's a single back button at every level. The

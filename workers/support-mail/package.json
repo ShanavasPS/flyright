@@ -1,0 +1,11 @@
+{
+  "name": "flyright-support-mail",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/worker.js --bundle --format=esm --platform=browser --outfile=dist/worker.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

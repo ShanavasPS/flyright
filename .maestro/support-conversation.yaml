@@ -1,0 +1,38 @@
+# Signed-in support flow: Settings → Contact support opens the conversation
+# list, "New message" starts a thread, and the app lands on the thread view
+# where support's email replies appear (convex/support.ts). Uses the Clerk DEV
+# test user (OTP 424242) so it only passes against dev Clerk + dev Convex.
+# Run: maestro --device <udid> test .maestro/support-conversation.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- tapOn: "Settings"
+- runFlow:
+    when:
+      visible: "Sign in or create account"
+    commands:
+      - tapOn: "Sign in or create account"
+      - runFlow: clerk-dev-sign-in.yaml
+      - extendedWaitUntil:
+          visible:
+            id: "contact-support"
+          timeout: 30000
+- tapOn:
+    id: "contact-support"
+- extendedWaitUntil:
+    visible: "New message"
+    timeout: 10000
+- tapOn: "New message"
+- extendedWaitUntil:
+    visible: "What can we help with?"
+    timeout: 10000
+- tapOn: "What can we help with?"
+- inputText: "Maestro conversation test — my BA795 verdict looks wrong, can you check?"
+- scrollUntilVisible:
+    element: "Send message"
+    direction: DOWN
+- tapOn: "Send message"
+- extendedWaitUntil:
+    visible: "Write a reply"
+    timeout: 20000
+- takeScreenshot: .maestro/out/support-thread

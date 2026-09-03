@@ -141,23 +141,48 @@ export default defineSchema({
 
   /** Display names for "Sam is through security" — fed by the Clerk webhook
    * (user.created/updated); Convex JWTs only carry the subject. */
-  /** In-app "Contact support" messages. Each row is delivered to the support
-   * inbox by support.deliver (Cloudflare Email Sending); deliveredAt stays
-   * null until that succeeds so a failed send can be retried from the CLI
-   * (support:retryUndelivered) instead of being lost. */
-  supportMessages: defineTable({
-    /** Clerk user id when signed in, else null (anonymous-first app). */
+  /** Settings → Contact support. One thread per conversation; the token is
+   * the plus-address (support+<token>@getflyright.com) that routes email
+   * replies back into the thread via the support-mail Email Worker →
+   * http.ts /support-inbound. userId is null for anonymous senders, who get
+   * the email conversation but no in-app history. */
+  supportThreads: defineTable({
     userId: v.union(v.string(), v.null()),
     /** Reply address: the Clerk identity's email, or what the user typed. */
     email: v.string(),
-    message: v.string(),
+    token: v.string(),
+    subject: v.string(),
     platform: v.string(),
     appVersion: v.string(),
     createdAt: v.string(),
+    lastMessageAt: v.string(),
+    lastPreview: v.string(),
+    lastDirection: v.union(v.literal('in'), v.literal('out')),
+    /** Set when support replies; cleared by support.markRead. */
+    unreadForUser: v.boolean(),
+    /** Message-ID of the first notification email — later ones reference it
+     * so the support inbox threads the conversation. */
+    rootEmailId: v.union(v.string(), v.null()),
+  })
+    .index('by_user_last', ['userId', 'lastMessageAt'])
+    .index('by_token', ['token'])
+    .index('by_email_created', ['email', 'createdAt']),
+
+  /** 'in' = traveler → FlyRight (from the app, or an email reply);
+   * 'out' = FlyRight → traveler (always an email reply from the inbox).
+   * deliveredAt tracks the app→inbox email for 'in'/'app' rows and stays null
+   * on failure so support:retryUndelivered can resend. */
+  supportMessages: defineTable({
+    threadId: v.id('supportThreads'),
+    direction: v.union(v.literal('in'), v.literal('out')),
+    source: v.union(v.literal('app'), v.literal('email')),
+    body: v.string(),
+    createdAt: v.string(),
     deliveredAt: v.union(v.string(), v.null()),
     deliveryError: v.union(v.string(), v.null()),
+    emailId: v.union(v.string(), v.null()),
   })
-    .index('by_email_created', ['email', 'createdAt'])
+    .index('by_thread', ['threadId', 'createdAt'])
     .index('by_delivered', ['deliveredAt']),
 
   profiles: defineTable({

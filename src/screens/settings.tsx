@@ -376,7 +376,9 @@ export function Settings() {
 
           <Pressable
             testID="contact-support"
-            onPress={() => router.push('/contact')}
+            // Signed-in users see their conversations (replies land there and
+            // by email); anonymous users go straight to the form.
+            onPress={() => router.push(isSignedIn ? '/messages' : '/contact')}
             style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
             <View style={styles.rowLabel}>
               <ThemedText>Contact support</ThemedText>

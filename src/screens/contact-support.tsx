@@ -2,7 +2,7 @@ import { useUser } from '@clerk/expo';
 import { useMutation } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import * as Application from 'expo-application';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -28,9 +28,11 @@ import { useTheme } from '@/hooks/use-theme';
 export function ContactSupport() {
   return (
     <ThemedView style={styles.container}>
+      {/* "padding" on both platforms — see support-thread.tsx for why Android
+          needs it too under edge-to-edge. */}
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
@@ -52,7 +54,8 @@ export function ContactSupport() {
 function ContactForm() {
   const theme = useTheme();
   const { user } = useUser();
-  const submit = useMutation(api.support.submit);
+  const router = useRouter();
+  const startThread = useMutation(api.support.startThread);
   const accountEmail = user?.primaryEmailAddress?.emailAddress ?? null;
 
   const [email, setEmail] = useState('');
@@ -64,13 +67,16 @@ function ContactForm() {
     setError(null);
     setState('sending');
     try {
-      await submit({
+      const threadId = await startThread({
         message,
         email: accountEmail ?? email,
         platform: Platform.OS,
         appVersion: `${Application.nativeApplicationVersion ?? ''} (${Application.nativeBuildVersion ?? ''})`,
       });
-      setState('sent');
+      // Signed-in users get the conversation view, where support's reply will
+      // appear; anonymous senders have no history to show, so confirm inline.
+      if (user) router.replace(`/messages/${threadId}`);
+      else setState('sent');
     } catch (e) {
       setState('idle');
       setError(

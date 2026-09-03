@@ -1,0 +1,28 @@
+# Layout check for the support conversation composer: the Send button must
+# clear the tab bar, and typing must keep the input and newest message in view
+# with the keyboard up. Needs the Clerk dev test user signed in with at least
+# one thread (run support-conversation.yaml first).
+# Run: maestro --device <id> test .maestro/support-thread-keyboard.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible:
+      id: "contact-support"
+    timeout: 20000
+- tapOn:
+    id: "contact-support"
+- extendedWaitUntil:
+    visible:
+      id: "support-thread-0"
+    timeout: 15000
+- tapOn:
+    id: "support-thread-0"
+- extendedWaitUntil:
+    visible: "Write a reply"
+    timeout: 15000
+- takeScreenshot: .maestro/out/support-thread-idle
+- tapOn: "Write a reply"
+- inputText: "Typing a longer reply to make sure the box grows and stays visible above the keyboard while I write"
+- takeScreenshot: .maestro/out/support-thread-keyboard
