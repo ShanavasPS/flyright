@@ -53,6 +53,11 @@ import { useFoldState } from '../../../modules/flyright-fold';
 
 const YEAR_MS = 365 * 86_400_000;
 
+/** Ghost trip card in the empty hero: the real row's height (40pt logo +
+ * card padding) and how far each card behind it peeks out. */
+const GHOST_CARD_HEIGHT = 40 + 2 * Spacing.three;
+const GHOST_PEEK = 10;
+
 /** The context line above the title — the next departure when one is booked
  * (the thing a traveller actually wants at a glance), today's date otherwise.
  * Relies on groupJourneys putting the soonest upcoming trip first. */
@@ -253,10 +258,11 @@ export function Journeys() {
   );
 }
 
-/** The empty journal's hero: a blank boarding pass in the night-sky language
- * of the travel-day card, with dashed slots where the route codes will go —
- * the same "placeholder for what isn't there yet" the People tab uses for
- * its circle. Pure travel-journal pitch; claims live in their own tab. */
+/** The empty journal's hero: the night-sky card of the travel-day pass with a
+ * deck of ghost trip cards where the journal's rows will stack up — the same
+ * silhouette as the real rows below (logo, date · flight, cities, times), in
+ * skeleton form, no labels. Pure travel-journal pitch; claims live in their
+ * own tab. */
 function JournalHero({ onAdd }: { onAdd: () => void }) {
   return (
     <PassCard>
@@ -264,22 +270,7 @@ function JournalHero({ onAdd }: { onAdd: () => void }) {
         <MicroLabel>Your travel journal</MicroLabel>
         <MiniContrail />
       </View>
-      <View style={styles.ghostRoute}>
-        <GhostCode label="From" />
-        <View style={styles.ghostPath}>
-          <View style={styles.ghostEndDot} />
-          <GhostDots />
-          <SymbolView
-            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-            size={18}
-            tintColor={COBALT}
-            style={Platform.OS === 'ios' ? undefined : styles.rotated}
-          />
-          <GhostDots />
-          <View style={styles.ghostEndDot} />
-        </View>
-        <GhostCode label="To" />
-      </View>
+      <GhostTrips />
       <View style={styles.heroCopy}>
         <Text style={styles.heroHeadline}>Where have you flown?</Text>
         <Text style={styles.heroPitch}>
@@ -297,25 +288,39 @@ function JournalHero({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-/** A dashed slot the size of a route code, captioned like a form field. */
-function GhostCode({ label }: { label: string }) {
+/** Three ghost trip rows, the back two peeking out above the front one like
+ * a deck. Only the front card carries the row's skeleton content; the ones
+ * behind are silhouettes, each a step narrower and fainter. Decorative — the
+ * headline says what it means. */
+function GhostTrips() {
   return (
-    <View style={styles.ghostCode}>
-      <Text style={styles.ghostCodeLabel}>{label}</Text>
+    <View
+      style={styles.ghostDeck}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
+      <View style={[styles.ghostCard, styles.ghostCardBack2]} />
+      <View style={[styles.ghostCard, styles.ghostCardBack1]} />
+      <View style={[styles.ghostCard, styles.ghostCardFront]}>
+        <View style={styles.ghostLogo}>
+          <SymbolView
+            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+            size={16}
+            tintColor={COBALT}
+            style={Platform.OS === 'ios' ? undefined : styles.rotated}
+          />
+        </View>
+        <View style={styles.ghostBody}>
+          <View style={styles.spacedRow}>
+            <View style={[styles.ghostBar, styles.ghostBarMeta]} />
+            <View style={styles.ghostChip} />
+          </View>
+          <View style={[styles.ghostBar, styles.ghostBarRoute]} />
+          <View style={[styles.ghostBar, styles.ghostBarSchedule]} />
+        </View>
+      </View>
     </View>
   );
 }
-
-function GhostDots() {
-  return (
-    <View style={styles.ghostDots}>
-      {Array.from({ length: 3 }, (_, i) => (
-        <View key={i} style={styles.ghostDot} />
-      ))}
-    </View>
-  );
-}
-
 
 /** Header-style "+" on the title row's right edge — the standard list-screen
  * add affordance, same placement on every platform. Liquid Glass where the OS
@@ -617,54 +622,79 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  ghostRoute: {
+  // The deck: the front card's height plus the two peeks above it.
+  ghostDeck: {
+    height: GHOST_CARD_HEIGHT + 2 * GHOST_PEEK,
+    marginTop: Spacing.one,
+  },
+  ghostCard: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: GHOST_CARD_HEIGHT,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    borderColor: 'rgba(242,246,251,0.12)',
+    backgroundColor: 'rgba(242,246,251,0.06)',
+  },
+  ghostCardFront: {
+    top: 2 * GHOST_PEEK,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    marginTop: Spacing.one,
+    padding: Spacing.three,
+    // Opaque (the sky lifted ~10% toward white) so the cards behind read as
+    // peeking out, not as showing through.
+    backgroundColor: '#22395F',
+    borderColor: 'rgba(242,246,251,0.18)',
   },
-  ghostCode: {
-    width: 76,
-    height: 48,
-    borderRadius: Spacing.two + 2,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: WHITE_FAINT,
+  ghostCardBack1: {
+    top: GHOST_PEEK,
+    left: Spacing.three,
+    right: Spacing.three,
+    opacity: 0.7,
+  },
+  ghostCardBack2: {
+    top: 0,
+    left: Spacing.four + Spacing.two,
+    right: Spacing.four + Spacing.two,
+    opacity: 0.4,
+  },
+  // Skeleton of the real row: a 40pt logo tile, then meta / cities / times.
+  ghostLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: Spacing.two,
+    backgroundColor: 'rgba(242,246,251,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ghostCodeLabel: {
-    color: WHITE_DIM,
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  ghostPath: {
+  ghostBody: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.one + Spacing.half,
   },
-  ghostDots: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
+  ghostBar: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: WHITE_FAINT,
   },
-  ghostDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: WHITE_DIM,
-    opacity: 0.55,
+  ghostBarMeta: {
+    width: '44%',
   },
-  ghostEndDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: WHITE_DIM,
+  ghostBarRoute: {
+    width: '78%',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(242,246,251,0.28)',
+  },
+  ghostBarSchedule: {
+    width: '60%',
+  },
+  ghostChip: {
+    width: 40,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(127,177,242,0.45)',
   },
   rotated: {
     transform: [{ rotate: '90deg' }],
