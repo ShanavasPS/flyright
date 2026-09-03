@@ -10,16 +10,18 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   View,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AirlineLogo } from '@/components/airline-logo';
+import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { Card } from '@/components/card';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PrimaryButton } from '@/components/primary-button';
+import { RouteMap } from '@/components/route-map';
 import { SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -36,7 +38,7 @@ import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
 import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
-import { formatDayLabelWithYear, formatTime } from '@/services/dates';
+import { countdown, formatDayLabel, formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
@@ -46,6 +48,7 @@ import { noteSuccess } from '@/services/haptics';
 import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
 import { billingAvailable, hasPro } from '@/services/purchases';
 import { travelWindow, type TravelStage } from '@/services/travel-day';
+import { focusWorldOn } from '@/services/world-focus';
 import {
   getFlightFacts,
   noteFlightFacts,
@@ -56,13 +59,6 @@ import { advanceStage, rewindStage, undoStage, useTravelDay } from '@/services/t
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
 // have usually lapsed — the trip is journal material, not a claim.
 const CLAIM_WINDOW_MS = 3 * 365 * 86_400_000;
-
-/** "Doha, Qatar" for a known airport; the country name alone otherwise. */
-function placeLabel(place: Journey['from']): string {
-  const airport = getAirport(place.code);
-  if (airport) return `${airport.city}, ${countryName(airport.country)}`;
-  return place.country ? countryName(place.country) : place.code;
-}
 
 /** "from Kochi, India to Doha, Qatar" — cities only when the leg stays within
  * one country, country names alone when the airports aren't in the dataset. */
@@ -82,9 +78,49 @@ function routeSentence(journey: Journey): string {
   return '';
 }
 
+/** City for the hero's endpoint caption — the code itself when the airport
+ * isn't in the dataset (manual train/bus entries). */
+function cityLabel(place: Journey['from']): string {
+  return getAirport(place.code)?.city ?? place.code;
+}
+
+/** Block duration, "16h 35m", when both timestamps carry a UTC offset (lookup
+ * rows do; manual entries store bare wall-clock times whose difference is
+ * meaningless across time zones). Null otherwise. */
+function durationLabel(departure: string, arrival: string): string | null {
+  const zoned = /(Z|[+-]\d\d:\d\d)$/;
+  if (!zoned.test(departure) || !zoned.test(arrival)) return null;
+  const minutes = Math.round((Date.parse(arrival) - Date.parse(departure)) / 60_000);
+  if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 36 * 60) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+}
+
+/** "EK215 · Emirates"; just the number when the carrier is only its IATA
+ * code (lookup rows store the code); just the carrier for entries without a
+ * flight number. */
+function flightLabel(journey: Journey): string {
+  const carrier = journey.carrier.trim();
+  if (!journey.number) return carrier;
+  if (!carrier || carrier.toUpperCase() === airlineCode(journey.number)) return journey.number;
+  return `${journey.number} · ${carrier}`;
+}
+
+/** The date chip's relative reading: a countdown before departure, "Flown"
+ * after. */
+function dateChipLabel(departure: string, now: Date): string {
+  const timer = countdown(departure, now);
+  if (timer.unit === 'now') return 'Boarding soon';
+  if (timer.unit.endsWith('ago')) return 'Flown';
+  if (timer.unit === 'hours') return `In ${timer.value} hour${timer.value === 1 ? '' : 's'}`;
+  return timer.value === 1 ? 'Tomorrow' : `In ${timer.value} days`;
+}
+
 export function JourneyDetail({
   journeyId,
   embedded = false,
+  routeHint,
 }: {
   journeyId: string | undefined;
   /** Rendered as the right pane of the journeys screen's two-pane layout
@@ -92,12 +128,13 @@ export function JourneyDetail({
    * no stack header to configure, so the ··· trip menu moves inline, and the
    * left window inset belongs to the list pane. */
   embedded?: boolean;
+  /** Route codes known before the row loads, for the header title. */
+  routeHint?: { from: string; to: string };
 }) {
   // Ticks so the travel-day timeline stays live while open; the coarser
   // claim-window math reads the same clock and doesn't mind the updates.
   const now = useNow(60_000).getTime();
   const router = useRouter();
-  const theme = useTheme();
   const { userId } = useAuth();
   const isDemo = isDemoJourneyId(journeyId);
   const row = useJourney(journeyId ?? 'demo', userId);
@@ -147,9 +184,18 @@ export function JourneyDetail({
   // recorded delay must keep the verdict alive once live lookups 404.
   const recorded = useDisruption(isDemo ? undefined : rowId);
 
+  // The header names the route (the one thing every trip has) from the first
+  // frame of the push, so the title never pops in mid-transition.
+  const routeTitle = journey
+    ? `${journey.from.code} → ${journey.to.code}`
+    : routeHint
+      ? `${routeHint.from} → ${routeHint.to}`
+      : '';
+
   if (!journey) {
     return (
       <ThemedView style={[styles.container, styles.centered]}>
+        {!embedded && <Stack.Screen options={{ title: routeTitle }} />}
         <ActivityIndicator />
       </ThemedView>
     );
@@ -180,12 +226,25 @@ export function JourneyDetail({
 
   // Journal entries without user-entered times store the placeholder noon
   // pair — no schedule worth showing. A lone entered time reads as a departure.
-  const schedule =
+  const schedule: { departure: string; arrival: string | null } | null =
     journey.scheduledDeparture === journey.scheduledArrival
       ? journey.scheduledDeparture.endsWith('T12:00:00')
         ? null
-        : `${tripAge > 0 ? 'Departed' : 'Departs'} ${formatTime(journey.scheduledDeparture)}`
-      : `${formatTime(journey.scheduledDeparture)} → ${formatTime(journey.scheduledArrival)}`;
+        : { departure: formatTime(journey.scheduledDeparture), arrival: null }
+      : {
+          departure: formatTime(journey.scheduledDeparture),
+          arrival: formatTime(journey.scheduledArrival),
+        };
+
+  // What the inset map draws: the DB row, or the demo journey shaped like one.
+  const mapSource = row ?? {
+    id: journey.id,
+    fromCode: journey.from.code,
+    toCode: journey.to.code,
+    number: journey.number,
+    carrier: journey.carrier,
+    scheduledDeparture: journey.scheduledDeparture,
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -200,38 +259,42 @@ export function JourneyDetail({
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}>
-        <View style={styles.titleRow}>
-          <AirlineLogo number={journey.number} carrier={journey.carrier} size={48} />
-          <ThemedText type="title" themeColor="heading" style={styles.titleText}>
-            {journey.number ? `${journey.carrier} ${journey.number}` : journey.carrier}
-          </ThemedText>
-          {/* Embedded panes have no stack header, so the ··· menu sits inline. */}
-          {embedded && !isDemo && row && (
-            <Pressable
-              accessibilityLabel="Trip options"
-              hitSlop={Spacing.three}
-              onPress={() => showTripMenu(row.id, row.source === 'manual', router)}>
-              <SymbolView
-                name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
-                size={22}
-                tintColor={theme.tint}
-              />
-            </Pressable>
-          )}
-        </View>
-        <View style={styles.routeBlock}>
-          <ThemedText>
-            {journey.from.code} → {journey.to.code}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {placeLabel(journey.from)} → {placeLabel(journey.to)}
-          </ThemedText>
-          {schedule && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {schedule}
-            </ThemedText>
-          )}
-        </View>
+        {mapSource && (
+          <RouteMap
+            journey={mapSource}
+            onPress={() => {
+              // Hand the trip to the World tab (see services/world-focus).
+              // The demo isn't a DB row, so World shows every travel for it.
+              focusWorldOn(isDemo ? null : journey.id);
+              router.navigate('/world');
+            }}
+          />
+        )}
+
+        <RouteHero
+          journey={journey}
+          now={now}
+          schedule={schedule}
+          action={
+            // Embedded panes have no stack header, so share and ··· sit inline.
+            embedded ? (
+              <View style={styles.inlineActions}>
+                <HeaderIcon
+                  label="Share this trip"
+                  name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }}
+                  onPress={() => shareTrip(journey)}
+                />
+                {!isDemo && row && (
+                  <HeaderIcon
+                    label="Trip options"
+                    name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
+                    onPress={() => showTripMenu(row.id, row.source === 'manual', router)}
+                  />
+                )}
+              </View>
+            ) : null
+          }
+        />
 
         {status.data && (() => {
           const outlook = inboundOutlook(status.data);
@@ -264,10 +327,10 @@ export function JourneyDetail({
           <VerdictCard journey={journey} disruption={disruption} />
         ) : travelActive ? null : journalOnly ? (
           <Card>
-            <ThemedText type="subtitle">
-              {formatDayLabelWithYear(journey.scheduledDeparture)}
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
+              Trip log
             </ThemedText>
-            <ThemedText type="small">
+            <ThemedText>
               You flew {Math.round(journey.distanceKm).toLocaleString()} km
               {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
             </ThemedText>
@@ -291,29 +354,160 @@ export function JourneyDetail({
 
         </ScrollView>
 
-        {/* Edit/remove live in a header "···" menu (the Flighty/Tripsy
-            pattern): edit as a plain action, remove destructive and last,
-            never side by side in the content. */}
-        {!isDemo && row && !embedded && (
+        {/* Share and the "···" trip menu at the right — edit/remove live in
+            the menu (the Tripsy pattern): edit as a plain action, remove
+            destructive and last, never side by side in the content. */}
+        {!embedded && (
           <Stack.Screen
             options={{
+              title: routeTitle,
               headerRight: () => (
-                <Pressable
-                  accessibilityLabel="Trip options"
-                  hitSlop={Spacing.three}
-                  onPress={() => showTripMenu(row.id, row.source === 'manual', router)}>
-                  <SymbolView
-                    name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
-                    size={22}
-                    tintColor={theme.tint}
+                <View style={styles.headerActions}>
+                  <HeaderIcon
+                    label="Share this trip"
+                    name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }}
+                    onPress={() => shareTrip(journey)}
                   />
-                </Pressable>
+                  {!isDemo && row && (
+                    <HeaderIcon
+                      label="Trip options"
+                      name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
+                      onPress={() => showTripMenu(row.id, row.source === 'manual', router)}
+                    />
+                  )}
+                </View>
               ),
             }}
           />
         )}
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+function HeaderIcon({
+  label,
+  name,
+  onPress,
+}: {
+  label: string;
+  name: { ios: string; android: string; web: string };
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} hitSlop={Spacing.two} onPress={onPress}>
+      <SymbolView name={name as never} size={22} tintColor={theme.tint} />
+    </Pressable>
+  );
+}
+
+/** Native share sheet with a one-line trip summary. */
+function shareTrip(journey: Journey) {
+  const flight = journey.number ? ` on ${journey.number}` : '';
+  void Share.share({
+    message: `${cityLabel(journey.from)} → ${cityLabel(journey.to)}${flight}, ${formatDayLabelWithYear(journey.scheduledDeparture)} — tracked with FlyRight`,
+  }).catch(() => {});
+}
+
+/** The trip at a glance, the boarding-pass row the journeys list uses but on
+ * the page: airline and flight number as an eyebrow with a relative date
+ * chip, the two codes big at the edges with the contrail and plane between,
+ * cities and times beneath, then the distance / block time / date line. */
+function RouteHero({
+  journey,
+  now,
+  schedule,
+  action,
+}: {
+  journey: Journey;
+  now: number;
+  schedule: { departure: string; arrival: string | null } | null;
+  action?: React.ReactNode;
+}) {
+  const theme = useTheme();
+  const flown = Date.parse(journey.scheduledDeparture) <= now;
+  const chip = dateChipLabel(journey.scheduledDeparture, new Date(now));
+  const duration = durationLabel(journey.scheduledDeparture, journey.scheduledArrival);
+  const meta = [
+    flown
+      ? formatDayLabelWithYear(journey.scheduledDeparture)
+      : formatDayLabel(journey.scheduledDeparture),
+    `${Math.round(journey.distanceKm).toLocaleString()} km`,
+    duration,
+  ].filter(Boolean);
+
+  return (
+    <View style={styles.hero}>
+      <View style={styles.eyebrowRow}>
+        <AirlineLogo number={journey.number} carrier={journey.carrier} size={28} />
+        <ThemedText type="smallBold" themeColor="heading" style={styles.eyebrowText} numberOfLines={1}>
+          {flightLabel(journey)}
+        </ThemedText>
+        <View
+          style={[
+            styles.chip,
+            { backgroundColor: flown ? theme.field : `${theme.tint}1A` },
+          ]}>
+          <ThemedText
+            type="smallBold"
+            style={[styles.chipText, { color: flown ? theme.textSecondary : theme.tint }]}>
+            {chip}
+          </ThemedText>
+        </View>
+        {action}
+      </View>
+
+      <View accessible accessibilityLabel={`${journey.from.code} to ${journey.to.code}`} style={styles.codesRow}>
+        <View style={styles.endpoint}>
+          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
+            {journey.from.code}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {cityLabel(journey.from)}
+          </ThemedText>
+          {schedule && <ThemedText style={styles.time}>{schedule.departure}</ThemedText>}
+        </View>
+        <View style={styles.contrail}>
+          <ContrailDots />
+          <SymbolView
+            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+            size={18}
+            tintColor={theme.tint}
+            style={Platform.OS === 'ios' ? undefined : styles.rotated}
+          />
+          <ContrailDots />
+        </View>
+        <View style={[styles.endpoint, styles.endpointRight]}>
+          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
+            {journey.to.code}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {cityLabel(journey.to)}
+          </ThemedText>
+          {schedule && (
+            <ThemedText style={styles.time}>{schedule.arrival ?? ' '}</ThemedText>
+          )}
+        </View>
+      </View>
+
+      <ThemedText type="small" themeColor="textSecondary" style={styles.meta}>
+        {meta.join(' · ')}
+      </ThemedText>
+    </View>
+  );
+}
+
+/** Half of the dotted contrail between the codes — the journeys list's
+ * boarding-pass motif in the page's own palette. */
+function ContrailDots() {
+  const theme = useTheme();
+  return (
+    <View style={styles.contrailDots}>
+      {Array.from({ length: 4 }, (_, i) => (
+        <View key={i} style={[styles.contrailDot, { backgroundColor: theme.textSecondary }]} />
+      ))}
+    </View>
   );
 }
 
@@ -540,16 +734,94 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     gap: Spacing.three,
   },
-  titleRow: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three + Spacing.half,
+  },
+  inlineActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+    marginLeft: Spacing.one,
   },
-  titleText: {
+  hero: {
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.one,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  eyebrowText: {
     flex: 1,
   },
-  routeBlock: {
+  chip: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two + Spacing.half,
+    borderRadius: Spacing.four,
+  },
+  chipText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  codesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+  },
+  endpoint: {
+    flexShrink: 1,
     gap: Spacing.half,
+  },
+  endpointRight: {
+    alignItems: 'flex-end',
+  },
+  code: {
+    fontSize: 40,
+    lineHeight: 46,
+    fontWeight: 700,
+    letterSpacing: -0.5,
+  },
+  time: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: 600,
+    marginTop: Spacing.one,
+  },
+  // Sits on the codes' baseline band, not the whole endpoint column.
+  contrail: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    height: 46,
+    paddingHorizontal: Spacing.one,
+  },
+  contrailDots: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+  },
+  contrailDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.55,
+  },
+  rotated: {
+    transform: [{ rotate: '90deg' }],
+  },
+  meta: {
+    textAlign: 'center',
+  },
+  cardEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   cta: {
     marginTop: Spacing.two,

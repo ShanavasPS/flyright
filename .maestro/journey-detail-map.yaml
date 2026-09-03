@@ -1,0 +1,36 @@
+# Journey detail → World hand-off: the detail's inset route map opens the
+# World tab on that one trip (route header, "All travels" pill, docked route
+# card), "All travels" restores every route, and a plain revisit of the tab
+# is unfiltered again (the focus clears when the tab blurs).
+#
+# Needs a seeded journal — insert the EK215 row from world-map.yaml's recipe
+# and relaunch before running; the detail then opens via the
+# flyright:///journey/<id> deep link, with the row id passed as JOURNEY_ID
+# (no default in the file: a file-level `env:` wins over `-e` and silently
+# opened a spinner for a missing id). The map card has no visible text of its
+# own, so it's tapped by position: it's the first thing under the header.
+#
+# Run: maestro --device <device> test -e JOURNEY_ID=TEST-DXB-LAX .maestro/journey-detail-map.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- openLink: "flyright:///journey/${JOURNEY_ID}"
+- extendedWaitUntil:
+    visible: "DXB → LAX"
+    timeout: 15000
+- assertVisible: "EK215 · Emirates"
+- assertVisible: "Flown"
+# The inset map card sits directly under the stack header.
+- tapOn:
+    point: "50%,27%"
+# Text inside a Pressable with accessibilityRole="button" isn't matchable by
+# text on iOS — go through the accessibility label.
+- extendedWaitUntil:
+    visible: "Show all travels"
+    timeout: 10000
+- assertVisible: "DXB → LAX"
+- assertVisible: "EK215 · .*"
+- tapOn: "Show all travels"
+- assertVisible: "World"
+- assertVisible: "Everywhere you’ve been"
+- assertNotVisible: "Show all travels"

@@ -487,7 +487,12 @@ function JourneyItem({
   );
   if (onSelect) return card;
   return (
-    <Link href={{ pathname: '/journey/[id]', params: { id: row.id } }} asChild>
+    <Link
+      href={{
+        pathname: '/journey/[id]',
+        params: { id: row.id, from: row.fromCode, to: row.toCode },
+      }}
+      asChild>
       {card}
     </Link>
   );

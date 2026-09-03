@@ -154,7 +154,12 @@ function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; in
          * rows' convention — VoiceOver and Maestro both get the content. */}
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push({ pathname: '/journey/[id]', params: { id: journey.id } })}
+          onPress={() =>
+            router.push({
+              pathname: '/journey/[id]',
+              params: { id: journey.id, from: journey.fromCode, to: journey.toCode },
+            })
+          }
           style={({ pressed }) => [styles.cardBody, pressed && styles.pressed]}>
           <View style={styles.chipRow}>
             <StatusChip status={claim.status} overdue={overdue} />

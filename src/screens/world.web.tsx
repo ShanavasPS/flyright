@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
-import { Link } from 'expo-router';
+import { Link, useIsFocused } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -15,7 +15,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { WORLD, buildWorldMap, fitViewBox, type ViewBox } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
+import { formatDayLabel } from '@/services/dates';
 import { travelRecap } from '@/services/timeline';
+import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 
 /** Deepest zoom-in: 1/16 of the world across the screen — enough to separate
  * co-located city airports without outrunning the 1:110m coastline data. */
@@ -30,11 +32,24 @@ export function World() {
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
 
+  // A journey detail can hand the tab one trip to open on (see the native
+  // World for the full treatment); cleared on "All travels" or leaving.
+  const focused = useIsFocused();
+  const focusId = useWorldFocus();
+  const focusedRow = focusId ? journeys?.find((row) => row.id === focusId) : undefined;
+  const rows = useMemo(
+    () => (focusedRow ? [focusedRow] : (journeys ?? [])),
+    [focusedRow, journeys],
+  );
+  useEffect(() => {
+    if (!focused) focusWorldOn(null);
+  }, [focused]);
+
   // "Flown vs upcoming" cutoff, frozen per mount — a live clock would redraw
   // the map mid-session for no visible gain.
   const [now] = useState(() => new Date());
-  const data = useMemo(() => buildWorldMap(journeys ?? [], now), [journeys, now]);
-  const recap = useMemo(() => travelRecap(journeys ?? []), [journeys]);
+  const data = useMemo(() => buildWorldMap(rows, now), [rows, now]);
+  const recap = useMemo(() => travelRecap(rows), [rows]);
 
   const { sea } = mapColors(useColorScheme() === 'dark');
   const [layout, setLayout] = useState<{ width: number; height: number } | null>(null);
@@ -166,12 +181,15 @@ export function World() {
           <View style={styles.header} pointerEvents="box-none">
             <View pointerEvents="none">
               <ThemedText type="title" themeColor="heading">
-                World
+                {focusedRow ? `${focusedRow.fromCode} → ${focusedRow.toCode}` : 'World'}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Everywhere your journeys have taken you
+                {focusedRow
+                  ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture)}`
+                  : 'Everywhere your journeys have taken you'}
               </ThemedText>
             </View>
+            {focusedRow && <AllTravelsButton onPress={() => focusWorldOn(null)} />}
             {userBox && <RecenterButton onPress={() => setUserBox(null)} />}
           </View>
         </SafeAreaView>
@@ -233,6 +251,22 @@ function EmptyCard() {
   );
 }
 
+/** Clears a journey hand-off: back to every route on the map. */
+function AllTravelsButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Show all travels"
+      onPress={onPress}
+      style={[styles.allTravels, { backgroundColor: theme.backgroundElement }]}>
+      <ThemedText type="smallBold" style={{ color: theme.tint }}>
+        All travels
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 /** Floating "fit everything back on screen" control, shown once the user has
  * panned or zoomed away from the fitted view. */
 function RecenterButton({ onPress }: { onPress: () => void }) {
@@ -283,6 +317,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
     gap: Spacing.two,
+  },
+  allTravels: {
+    height: 40,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 20,
+    justifyContent: 'center',
+    shadowColor: '#0B1424',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   recenter: {
     width: 40,

@@ -86,7 +86,12 @@ export function HomeHero({
         accessibilityRole="button"
         accessibilityLabel={`Open travel day for ${content.title}`}
         testID="travel-day-banner"
-        onPress={() => router.push({ pathname: '/journey/[id]', params: { id: active.id } })}
+        onPress={() =>
+          router.push({
+            pathname: '/journey/[id]',
+            params: { id: active.id, from: active.fromCode, to: active.toCode },
+          })
+        }
         style={({ pressed }) => [styles.liveSection, pressed && styles.pressed]}>
         {/* Boarding-pass header: the airline's mark top-left, status top-right. */}
         <View style={styles.spacedRow}>

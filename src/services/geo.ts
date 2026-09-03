@@ -369,6 +369,13 @@ export interface GeoAirport extends Airport {
   count: number;
 }
 
+/** The journey fields the map needs — a DB row, or the demo journey shaped
+ * like one. */
+export type RouteSource = Pick<
+  JourneyRow,
+  'id' | 'fromCode' | 'toCode' | 'number' | 'carrier' | 'scheduledDeparture'
+>;
+
 export interface WorldRoutesData {
   routes: GeoRoute[];
   airports: GeoAirport[];
@@ -381,7 +388,7 @@ export interface WorldRoutesData {
 /** Collapse journeys into distinct route arcs + visited airports. Rows whose
  * codes aren't in the bundled airport set (manual train/bus entries with
  * non-IATA codes) are skipped — no coordinates, nothing to draw. */
-export function buildWorldRoutes(rows: JourneyRow[], now: Date): WorldRoutesData {
+export function buildWorldRoutes(rows: RouteSource[], now: Date): WorldRoutesData {
   const routes = new Map<string, GeoRoute>();
   const airports = new Map<string, GeoAirport>();
   const fitCoords: LatLng[] = [];
@@ -446,7 +453,7 @@ export interface WorldMapData {
 }
 
 /** `buildWorldRoutes` projected into the SVG world map. */
-export function buildWorldMap(rows: JourneyRow[], now: Date): WorldMapData {
+export function buildWorldMap(rows: RouteSource[], now: Date): WorldMapData {
   const { routes, airports, fitCoords } = buildWorldRoutes(rows, now);
   return {
     routes: routes.map(({ segments, ...route }) => ({

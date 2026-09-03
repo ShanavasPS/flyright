@@ -9,7 +9,7 @@ export default function JourneysStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen
         name="journey/[id]"
-        options={{ title: 'Journey', headerBackButtonDisplayMode: 'minimal' }}
+        options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}
       />
       <Stack.Screen
         name="stats"

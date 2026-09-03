@@ -1,20 +1,16 @@
 import { useAuth } from '@clerk/expo';
 import { Link, useIsFocused } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import MapView, {
-  Marker,
-  PROVIDER_DEFAULT,
-  PROVIDER_GOOGLE,
-  Polyline,
-  type Region,
-} from 'react-native-maps';
+import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline, type Region } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
+import { airlineCode } from '@/components/airline-logo';
+import { AirportMarker, PlaneMarker, alphaHex } from '@/components/map-layers';
 import { ThemedText } from '@/components/themed-text';
+import { mapColors } from '@/components/world-map';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,100 +27,15 @@ import {
   type RoutePlane,
 } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
+import {
+  CLUTTER_OFF,
+  GOOGLE_NIGHT,
+  getZoomFloorLon,
+  learnZoomFloor,
+  regionFor,
+} from '@/services/map-region';
 import { travelRecap } from '@/services/timeline';
-
-/** Latitude cap for fitting. Polar great-circle apexes reach ~85°, which in
- * Mercator is nearly the top of the world — fitting them forces a zoom that
- * shows almost no longitude. Capping here lets a polar arc leave the top of
- * the screen instead, which reads fine. */
-const MAX_LAT = 75;
-/** Longitude padding factor so endpoints sit clear of the screen edges. */
-const LON_PAD = 1.3;
-const toMercator = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-const fromMercator = (y: number) => ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
-
-/** Region containing every coordinate, wraparound-aware. The camera is set
- * from this instead of `fitToCoordinates` because antimeridian-split routes
- * defeat a naive bounding box (their ±180° endpoints make it span the whole
- * world and the SDKs then pick an arbitrary window). The longitude window is
- * the complement of the largest empty gap between route samples — the
- * standard fix for bounds on a circle.
- *
- * Both SDKs have a zoom-out floor (MapKit's camera-altitude ceiling shows
- * ~89° of longitude on an iPhone; Google's min zoom is similar), so a
- * far-flung set of routes can't all fit. Rather than let the SDK pick an
- * arbitrary window, anything wider than `maxLonSpan` gets the window holding
- * the most route samples — the user's densest region — and the recenter
- * button/panning covers the rest. Latitude is padded in Mercator space and
- * clamped inside MAX_LAT. */
-function regionFor(coords: LatLng[], airportLons: number[], maxLonSpan: number): Region {
-  if (!coords.length) return { latitude: 30, longitude: 0, latitudeDelta: 100, longitudeDelta: 120 };
-  const lons = coords.map((c) => c.longitude).sort((a, b) => a - b);
-  let gapStart = lons[lons.length - 1];
-  let gapSize = lons[0] + 360 - gapStart;
-  for (let i = 1; i < lons.length; i += 1) {
-    const gap = lons[i] - lons[i - 1];
-    if (gap > gapSize) {
-      gapSize = gap;
-      gapStart = lons[i - 1];
-    }
-  }
-  let lonSpan = 360 - gapSize;
-  let lonStart = gapStart + gapSize;
-  let lonDelta = Math.min(359, Math.max(6, lonSpan * LON_PAD));
-  let visible = coords;
-
-  if (lonDelta > maxLonSpan) {
-    // At the floor the SDK shows exactly maxLonSpan, so use all of it: slide
-    // a window that wide around the circle and keep the start holding the
-    // most airports (arc samples would let one long haul outvote a cluster),
-    // then centre the airports it caught within it.
-    const width = maxLonSpan;
-    const anchors = (airportLons.length ? [...airportLons] : lons).sort((a, b) => a - b);
-    const doubled = [...anchors, ...anchors.map((l) => l + 360)];
-    let best = 0;
-    let bestStart = anchors[0];
-    let bestEnd = anchors[0];
-    let j = 0;
-    for (let i = 0; i < anchors.length; i += 1) {
-      while (j < doubled.length && doubled[j] <= anchors[i] + width) j += 1;
-      if (j - i > best) {
-        best = j - i;
-        bestStart = anchors[i];
-        bestEnd = doubled[j - 1];
-      }
-    }
-    lonStart = bestStart - (width - (bestEnd - bestStart)) / 2;
-    lonSpan = width;
-    lonDelta = width;
-    visible = coords.filter((c) => (((c.longitude - lonStart) % 360) + 360) % 360 <= width);
-  }
-
-  let yMin = toMercator(MAX_LAT);
-  let yMax = toMercator(-MAX_LAT);
-  for (const c of visible) {
-    const y = toMercator(Math.min(MAX_LAT, Math.max(-MAX_LAT, c.latitude)));
-    yMin = Math.min(yMin, y);
-    yMax = Math.max(yMax, y);
-  }
-  const yPad = Math.max(0.05, (yMax - yMin) * 0.12);
-  const yTop = Math.min(toMercator(MAX_LAT), yMax + yPad);
-  const yBottom = Math.max(toMercator(-MAX_LAT), yMin - yPad);
-
-  // Both SDKs turn a region back into bounds as latitude ± latitudeDelta/2 in
-  // plain degrees, so the centre is the degree midpoint, not the Mercator one.
-  const latTop = fromMercator(yTop);
-  const latBottom = fromMercator(yBottom);
-  const rawCenter = lonStart + lonSpan / 2;
-  return {
-    latitude: (latTop + latBottom) / 2,
-    longitude: ((rawCenter % 360) + 540) % 360 - 180,
-    latitudeDelta: Math.max(4, latTop - latBottom),
-    longitudeDelta: lonDelta,
-  };
-}
-
-let zoomFloorLon = 359;
+import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 
 /** Overlay heights below the safe areas, for `mapPadding`. Header: eyebrow
  * (16) + gap (2) + title (41) + vertical padding (8 + 16). Card: numerals
@@ -147,30 +58,10 @@ const PULSE_PERIOD_MS = 1400;
 const ROUTE_TAP_TOLERANCE = 22;
 /** Offset of the probe point used to measure the map's local scale. */
 const SCALE_PROBE_PT = 50;
-
-/** Google's night-mode base palette, plus POI/transit clutter removal (the
- * clutter rules also apply in light mode — this is a travel map, not a city
- * guide). Apple Maps ignores this and follows `userInterfaceStyle` instead. */
-const CLUTTER_OFF = [
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-];
-const GOOGLE_NIGHT = [
-  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
-  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
-  { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] },
-  ...CLUTTER_OFF,
-];
+/** How long after requesting a fit its settle events are still "ours". iOS
+ * can report the same animation twice (once for the camera, once after a
+ * layout pass); a flag cleared on the first would read the second as a pan. */
+const FIT_SETTLE_MS = 1200;
 
 /** Your travels on a real map — Apple Maps on iOS, Google Maps on Android —
  * with every route drawn as a great-circle arc between its origin and
@@ -184,12 +75,30 @@ export function World() {
   const { data: journeys } = useJourneys(userId);
   const dark = useColorScheme() === 'dark';
   const theme = useTheme();
+  const { sea } = mapColors(dark);
+  const focused = useIsFocused();
+
+  // A journey detail can hand the tab one trip to open on; the map then
+  // draws that trip alone until "All travels" or leaving the tab clears it.
+  // An id that isn't in the journal (a stale hand-off, the demo) is ignored.
+  const focusId = useWorldFocus();
+  const focusedRow = useMemo(
+    () => (focusId ? journeys?.find((row) => row.id === focusId) : undefined),
+    [journeys, focusId],
+  );
+  const rows = useMemo(
+    () => (focusedRow ? [focusedRow] : (journeys ?? [])),
+    [focusedRow, journeys],
+  );
+  useEffect(() => {
+    if (!focused) focusWorldOn(null);
+  }, [focused]);
 
   // "Flown vs upcoming" cutoff, frozen per mount — a live clock would redraw
   // the map mid-session for no visible gain.
   const [now] = useState(() => new Date());
-  const data = useMemo(() => buildWorldRoutes(journeys ?? [], now), [journeys, now]);
-  const recap = useMemo(() => travelRecap(journeys ?? []), [journeys]);
+  const data = useMemo(() => buildWorldRoutes(rows, now), [rows, now]);
+  const recap = useMemo(() => travelRecap(rows), [rows]);
   const airportLons = useMemo(() => data.airports.map((a) => a.lon), [data]);
 
   const mapRef = useRef<MapView>(null);
@@ -198,21 +107,30 @@ export function World() {
   // by comparing regions against the last fit, not `details.isGesture` —
   // Apple Maps doesn't report that flag.
   const [moved, setMoved] = useState(false);
-  const fitting = useRef(false);
+  // Timestamp of the latest fit request; settles within FIT_SETTLE_MS are its own.
+  const fitStarted = useRef(0);
   const fitted = useRef<Region | null>(null);
 
-  // The SDK's zoom-out floor in degrees of longitude — see regionFor. Learned
-  // from the first fit the SDK narrows (it grants exactly the floor), kept
-  // for the session so later mounts open on the right window straight away.
-  const [maxLonSpan, setMaxLonSpan] = useState(zoomFloorLon);
-  const requested = useRef<Region | null>(null);
+  // The SDK's zoom-out floor in degrees of longitude — see regionFor and
+  // map-region's seed. Refined from whatever the SDK grants for the initial
+  // region and for fits, kept for the session.
+  const [maxLonSpan, setMaxLonSpan] = useState(getZoomFloorLon);
+  const initial = useMemo(
+    () => regionFor(data.fitCoords, airportLons, maxLonSpan),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-time camera only
+    [],
+  );
+  const requested = useRef<Region>(initial);
 
-  const fit = (animated: boolean) => {
-    if (!data.fitCoords.length) return;
-    fitting.current = true;
-    requested.current = regionFor(data.fitCoords, airportLons, maxLonSpan);
-    mapRef.current?.animateToRegion(requested.current, animated ? 600 : 0);
-  };
+  const fit = useCallback(
+    (animated: boolean) => {
+      if (!data.fitCoords.length) return;
+      fitStarted.current = Date.now();
+      requested.current = regionFor(data.fitCoords, airportLons, maxLonSpan);
+      mapRef.current?.animateToRegion(requested.current, animated ? 600 : 0);
+    },
+    [data, airportLons, maxLonSpan],
+  );
 
   const [ready, setReady] = useState(false);
   const mapSize = useRef({ width: 0, height: 0 });
@@ -266,6 +184,21 @@ export function World() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on new data or view size only
   }, [ready, data, maxLonSpan]);
 
+  // Tapping a plane docks a detail card in the stats card's slot; tapping the
+  // map or its close button brings the stats back.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  // A hand-off (or its clearing) is a new subject: the camera refits even if
+  // the user had panned, and the trip's route card docks straight away.
+  // Reset during render (not in an effect) so the fit effect below already
+  // sees `moved` false on the render that carries the new data.
+  const [seenFocus, setSeenFocus] = useState(focusedRow?.id);
+  if (seenFocus !== focusedRow?.id) {
+    setSeenFocus(focusedRow?.id);
+    setMoved(false);
+    setSelectedKey(focusedRow ? (data.routes[0]?.key ?? null) : null);
+  }
+
   const empty = journeys != null && data.routes.length === 0;
 
   // One plane per route; direction comes from the journeys (see routePlane).
@@ -275,9 +208,6 @@ export function World() {
   );
   const upcoming = useMemo(() => planes.filter(({ plane }) => plane.upcoming), [planes]);
 
-  // Tapping a plane docks a detail card in the stats card's slot; tapping the
-  // map or its close button brings the stats back.
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const selected = planes.find(({ route }) => route.key === selectedKey) ?? null;
 
   // Animation clock for the comets and the pulsing undeparted planes. Runs
@@ -285,7 +215,6 @@ export function World() {
   // foregrounded app — background polyline updates would burn battery for
   // nobody. Comets are derived from the clock, never accumulated, so pauses
   // resume seamlessly.
-  const focused = useIsFocused();
   const [clock, setClock] = useState(0);
   useEffect(() => {
     if (!focused || !upcoming.length) return;
@@ -331,30 +260,31 @@ export function World() {
         ref={mapRef}
         style={styles.map}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-        initialRegion={regionFor(data.fitCoords, airportLons, maxLonSpan)}
+        initialRegion={initial}
+        // Sea-coloured placeholder while the first tiles load, instead of the
+        // SDK's grey grid; the indicator is painted the same so nothing spins.
+        loadingEnabled
+        loadingBackgroundColor={sea}
+        loadingIndicatorColor={sea}
         onMapReady={() => setReady(true)}
         // Gated on ready: the Android bridge calls GoogleMap.setPadding on a
         // null map if the prop changes between layout and onMapReady.
         mapPadding={ready ? mapPadding : undefined}
         onRegionChangeComplete={(region, details) => {
-          if (fitting.current) {
-            // The settle of our own animateToRegion — record what the SDK
-            // actually granted (it clamps extreme spans) as the baseline.
-            fitting.current = false;
-            fitted.current = region;
-            const asked = requested.current?.longitudeDelta ?? 0;
-            if (region.longitudeDelta < asked * 0.9 && region.longitudeDelta < maxLonSpan) {
-              zoomFloorLon = region.longitudeDelta;
-              setMaxLonSpan(region.longitudeDelta);
-            }
-            return;
-          }
           if (details?.isGesture) {
             setMoved(true);
             return;
           }
+          // The settle of the initial region or of our own animateToRegion —
+          // record what the SDK actually granted (it clamps extreme spans) as
+          // the baseline, and learn its floor from the clamp.
+          if (!fitted.current || Date.now() - fitStarted.current < FIT_SETTLE_MS) {
+            fitted.current = region;
+            const floor = learnZoomFloor(requested.current.longitudeDelta, region.longitudeDelta);
+            if (floor != null) setMaxLonSpan(floor);
+            return;
+          }
           const base = fitted.current;
-          if (!base) return;
           const tolerance = Math.max(base.latitudeDelta, base.longitudeDelta) * 0.02;
           if (
             Math.abs(region.latitude - base.latitude) > tolerance ||
@@ -413,15 +343,12 @@ export function World() {
           />
         ))}
         {data.airports.map((airport) => (
-          <Marker
+          <AirportMarker
             key={airport.iata}
+            iata={airport.iata}
+            city={airport.city}
             coordinate={{ latitude: airport.lat, longitude: airport.lon }}
-            title={airport.iata}
-            description={airport.city}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}>
-            <View style={[styles.dot, { borderColor: theme.tint }]} />
-          </Marker>
+          />
         ))}
       </MapView>
 
@@ -437,13 +364,25 @@ export function World() {
         />
         <View style={styles.header} pointerEvents="box-none">
           <View style={styles.titleBlock} pointerEvents="none">
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-              Everywhere you&apos;ve been
+            <ThemedText
+              type="smallBold"
+              themeColor="textSecondary"
+              style={styles.eyebrow}
+              numberOfLines={1}>
+              {focusedRow
+                ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture)}`
+                : 'Everywhere you’ve been'}
             </ThemedText>
-            <ThemedText type="title" themeColor="heading">
-              World
+            <ThemedText
+              type="title"
+              themeColor="heading"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}>
+              {focusedRow ? `${focusedRow.fromCode} → ${focusedRow.toCode}` : 'World'}
             </ThemedText>
           </View>
+          {focusedRow && <AllTravelsButton onPress={() => focusWorldOn(null)} />}
           {moved && (
             <RecenterButton
               onPress={() => {
@@ -476,82 +415,6 @@ export function World() {
         ) : null}
       </View>
     </View>
-  );
-}
-
-/** 0–1 → two hex digits, for appending alpha to a #RRGGBB colour. */
-function alphaHex(alpha: number): string {
-  return Math.round(Math.min(1, Math.max(0, alpha)) * 255)
-    .toString(16)
-    .padStart(2, '0');
-}
-
-/** Material "flight" glyph, nose up, in a 24×24 box. */
-const PLANE_PATH =
-  'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z';
-
-/** Same glyph as a bitmap, for Android — see scripts/generate-plane-marker.mjs. */
-const PLANE_IMAGE = {
-  light: require('../../assets/images/plane-marker-light.png'),
-  dark: require('../../assets/images/plane-marker-dark.png'),
-};
-
-/** The plane on a route, nose along the direction of travel, in a
- * transparent 40pt frame that serves as the tap target.
- *
- * Android gets a ready bitmap plus the marker's native `rotation`: Google
- * Maps snapshots a custom marker view once, before react-native-svg has
- * drawn, which left a blank or clipped icon. Apple Maps ignores `rotation`,
- * so iOS keeps the live SVG and rotates the view itself; the heading is
- * baked into the key so a changed heading re-snapshots. */
-function PlaneMarker({
-  plane,
-  opacity,
-  onPress,
-}: {
-  plane: RoutePlane;
-  opacity: number;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  const dark = useColorScheme() === 'dark';
-  const heading = Math.round(plane.heading);
-  if (Platform.OS === 'android') {
-    return (
-      <Marker
-        coordinate={plane.coordinate}
-        image={dark ? PLANE_IMAGE.dark : PLANE_IMAGE.light}
-        rotation={heading}
-        flat
-        anchor={{ x: 0.5, y: 0.5 }}
-        opacity={opacity}
-        onPress={onPress}
-        tracksViewChanges={false}
-        zIndex={2}
-      />
-    );
-  }
-  return (
-    <Marker
-      key={`${plane.leg.id}-${heading}`}
-      coordinate={plane.coordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
-      opacity={opacity}
-      onPress={onPress}
-      tracksViewChanges={false}
-      zIndex={2}>
-      <View style={styles.planeFrame}>
-        <Svg
-          width={22}
-          height={22}
-          viewBox="0 0 24 24"
-          style={{ transform: [{ rotate: `${heading}deg` }] }}>
-          {/* White halo so the glyph separates from the line and both map schemes. */}
-          <Path d={PLANE_PATH} stroke="#FFFFFF" strokeWidth={3} strokeLinejoin="round" fill="none" />
-          <Path d={PLANE_PATH} fill={theme.tint} />
-        </Svg>
-      </View>
-    </Marker>
   );
 }
 
@@ -608,7 +471,13 @@ function RouteCard({
         bounces={false}
         showsVerticalScrollIndicator={legs.length > 3}>
         {legs.map((leg) => (
-          <Link key={leg.id} href={{ pathname: '/journey/[id]', params: { id: leg.id } }} asChild>
+          <Link
+            key={leg.id}
+            href={{
+              pathname: '/journey/[id]',
+              params: { id: leg.id, from: leg.from.iata, to: leg.to.iata },
+            }}
+            asChild>
             {/* Link's asChild Slot rejects array styles — keep this one flat. */}
             <Pressable
               accessibilityRole="button"
@@ -624,7 +493,10 @@ function RouteCard({
                   {leg.flown
                     ? formatDayLabelWithYear(leg.scheduledDeparture)
                     : `Upcoming · ${formatDayLabel(leg.scheduledDeparture)}`}
-                  {leg.carrier ? ` · ${leg.carrier}` : ''}
+                  {/* Lookup rows store the carrier as its IATA code — already in the number. */}
+                  {leg.carrier && leg.carrier.toUpperCase() !== airlineCode(leg.number)
+                    ? ` · ${leg.carrier}`
+                    : ''}
                 </ThemedText>
               </View>
               <SymbolView
@@ -682,6 +554,28 @@ function EmptyCard() {
   );
 }
 
+/** Clears a journey hand-off: back to every route on the map. */
+function AllTravelsButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Show all travels"
+      onPress={onPress}
+      style={[styles.allTravels, { backgroundColor: theme.backgroundElement }]}>
+      <SymbolView
+        name={{ ios: 'globe', android: 'public', web: 'public' }}
+        size={16}
+        weight="semibold"
+        tintColor={theme.tint}
+      />
+      <ThemedText type="smallBold" style={{ color: theme.tint }}>
+        All travels
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 /** Floating "fit everything back on screen" control, shown once the user has
  * panned or zoomed away from the fitted view. */
 function RecenterButton({ onPress }: { onPress: () => void }) {
@@ -717,15 +611,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  dot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 3,
-    backgroundColor: '#FFFFFF',
-    // Marker views render on the map surface, not our theme background — a
-    // constant white core reads correctly on both map color schemes.
-  },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -759,6 +644,20 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
+  allTravels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+    height: 40,
+    paddingLeft: Spacing.two + Spacing.half,
+    paddingRight: Spacing.three,
+    borderRadius: 20,
+    shadowColor: '#0B1424',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
   recenter: {
     width: 40,
     height: 40,
@@ -779,12 +678,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-  },
-  planeFrame: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   routeCard: {
     alignSelf: 'stretch',
