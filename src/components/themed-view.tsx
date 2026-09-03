@@ -13,13 +13,18 @@ export type ThemedViewProps = ViewProps & {
 export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
   const theme = useTheme();
   const scheme = useColorScheme();
-  // Light-mode cards are white on a soft-blue page; the shadow separates them.
-  // Dark mode relies on surface contrast instead — shadows vanish on navy.
+  // Light-mode cards are white on a white page; a hairline border plus a
+  // whisper of shadow separates them (Flighty / Airbnb style). Dark mode
+  // relies on surface contrast instead — shadows vanish on navy.
   const elevated = type === 'backgroundElement' && scheme !== 'dark';
 
   return (
     <View
-      style={[{ backgroundColor: theme[type ?? 'background'] }, elevated && styles.elevated, style]}
+      style={[
+        { backgroundColor: theme[type ?? 'background'] },
+        elevated && [styles.elevated, { borderColor: theme.hairline }],
+        style,
+      ]}
       {...otherProps}
     />
   );
@@ -27,10 +32,11 @@ export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }
 
 const styles = StyleSheet.create({
   elevated: {
+    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#0B1520',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
 });

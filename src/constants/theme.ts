@@ -13,14 +13,18 @@ export const Colors = {
   // the action tint, and green stays reserved for money moments — owed
   // amounts, eligible verdicts, on-time status. Dark mode is the icon's
   // night-flight navy, not pure black, so cards still read as "sky at night".
-  // Light mode is a cool porcelain page with white elevated cards
-  // (ThemedView shadows them) and midnight-navy headings.
+  // Light mode is a pure-white page (Flighty / Airbnb / Wise, not Apple's
+  // grey grouped style): cards are white too and separate with a `hairline`
+  // border (ThemedView adds it), so nothing on the page reads as dim. Bare
+  // inputs sit on the page with a soft `field` fill instead.
   light: {
     text: '#0B1424',
     heading: '#13294B',
-    background: '#F3F6FA',
+    background: '#FFFFFF',
     backgroundElement: '#FFFFFF',
-    backgroundSelected: '#DDE7F4',
+    backgroundSelected: '#E8EEF6',
+    hairline: '#E3E8EF',
+    field: '#F2F5F9',
     textSecondary: '#5A6A7E',
     tint: '#1E6BE0',
     success: '#0FA362',
@@ -33,6 +37,8 @@ export const Colors = {
     background: '#070F20',
     backgroundElement: '#101D34',
     backgroundSelected: '#1B2C4A',
+    hairline: '#1B2C4A',
+    field: '#101D34',
     textSecondary: '#8FA2BB',
     tint: '#4E9BF5',
     success: '#2FD68C',

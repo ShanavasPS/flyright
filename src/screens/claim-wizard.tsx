@@ -269,7 +269,7 @@ export function ClaimWizard() {
             onChangeText={setFullName}
             placeholder="Full name (as on the booking)"
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, backgroundColor: theme.field }]}
           />
           <TextInput
             autoComplete="email"
@@ -279,7 +279,7 @@ export function ClaimWizard() {
             onChangeText={setEmail}
             placeholder="Email for the airline's reply"
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, backgroundColor: theme.field }]}
           />
           <TextInput
             autoCapitalize="characters"
@@ -288,7 +288,7 @@ export function ClaimWizard() {
             onChangeText={setBookingRef}
             placeholder="Booking reference (optional)"
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, backgroundColor: theme.field }]}
           />
           <View style={styles.cta}>
             <PrimaryButton

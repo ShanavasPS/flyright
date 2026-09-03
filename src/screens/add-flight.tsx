@@ -684,7 +684,7 @@ export function AddFlight() {
                 style={[
                   styles.input,
                   styles.airportInput,
-                  { color: theme.text, backgroundColor: theme.backgroundElement },
+                  { color: theme.text, backgroundColor: theme.field },
                 ]}
               />
               <TextInput
@@ -698,7 +698,7 @@ export function AddFlight() {
                 style={[
                   styles.input,
                   styles.airportInput,
-                  { color: theme.text, backgroundColor: theme.backgroundElement },
+                  { color: theme.text, backgroundColor: theme.field },
                 ]}
               />
             </View>
