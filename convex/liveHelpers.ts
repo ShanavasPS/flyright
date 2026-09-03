@@ -1,6 +1,8 @@
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
+import { FREE_CIRCLE_SIZE } from './circleShared';
+import { isPro } from './entitlements';
 import { makeToken, nextPollDelayMs } from './liveShared';
 
 /** ctx-bound helpers shared by the public live API, the circle API and the
@@ -210,5 +212,44 @@ export async function armHeadsUpsForOwner(ctx: MutationCtx, ownerId: string) {
   }
 }
 
-/** Invite tokens share the session-token recipe (22-char base62). */
-export const makeInviteToken = makeToken;
+const INVITE_TTL_MS = 7 * 24 * 3_600_000;
+const INVITE_MAX_USES = 10;
+
+/** Free accounts share with FREE_CIRCLE_SIZE people; Pro is unlimited. The
+ * SDK-side entitlement never reaches here — only the webhook mirror counts,
+ * so a fresh purchase gates until RC's event lands (seconds, normally). */
+export async function circleFull(ctx: QueryCtx | MutationCtx, ownerId: string) {
+  const members = await circleMembers(ctx, ownerId);
+  return members.length >= FREE_CIRCLE_SIZE && !(await isPro(ctx, ownerId));
+}
+
+export function inviteUsable(invite: { uses: number; expiresAt: string } | null) {
+  return (
+    !!invite && invite.uses < INVITE_MAX_USES && Date.parse(invite.expiresAt) > Date.now()
+  );
+}
+
+/** The owner's current invite link — reused while it has uses and time left,
+ * otherwise minted fresh (dead invites are garbage, nobody can redeem them).
+ * Callers check circleFull first; a full circle has no business inviting.
+ * Invite tokens share the session-token recipe (22-char base62). */
+export async function ensureCircleInvite(ctx: MutationCtx, ownerId: string) {
+  const existing = await ctx.db
+    .query('circleInvites')
+    .withIndex('by_owner', (q) => q.eq('ownerId', ownerId))
+    .collect();
+  const live = existing.find(inviteUsable);
+  if (live) return { token: live.token, expiresAt: live.expiresAt };
+  for (const row of existing) await ctx.db.delete(row._id);
+  const now = Date.now();
+  const token = makeToken();
+  const expiresAt = new Date(now + INVITE_TTL_MS).toISOString();
+  await ctx.db.insert('circleInvites', {
+    ownerId,
+    token,
+    uses: 0,
+    expiresAt,
+    createdAt: new Date(now).toISOString(),
+  });
+  return { token, expiresAt };
+}

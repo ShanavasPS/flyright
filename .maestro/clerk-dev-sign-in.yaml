@@ -1,0 +1,22 @@
+# Sign a Clerk DEV test user in through the app's sign-in sheet. Expects the
+# sheet to be open already (tap any "Sign in…" button first) and a user whose
+# address contains +clerk_test — the emailed OTP is then always 424242.
+# Run: maestro --device <udid> test .maestro/clerk-dev-sign-in.yaml -e EMAIL=anna+clerk_test@example.com
+# Verified on iOS 26 (2026-09-03). On the Android emulator Maestro's inputText
+# stalls in Clerk's field — type with `adb shell input text` instead.
+appId: com.shanavasshaji.flyright
+env:
+  EMAIL: sam+clerk_test@example.com
+tags:
+  - helper
+---
+- extendedWaitUntil:
+    visible: "Enter your email"
+    timeout: 20000
+- tapOn: "Enter your email"
+- inputText: ${EMAIL}
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: ".*Check your email.*"
+    timeout: 20000
+- inputText: "424242"

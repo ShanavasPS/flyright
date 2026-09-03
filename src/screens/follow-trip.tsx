@@ -16,6 +16,7 @@ import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { DETOUR_LINK_BASE } from '@/constants/config';
+import { trackEvent } from '@/services/analytics';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { storeLink } from '@/services/deferred-links';
 import {
@@ -72,13 +73,19 @@ export function FollowTrip({ token }: { token: string }) {
   const result = useQuery(api.live.byToken, { token });
   const follow = useMutation(api.live.follow);
   const [followed, setFollowed] = useState(false);
+  // The traveler's circle invite, when following one trip could become
+  // following them all — null once declined, or when the server has no offer
+  // (already in the circle, circle full).
+  const [circleInvite, setCircleInvite] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const onFollow = async () => {
     setBusy(true);
     try {
-      await follow({ token });
+      const result = await follow({ token });
       setFollowed(true);
+      setCircleInvite(result.circleInviteToken);
+      trackEvent('trip_followed', { circleOffered: result.circleInviteToken != null });
     } catch {
       // Expired mid-view; the reactive query will flip to gone.
     } finally {
@@ -127,9 +134,38 @@ export function FollowTrip({ token }: { token: string }) {
 
         {isSignedIn && Platform.OS !== 'web' ? (
           followed || session.viewerFollows ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.centeredText}>
-              Following — you&apos;ll get updates as {who} moves through the airport.
-            </ThemedText>
+            <>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.centeredText}>
+                Following — you&apos;ll get updates as {who} moves through the airport.
+              </ThemedText>
+              {/* One trip → every trip. Hands off to the invite page, which
+                  owns the join flow (push permission, share back, full circle). */}
+              {circleInvite && (
+                <Card>
+                  <ThemedText type="subtitle">Follow all of {who}&apos;s trips?</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    A heads-up the day before each flight and updates on travel day — every
+                    trip, not just this one. {who} sees you in their circle and can stop
+                    sharing anytime.
+                  </ThemedText>
+                  <PrimaryButton
+                    label={`Follow all of ${who}'s trips`}
+                    onPress={() => {
+                      trackEvent('trip_follow_circle_upsell', { choice: 'accept' });
+                      router.push(`/i/${circleInvite}`);
+                    }}
+                  />
+                  <Pressable
+                    onPress={() => {
+                      trackEvent('trip_follow_circle_upsell', { choice: 'decline' });
+                      setCircleInvite(null);
+                    }}
+                    style={styles.centered}>
+                    <ThemedText type="link">Just this trip</ThemedText>
+                  </Pressable>
+                </Card>
+              )}
+            </>
           ) : (
             <PrimaryButton label="Follow this trip" disabled={busy} onPress={onFollow} />
           )
@@ -208,6 +244,9 @@ const styles = StyleSheet.create({
   },
   centeredText: {
     textAlign: 'center',
+  },
+  centered: {
+    alignItems: 'center',
   },
   storeRow: {
     flexDirection: 'row',

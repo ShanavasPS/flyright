@@ -1,12 +1,13 @@
 import { ConvexError, v } from 'convex/values';
 
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
-import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from './circleShared';
-import { isPro } from './entitlements';
+import { CIRCLE_FULL } from './circleShared';
 import {
   armHeadsUpsForOwner,
+  circleFull,
   circleMembers,
-  makeInviteToken,
+  ensureCircleInvite,
+  inviteUsable,
   materializeCircleFollows,
   profileFor,
   severCircle,
@@ -17,9 +18,6 @@ import { toPublicSession } from './liveShared';
  * Invites are personal links (getflyright.com/i/<token>); accepting one adds
  * the acceptor to the owner's circle, which then rides along on every live
  * session through liveHelpers.materializeCircleFollows. */
-
-const INVITE_TTL_MS = 7 * 24 * 3_600_000;
-const INVITE_MAX_USES = 10;
 
 async function requireIdentity(ctx: MutationCtx | QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -32,45 +30,13 @@ async function person(ctx: QueryCtx | MutationCtx, userId: string) {
   return { userId, name: profile?.name ?? 'A traveler', imageUrl: profile?.imageUrl ?? null };
 }
 
-/** Free accounts share with FREE_CIRCLE_SIZE people; Pro is unlimited. The
- * SDK-side entitlement never reaches here — only the webhook mirror counts,
- * so a fresh purchase gates until RC's event lands (seconds, normally). */
-async function circleFull(ctx: QueryCtx | MutationCtx, ownerId: string) {
-  const members = await circleMembers(ctx, ownerId);
-  return members.length >= FREE_CIRCLE_SIZE && !(await isPro(ctx, ownerId));
-}
-
-function inviteUsable(invite: { uses: number; expiresAt: string } | null) {
-  return (
-    !!invite && invite.uses < INVITE_MAX_USES && Date.parse(invite.expiresAt) > Date.now()
-  );
-}
-
 /** Mint (or reuse) the caller's current invite link. */
 export const createInvite = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
     if (await circleFull(ctx, identity.subject)) throw new ConvexError(CIRCLE_FULL);
-    const existing = await ctx.db
-      .query('circleInvites')
-      .withIndex('by_owner', (q) => q.eq('ownerId', identity.subject))
-      .collect();
-    const live = existing.find(inviteUsable);
-    if (live) return { token: live.token, expiresAt: live.expiresAt };
-    // Dead invites are garbage — nobody can redeem them anymore.
-    for (const row of existing) await ctx.db.delete(row._id);
-    const now = Date.now();
-    const token = makeInviteToken();
-    const expiresAt = new Date(now + INVITE_TTL_MS).toISOString();
-    await ctx.db.insert('circleInvites', {
-      ownerId: identity.subject,
-      token,
-      uses: 0,
-      expiresAt,
-      createdAt: new Date(now).toISOString(),
-    });
-    return { token, expiresAt };
+    return ensureCircleInvite(ctx, identity.subject);
   },
 });
 

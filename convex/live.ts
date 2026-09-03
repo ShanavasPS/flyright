@@ -4,8 +4,10 @@ import { internal } from './_generated/api';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import {
   activeSessionForKey,
+  circleFull,
   circleMembers,
   createSession,
+  ensureCircleInvite,
   followerCount,
   journeyForKey,
   travelerName,
@@ -178,7 +180,21 @@ export const follow = mutation({
         createdAt: new Date().toISOString(),
       });
     }
-    return { sessionId: session._id };
+    // The upgrade path from one trip to every trip: the traveler chose to
+    // share with this person, so the follow page may offer the traveler's
+    // circle invite — unless they're already in it, or the circle is full
+    // (the traveler's problem to solve, not the follower's).
+    const inCircle = await ctx.db
+      .query('circle')
+      .withIndex('by_owner_member', (q) =>
+        q.eq('ownerId', session.userId).eq('memberId', identity.subject),
+      )
+      .unique();
+    const circleInviteToken =
+      inCircle || (await circleFull(ctx, session.userId))
+        ? null
+        : (await ensureCircleInvite(ctx, session.userId)).token;
+    return { sessionId: session._id, circleInviteToken };
   },
 });
 
