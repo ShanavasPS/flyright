@@ -29,9 +29,9 @@ const SDK_MAX_LON_SPAN = Platform.OS === 'android' ? 60 : 80;
  * detail screen (the Airbnb "getting there" pattern): the great-circle arc,
  * both airports, the plane where the World tab would draw it. Not
  * interactive — the whole card is one tap target that hands the trip to the
- * World tab, so the map never fights the screen's scroll. Android renders
- * Google's lite mode, a cached bitmap that costs nothing inside a ScrollView.
- * Renders nothing when either airport is unknown (manual entries with
+ * World tab, so the map never fights the screen's scroll. Not Google's lite
+ * mode on Android: that bitmap ignores marker `rotation` and `anchor`, so the
+ * plane drew nose-up and above the arc. Renders nothing when either airport is unknown (manual entries with
  * non-IATA codes). */
 export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: () => void }) {
   const theme = useTheme();
@@ -79,7 +79,6 @@ export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: 
           loadingEnabled
           loadingBackgroundColor={sea}
           loadingIndicatorColor={sea}
-          liteMode
           pointerEvents="none"
           scrollEnabled={false}
           zoomEnabled={false}
@@ -114,8 +113,8 @@ export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: 
       ) : (
         <RouteAtlas journey={journey} height={ROUTE_MAP_HEIGHT} />
       )}
-      {/* Lite mode's own tap opens the Google Maps app; this fill catches the
-          tap for the Pressable instead, on both platforms. */}
+      {/* Catches the tap for the Pressable on both platforms — Google Maps
+          would otherwise swallow it even with gestures off. */}
       <View style={styles.shield} />
       <View style={[styles.expand, { backgroundColor: theme.backgroundElement }]}>
         <SymbolView
