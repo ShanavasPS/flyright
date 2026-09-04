@@ -11,6 +11,10 @@
 appId: com.shanavasshaji.flyright
 ---
 - launchApp
+# A cold dev-client start can outlast the deep link — wait for the list first.
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
 - openLink: "flyright:///journey/${JOURNEY_ID}"
 - extendedWaitUntil:
     visible: "Write about this trip"

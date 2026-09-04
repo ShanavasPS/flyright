@@ -23,6 +23,9 @@ function row(overrides: Partial<JourneyRow>): JourneyRow {
     ticketPriceCurrency: null,
     notes: null,
     notesUpdatedAt: null,
+    rating: null,
+    bookingReference: null,
+    seat: null,
     source: 'lookup',
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-08-01T00:00:00Z',
@@ -114,6 +117,7 @@ describe('travelRecap', () => {
       homeCity: null,
       topDestination: null,
       topAirline: null,
+      favouriteAirline: null,
     });
   });
 
@@ -172,6 +176,28 @@ describe('travelRecap', () => {
     expect(recap.airlines).toBe(1);
     expect(recap.topAirline).toEqual({ carrier: 'Finnair', flights: 1, number: 'AY123' });
     expect(travelRecap([trip('HEL', 'FRA', { carrier: 'Flight' })]).topAirline).toBeNull();
+  });
+
+  it('crowns the highest-rated airline, ties going to the one rated more often', () => {
+    const rows = [
+      trip('HEL', 'FRA', { carrier: 'Finnair', number: 'AY123', rating: 4 }),
+      trip('HEL', 'LHR', { carrier: 'Finnair', number: 'AY1331', rating: 5 }),
+      trip('HEL', 'ARN', { carrier: 'SAS', number: 'SK701', rating: 5 }),
+      trip('HEL', 'CPH', { carrier: 'Norwegian', number: 'DY1234' }),
+    ];
+    expect(travelRecap(rows).favouriteAirline).toEqual({
+      carrier: 'SAS',
+      rating: 5,
+      rated: 1,
+      number: 'SK701',
+    });
+    rows.push(trip('HEL', 'ARN', { carrier: 'Finnair', number: 'AY801', rating: 5 }));
+    // Finnair now averages 4.67 vs SAS 5 — SAS still wins on the mean.
+    expect(travelRecap(rows).favouriteAirline?.carrier).toBe('SAS');
+    rows.push(trip('HEL', 'OSL', { carrier: 'SAS', number: 'SK702', rating: 3 }));
+    // SAS drops to 4; Finnair's 4.67 takes it.
+    expect(travelRecap(rows).favouriteAirline?.carrier).toBe('Finnair');
+    expect(travelRecap([trip('HEL', 'FRA', {})]).favouriteAirline).toBeNull();
   });
 
   it('tracks first and busiest year, hiding busiest for a single year', () => {

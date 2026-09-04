@@ -24,6 +24,13 @@ export const journeys = sqliteTable('journeys', {
   /** When `notes` last changed; shown on the card as "Edited …". Separate
    *  from updatedAt, which every field edit and the sync bump. */
   notesUpdatedAt: text('notes_updated_at'),
+  /** The traveler's 1–5 rating of the flight, null until they tap a star.
+   *  Feeds the "favourite airline" stat. */
+  rating: integer('rating'),
+  /** Booking reference (PNR) and seat — typed on the manual form or read
+   *  off a scanned boarding pass. Null when unknown. */
+  bookingReference: text('booking_reference'),
+  seat: text('seat'),
   /** 'lookup' rows track a live flight via the status API; 'manual' rows are
    *  journal entries (historical or number-less) that must never be polled. */
   source: text('source', { enum: ['lookup', 'manual'] }).notNull().default('lookup'),
@@ -34,6 +41,28 @@ export const journeys = sqliteTable('journeys', {
   deletedAt: text('deleted_at'),
   /** updatedAt value at the last successful push/pull. Row is dirty iff
    *  syncedAt IS NULL OR updatedAt > syncedAt. Never sent to Convex. */
+  syncedAt: text('synced_at'),
+});
+
+/** Photos the traveler attached to a trip. The file lives in the app's
+ *  document directory (file:// uri) once imported on this device, or at its
+ *  Convex storage URL when it arrived through sync from another device.
+ *  storageId is set once the upload landed; rows sync last-write-wins like
+ *  journeys, with soft-delete tombstones. */
+export const tripPhotos = sqliteTable('trip_photos', {
+  id: text('id').primaryKey(),
+  journeyId: text('journey_id').notNull().references(() => journeys.id),
+  /** See journeys.userId. */
+  userId: text('user_id'),
+  uri: text('uri').notNull(),
+  width: integer('width'),
+  height: integer('height'),
+  /** Convex _storage id after upload; null while local-only. */
+  storageId: text('storage_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+  /** See journeys.syncedAt. */
   syncedAt: text('synced_at'),
 });
 

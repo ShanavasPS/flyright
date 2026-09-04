@@ -6,6 +6,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { DeferredLinks } from "@/components/deferred-link-router";
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
+import { PhotoSync } from "@/components/photo-sync";
 import { EntitlementSync } from "@/components/entitlement-sync";
 import { ProfileSync } from "@/components/profile-sync";
 import { TravelDaySync } from "@/components/travel-day-sync";
@@ -87,6 +88,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
   return (
     <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
       <JourneySync />
+      <PhotoSync />
       <TravelDaySync />
       <ProfileSync />
       <EntitlementSync />
@@ -213,6 +215,15 @@ function RootLayout() {
                   presentation: "modal",
                   headerShown: true,
                   gestureEnabled: false,
+                }}
+              />
+              {/* One trip photo on black, with its own close/remove bar. */}
+              <Stack.Screen
+                name="photo-viewer"
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                  animation: "fade",
                 }}
               />
               <Stack.Screen

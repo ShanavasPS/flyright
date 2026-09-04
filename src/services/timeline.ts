@@ -74,6 +74,9 @@ export interface TravelRecap extends TravelStats {
   /** `number` is a sample flight number from that airline's rows, so the UI
    * can derive the carrier's IATA code for its logo. */
   topAirline: { carrier: string; flights: number; number: string } | null;
+  /** The airline the traveler rates highest (mean of their 1–5 stars, ties
+   * to the one rated more often). Null until at least one flight is rated. */
+  favouriteAirline: { carrier: string; rating: number; rated: number; number: string } | null;
 }
 
 /** "Helsinki (Vantaa)" → "Helsinki"; unknown codes fall back to the code
@@ -118,6 +121,7 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
   const airports = new Set<string>();
   const airlineCounts = new Map<string, number>();
   const airlineNumbers = new Map<string, string>();
+  const ratingSums = new Map<string, { sum: number; count: number }>();
   const departureCities = new Map<string, number>();
   const arrivalCities = new Map<string, number>();
   const yearCounts = new Map<string, number>();
@@ -132,6 +136,10 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
     if (airline) {
       bump(airlineCounts, airline);
       if (row.number && !airlineNumbers.has(airline)) airlineNumbers.set(airline, row.number);
+      if (row.rating != null) {
+        const acc = ratingSums.get(airline) ?? { sum: 0, count: 0 };
+        ratingSums.set(airline, { sum: acc.sum + row.rating, count: acc.count + 1 });
+      }
     }
     bump(departureCities, cityOf(row.fromCode));
     bump(arrivalCities, cityOf(row.toCode));
@@ -148,6 +156,16 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
   const destination = top(away) ?? top(arrivalCities);
   const busiest = yearCounts.size > 1 ? top(yearCounts) : null;
   const airline = top(airlineCounts);
+  let favourite: { carrier: string; rating: number; rated: number } | null = null;
+  for (const [carrier, { sum, count }] of ratingSums) {
+    const rating = sum / count;
+    if (
+      !favourite ||
+      rating > favourite.rating ||
+      (rating === favourite.rating && count > favourite.rated)
+    )
+      favourite = { carrier, rating, rated: count };
+  }
 
   return {
     ...base,
@@ -166,6 +184,9 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
           flights: airline.count,
           number: airlineNumbers.get(airline.key) ?? '',
         }
+      : null,
+    favouriteAirline: favourite
+      ? { ...favourite, number: airlineNumbers.get(favourite.carrier) ?? '' }
       : null,
   };
 }

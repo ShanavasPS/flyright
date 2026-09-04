@@ -85,6 +85,14 @@ const PROMPTS: Record<Step, string> = {
   added: '',
 };
 
+/** The optional booking reference and seat as row fields: trimmed, upper-
+ * cased, null when blank. */
+function tripDetails(bookingRef: string, seat: string) {
+  const ref = bookingRef.trim().toUpperCase();
+  const seatNo = seat.trim().toUpperCase();
+  return { bookingReference: ref || null, seat: seatNo || null };
+}
+
 export function AddFlight() {
   const router = useRouter();
   const theme = useTheme();
@@ -115,6 +123,10 @@ export function AddFlight() {
   const [depTime, setDepTime] = useState<string | null>(null);
   const [arrTime, setArrTime] = useState<string | null>(null);
   const [timePickerFor, setTimePickerFor] = useState<'dep' | 'arr' | null>(null);
+  // Booking reference (PNR) and seat: typed on the journal form or read off
+  // a scanned boarding pass, saved with either path.
+  const [bookingRef, setBookingRef] = useState('');
+  const [seat, setSeat] = useState('');
   // Boarding-pass scanner open on the flight step (native only — web camera
   // barcode support is too patchy to offer).
   const [scanning, setScanning] = useState(false);
@@ -134,6 +146,8 @@ export function AddFlight() {
     setToInput(editRow.toCode);
     setDate(editRow.scheduledDeparture.slice(0, 10));
     if (editRow.number) setFlightNumber(editRow.number);
+    setBookingRef(editRow.bookingReference ?? '');
+    setSeat(editRow.seat ?? '');
     // Identical noon timestamps are the "no times entered" placeholder.
     const dep = editRow.scheduledDeparture;
     const arr = editRow.scheduledArrival;
@@ -172,6 +186,8 @@ export function AddFlight() {
     setFlightNumber(designator);
     setFromInput(leg.fromCode);
     setToInput(leg.toCode);
+    setBookingRef(leg.pnr);
+    setSeat(leg.seat ?? '');
     setDate(resolveFlightDate(leg.dayOfYear, today));
     setManualMode(!designator);
     setStep(designator ? 'result' : 'manual');
@@ -253,6 +269,7 @@ export function AddFlight() {
       distanceKm: flight.distanceKm ?? 0,
       scheduledDeparture: flight.scheduledDeparture ?? `${flight.date}T00:00:00Z`,
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
+      ...tripDetails(bookingRef, seat),
       createdAt: new Date().toISOString(),
     });
     trackEvent('flight_added', { source: 'lookup' });
@@ -317,6 +334,7 @@ export function AddFlight() {
         distanceKm,
         scheduledDeparture: `${date}T${depClock}:00`,
         scheduledArrival: `${arrivalDay}T${arrClock}:00`,
+        ...tripDetails(bookingRef, seat),
       });
       setStep('added');
       Observe.logEvent('flight.edited', {
@@ -340,6 +358,7 @@ export function AddFlight() {
       distanceKm,
       scheduledDeparture: `${date}T${depClock}:00`,
       scheduledArrival: `${arrivalDay}T${arrClock}:00`,
+      ...tripDetails(bookingRef, seat),
       createdAt: new Date().toISOString(),
     });
     setStep('added');
@@ -780,6 +799,28 @@ export function AddFlight() {
                     }}
                   />
                 )}
+                <View style={styles.detailInputs}>
+                  <TextInput
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={8}
+                    value={bookingRef}
+                    onChangeText={setBookingRef}
+                    placeholder="Booking ref"
+                    placeholderTextColor={theme.textSecondary}
+                    style={[styles.input, styles.detailInput, { color: theme.text, backgroundColor: theme.field }]}
+                  />
+                  <TextInput
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={4}
+                    value={seat}
+                    onChangeText={setSeat}
+                    placeholder="Seat"
+                    placeholderTextColor={theme.textSecondary}
+                    style={[styles.input, styles.detailInput, { color: theme.text, backgroundColor: theme.field }]}
+                  />
+                </View>
                 <View style={styles.cta}>
                   <PrimaryButton
                     label={editId ? 'Save changes →' : 'Add to My travels →'}
@@ -820,6 +861,13 @@ export function AddFlight() {
                       landed={flight.landed}
                     />
                   </View>
+                  {(bookingRef || seat) && (
+                    <ThemedText type="small" style={styles.passCarrier} numberOfLines={1}>
+                      {[seat && `Seat ${seat}`, bookingRef && `Booking ${bookingRef}`]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </ThemedText>
+                  )}
                   <PassDivider />
                   <PassAction
                     label={flightPast ? 'Save to My travels →' : 'Track this flight →'}
@@ -1026,6 +1074,13 @@ const styles = StyleSheet.create({
   },
   rowGroup: {
     gap: Spacing.two,
+  },
+  detailInputs: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  detailInput: {
+    minWidth: 0,
   },
   quickDates: {
     flexDirection: 'row',

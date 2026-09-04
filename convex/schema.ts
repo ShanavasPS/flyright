@@ -29,6 +29,10 @@ export default defineSchema({
      * synced before notes existed (and pushes from older clients) omit them. */
     notes: v.optional(v.union(v.string(), v.null())),
     notesUpdatedAt: v.optional(v.union(v.string(), v.null())),
+    /** 1–5 star rating, booking reference and seat — same optionality. */
+    rating: v.optional(v.union(v.number(), v.null())),
+    bookingReference: v.optional(v.union(v.string(), v.null())),
+    seat: v.optional(v.union(v.string(), v.null())),
     source: v.string(),
     createdAt: v.string(),
     updatedAt: v.string(),
@@ -43,6 +47,25 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_user_key', ['userId', 'naturalKey']),
+
+  /** Cloud mirror of the local `trip_photos` table. The image itself lives
+   * in Convex file storage (storageId); rows merge last-write-wins on
+   * updatedAt like journeys, and a tombstone push deletes the stored file. */
+  tripPhotos: defineTable({
+    userId: v.string(),
+    /** The journey's natural key (journeys.naturalKey). */
+    journeyKey: v.string(),
+    /** The local row id — the photo's natural key. */
+    photoId: v.string(),
+    storageId: v.union(v.id('_storage'), v.null()),
+    width: v.union(v.number(), v.null()),
+    height: v.union(v.number(), v.null()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    deletedAt: v.union(v.string(), v.null()),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_photo', ['userId', 'photoId']),
 
   /** One live travel-day session per shared trip. Standalone with a
    * denormalized flight snapshot: the public token query must never join

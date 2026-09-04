@@ -100,6 +100,12 @@ export function TravelStats() {
                 value={recap.topAirline.carrier}
                 caption={`most flown · ${plural(recap.topAirline.flights, 'flight')}`}
               />
+              {recap.favouriteAirline && (
+                <InfoRow
+                  label="Favourite"
+                  value={`${recap.favouriteAirline.carrier} · ${formatStars(recap.favouriteAirline.rating)} · ${plural(recap.favouriteAirline.rated, 'rating')}`}
+                />
+              )}
               <InfoRow label="Airlines flown" value={`${recap.airlines}`} />
             </SheenCard>
           </>
@@ -120,6 +126,11 @@ export function TravelStats() {
       </ScrollView>
     </ThemedView>
   );
+}
+
+/** "4.5 ★" — one decimal unless it's whole. */
+function formatStars(rating: number): string {
+  return `${Number.isInteger(rating) ? rating : rating.toFixed(1)} ★`;
 }
 
 function plural(count: number, noun: string): string {

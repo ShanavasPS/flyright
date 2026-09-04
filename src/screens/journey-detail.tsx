@@ -26,6 +26,7 @@ import { IconBadge, SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { TripPhotos } from '@/components/trip-photos';
 import { TripShareActions } from '@/components/trip-share';
 import { CONVEX_URL } from '@/constants/config';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
@@ -54,6 +55,7 @@ import { noteSuccess } from '@/services/haptics';
 import {
   deleteJourney,
   toDomainJourney,
+  updateJourney,
   useJourney,
   useJourneys,
   type JourneyRow,
@@ -398,6 +400,7 @@ export function JourneyDetail({
         ) : travelActive || travelPreview ? null : journalOnly && row ? (
           <TripLogCard
             row={row}
+            userId={userId}
             journal={journal ?? []}
             now={now}
             tripAge={tripAge}
@@ -423,7 +426,10 @@ export function JourneyDetail({
 
         {!showTripLog && row && openNotes && (
           <Card>
-            <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={openNotes} />
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
+              Your journal
+            </ThemedText>
+            <JournalBlock row={row} userId={userId} now={now} tripAge={tripAge} onEditNotes={openNotes} />
           </Card>
         )}
 
@@ -492,6 +498,7 @@ function shareTrip(journey: Journey) {
  * notes. The distance and block time already sit in the hero. */
 function TripLogCard({
   row,
+  userId,
   journal,
   now,
   tripAge,
@@ -499,6 +506,7 @@ function TripLogCard({
   onEditNotes,
 }: {
   row: JourneyRow;
+  userId: string | null | undefined;
   journal: JourneyRow[];
   now: number;
   tripAge: number;
@@ -508,6 +516,7 @@ function TripLogCard({
   const theme = useTheme();
   const manual = row.source === 'manual';
   const facts = tripFacts(row, journal);
+  const details = tripDetailChips(row);
   const added = formatDayLabelWithYear(row.createdAt);
 
   return (
@@ -538,8 +547,17 @@ function TripLogCard({
         </ThemedText>
       </View>
 
-      {facts.length > 0 && (
+      {(details.length > 0 || facts.length > 0) && (
         <View style={styles.factRow}>
+          {/* The traveler's own details lead in the tint wash; the journal's
+              computed facts follow on the field colour. */}
+          {details.map((detail) => (
+            <View key={detail} style={[styles.factChip, { backgroundColor: `${theme.tint}1A` }]}>
+              <ThemedText type="smallBold" style={[styles.factText, { color: theme.tint }]}>
+                {detail}
+              </ThemedText>
+            </View>
+          ))}
           {facts.map((fact) => (
             <View key={fact} style={[styles.factChip, { backgroundColor: theme.field }]}>
               <ThemedText type="smallBold" themeColor="heading" style={styles.factText}>
@@ -553,7 +571,14 @@ function TripLogCard({
       {onEditNotes && (
         <>
           <View style={[styles.divider, { backgroundColor: theme.hairline }]} />
-          <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={onEditNotes} />
+          <JournalBlock
+            row={row}
+            userId={userId}
+            now={now}
+            tripAge={tripAge}
+            onEditNotes={onEditNotes}
+            withDetails={false}
+          />
         </>
       )}
 
@@ -564,6 +589,90 @@ function TripLogCard({
         </ThemedText>
       )}
     </Card>
+  );
+}
+
+/** "Seat 32K", "Booking ABC123" — the details the traveler typed or a
+ * boarding-pass scan supplied. */
+function tripDetailChips(row: JourneyRow): string[] {
+  return [row.seat && `Seat ${row.seat}`, row.bookingReference && `Booking ${row.bookingReference}`].filter(
+    (chip): chip is string => !!chip,
+  );
+}
+
+/** Everything the traveler adds to a trip themselves: seat and booking
+ * details, a star rating once it's flown, photos, and notes. The trip-log
+ * card shows the detail chips in its own facts row, so it turns them off. */
+function JournalBlock({
+  row,
+  userId,
+  now,
+  tripAge,
+  onEditNotes,
+  withDetails = true,
+}: {
+  row: JourneyRow;
+  userId: string | null | undefined;
+  now: number;
+  tripAge: number;
+  onEditNotes: () => void;
+  withDetails?: boolean;
+}) {
+  const theme = useTheme();
+  const details = withDetails ? tripDetailChips(row) : [];
+  return (
+    <View style={styles.journal}>
+      {details.length > 0 && (
+        <View style={styles.factRow}>
+          {details.map((detail) => (
+            <View key={detail} style={[styles.factChip, { backgroundColor: `${theme.tint}1A` }]}>
+              <ThemedText type="smallBold" style={[styles.factText, { color: theme.tint }]}>
+                {detail}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      )}
+      {tripAge > 0 && <RatingRow row={row} />}
+      <TripPhotos journeyId={row.id} userId={userId} />
+      <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={onEditNotes} />
+    </View>
+  );
+}
+
+const RATING_WORDS = ['', 'Rough', 'Meh', 'Fine', 'Good', 'Great'];
+
+/** Five tappable stars. Tapping the current rating clears it. Saved straight
+ * to the row, so it syncs like every other field. */
+function RatingRow({ row }: { row: JourneyRow }) {
+  const theme = useTheme();
+  const rating = row.rating ?? 0;
+  return (
+    <View style={styles.ratingRow}>
+      <ThemedText type="small" themeColor={rating ? 'heading' : 'textSecondary'} style={styles.ratingLabel}>
+        {rating ? `${RATING_WORDS[rating]} flight` : 'How was the flight?'}
+      </ThemedText>
+      <View style={styles.stars} accessibilityRole="radiogroup" accessibilityLabel="Rate this flight">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Pressable
+            key={n}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: rating === n }}
+            accessibilityLabel={`${n} star${n === 1 ? '' : 's'}`}
+            hitSlop={Spacing.one}
+            onPress={() => {
+              void updateJourney(row.id, { rating: rating === n ? null : n });
+            }}>
+            <SymbolView
+              name={{ ios: 'star.fill', android: 'star', web: 'star' }}
+              size={24}
+              tintColor={n <= rating ? theme.warning : theme.textSecondary}
+              style={n <= rating ? undefined : styles.starOff}
+            />
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -1159,6 +1268,25 @@ const styles = StyleSheet.create({
   notesText: {
     marginTop: Spacing.one,
     marginBottom: Spacing.one,
+  },
+  journal: {
+    gap: Spacing.two,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  ratingLabel: {
+    flex: 1,
+  },
+  stars: {
+    flexDirection: 'row',
+    gap: Spacing.one,
+  },
+  starOff: {
+    opacity: 0.3,
   },
   notesPrompt: {
     flexDirection: 'row',

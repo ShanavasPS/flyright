@@ -1,0 +1,61 @@
+# Trip journal extras on the detail's trip-log card: the seat/booking chips
+# read off the row, the five-star rating saves on tap (and reads back as
+# "Good flight"), the photo prompt is there, and the journeys list peeks the
+# note's first line under the row.
+#
+# Needs a seeded, FLOWN manual row (see world-map.yaml's recipe) that carries
+# a note, a seat and a booking reference, e.g. on the iOS sim:
+#   sqlite3 "$DB" "update journeys set seat='32K', booking_reference='ABC123',
+#     notes='Sixteen hours in 32K by the window.', rating=NULL where id='seed-2'"
+# Pass its id as JOURNEY_ID. Stars are radio buttons matched by label.
+#
+# Run: maestro --device <device> test -e JOURNEY_ID=seed-2 .maestro/trip-journal.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+# A cold dev-client start can outlast the deep link — wait for the list first.
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright:///journey/${JOURNEY_ID}"
+- extendedWaitUntil:
+    visible: "Seat 32K"
+    timeout: 15000
+- assertVisible: "Booking ABC123"
+- scrollUntilVisible:
+    element: "How was the flight?"
+    direction: DOWN
+- tapOn: "4 stars"
+- assertVisible: "Good flight"
+- assertVisible: "Add photos"
+# The stars re-render on every tap; let the a11y tree settle before the next.
+- waitForAnimationToEnd
+- tapOn: "5 stars"
+- assertVisible: "Great flight"
+- takeScreenshot: ${SHOTS}/journal-card
+# Back on the list the note's first line shows under the row. Android has a
+# system back; on iOS the stack's edge swipe pops the detail.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      # A synthetic edge swipe doesn't trigger the interactive pop; the
+      # chevron does.
+      - tapOn:
+          point: "4%, 9%"
+# The list has no plain text of its own that the detail lacks (the tab label
+# and the stats card's text are buttons), so the pop is confirmed by the
+# detail's eyebrow going away.
+- extendedWaitUntil:
+    notVisible: "Trip log"
+    timeout: 10000
+# The row may sit below the fold in a longer journal.
+- scrollUntilVisible:
+    element: ".*Sixteen hours in 32K.*"
+    direction: DOWN
+- takeScreenshot: ${SHOTS}/list-note-peek

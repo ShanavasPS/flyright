@@ -31,6 +31,9 @@ export interface RemoteJourney {
    * feature omit both, and rows that never had a note carry null. */
   notes?: string | null;
   notesUpdatedAt?: string | null;
+  rating?: number | null;
+  bookingReference?: string | null;
+  seat?: string | null;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +69,9 @@ export function toRemoteJourney(row: JourneyRow): RemoteJourney {
     ticketPriceCurrency: row.ticketPriceCurrency,
     notes: row.notes,
     notesUpdatedAt: row.notesUpdatedAt,
+    rating: row.rating,
+    bookingReference: row.bookingReference,
+    seat: row.seat,
     source: row.source,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

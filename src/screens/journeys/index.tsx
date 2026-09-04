@@ -449,6 +449,11 @@ function scheduleLabel(row: JourneyRow): string {
   return `${row.fromCode} ${formatTime(dep)} → ${row.toCode} ${formatTime(arr)}`;
 }
 
+/** The first non-empty line of a note, for the list row's one-line peek. */
+function firstLine(notes: string): string {
+  return notes.split('\n').find((line) => line.trim())?.trim() ?? '';
+}
+
 /** Money-moment marker on a journey row: a compact pill in the meta line's
  * right slot — amount in payout green on the page background, so it pops off
  * the card surface in both light (porcelain on white) and dark (deep navy on
@@ -564,6 +569,17 @@ function JourneyItem({
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
               {scheduleLabel(row)}
             </ThemedText>
+            {/* The journal peeks through: the note's first line, so the list
+                reads as a diary and not just a timetable. */}
+            {row.notes && (
+              <ThemedText
+                type="small"
+                themeColor="textSecondary"
+                numberOfLines={1}
+                style={styles.noteLine}>
+                “{firstLine(row.notes)}”
+              </ThemedText>
+            )}
           </View>
         </SheenCard>
       </Pressable>
@@ -710,6 +726,10 @@ const styles = StyleSheet.create({
   },
   route: {
     fontSize: 16,
+  },
+  noteLine: {
+    fontStyle: 'italic',
+    marginTop: Spacing.half,
   },
   claimBadge: {
     flexDirection: 'row',

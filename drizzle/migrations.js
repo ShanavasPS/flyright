@@ -8,6 +8,7 @@ import m0003 from './0003_chilly_hex.sql';
 import m0004 from './0004_parallel_hawkeye.sql';
 import m0005 from './0005_pale_captain_stacy.sql';
 import m0006 from './0006_quick_expediter.sql';
+import m0007 from './0007_wide_magdalene.sql';
 
   export default {
     journal,
@@ -18,7 +19,8 @@ m0002,
 m0003,
 m0004,
 m0005,
-m0006
+m0006,
+m0007
     }
   }
   

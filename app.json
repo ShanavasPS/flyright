@@ -103,6 +103,14 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "FlyRight lets you attach photos from your library to the trips in your travel journal.",
+          "cameraPermission": "FlyRight scans boarding passes and lets you photograph moments from your trips.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "FlyRight scans boarding passes and photographs claim evidence (receipts, PIR forms).",
