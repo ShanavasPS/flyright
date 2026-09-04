@@ -13,7 +13,9 @@
  * the API without tooling; a parse failure never loses mail — forwarding
  * happens regardless.
  *
- * Bindings: SUPPORT_INBOX, CONVEX_INBOUND_URL (plain text), INBOUND_SECRET.
+ * Bindings: SUPPORT_INBOX, CONVEX_INBOUND_URLS (plain text, comma-separated —
+ * production first; a dev deployment may follow so test threads created from
+ * dev builds still receive replies), INBOUND_SECRET.
  * Build + deploy: see README.md.
  */
 export default {
@@ -28,21 +30,39 @@ export default {
         const bytes = new Uint8Array(await new Response(message.raw).arrayBuffer());
         const parsed = parseMime(bytes);
         const text = (parsed.text && parsed.text.trim()) || htmlToText(parsed.html || '');
-        const res = await fetch(env.CONVEX_INBOUND_URL, {
-          method: 'POST',
-          headers: {
-            authorization: `Bearer ${env.INBOUND_SECRET}`,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            token,
-            from: message.from,
-            subject: decodeWords(message.headers.get('subject') || ''),
-            text,
-            emailId: message.headers.get('message-id'),
-          }),
+        const payload = JSON.stringify({
+          token,
+          from: message.from,
+          subject: decodeWords(message.headers.get('subject') || ''),
+          text,
+          emailId: message.headers.get('message-id'),
         });
-        if (!res.ok) console.warn('[support-mail] inbound rejected', res.status, await res.text());
+        // Each deployment owns its own threads; the first one that knows the
+        // token wins, a 404 means "not mine, try the next".
+        const urls = (env.CONVEX_INBOUND_URLS || env.CONVEX_INBOUND_URL || '')
+          .split(',')
+          .map((u) => u.trim())
+          .filter(Boolean);
+        let filed = false;
+        for (const url of urls) {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${env.INBOUND_SECRET}`,
+              'content-type': 'application/json',
+            },
+            body: payload,
+          });
+          if (res.ok) {
+            filed = true;
+            break;
+          }
+          if (res.status !== 404) {
+            console.warn('[support-mail] inbound rejected', url, res.status, await res.text());
+            break;
+          }
+        }
+        if (!filed) console.warn('[support-mail] no deployment knows thread', token);
       } catch (err) {
         console.error('[support-mail] inbound failed', err);
       }

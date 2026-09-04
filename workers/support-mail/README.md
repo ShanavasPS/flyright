@@ -9,8 +9,9 @@ forwarded to the human inbox unless it originated there.
 Build: `npm install && npm run build` (→ `dist/worker.js`, gitignored).
 
 Deploy: upload `dist/worker.js` as script `flyright-support-mail` on the
-Cloudflare account with bindings `SUPPORT_INBOX` (plain), `CONVEX_INBOUND_URL`
-(plain, `https://<prod>.convex.site/support-inbound`) and `INBOUND_SECRET`
+Cloudflare account with bindings `SUPPORT_INBOX` (plain), `CONVEX_INBOUND_URLS`
+(plain, comma-separated `https://<deployment>.convex.site/support-inbound`,
+production first, dev second so test threads get replies too) and `INBOUND_SECRET`
 (secret, = Convex `SUPPORT_INBOUND_SECRET`). No HTTP route is needed — the
 Worker only has an `email` handler. Zone setting `support_subaddress` must be
 on so `support+token@` reaches the `support@` rule.
