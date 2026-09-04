@@ -1,0 +1,264 @@
+package expo.modules.flyrightdocumentimport
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.pdf.PdfRenderer
+import android.net.Uri
+import android.os.Build
+import android.os.ParcelFileDescriptor
+import android.provider.OpenableColumns
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.DecodeHintType
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.multi.GenericMultipleBarcodeReader
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
+import expo.modules.kotlin.exception.CodedException
+import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.modules.ModuleDefinition
+import java.io.File
+import java.util.UUID
+
+/** Android half of the shared-document reader — see ../index.ts for the
+ * contract.
+ *
+ * Intake: "Share → FlyRight" on a PDF starts (or re-enters, launchMode
+ * singleTask) MainActivity with an ACTION_SEND intent whose EXTRA_STREAM is a
+ * content:// URI the sender granted us to read only while this activity
+ * lives. Neither React Native's Linking nor expo-router see that intent, so
+ * the module copies the stream into the cache dir the moment it arrives and
+ * passes the private file:// path to JS — as an event when the app is already
+ * running (OnNewIntent), or held as `pending` for JS to collect after a cold
+ * start. The launch intent is neutralised after collection so a reload of
+ * the JS bundle does not import the same file twice.
+ *
+ * Reading: PdfBox-Android for the text of each page (sorted by position, so
+ * table rows come out as lines), Android's PdfRenderer to rasterise pages,
+ * and ML Kit to decode every barcode on them. */
+class FlyRightDocumentImportModule : Module() {
+  private var pending: Map<String, Any?>? = null
+
+  override fun definition() = ModuleDefinition {
+    Name("FlyRightDocumentImport")
+
+    Events("onDocumentShared")
+
+    OnNewIntent { intent ->
+      capture(intent)?.let { doc ->
+        pending = doc
+        sendEvent("onDocumentShared", doc)
+      }
+    }
+
+    Function("consumePendingDocument") {
+      val activity = appContext.currentActivity
+      val fromLaunch = activity?.let { act ->
+        capture(act.intent)?.also { neutralise(act) }
+      }
+      val result = pending ?: fromLaunch
+      pending = null
+      result
+    }
+
+    // Off the JS thread by construction (AsyncFunction); Tasks.await below
+    // must not run on main.
+    AsyncFunction("readPdf") { uri: String, maxPages: Int ->
+      readPdf(uri, maxPages)
+    }
+  }
+
+  private val context: Context
+    get() = requireNotNull(appContext.reactContext)
+
+  // -- intake ---------------------------------------------------------------
+
+  private fun capture(intent: Intent?): Map<String, Any?>? {
+    if (intent == null) return null
+    val uri: Uri = when (intent.action) {
+      Intent.ACTION_SEND ->
+        if (Build.VERSION.SDK_INT >= 33) {
+          intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        } else {
+          @Suppress("DEPRECATION")
+          intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        }
+      Intent.ACTION_VIEW -> intent.data
+      else -> null
+    } ?: return null
+
+    val resolver = context.contentResolver
+    val name = displayName(uri)
+    val type = intent.type ?: resolver.getType(uri)
+    val isPdf = type == "application/pdf" || (name?.lowercase()?.endsWith(".pdf") == true)
+    if (!isPdf) return null
+
+    val dir = File(context.cacheDir, "shared-documents").apply { mkdirs() }
+    val copy = File(dir, "${UUID.randomUUID()}.pdf")
+    try {
+      resolver.openInputStream(uri)?.use { input -> copy.outputStream().use { input.copyTo(it) } }
+        ?: return null
+    } catch (e: Exception) {
+      copy.delete()
+      return null
+    }
+    return mapOf("uri" to Uri.fromFile(copy).toString(), "name" to name)
+  }
+
+  private fun displayName(uri: Uri): String? {
+    if (uri.scheme == "file") return uri.lastPathSegment
+    return try {
+      context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0) else null
+      }
+    } catch (e: Exception) {
+      null
+    }
+  }
+
+  /** The share has been collected: make the launch intent look like a plain
+   * launcher start so a JS reload doesn't re-import the same document. */
+  private fun neutralise(activity: Activity) {
+    val intent = Intent(activity.intent)
+    intent.action = Intent.ACTION_MAIN
+    intent.removeExtra(Intent.EXTRA_STREAM)
+    intent.data = null
+    intent.type = null
+    activity.intent = intent
+  }
+
+  // -- reading --------------------------------------------------------------
+
+  /** 4x the PDF points (288 dpi): ML Kit needs more than Vision does to
+   * resolve the narrow bars of a small PDF417 stripe (at 3x it read only one
+   * of an Amadeus receipt's two). ~2450x3170 ARGB for a Letter page, ~30 MB,
+   * one page at a time. */
+  private val renderScale = 4f
+
+  private fun readPdf(uri: String, maxPages: Int): Map<String, Any> {
+    val path = Uri.parse(uri).path ?: throw DocumentUnreadableException(uri)
+    val file = File(path)
+    if (!file.exists()) throw DocumentUnreadableException(uri)
+
+    PDFBoxResourceLoader.init(context)
+    val texts = mutableListOf<String>()
+    val pageCount: Int
+    try {
+      PDDocument.load(file).use { doc ->
+        if (doc.isEncrypted) throw DocumentLockedException()
+        pageCount = doc.numberOfPages
+        val stripper = PDFTextStripper().apply { sortByPosition = true }
+        for (i in 0 until minOf(pageCount, maxOf(maxPages, 1))) {
+          stripper.startPage = i + 1
+          stripper.endPage = i + 1
+          texts.add(stripper.getText(doc))
+        }
+      }
+    } catch (e: CodedException) {
+      throw e
+    } catch (e: Exception) {
+      throw DocumentUnreadableException(uri)
+    }
+
+    val barcodes = decodeBarcodes(file, texts.size)
+    val pages = texts.mapIndexed { i, text -> mapOf("text" to text, "barcodes" to barcodes[i]) }
+    return mapOf("pageCount" to pageCount, "pages" to pages)
+  }
+
+  private fun decodeBarcodes(file: File, pages: Int): List<List<String>> {
+    val options = BarcodeScannerOptions.Builder()
+      .setBarcodeFormats(
+        Barcode.FORMAT_PDF417,
+        Barcode.FORMAT_QR_CODE,
+        Barcode.FORMAT_AZTEC,
+        Barcode.FORMAT_DATA_MATRIX,
+      )
+      .build()
+    val scanner = BarcodeScanning.getClient(options)
+    val result = MutableList<List<String>>(pages) { emptyList() }
+    try {
+      ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
+        val renderer = PdfRenderer(pfd)
+        try {
+          for (i in 0 until minOf(pages, renderer.pageCount)) {
+            val bitmap = renderer.openPage(i).use { page ->
+              Bitmap.createBitmap(
+                (page.width * renderScale).toInt(),
+                (page.height * renderScale).toInt(),
+                Bitmap.Config.ARGB_8888,
+              ).also {
+                it.eraseColor(Color.WHITE)
+                page.render(it, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+              }
+            }
+            val payloads = LinkedHashSet<String>()
+            try {
+              val found = Tasks.await(scanner.process(InputImage.fromBitmap(bitmap, 0)))
+              // rawValue keeps BCBP's whitespace-significant layout intact;
+              // displayValue would "clean" it.
+              found.mapNotNullTo(payloads) { it.rawValue?.takeIf(String::isNotEmpty) }
+            } catch (e: Exception) {
+              // ML Kit failing on a page only means ZXing gets the whole job.
+            }
+            try {
+              payloads.addAll(zxingDecode(bitmap))
+            } catch (e: Exception) {
+              // Same: a page that fails to scan simply contributes no barcodes.
+            } finally {
+              bitmap.recycle()
+            }
+            result[i] = payloads.toList()
+          }
+        } finally {
+          renderer.close()
+        }
+      }
+    } catch (e: Exception) {
+      // Rasterising failed (corrupt page tree, etc.): text alone still imports.
+    } finally {
+      scanner.close()
+    }
+    return result
+  }
+}
+
+/** ZXing over the whole page, all codes at once. TRY_HARDER makes the
+ * PDF417 detector sweep the image instead of sampling its centre. */
+private fun zxingDecode(bitmap: Bitmap): List<String> {
+  val pixels = IntArray(bitmap.width * bitmap.height)
+  bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+  val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
+  val hints = mapOf(
+    DecodeHintType.TRY_HARDER to true,
+    DecodeHintType.POSSIBLE_FORMATS to listOf(
+      BarcodeFormat.PDF_417,
+      BarcodeFormat.QR_CODE,
+      BarcodeFormat.AZTEC,
+      BarcodeFormat.DATA_MATRIX,
+    ),
+  )
+  val reader = GenericMultipleBarcodeReader(MultiFormatReader())
+  return try {
+    reader.decodeMultiple(BinaryBitmap(HybridBinarizer(source)), hints)
+      .mapNotNull { it.text?.takeIf(String::isNotEmpty) }
+  } catch (e: com.google.zxing.NotFoundException) {
+    emptyList()
+  }
+}
+
+private class DocumentUnreadableException(uri: String) :
+  CodedException("ERR_DOCUMENT_UNREADABLE", "'$uri' could not be opened as a PDF.", null)
+
+private class DocumentLockedException :
+  CodedException("ERR_DOCUMENT_LOCKED", "This PDF is password-protected.", null)

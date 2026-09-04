@@ -1,0 +1,31 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.flyrightdocumentimport'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.flyrightdocumentimport"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+    consumerProguardFiles "proguard-rules.pro"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // PDF text extraction. Android's own PdfRenderer only grew text access in
+  // API 35; PdfBox-Android (Apache 2) works back to the app's minSdk.
+  implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
+  // Barcode decoding — the same artifact expo-camera already ships, so this
+  // adds no APK weight; ML Kit reads PDF417/QR/Aztec/Data Matrix off bitmaps.
+  implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+  // Second opinion for PDF417: ML Kit skips the small, wide stripes on
+  // e-ticket receipts that ZXing's TRY_HARDER pass reads reliably.
+  implementation 'com.google.zxing:core:3.5.3'
+}

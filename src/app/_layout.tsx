@@ -4,6 +4,7 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import { DeferredLinks } from "@/components/deferred-link-router";
+import { DocumentShareRouter } from "@/components/document-share-router";
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
 import { PhotoSync } from "@/components/photo-sync";
@@ -162,6 +163,7 @@ function RootLayout() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <IdentitySync />
       <NotificationRouter />
+      <DocumentShareRouter />
       <DeferredLinks>
       <CloudSync>
       <ThemeProvider
@@ -182,6 +184,15 @@ function RootLayout() {
                 exits (root-stack modal, so router.back() stays NativeTabs-safe). */}
               <Stack.Screen
                 name="add-flight"
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                }}
+              />
+              {/* A PDF shared into the app (boarding pass, e-ticket receipt,
+                booking confirmation): its flights as selectable pass cards. */}
+              <Stack.Screen
+                name="import-document"
                 options={{
                   presentation: "fullScreenModal",
                   headerShown: false,

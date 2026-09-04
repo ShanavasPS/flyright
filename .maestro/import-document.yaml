@@ -1,0 +1,59 @@
+# Document import: a PDF shared into the app opens the "Add from document"
+# sheet, its flights show as selectable pass cards, and one tap saves them.
+#
+# The share sheet itself can't be driven from a flow, so the document is
+# staged where the app can read it and the import route is opened with its
+# file URL — exactly what the platform hand-offs do (+native-intent.ts turns
+# an iOS file:// share into this route; the Kotlin intake copies an Android
+# ACTION_SEND stream into the cache and pushes the same route).
+#
+# iOS — copy the PDF into the app container, then pass its file URL:
+#   APP=$(xcrun simctl get_app_container booted com.shanavasshaji.flyright data)
+#   mkdir -p "$APP/Documents/Inbox" && cp receipt.pdf "$APP/Documents/Inbox/"
+#   maestro test -e DOC_URL="file://$APP/Documents/Inbox/receipt.pdf" .maestro/import-document.yaml
+#
+# Android — stage the file in the app's cache via run-as, same flow:
+#   adb push receipt.pdf /data/local/tmp/receipt.pdf
+#   adb shell run-as com.shanavasshaji.flyright sh -c 'mkdir -p cache/shared-documents && cp /data/local/tmp/receipt.pdf cache/shared-documents/'
+#   maestro test -e DOC_URL="file:///data/user/0/com.shanavasshaji.flyright/cache/shared-documents/receipt.pdf" .maestro/import-document.yaml
+# The real intent path is covered by hand instead (the launcher-side grant
+# can't be faked from a flow):
+#   adb shell am start -n com.shanavasshaji.flyright/.MainActivity -a android.intent.action.SEND \
+#     -t application/pdf --eu android.intent.extra.STREAM file:///data/local/tmp/receipt.pdf
+#
+# Uses the Qatar e-ticket receipt (6 legs, 2 BCBP stripes); any booking PDF
+# with at least one flight works — adjust the assertions. Needs a journal
+# WITHOUT these legs: re-sharing a receipt marks known legs "Already in My
+# travels" and the CTA reads "Nothing selected" (the dedupe, not a failure).
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+# A cold dev-client start can outlast the deep link — wait for the list first.
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright:///import-document?uri=${encodeURIComponent(DOC_URL)}"
+- extendedWaitUntil:
+    visible: "Add from document"
+    timeout: 15000
+# Six legs read: the header counts them and the barcodes (the iOS simulator
+# decodes only one of the two stripes — see the module for why).
+- extendedWaitUntil:
+    visible: ".*flights in .*"
+    timeout: 30000
+- assertVisible: ".*boarding pass(es)? read.*"
+- assertVisible: "Qatar Airways QR517"
+- takeScreenshot: ${SHOTS}/import-review
+# Every leg is selected by default once its lookup settles; the CTA counts them.
+- extendedWaitUntil:
+    visible: "Add .* flights to My travels →"
+    timeout: 30000
+- tapOn: "Add .* flights to My travels →"
+- extendedWaitUntil:
+    visible: ".*flights added"
+    timeout: 20000
+- takeScreenshot: ${SHOTS}/import-added
+# Back on the journal with the trips in place.
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 10000

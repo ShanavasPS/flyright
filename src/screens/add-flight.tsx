@@ -104,7 +104,21 @@ export function AddFlight() {
   // Edit mode: the journey detail screen reopens this sheet with ?editId=<id>
   // for a manual entry, prefilled below. The row id stays stable across the
   // save so claims/disruptions references and the cloud sync key survive.
-  const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const { editId, ...prefill } = useLocalSearchParams<{
+    editId?: string;
+    // Prefill from the document import ("Add the route →" on a leg whose
+    // airports the PDF never spelled out): whatever the document did say.
+    flight?: string;
+    date?: string;
+    from?: string;
+    to?: string;
+    pnr?: string;
+    seat?: string;
+    depTime?: string;
+    arrTime?: string;
+    /** '1' to open straight on the journal form instead of the lookup. */
+    manual?: string;
+  }>();
   const editRow = useJourney(editId ?? '', userId);
 
   const [step, setStep] = useState<Step>('flight');
@@ -139,6 +153,24 @@ export function AddFlight() {
   // from the live query). Only manual entries are editable — lookup rows
   // mirror the provider.
   const [prefilled, setPrefilled] = useState(false);
+  if (!editId && !prefilled && (prefill.flight || prefill.date || prefill.from)) {
+    setPrefilled(true);
+    const designator = prefill.flight ? normalizeFlightNumber(prefill.flight) : null;
+    if (designator) {
+      setFlightInput(designator);
+      setFlightNumber(designator);
+    }
+    if (prefill.date) setDate(prefill.date);
+    if (prefill.from) setFromInput(prefill.from);
+    if (prefill.to) setToInput(prefill.to);
+    if (prefill.pnr) setBookingRef(prefill.pnr);
+    if (prefill.seat) setSeat(prefill.seat);
+    if (prefill.depTime) setDepTime(prefill.depTime);
+    if (prefill.arrTime) setArrTime(prefill.arrTime);
+    const manual = prefill.manual === '1' || !designator;
+    setManualMode(manual);
+    setStep(!prefill.date ? 'date' : manual ? 'manual' : 'result');
+  }
   if (editId && editRow && !prefilled) {
     setPrefilled(true);
     setManualMode(true);

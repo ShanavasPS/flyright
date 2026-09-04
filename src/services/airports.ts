@@ -80,3 +80,25 @@ export function searchAirports(query: string, limit = 6): Airport[] {
     .concat(ranked(codePrefix), ranked(cityWord), ranked(citySubstring))
     .slice(0, limit);
 }
+
+/** 2 = curated major hub, 1 = large airport, 0 = everything else. The tier
+ * lets document parsing trust a bare three-letter token as an airport code
+ * only when it names somewhere a flight plausibly goes. */
+export function airportRank(iata: string): 0 | 1 | 2 {
+  const tuple = AIRPORTS[iata.trim().toUpperCase()];
+  return tuple?.[4] ?? 0;
+}
+
+let hubCache: Airport[] | null = null;
+
+/** The curated major hubs (rank 2) — a couple hundred airports whose city
+ * names are distinctive enough to spot in itinerary text ("DOHA HAMAD
+ * INTERNATIONAL" → DOH) without turning every "Nice" into an airport. */
+export function hubAirports(): Airport[] {
+  if (!hubCache) {
+    hubCache = Object.entries(AIRPORTS)
+      .filter(([, tuple]) => tuple[4] === 2)
+      .map(([iata, tuple]) => toAirport(iata, tuple));
+  }
+  return hubCache;
+}
