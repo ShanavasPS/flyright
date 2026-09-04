@@ -3,7 +3,7 @@ import { UserButton } from '@clerk/expo/web';
 import { Image } from 'expo-image';
 import { Link, usePathname } from 'expo-router';
 import { type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
@@ -12,7 +12,6 @@ import { SUPPORT_EMAIL } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { proPriceFrom } from '@/services/web-pricing';
 
 /** Persistent header + footer for the web funnel (/check, /go-pro, /welcome).
  *
@@ -20,15 +19,29 @@ import { proPriceFrom } from '@/services/web-pricing';
  * told what they're owed — that context is what closes the sale. This chrome is
  * for the other visitor: the one who arrived already convinced, or who has no
  * flight number to type, and who otherwise had no route to checkout at all.
+ * That visitor is served by ONE door, in the footer — a second copy in the
+ * header only competed with the flight form for the same first glance.
  *
- * Column layout, so the footer parks at the bottom of the viewport and the
- * screen's own ScrollView takes the overflow between the two bars. */
+ * The chrome owns the page scroll, and the footer travels at the END of the
+ * content rather than pinned to the viewport. Pinning is an app-toolbar
+ * pattern, and on a phone it cost the page dearly: header (71pt) plus a
+ * three-row footer (~190pt) left the scrolling body ~430pt of a 693pt
+ * viewport, so /check's own "Check my compensation" button was laid out
+ * inside the clipped region — present, but invisible without discovering an
+ * inner scroll. flexGrow on the body keeps the footer parked at the bottom
+ * whenever the content is short enough to leave room, which is what the
+ * pinned version was really for.
+ *
+ * Screens therefore pass plain content — NOT their own ScrollView, which
+ * would nest two vertical scrolls. */
 export function SiteChrome({ children }: { children: ReactNode }) {
   return (
     <ThemedView style={styles.shell}>
       <SiteHeader />
-      <View style={styles.body}>{children}</View>
-      <SiteFooter />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.body}>{children}</View>
+        <SiteFooter />
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -43,16 +56,24 @@ function SiteHeader() {
       type="backgroundElement"
       style={[styles.bar, { borderBottomColor: theme.backgroundSelected }]}>
       <View style={styles.barContent}>
-        {/* The row is a View, not the Link itself: expo-router's Link renders a
-          Text node, and a flex row of an Image + Text inside one lays out
-          unpredictably on react-native-web. The wordmark carries the link. */}
+        {/* The row is a View, not one Link around both: expo-router's Link
+          renders a Text node, and a flex row of an Image + Text inside one
+          lays out unpredictably on react-native-web. So the mark and the
+          wordmark each carry their own link home — visitors aim at the logo
+          as often as the name, and half a hit area reads as a dead one. */}
         <View style={styles.brand}>
-          <Image
-            source={require('@/assets/images/icon.png')}
-            style={styles.mark}
-            contentFit="contain"
-            alt="FlyRight"
-          />
+          {/* display:flex on the link is load-bearing: Link renders a Text, so
+            the anchor gets a ~38pt line box and the 24pt mark baseline-aligns
+            to its BOTTOM, landing 7pt below the wordmark's centre. As a flex
+            container the anchor hugs the image instead. */}
+          <Link href="/check" style={styles.markLink}>
+            <Image
+              source={require('@/assets/images/icon.png')}
+              style={styles.mark}
+              contentFit="contain"
+              alt="FlyRight"
+            />
+          </Link>
           <Link href="/check">
             <ThemedText type="smallBold" themeColor="heading">
               FlyRight
@@ -60,24 +81,25 @@ function SiteHeader() {
           </Link>
         </View>
 
-        <View style={styles.actions}>
-          {/* Hidden on the checkout step (a second door to it is just noise) and
-            after checkout, where pointing a fresh buyer back at the paywall reads
-            as a billing mistake. The footer link stays either way. */}
-          {pathname !== '/go-pro' && pathname !== '/welcome' && (
-            <Link href="/go-pro">
-              <ThemedText type="link">FlyRight Pro →</ThemedText>
-            </Link>
-          )}
-
-          {/* The only signed-in signal the web build has — without it a visitor
-            who just authenticated has no way to tell that it took. Rendered
-            only once Clerk has loaded, so the header doesn't jump. Sign-out
-            keeps Clerk's default target of "/", which the router sends to
-            /check; afterSignOutUrl is a ClerkProvider-level option in this
-            version, and setting it there would also reach native. */}
-          {isLoaded && isSignedIn && <UserButton />}
-        </View>
+        {/* The account slot: the only signed-in signal the web build has —
+          without it a visitor who just authenticated has no way to tell that
+          it took — and, signed out, the funnel's one door to an account for
+          the visitor who already bought Pro elsewhere and just needs to get
+          back into it. Both render only once Clerk has loaded, so the header
+          doesn't jump, and neither shows on /sign-in itself. Sign-out keeps
+          Clerk's default target of "/", which the router sends to /check;
+          afterSignOutUrl is a ClerkProvider-level option in this version, and
+          setting it there would also reach native. */}
+        {isLoaded &&
+          (isSignedIn ? (
+            <UserButton />
+          ) : (
+            pathname !== '/sign-in' && (
+              <Link href="/sign-in">
+                <ThemedText type="link">Sign in</ThemedText>
+              </Link>
+            )
+          ))}
       </View>
     </ThemedView>
   );
@@ -91,16 +113,23 @@ function SiteFooter() {
       type="backgroundElement"
       style={[styles.bar, styles.footer, { borderTopColor: theme.backgroundSelected }]}>
       <View style={styles.footerContent}>
+        {/* Three fixed rows instead of one wrapping row: on a phone the single
+          row wrapped wherever it ran out of width, which both split the store
+          pair across lines and spread the links by the row gap. Price is left
+          off — the paywall states it, and a number here just invites a
+          currency mismatch with what checkout actually charges. */}
+        <Link href="/go-pro">
+          <ThemedText type="link">FlyRight Pro</ThemedText>
+        </Link>
         <View style={styles.links}>
-          <Link href="/go-pro">
-            <ThemedText type="link">FlyRight Pro — {proPriceFrom(navigator.language)}</ThemedText>
-          </Link>
           <ExternalLink href={STORE_URLS.ios}>
             <ThemedText type="link">App Store</ThemedText>
           </ExternalLink>
           <ExternalLink href={STORE_URLS.android}>
             <ThemedText type="link">Google Play</ThemedText>
           </ExternalLink>
+        </View>
+        <View style={styles.links}>
           <Link href="/privacy">
             <ThemedText type="link">Privacy</ThemedText>
           </Link>
@@ -126,8 +155,13 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
   },
+  scroll: {
+    flexGrow: 1,
+  },
   body: {
-    flex: 1,
+    flexGrow: 1,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
   },
   bar: {
     paddingVertical: Spacing.three,
@@ -148,10 +182,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  actions: {
-    flexDirection: 'row',
+  markLink: {
+    display: 'flex',
     alignItems: 'center',
-    gap: Spacing.four,
   },
   mark: {
     width: 24,
@@ -166,12 +199,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    gap: Spacing.one,
+    gap: Spacing.two,
   },
   links: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: Spacing.four,
+    gap: Spacing.three,
   },
 });

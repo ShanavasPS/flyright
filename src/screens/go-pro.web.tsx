@@ -1,13 +1,12 @@
 import { useUser } from '@clerk/expo';
 import { SignIn as ClerkSignIn } from '@clerk/expo/web';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { ExternalLink } from '@/components/external-link';
 import { PrimaryButton } from '@/components/primary-button';
 import { SiteChrome } from '@/components/site-chrome';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { WEB_PURCHASE_LINK } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -29,55 +28,51 @@ export function GoPro() {
 
   return (
     <SiteChrome>
-      <ThemedView style={styles.page}>
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <View style={styles.content}>
-            <View style={styles.hero}>
-              <ThemedText type="title" themeColor="heading">
-                FlyRight Pro
-              </ThemedText>
-              <ThemedText themeColor="textSecondary">
-                One delayed flight pays for years of Pro.
-              </ThemedText>
-              <ThemedText type="smallBold" themeColor="textSecondary">
-                {proPriceFrom(navigator.language)} · annual and lifetime at checkout · cancel anytime
-              </ThemedText>
-            </View>
+      <View style={styles.content}>
+        <View style={styles.hero}>
+          <ThemedText type="title" themeColor="heading">
+            FlyRight Pro
+          </ThemedText>
+          <ThemedText themeColor="textSecondary">
+            One delayed flight pays for years of Pro.
+          </ThemedText>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            {proPriceFrom(navigator.language)} · annual and lifetime at checkout · cancel anytime
+          </ThemedText>
+        </View>
 
-            <Card>
-              {BENEFITS.map((benefit) => (
-                <ThemedText key={benefit} type="small">
-                  ✓ {benefit}
-                </ThemedText>
-              ))}
-            </Card>
+        <Card>
+          {BENEFITS.map((benefit) => (
+            <ThemedText key={benefit} type="small">
+              ✓ {benefit}
+            </ThemedText>
+          ))}
+        </Card>
 
-            {!isLoaded ? (
-              <Card style={styles.centered}>
-                <ActivityIndicator />
-              </Card>
-            ) : isSignedIn ? (
-              <Checkout userId={user.id} email={user.primaryEmailAddress?.emailAddress} />
-            ) : (
-              <View style={styles.signIn}>
-                <ThemedText type="smallBold">
-                  Sign in first — it&apos;s how your Pro unlocks in the app
-                </ThemedText>
-                {/* Come back HERE, not to Clerk's default "/" — which the router
-                  redirects to /check, dropping the buyer back on the funnel's
-                  first step with no sign of being signed in. Force (not
-                  fallback) so a stale redirect_url search param can't win, and
-                  cover the sign-up path too: most buyers arrive without an
-                  account. */}
-                <ClerkSignIn
-                  forceRedirectUrl="/go-pro"
-                  signUpForceRedirectUrl="/go-pro"
-                />
-              </View>
-            )}
+        {!isLoaded ? (
+          <Card style={styles.centered}>
+            <ActivityIndicator />
+          </Card>
+        ) : isSignedIn ? (
+          <Checkout userId={user.id} email={user.primaryEmailAddress?.emailAddress} />
+        ) : (
+          <View style={styles.signIn}>
+            <ThemedText type="smallBold">
+              Sign in first — it&apos;s how your Pro unlocks in the app
+            </ThemedText>
+            {/* Come back HERE, not to Clerk's default "/" — which the router
+              redirects to /check, dropping the buyer back on the funnel's
+              first step with no sign of being signed in. Force (not
+              fallback) so a stale redirect_url search param can't win, and
+              cover the sign-up path too: most buyers arrive without an
+              account. */}
+            <ClerkSignIn
+              forceRedirectUrl="/go-pro"
+              signUpForceRedirectUrl="/go-pro"
+            />
           </View>
-        </ScrollView>
-      </ThemedView>
+        )}
+      </View>
     </SiteChrome>
   );
 }
@@ -124,13 +119,6 @@ function Checkout({ userId, email }: { userId: string; email?: string }) {
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-  },
-  scroll: {
-    paddingVertical: Spacing.five,
-    paddingHorizontal: Spacing.four,
-  },
   content: {
     width: '100%',
     maxWidth: MaxContentWidth,
