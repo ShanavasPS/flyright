@@ -105,10 +105,12 @@ export function SupportThread({ threadId }: { threadId: Id<'supportThreads'> }) 
             const mine = m.direction === 'in';
             return (
               <View key={m.id} style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
+                {/* Support's bubble uses the selected-surface tint: the elevated
+                    surface is white on white here and read as bare text. */}
                 <View
                   style={[
                     styles.bubble,
-                    { backgroundColor: mine ? theme.tint : theme.backgroundElement },
+                    { backgroundColor: mine ? theme.tint : theme.backgroundSelected },
                   ]}>
                   <ThemedText style={mine ? styles.mineText : undefined}>{m.body}</ThemedText>
                 </View>
