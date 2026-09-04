@@ -27,6 +27,10 @@ export interface RemoteJourney {
   scheduledArrival: string;
   ticketPriceAmount: number | null;
   ticketPriceCurrency: string | null;
+  /** Optional on the wire: rows pushed by clients older than the notes
+   * feature omit both, and rows that never had a note carry null. */
+  notes?: string | null;
+  notesUpdatedAt?: string | null;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -60,6 +64,8 @@ export function toRemoteJourney(row: JourneyRow): RemoteJourney {
     scheduledArrival: row.scheduledArrival,
     ticketPriceAmount: row.ticketPriceAmount,
     ticketPriceCurrency: row.ticketPriceCurrency,
+    notes: row.notes,
+    notesUpdatedAt: row.notesUpdatedAt,
     source: row.source,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

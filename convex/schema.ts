@@ -25,6 +25,10 @@ export default defineSchema({
     scheduledArrival: v.string(),
     ticketPriceAmount: v.union(v.number(), v.null()),
     ticketPriceCurrency: v.union(v.string(), v.null()),
+    /** The traveler's trip notes and when they last changed. Optional: rows
+     * synced before notes existed (and pushes from older clients) omit them. */
+    notes: v.optional(v.union(v.string(), v.null())),
+    notesUpdatedAt: v.optional(v.union(v.string(), v.null())),
     source: v.string(),
     createdAt: v.string(),
     updatedAt: v.string(),

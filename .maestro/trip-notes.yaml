@@ -1,0 +1,34 @@
+# Trip notes: the detail's trip-log card prompts for a note, the editor opens
+# as a card modal with Cancel/Save in the header, and the saved note comes
+# back on the card with its "Edited …" stamp.
+#
+# Needs a seeded journal row (see world-map.yaml's recipe) whose id is passed
+# as JOURNEY_ID, and a row WITHOUT a note yet — the prompt only shows then.
+# The prompt and the header buttons are Pressables with accessibilityRole
+# "button", so they're matched by their accessibility labels, not their text.
+#
+# Run: maestro --device <device> test -e JOURNEY_ID=seed-2 .maestro/trip-notes.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- openLink: "flyright:///journey/${JOURNEY_ID}"
+- extendedWaitUntil:
+    visible: "Write about this trip"
+    timeout: 15000
+- assertVisible: "Added by you.*"
+- tapOn: "Write about this trip"
+- extendedWaitUntil:
+    visible: "Trip notes"
+    timeout: 10000
+- takeScreenshot: ${SHOTS}/note-editor
+- inputText: "Sixteen hours in 32K by the window. The A380 upper deck was quiet, the Arabic breakfast was the best meal of the trip, and we landed into a golden LA sunrise."
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Your notes"
+    timeout: 10000
+- assertVisible: "Sixteen hours in 32K.*"
+# The stamp sits under the note, usually below the fold.
+- scrollUntilVisible:
+    element: "Edited today.*"
+    direction: DOWN
+- takeScreenshot: ${SHOTS}/note-saved

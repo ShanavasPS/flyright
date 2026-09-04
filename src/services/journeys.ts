@@ -81,6 +81,19 @@ export async function updateJourney(
   void reconcileTravelDay();
 }
 
+/** Write the traveler's notes for a trip. Whitespace-only text clears the
+ * note (null, so the card shows the prompt again). Both stamps move: the
+ * notes stamp drives the "Edited …" line, updatedAt marks the row dirty so
+ * the note follows the trip to the account's other devices. */
+export async function saveJourneyNotes(id: string, text: string) {
+  const trimmed = text.trim();
+  const now = new Date().toISOString();
+  await db
+    .update(journeys)
+    .set({ notes: trimmed ? trimmed : null, notesUpdatedAt: now, updatedAt: now })
+    .where(eq(journeys.id, id));
+}
+
 /** Soft delete — the tombstone lets a future cloud sync propagate removals. */
 export async function deleteJourney(id: string) {
   const now = new Date().toISOString();

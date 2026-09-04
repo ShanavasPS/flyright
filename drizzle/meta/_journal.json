@@ -43,6 +43,13 @@
       "when": 1788004702270,
       "tag": "0005_pale_captain_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788503121278,
+      "tag": "0006_quick_expediter",
+      "breakpoints": true
     }
   ]
 }

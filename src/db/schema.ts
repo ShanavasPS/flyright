@@ -18,6 +18,12 @@ export const journeys = sqliteTable('journeys', {
   scheduledArrival: text('scheduled_arrival').notNull(),
   ticketPriceAmount: real('ticket_price_amount'),
   ticketPriceCurrency: text('ticket_price_currency'),
+  /** The traveler's own words about the trip — the journal's free-text
+   *  field. Null (never '') when nothing has been written. */
+  notes: text('notes'),
+  /** When `notes` last changed; shown on the card as "Edited …". Separate
+   *  from updatedAt, which every field edit and the sync bump. */
+  notesUpdatedAt: text('notes_updated_at'),
   /** 'lookup' rows track a live flight via the status API; 'manual' rows are
    *  journal entries (historical or number-less) that must never be polled. */
   source: text('source', { enum: ['lookup', 'manual'] }).notNull().default('lookup'),

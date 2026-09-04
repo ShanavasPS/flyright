@@ -38,16 +38,29 @@ import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
 import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
-import { countdown, formatDayLabelWithYear, formatTime, travelDayTitle } from '@/services/dates';
+import {
+  countdown,
+  editedLabel,
+  formatDayLabelWithYear,
+  formatTime,
+  travelDayTitle,
+} from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
 import { inboundNewsworthy, inboundOutlook, type InboundOutlook } from '@/services/inbound';
 import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
 import { noteSuccess } from '@/services/haptics';
-import { deleteJourney, toDomainJourney, useJourney } from '@/services/journeys';
+import {
+  deleteJourney,
+  toDomainJourney,
+  useJourney,
+  useJourneys,
+  type JourneyRow,
+} from '@/services/journeys';
 import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
 import { travelWindow, type TravelStage } from '@/services/travel-day';
+import { tripFacts } from '@/services/trip-facts';
 import { focusWorldOn } from '@/services/world-focus';
 import {
   getFlightFacts,
@@ -139,6 +152,8 @@ export function JourneyDetail({
   const isDemo = isDemoJourneyId(journeyId);
   const row = useJourney(journeyId ?? 'demo', userId);
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
+  // The whole journal, for the trip-log facts ("3rd time in Japan").
+  const { data: journal } = useJourneys(userId);
 
   // Only 'lookup' rows track a live flight; manual journal entries and the
   // demo must never hit the status API.
@@ -240,6 +255,12 @@ export function JourneyDetail({
   // Before the window the steps still show, locked, so the traveler knows
   // what the day will look like and when the card comes alive.
   const travelPreview = travelPhase === 'before';
+  // The trip log is the whole story for manual entries and forgotten flights;
+  // every other state gets the notes as their own card underneath.
+  const showTripLog = !disruption && !travelActive && !travelPreview && journalOnly;
+  const openNotes = row
+    ? () => router.push({ pathname: '/journey-note', params: { journeyId: row.id } })
+    : undefined;
 
   // Journal entries without user-entered times store the placeholder noon
   // pair — no schedule worth showing. A lone entered time reads as a departure.
@@ -374,26 +395,15 @@ export function JourneyDetail({
 
         {disruption ? (
           <VerdictCard journey={journey} disruption={disruption} />
-        ) : travelActive || travelPreview ? null : journalOnly ? (
-          <Card>
-            <View style={styles.cardHeader}>
-              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
-                {tripAge > 0 ? 'Trip log' : 'Upcoming trip'}
-              </ThemedText>
-              {shareActions}
-            </View>
-            <ThemedText>
-              {tripAge > 0 ? 'You flew' : "You'll fly"}{' '}
-              {Math.round(journey.distanceKm).toLocaleString()} km
-              {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
-            </ThemedText>
-            {tripAge > CLAIM_WINDOW_MS && (
-              <ThemedText type="small" themeColor="textSecondary">
-                Compensation claim windows (2–6 years depending on country) have likely
-                passed for this trip.
-              </ThemedText>
-            )}
-          </Card>
+        ) : travelActive || travelPreview ? null : journalOnly && row ? (
+          <TripLogCard
+            row={row}
+            journal={journal ?? []}
+            now={now}
+            tripAge={tripAge}
+            action={shareActions}
+            onEditNotes={openNotes}
+          />
         ) : (
           <Card>
             <View style={styles.cardHeader}>
@@ -408,6 +418,12 @@ export function JourneyDetail({
                 ? 'Checking the latest status…'
                 : "No disruption so far. If a delay makes you eligible for compensation, you'll know here first."}
             </ThemedText>
+          </Card>
+        )}
+
+        {!showTripLog && row && openNotes && (
+          <Card>
+            <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={openNotes} />
           </Card>
         )}
 
@@ -467,6 +483,155 @@ function shareTrip(journey: Journey) {
   void Share.share({
     message: `${cityLabel(journey.from)} → ${cityLabel(journey.to)}${flight}, ${formatDayLabelWithYear(journey.scheduledDeparture)} — tracked with FlyRight`,
   }).catch(() => {});
+}
+
+/** The journal card for trips with no live data to show — manual entries and
+ * flights the status provider has forgotten. Says where the entry came from
+ * (so a hand-typed trip is never mistaken for a tracked one), puts the trip in
+ * the context of the rest of the journal, and carries the traveler's own
+ * notes. The distance and block time already sit in the hero. */
+function TripLogCard({
+  row,
+  journal,
+  now,
+  tripAge,
+  action,
+  onEditNotes,
+}: {
+  row: JourneyRow;
+  journal: JourneyRow[];
+  now: number;
+  tripAge: number;
+  action?: React.ReactNode;
+  onEditNotes?: () => void;
+}) {
+  const theme = useTheme();
+  const manual = row.source === 'manual';
+  const facts = tripFacts(row, journal);
+  const added = formatDayLabelWithYear(row.createdAt);
+
+  return (
+    <Card>
+      <View style={styles.cardHeader}>
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
+          {tripAge > 0 ? 'Trip log' : 'Upcoming trip'}
+        </ThemedText>
+        {action}
+      </View>
+
+      <View style={styles.provenanceRow}>
+        <SymbolView
+          name={
+            manual
+              ? { ios: 'pencil', android: 'edit', web: 'edit' }
+              : {
+                  ios: 'antenna.radiowaves.left.and.right',
+                  android: 'sensors',
+                  web: 'sensors',
+                }
+          }
+          size={14}
+          tintColor={theme.textSecondary}
+        />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.provenanceText}>
+          {manual ? `Added by you · ${added}` : `Tracked flight · added ${added}`}
+        </ThemedText>
+      </View>
+
+      {facts.length > 0 && (
+        <View style={styles.factRow}>
+          {facts.map((fact) => (
+            <View key={fact} style={[styles.factChip, { backgroundColor: theme.field }]}>
+              <ThemedText type="smallBold" themeColor="heading" style={styles.factText}>
+                {fact}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {onEditNotes && (
+        <>
+          <View style={[styles.divider, { backgroundColor: theme.hairline }]} />
+          <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={onEditNotes} />
+        </>
+      )}
+
+      {tripAge > CLAIM_WINDOW_MS && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Compensation claim windows (2–6 years depending on country) have likely passed for
+          this trip.
+        </ThemedText>
+      )}
+    </Card>
+  );
+}
+
+/** The traveler's notes with their last-edited stamp, or the prompt to write
+ * some. The whole block opens the editor. */
+function NotesBlock({
+  row,
+  now,
+  tripAge,
+  onEdit,
+}: {
+  row: JourneyRow;
+  now: number;
+  tripAge: number;
+  onEdit: () => void;
+}) {
+  const theme = useTheme();
+  if (row.notes) {
+    // The note is plain, selectable text (copyable, readable by assistive
+    // tech); only the Edit link is a button.
+    return (
+      <View>
+        <View style={styles.cardHeader}>
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
+            Your notes
+          </ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Edit your notes"
+            hitSlop={Spacing.two}
+            onPress={onEdit}>
+            <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              Edit
+            </ThemedText>
+          </Pressable>
+        </View>
+        <ThemedText selectable style={styles.notesText}>
+          {row.notes}
+        </ThemedText>
+        {row.notesUpdatedAt && (
+          <ThemedText type="small" themeColor="textSecondary">
+            Edited {editedLabel(row.notesUpdatedAt, new Date(now))}
+          </ThemedText>
+        )}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={tripAge > 0 ? 'Write about this trip' : 'Add a note for this trip'}
+      onPress={onEdit}
+      style={({ pressed }) => [styles.notesPrompt, { opacity: pressed ? 0.6 : 1 }]}>
+      <SymbolView
+        name={{ ios: 'square.and.pencil', android: 'edit_note', web: 'edit_note' }}
+        size={20}
+        tintColor={theme.tint}
+      />
+      <View style={styles.notesPromptText}>
+        <ThemedText type="smallBold" style={{ color: theme.tint }}>
+          {tripAge > 0 ? 'Write about this trip' : 'Add a note for this trip'}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Who you were with, where you sat, what you&apos;d do differently.
+        </ThemedText>
+      </View>
+    </Pressable>
+  );
 }
 
 /** The trip at a glance, the boarding-pass row the journeys list uses but on
@@ -963,6 +1128,47 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
+  },
+  provenanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+  },
+  provenanceText: {
+    flex: 1,
+  },
+  factRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  factChip: {
+    paddingVertical: Spacing.one + Spacing.half,
+    paddingHorizontal: Spacing.two + Spacing.half,
+    borderRadius: Spacing.four,
+  },
+  factText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: Spacing.one,
+  },
+  notesText: {
+    marginTop: Spacing.one,
+    marginBottom: Spacing.one,
+  },
+  notesPrompt: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two + Spacing.half,
+    paddingVertical: Spacing.one,
+  },
+  notesPromptText: {
+    flex: 1,
+    gap: Spacing.half,
   },
   cta: {
     marginTop: Spacing.two,

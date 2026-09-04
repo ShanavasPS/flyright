@@ -7,6 +7,7 @@ import m0002 from './0002_freezing_matthew_murdock.sql';
 import m0003 from './0003_chilly_hex.sql';
 import m0004 from './0004_parallel_hawkeye.sql';
 import m0005 from './0005_pale_captain_stacy.sql';
+import m0006 from './0006_quick_expediter.sql';
 
   export default {
     journal,
@@ -16,7 +17,8 @@ m0001,
 m0002,
 m0003,
 m0004,
-m0005
+m0005,
+m0006
     }
   }
   

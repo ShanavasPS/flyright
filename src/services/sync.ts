@@ -36,6 +36,8 @@ export async function applyRemoteJourney(remote: RemoteJourney, userId: string) 
     scheduledArrival: remote.scheduledArrival,
     ticketPriceAmount: remote.ticketPriceAmount,
     ticketPriceCurrency: remote.ticketPriceCurrency,
+    notes: remote.notes ?? null,
+    notesUpdatedAt: remote.notesUpdatedAt ?? null,
     source: remote.source as (typeof journeys.$inferInsert)['source'],
     createdAt: remote.createdAt,
     updatedAt: remote.updatedAt,

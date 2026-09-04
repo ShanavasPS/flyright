@@ -204,6 +204,17 @@ function RootLayout() {
                   sheetAllowedDetents: [0.9],
                 }}
               />
+              {/* The trip's free-text notes. A card modal rather than a
+                sheet: the editor is one tall TextInput and the keyboard needs
+                the room (see add-flight); Cancel/Save live in the header. */}
+              <Stack.Screen
+                name="journey-note"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
               <Stack.Screen
                 name="paywall"
                 options={{

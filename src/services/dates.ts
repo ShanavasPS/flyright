@@ -73,3 +73,15 @@ export function travelDayTitle(departureIso: string, now: Date): string {
   return sameYear ? formatDayLabel(departureIso) : formatDayLabelWithYear(departureIso);
 }
 
+
+/** "today at 09:15", "yesterday", "3 days ago", or the dated form — the
+ * tail of a "Edited …" stamp, so recent edits read as recency and old ones
+ * as a date. */
+export function editedLabel(iso: string, now: Date): string {
+  if (Number.isNaN(Date.parse(iso))) return '';
+  const diff = calendarDayDiff(iso, now);
+  if (diff === 0) return `today at ${formatTime(iso)}`;
+  if (diff === -1) return 'yesterday';
+  if (diff < -1 && diff >= -7) return `${-diff} days ago`;
+  return formatDayLabelWithYear(iso);
+}

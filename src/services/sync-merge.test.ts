@@ -19,6 +19,8 @@ function row(overrides: Partial<JourneyRow>): JourneyRow {
     scheduledArrival: '2026-08-20T10:35:00Z',
     ticketPriceAmount: null,
     ticketPriceCurrency: null,
+    notes: null,
+    notesUpdatedAt: null,
     source: 'lookup',
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-08-01T00:00:00Z',

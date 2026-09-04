@@ -21,6 +21,8 @@ const journeyRow = v.object({
   scheduledArrival: v.string(),
   ticketPriceAmount: v.union(v.number(), v.null()),
   ticketPriceCurrency: v.union(v.string(), v.null()),
+  notes: v.optional(v.union(v.string(), v.null())),
+  notesUpdatedAt: v.optional(v.union(v.string(), v.null())),
   source: v.string(),
   createdAt: v.string(),
   updatedAt: v.string(),
