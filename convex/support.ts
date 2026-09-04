@@ -236,6 +236,22 @@ export const myThreads = query({
   },
 });
 
+/** Threads with a support reply the traveler hasn't opened yet — the badge
+ * on the home screen's messages button. */
+export const unreadCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return 0;
+    const threads = await ctx.db
+      .query('supportThreads')
+      .withIndex('by_user_last', (q) => q.eq('userId', identity.subject))
+      .order('desc')
+      .take(100);
+    return threads.filter((t) => t.unreadForUser).length;
+  },
+});
+
 export const thread = query({
   args: { threadId: v.id('supportThreads') },
   handler: async (ctx, { threadId }) => {

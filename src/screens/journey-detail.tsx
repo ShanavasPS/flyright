@@ -38,7 +38,7 @@ import type { Disruption, Journey } from '@/rules/types';
 import { countryName, getAirport } from '@/services/airports';
 import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
-import { countdown, formatDayLabel, formatDayLabelWithYear, formatTime } from '@/services/dates';
+import { countdown, formatDayLabelWithYear, formatTime, travelDayTitle } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
 import { lookupFlight } from '@/services/flight-lookup';
@@ -196,10 +196,12 @@ export function JourneyDetail({
   // recorded delay must keep the verdict alive once live lookups 404.
   const recorded = useDisruption(isDemo ? undefined : rowId);
 
-  // The header names the route (the one thing every trip has) from the first
-  // frame of the push, so the title never pops in mid-transition.
+  // The header carries WHEN the trip is — "Tomorrow", "In 5 days", "3 days
+  // ago", or the date — since the route already sits in big type right
+  // below it. Until the row loads, the route hint keeps the title from
+  // popping in mid-transition.
   const routeTitle = journey
-    ? `${journey.from.code} → ${journey.to.code}`
+    ? travelDayTitle(journey.scheduledDeparture, new Date(now))
     : routeHint
       ? `${routeHint.from} → ${routeHint.to}`
       : '';
@@ -486,13 +488,9 @@ function RouteHero({
   const flown = Date.parse(journey.scheduledDeparture) <= now;
   const chip = dateChipLabel(journey.scheduledDeparture, new Date(now));
   const duration = durationLabel(journey.scheduledDeparture, journey.scheduledArrival);
-  const meta = [
-    flown
-      ? formatDayLabelWithYear(journey.scheduledDeparture)
-      : formatDayLabel(journey.scheduledDeparture),
-    `${Math.round(journey.distanceKm).toLocaleString()} km`,
-    duration,
-  ].filter(Boolean);
+  // The date lives in the screen header (travelDayTitle); this line keeps
+  // to distance and duration.
+  const meta = [`${Math.round(journey.distanceKm).toLocaleString()} km`, duration].filter(Boolean);
 
   return (
     <View style={styles.hero}>

@@ -49,3 +49,27 @@ export function countdown(departureIso: string, now: Date): { value: number; uni
   if (hours < 48) return { value: hours, unit: ms >= 0 ? 'hours' : 'hours ago' };
   return { value: days, unit: ms >= 0 ? 'days' : 'days ago' };
 }
+
+/** Calendar-day distance from `now` to `iso`, in the device's local zone —
+ * "tomorrow" is the next calendar day, not 24 hours away. */
+function calendarDayDiff(iso: string, now: Date): number {
+  const target = new Date(iso);
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.round((startOf(target) - startOf(now)) / 86_400_000);
+}
+
+/** The journey screen's title: how far off the trip is while that's the
+ * more useful reading (a week either way), the date itself beyond that —
+ * with the year once the trip isn't in this one. */
+export function travelDayTitle(departureIso: string, now: Date): string {
+  if (Number.isNaN(Date.parse(departureIso))) return '';
+  const diff = calendarDayDiff(departureIso, now);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff > 1 && diff <= 7) return `In ${diff} days`;
+  if (diff < -1 && diff >= -7) return `${-diff} days ago`;
+  const sameYear = new Date(departureIso).getFullYear() === now.getFullYear();
+  return sameYear ? formatDayLabel(departureIso) : formatDayLabelWithYear(departureIso);
+}
+

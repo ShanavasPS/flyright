@@ -1,8 +1,9 @@
 import { useAuth } from '@clerk/expo';
+import { useQuery } from 'convex/react';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useMemo, useState } from 'react';
+import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Platform,
   Pressable,
@@ -14,6 +15,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { api } from '../../../convex/_generated/api';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
@@ -186,7 +189,10 @@ export function Journeys() {
               My travels
             </ThemedText>
           </View>
-          <AddFlightButton onPress={() => router.push('/add-flight')} />
+          <View style={styles.titleActions}>
+            <MessagesButton />
+            <AddFlightButton onPress={() => router.push('/add-flight')} />
+          </View>
         </View>
 
         {journeys?.length ? (
@@ -318,6 +324,78 @@ function GhostTrips() {
           <View style={[styles.ghostBar, styles.ghostBarSchedule]} />
         </View>
       </View>
+    </View>
+  );
+}
+
+/** Messages door beside the "+": the same place Settings → Contact support
+ * leads (conversations when signed in, the form otherwise), with an unread
+ * badge so a support reply is noticed even by travelers who never enabled
+ * push. Rendered in the same circle as the add button. */
+function MessagesButton() {
+  const router = useRouter();
+  const theme = useTheme();
+  const glass = isLiquidGlassAvailable();
+  const { isSignedIn } = useAuth();
+
+  const icon = (
+    <SymbolView
+      name={{ ios: 'message.fill', android: 'chat', web: 'chat' }}
+      size={18}
+      weight="semibold"
+      tintColor={glass ? theme.tint : '#ffffff'}
+    />
+  );
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Messages with support"
+      testID="home-messages"
+      // Cross-tab hand-off, like the World map: navigate (not push) so the
+      // settings tab's stack receives the route.
+      onPress={() => router.navigate(isSignedIn ? '/messages' : '/contact')}>
+      {glass ? (
+        <GlassView glassEffectStyle="regular" isInteractive style={styles.addCircle}>
+          {icon}
+        </GlassView>
+      ) : (
+        <View style={[styles.addCircle, styles.addFallback, { backgroundColor: theme.tint }]}>
+          {icon}
+        </View>
+      )}
+      {!!CONVEX_URL && isSignedIn && (
+        <QuietBoundary>
+          <UnreadBadge />
+        </QuietBoundary>
+      )}
+    </Pressable>
+  );
+}
+
+/** A decoration must never take the screen down: Convex query errors throw
+ * during render, so the badge renders nothing if its query fails. */
+class QuietBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+/** Count of conversations with an unopened support reply. Its own component
+ * so the Convex hook only mounts with a provider and a signed-in user. */
+function UnreadBadge() {
+  const theme = useTheme();
+  const count = useQuery(api.support.unreadCount, {});
+  if (!count) return null;
+  return (
+    <View
+      style={[styles.badge, { backgroundColor: theme.danger }]}
+      accessibilityLabel={`${count} unread`}>
+      <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
     </View>
   );
 }
@@ -560,6 +638,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
+  titleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   addCircle: {
     width: 40,
     height: 40,
@@ -567,6 +650,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  badge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 700,
+    lineHeight: 12,
   },
   addFallback: {
     shadowColor: '#0B1520',
