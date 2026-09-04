@@ -4,13 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
-  Easing,
   FadeInDown,
-  interpolateColor,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withSpring,
@@ -44,7 +41,8 @@ import { useTravelDayStates } from '@/services/travel-day-store';
 const LIVE_GREEN = '#2FD68C';
 const DELAY_AMBER = '#F2B441';
 const SPRING = { damping: 18, stiffness: 170 } as const;
-const SHIMMER_WIDTH = 28;
+/** The plane glyph's box on the route line — its travel is the line minus this. */
+const PLANE_SIZE = 16;
 
 /** The single hero at the top of My travels — one premium navy object per
  * screen. On a travel day (T−24h through landing) the live flight and the
@@ -98,14 +96,16 @@ export function HomeHero({
           <AirlineLogo number={active.number} carrier={active.carrier} size={32} />
           <View style={styles.headerRight}>
             <ThemedText type="smallBold" style={styles.microLabel}>
-              {phase === 'live' ? 'Travel day' : 'Departs tomorrow'}
+              {content.headline}
             </ThemedText>
             {phase === 'live' && <LiveDot />}
           </View>
         </View>
 
         {/* The route is the centerpiece: big codes pinned to opposite edges,
-         * times beneath, a dotted contrail with the plane mid-path between. */}
+         * times beneath, a dotted contrail between them that doubles as the
+         * flight's progress bar — the plane waits at the origin until
+         * take-off, then flies the line to the destination. */}
         <View style={styles.routeRow}>
           <View style={styles.endpoint}>
             <ThemedText style={styles.code} numberOfLines={1}>
@@ -117,7 +117,7 @@ export function HomeHero({
               </ThemedText>
             )}
           </View>
-          <RoutePath delayed={content.emphasis === 'delay'} />
+          <RoutePath progress={content.progress} delayed={content.emphasis === 'delay'} />
           <View style={[styles.endpoint, styles.endpointRight]}>
             <ThemedText style={styles.code} numberOfLines={1}>
               {content.toCode}
@@ -133,8 +133,6 @@ export function HomeHero({
         <ThemedText type="small" style={styles.subtitle} numberOfLines={1}>
           {content.subtitle}
         </ThemedText>
-
-        <ProgressTrack progress={content.progress} delayed={content.emphasis === 'delay'} />
 
         <View style={styles.spacedRow}>
           {/* Re-keying on gate/terminal makes fresh airport news slide in
@@ -182,71 +180,6 @@ export function HomeHero({
   );
 }
 
-/** The boarding-pass progress bar, alive: the fill springs between stages,
- * cross-fades cobalt → amber when a delay lands, and a soft glint sweeps the
- * filled part every few seconds to say "this card is live". Mirrors the
- * timeline's rule — the first measurement snaps, only changes animate. */
-function ProgressTrack({ progress, delayed }: { progress: number; delayed: boolean }) {
-  const reduceMotion = useReducedMotion();
-  const [trackWidth, setTrackWidth] = useState(0);
-  const fillWidth = useSharedValue(0);
-  const heat = useSharedValue(delayed ? 1 : 0);
-  const sweepX = useSharedValue(-SHIMMER_WIDTH);
-  const settled = useRef(false);
-
-  // Never fully empty — a sliver of contrail shows it's alive.
-  const fraction = Math.max(0.04, progress);
-
-  useEffect(() => {
-    if (!trackWidth) return;
-    const target = fraction * trackWidth;
-    if (!settled.current) {
-      settled.current = true;
-      fillWidth.value = target;
-      return;
-    }
-    fillWidth.value = withSpring(target, SPRING);
-  }, [trackWidth, fraction, fillWidth]);
-
-  useEffect(() => {
-    heat.value = withTiming(delayed ? 1 : 0, { duration: 450 });
-  }, [delayed, heat]);
-
-  useEffect(() => {
-    if (!trackWidth || reduceMotion) return;
-    sweepX.value = -SHIMMER_WIDTH;
-    sweepX.value = withRepeat(
-      withSequence(
-        withDelay(
-          2600,
-          withTiming(trackWidth + SHIMMER_WIDTH, {
-            duration: 1200,
-            easing: Easing.inOut(Easing.quad),
-          }),
-        ),
-        withTiming(-SHIMMER_WIDTH, { duration: 0 }),
-      ),
-      -1,
-      false,
-    );
-    return () => cancelAnimation(sweepX);
-  }, [trackWidth, reduceMotion, sweepX]);
-
-  const fillStyle = useAnimatedStyle(() => ({
-    width: fillWidth.value,
-    backgroundColor: interpolateColor(heat.value, [0, 1], [COBALT, DELAY_AMBER]),
-  }));
-  const sweepStyle = useAnimatedStyle(() => ({ transform: [{ translateX: sweepX.value }] }));
-
-  return (
-    <View style={styles.track} onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}>
-      <Animated.View style={[styles.fill, fillStyle]}>
-        {!reduceMotion && <Animated.View style={[styles.shimmer, sweepStyle]} />}
-      </Animated.View>
-    </View>
-  );
-}
-
 /** Status changes should land, not repaint: a new or grown delay washes the
  * card amber once with a warning haptic; a gate change gets a light tick (the
  * fact line's re-entry handles the visual). Mount is silent — old news. */
@@ -275,28 +208,47 @@ function StatusFlash({ delayLabel, gate }: { delayLabel: string | null; gate: st
   return <Animated.View pointerEvents="none" style={[styles.wash, style]} />;
 }
 
-/** The dotted contrail joining the route codes, plane mid-path — the same
- * motif the Live Activity draws, so lock screen and hero read as one. */
-function RoutePath({ delayed }: { delayed: boolean }) {
-  const dots = (key: string) => (
-    <View key={key} style={styles.routeDots}>
-      {Array.from({ length: 3 }, (_, i) => (
-        <View key={i} style={styles.routeDot} />
-      ))}
-    </View>
-  );
+/** The dotted contrail joining the route codes, with the plane riding it as
+ * the flight-progress indicator — the same motif the Live Activity draws, so
+ * lock screen and hero read as one. The flown part turns solid behind the
+ * plane; the first measurement snaps, later changes spring. */
+function RoutePath({ progress, delayed }: { progress: number; delayed: boolean }) {
+  const [width, setWidth] = useState(0);
+  const planeX = useSharedValue(0);
+  const settled = useRef(false);
+  const travel = Math.max(0, width - PLANE_SIZE);
+
+  useEffect(() => {
+    if (!width) return;
+    const target = progress * travel;
+    if (!settled.current) {
+      settled.current = true;
+      planeX.value = target;
+      return;
+    }
+    planeX.value = withSpring(target, SPRING);
+  }, [width, progress, travel, planeX]);
+
+  const planeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: planeX.value }] }));
+  const flownStyle = useAnimatedStyle(() => ({ width: planeX.value + PLANE_SIZE / 2 }));
+  const tint = delayed ? DELAY_AMBER : COBALT;
+
   return (
-    <View style={styles.routePath}>
-      <View style={styles.routeEndDot} />
-      {dots('out')}
-      <SymbolView
-        name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-        size={16}
-        tintColor={delayed ? DELAY_AMBER : COBALT}
-        style={Platform.OS === 'ios' ? undefined : styles.rotated}
-      />
-      {dots('in')}
-      <View style={styles.routeEndDot} />
+    <View style={styles.routePath} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <View style={styles.routeDots}>
+        {Array.from({ length: 9 }, (_, i) => (
+          <View key={i} style={[styles.routeDot, (i === 0 || i === 8) && styles.routeEndDot]} />
+        ))}
+      </View>
+      <Animated.View style={[styles.routeFlown, { backgroundColor: tint }, flownStyle]} />
+      <Animated.View style={[styles.plane, planeStyle]}>
+        <SymbolView
+          name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+          size={PLANE_SIZE}
+          tintColor={tint}
+          style={Platform.OS === 'ios' ? undefined : styles.rotated}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -407,18 +359,19 @@ const styles = StyleSheet.create({
   },
   routePath: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
+    height: PLANE_SIZE,
+    justifyContent: 'center',
     // Lift the path to the codes' midline — centering against the full
     // code+time endpoint block would sag it toward the time row.
     marginBottom: 20,
   },
   routeDots: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
   },
   routeDot: {
     width: 3,
@@ -431,32 +384,29 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: WHITE_DIM,
+    opacity: 1,
+  },
+  routeFlown: {
+    position: 'absolute',
+    left: 0,
+    height: 2,
+    borderRadius: 1,
+    opacity: 0.7,
+  },
+  plane: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: PLANE_SIZE,
+    height: PLANE_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rotated: {
     transform: [{ rotate: '90deg' }],
   },
   subtitle: {
     color: WHITE_DIM,
-  },
-  track: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: WHITE_FAINT,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: SHIMMER_WIDTH,
-    experimental_backgroundImage:
-      'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 100%)',
   },
   factWrap: {
     flexShrink: 1,

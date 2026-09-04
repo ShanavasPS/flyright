@@ -8,6 +8,7 @@ import {
   applyFlightFacts,
   canAdvanceTo,
   canRewindTo,
+  flightProgress,
   liveContent,
   rewindTo,
   travelWindow,
@@ -258,13 +259,36 @@ describe('activeJourney', () => {
 describe('liveContent', () => {
   const liveNow = new Date('2026-08-25T05:00Z'); // T−3h
 
-  it('renders the countdown before any stage', () => {
+  it('heads with the countdown before any stage; the subtitle never repeats it', () => {
     const c = liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, liveNow);
     expect(c.title).toBe('AY123 · HEL → LHR');
-    expect(c.subtitle).toContain('Departs');
-    expect(c.subtitle).toContain('in 3h');
+    expect(c.headline).toBe('Flight in 3h');
+    // Inside the live window (T−4h) the airport is the next step…
+    expect(c.subtitle).toBe('Head to the airport');
     expect(c.progress).toBe(0);
     expect(c.emphasis).toBe('none');
+    // …the evening before, honesty beats a premature nudge.
+    const eveBefore = liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date('2026-08-24T14:00Z'));
+    expect(eveBefore.headline).toBe('Flight in 18h');
+    expect(eveBefore.subtitle).toBe('Nothing to do yet');
+    // Minutes once under 90; "Departing now" at the scheduled time.
+    expect(
+      liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date('2026-08-25T07:15Z')).headline,
+    ).toBe('Flight in 45 min');
+    expect(
+      liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date('2026-08-25T08:00Z')).headline,
+    ).toBe('Departing now');
+  });
+
+  it('headline counts to the estimated departure when the airline posts one', () => {
+    const c = liveContent(
+      journey(),
+      EMPTY_TRAVEL_DAY,
+      facts({ delayMinutes: 60, estimatedDeparture: '2026-08-25T09:00Z' }),
+      liveNow,
+    );
+    expect(c.headline).toBe('Flight in 4h');
+    expect(c.delayLabel).toBe('1h late');
   });
 
   it('leads with the delay and flags emphasis', () => {
@@ -279,16 +303,39 @@ describe('liveContent', () => {
     expect(c.gate).toBe('24');
   });
 
-  it('progress is monotonic across the stage walk', () => {
+  it('progress is flight progress: parked until take-off, time-based aloft, full on landing', () => {
+    // The whole airport walk leaves the plane at the origin.
     let state = EMPTY_TRAVEL_DAY;
-    let last = -1;
     for (const stage of STAGE_ORDER.slice(0, 6)) {
       state = advance(state, stage, liveNow);
-      const { progress } = liveContent(journey(), state, EMPTY_FACTS, liveNow);
-      expect(progress).toBeGreaterThan(last);
-      last = progress;
+      expect(liveContent(journey(), state, EMPTY_FACTS, liveNow).progress).toBe(0);
     }
-    expect(last).toBeLessThanOrEqual(1);
+    // Departed 08:05, estimated arrival 10:45 → at 09:25 half-way.
+    const inAir = applyFlightFacts(state, facts({ actualDeparture: '2026-08-25T08:05Z' }));
+    const aloft = facts({
+      actualDeparture: '2026-08-25T08:05Z',
+      estimatedArrival: '2026-08-25T10:45Z',
+    });
+    expect(flightProgress(journey(), inAir, aloft, new Date('2026-08-25T09:25Z'))).toBeCloseTo(0.5);
+    // Just after departure it has visibly left; before landing it hasn't arrived.
+    expect(flightProgress(journey(), inAir, aloft, new Date('2026-08-25T08:05Z'))).toBe(0.03);
+    expect(flightProgress(journey(), inAir, aloft, new Date('2026-08-25T12:00Z'))).toBe(0.97);
+    // The scheduled arrival stands in when no estimate exists (10:35).
+    expect(
+      flightProgress(journey(), inAir, facts({ actualDeparture: '2026-08-25T08:05Z' }), new Date('2026-08-25T09:20Z')),
+    ).toBeCloseTo(0.5);
+    // A manual trip's own take-off stamp anchors the start.
+    const manualAir = advance(
+      advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, true),
+      'departed',
+      new Date('2026-08-25T08:00Z'),
+      true,
+    );
+    expect(
+      flightProgress(journey({ source: 'manual' }), manualAir, EMPTY_FACTS, new Date('2026-08-25T09:17:30Z')),
+    ).toBeCloseTo(0.5);
+    const landed = applyFlightFacts(inAir, facts({ actualArrival: '2026-08-25T10:50Z' }));
+    expect(liveContent(journey(), landed, EMPTY_FACTS, liveNow).progress).toBe(1);
   });
 
   it('compactLabel: departure clock → next step → gate code → stage word', () => {
@@ -328,24 +375,20 @@ describe('liveContent', () => {
 
   it('subtitle tells the traveler the next step, never the finished one', () => {
     const atAirport = advance(EMPTY_TRAVEL_DAY, 'at_airport', liveNow);
-    expect(liveContent(journey(), atAirport, EMPTY_FACTS, liveNow).subtitle).toBe(
-      'Check in · Departs in 3h',
-    );
+    expect(liveContent(journey(), atAirport, EMPTY_FACTS, liveNow).subtitle).toBe('Check in');
     expect(liveContent(journey(), atAirport, facts({ checkInDesk: '214' }), liveNow).subtitle).toBe(
-      'Check in at desk 214 · Departs in 3h',
+      'Check in at desk 214',
     );
     const checkedIn = advance(atAirport, 'checked_in', liveNow);
-    expect(liveContent(journey(), checkedIn, EMPTY_FACTS, liveNow).subtitle).toBe(
-      'Drop your bags · Departs in 3h',
-    );
+    expect(liveContent(journey(), checkedIn, EMPTY_FACTS, liveNow).subtitle).toBe('Drop your bags');
     // Skipping bag drop is normal — the next step simply moves on.
     const throughSecurity = advance(checkedIn, 'security', liveNow);
     expect(liveContent(journey(), throughSecurity, EMPTY_FACTS, liveNow).subtitle).toBe(
-      'Passport control · Departs in 3h',
+      'Passport control',
     );
     const throughImmigration = advance(throughSecurity, 'immigration', liveNow);
     expect(liveContent(journey(), throughImmigration, EMPTY_FACTS, liveNow).subtitle).toBe(
-      'Go to your gate · Departs in 3h',
+      'Go to your gate',
     );
     expect(
       liveContent(
@@ -385,14 +428,20 @@ describe('liveContent', () => {
       EMPTY_TRAVEL_DAY,
       facts({ actualDeparture: '2026-08-25T08:05Z' }),
     );
-    expect(
-      liveContent(journey(), inAir, facts({ estimatedArrival: '2026-08-25T10:50Z' }), liveNow)
-        .subtitle,
-    ).toContain('In the air');
+    const aloft = liveContent(
+      journey(),
+      inAir,
+      facts({ actualDeparture: '2026-08-25T08:05Z', estimatedArrival: '2026-08-25T10:50Z' }),
+      new Date('2026-08-25T10:10Z'),
+    );
+    expect(aloft.headline).toBe('Lands in 40 min');
+    expect(aloft.subtitle).toBe('In the air');
     const landed = applyFlightFacts(inAir, facts({ actualArrival: '2026-08-25T10:50Z' }));
-    expect(liveContent(journey(), landed, EMPTY_FACTS, liveNow).subtitle).toBe('Landed in LHR');
+    const down = liveContent(journey(), landed, EMPTY_FACTS, liveNow);
+    expect(down.headline).toBe('Landed');
+    expect(down.subtitle).toBe('Welcome to LHR');
     expect(liveContent(journey(), landed, facts({ baggageBelt: '7' }), liveNow).subtitle).toBe(
-      'Landed in LHR · Bags at belt 7',
+      'Bags at belt 7',
     );
   });
 });

@@ -60,6 +60,7 @@ export function getActivityId(journeyId: string): string | null {
 /** The mutable half the widget renders — must stay JSON-serializable. */
 function contentState(content: LiveContent) {
   return {
+    headline: content.headline,
     subtitle: content.subtitle,
     progress: content.progress,
     stageLabel: content.stageLabel ?? '',
@@ -126,6 +127,7 @@ function endById(activityId: string, content?: LiveContent): void {
   const finalState = content
     ? contentState(content)
     : {
+        headline: 'Trip complete',
         subtitle: 'Travel day complete',
         progress: 1,
         stageLabel: '',

@@ -9,8 +9,9 @@
 // src/services/travel-day.ts#liveContent and sent via
 // src/services/live-activity.ts — keep the two files in sync:
 //   attributes: journeyId, title, fromCode, toCode, flightLabel
-//   state: subtitle, progress (0…1), stageLabel, compactLabel, gate,
-//          terminal, delayLabel, emphasis ("none" | "delay" | "gate"),
+//   state: headline, subtitle, progress (0…1, flight progress: 0 until
+//          departure, then time-based, 1 landed), stageLabel, compactLabel,
+//          gate, terminal, delayLabel, emphasis ("none" | "delay" | "gate"),
 //          depTime, arrTime
 
 import ActivityKit
@@ -37,6 +38,9 @@ private struct TravelDayModel {
     let fromCode: String?
     let toCode: String?
     let flightLabel: String?
+    /// "Flight in 3h" / "Lands in 40 min" / "Landed" — the card's header.
+    /// Nil on updates pushed by builds that predate the key.
+    let headline: String?
     let subtitle: String
     let progress: Double
     let stageLabel: String?
@@ -60,6 +64,7 @@ private struct TravelDayModel {
         fromCode = text(context.attributes.data["fromCode"]?.asString())
         toCode = text(context.attributes.data["toCode"]?.asString())
         flightLabel = text(context.attributes.data["flightLabel"]?.asString())
+        headline = text(context.state.data["headline"]?.asString())
         subtitle = text(context.state.data["subtitle"]?.asString()) ?? "Following your trip"
         progress = min(1, max(0, context.state.data["progress"]?.asDouble() ?? 0))
         stageLabel = text(context.state.data["stageLabel"]?.asString())
@@ -77,23 +82,6 @@ private struct TravelDayModel {
     var route: (from: String, to: String)? {
         guard let fromCode, let toCode else { return nil }
         return (fromCode, toCode)
-    }
-
-    /// "LH873" → "LH": the two-character IATA designator, mirroring the
-    /// regex in src/components/airline-logo.tsx#airlineCode. Nil for manual
-    /// rows whose flightLabel is a carrier name — the chip simply hides.
-    var airlineCode: String? {
-        guard let flight = flightLabel?.uppercased() else { return nil }
-        let chars = Array(flight)
-        guard chars.count >= 3 else { return nil }
-        let a = chars[0], b = chars[1]
-        let pairOK = (a.isLetter && b.isLetter)
-            || (a.isLetter && b.isNumber)
-            || (a.isNumber && b.isLetter)
-        guard pairOK else { return nil }
-        let next = chars[2] == " " ? (chars.count >= 4 ? chars[3] : nil) : chars[2]
-        guard let next, next.isNumber else { return nil }
-        return String([a, b])
     }
 
     var deepLink: URL? {
@@ -148,11 +136,21 @@ struct OneSignalWidgetLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(model.subtitle)
-                            .font(.footnote)
-                            .foregroundStyle(Brand.whiteDim)
-                            .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(model.subtitle)
+                                .font(.footnote)
+                                .foregroundStyle(Brand.whiteDim)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            if let headline = model.headline {
+                                Text(headline)
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(Brand.white)
+                                    .lineLimit(1)
+                                    .layoutPriority(1)
+                            }
+                        }
                         ContrailProgress(progress: model.progress, delayed: model.delayed)
                     }
                 }
@@ -255,12 +253,12 @@ private struct SmartStackView: View {
             .foregroundStyle(Brand.white)
             .lineLimit(1)
 
-            Text(model.subtitle)
+            Text([model.headline, model.subtitle].compactMap { $0 }.joined(separator: " · "))
                 .font(.caption2)
                 .foregroundStyle(Brand.whiteDim)
                 .lineLimit(1)
 
-            ProgressTrack(progress: model.progress, delayed: model.delayed)
+            ContrailProgress(progress: model.progress, delayed: model.delayed)
         }
         .padding(10)
         .activityBackgroundTint(Brand.navy)
@@ -276,22 +274,24 @@ private struct SmartStackView: View {
 }
 
 /// The lock-screen card, boarding-pass style — the same hierarchy as the
-/// in-app travel-day hero: airline chip + label header, big route codes
-/// joined by a dotted path with the plane at its middle, stage/countdown
-/// line, slim progress track, then flight/gate/terminal facts.
+/// in-app travel-day hero: brand chip + headline ("FLIGHT IN 3H"), big route
+/// codes joined by a dotted contrail that doubles as the flight-progress
+/// bar (the plane waits at the origin until take-off, then flies the line),
+/// the next-step line, then flight/gate/terminal facts.
 private struct LockScreenView: View {
     let model: TravelDayModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                if let code = model.airlineCode {
-                    MonogramChip(code: code)
+                BrandChip()
+                if let headline = model.headline {
+                    Text(headline.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .kerning(1.2)
+                        .foregroundStyle(Brand.whiteDim)
+                        .lineLimit(1)
                 }
-                Text("TRAVEL DAY")
-                    .font(.caption2.weight(.bold))
-                    .kerning(1.2)
-                    .foregroundStyle(Brand.whiteDim)
                 Spacer()
                 if let delay = model.delayLabel {
                     ChipView(text: delay, color: Brand.amber)
@@ -304,6 +304,7 @@ private struct LockScreenView: View {
                     to: route.to,
                     depTime: model.depTime,
                     arrTime: model.arrTime,
+                    progress: model.progress,
                     delayed: model.delayed
                 )
             } else {
@@ -319,8 +320,6 @@ private struct LockScreenView: View {
                 .font(.footnote)
                 .foregroundStyle(Brand.whiteDim)
                 .lineLimit(1)
-
-            ProgressTrack(progress: model.progress, delayed: model.delayed)
 
             if let facts = factsLine {
                 Text(facts)
@@ -347,12 +346,14 @@ private struct LockScreenView: View {
 }
 
 /// Big origin/destination codes pinned to opposite edges, times beneath,
-/// a dotted contrail between them with the plane at its middle.
+/// a dotted contrail between them that the plane flies as the flight
+/// progresses.
 private struct RouteRow: View {
     let from: String
     let to: String
     let depTime: String?
     let arrTime: String?
+    let progress: Double
     let delayed: Bool
 
     var body: some View {
@@ -360,8 +361,8 @@ private struct RouteRow: View {
             endpoint(code: from, time: depTime, alignment: .leading)
             // Top-aligned so the path meets the codes' midline instead of
             // sagging toward the time row beneath them.
-            RoutePath(delayed: delayed)
-                .padding(.top, 10)
+            RoutePath(progress: progress, delayed: delayed)
+                .padding(.top, 8)
             endpoint(code: to, time: arrTime, alignment: .trailing)
         }
     }
@@ -384,21 +385,40 @@ private struct RouteRow: View {
     }
 }
 
-/// Endpoint dots and a dotted line with the brand plane mid-route.
+/// The route line as progress bar: endpoint dots, a dotted contrail across,
+/// the flown part drawn solid, and the brand plane at the progress point —
+/// parked at the origin until the flight departs.
 private struct RoutePath: View {
+    let progress: Double
     let delayed: Bool
 
+    private let planeSize: CGFloat = 14
+
     var body: some View {
-        HStack(spacing: 6) {
-            Circle().fill(Brand.whiteDim).frame(width: 3, height: 3)
-            dottedLine
-            Image(systemName: "airplane")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(delayed ? Brand.amber : Brand.cobalt)
-            dottedLine
-            Circle().fill(Brand.whiteDim).frame(width: 3, height: 3)
+        GeometryReader { geo in
+            let travel = max(0, geo.size.width - planeSize)
+            let x = travel * progress
+            ZStack(alignment: .leading) {
+                HStack(spacing: 0) {
+                    Circle().fill(Brand.whiteDim).frame(width: 3, height: 3)
+                    dottedLine
+                    Circle().fill(Brand.whiteDim).frame(width: 3, height: 3)
+                }
+                HorizontalLine()
+                    .stroke(
+                        (delayed ? Brand.amber : Brand.cobalt).opacity(0.7),
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                    )
+                    .frame(width: max(0, x + planeSize / 2), height: 2)
+                Image(systemName: "airplane")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(delayed ? Brand.amber : Brand.cobalt)
+                    .frame(width: planeSize, height: planeSize)
+                    .offset(x: x)
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
         }
-        .frame(maxWidth: .infinity)
+        .frame(height: 14)
     }
 
     private var dottedLine: some View {
@@ -408,6 +428,7 @@ private struct RoutePath: View {
                 style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [0.1, 5])
             )
             .frame(height: 2)
+            .padding(.horizontal, 5)
     }
 }
 
@@ -420,17 +441,87 @@ private struct HorizontalLine: Shape {
     }
 }
 
-/// Widget-scale stand-in for the app's white airline-logo chip — Live
-/// Activities can't fetch remote images, so the IATA monogram wears the chip.
-private struct MonogramChip: View {
-    let code: String
+/// The FlyRight mark on a white chip — the app icon at widget scale. Drawn
+/// in SwiftUI (Live Activities can't fetch images and the widget target has
+/// no asset catalog); geometry mirrors scripts/generate-icons.mjs.
+private struct BrandChip: View {
+    var body: some View {
+        ContrailCheckMark(color: Brand.navy)
+            .frame(width: 16, height: 16)
+            .frame(width: 22, height: 22)
+            .background(Brand.white, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+    }
+}
+
+/// "The contrail check": an airliner climbing at 45° whose dotted contrail
+/// sweeps into a checkmark. Laid out in the icon script's 120-point box and
+/// scaled to whatever frame it's given.
+private struct ContrailCheckMark: View {
+    let color: Color
+
+    /// Vapor dots tail → tip: (x, y, radius, opacity) in the 120-box.
+    private static let dots: [(CGFloat, CGFloat, CGFloat, Double)] = [
+        (20, 64, 3.6, 0.42),
+        (31, 75, 4.1, 0.55),
+        (42, 86, 4.6, 0.66),
+        (51, 77, 5.1, 0.78),
+        (60, 68, 5.6, 0.9),
+        (69, 59, 6.2, 1),
+    ]
 
     var body: some View {
-        Text(code)
-            .font(.system(size: 9, weight: .heavy, design: .rounded))
-            .foregroundStyle(Brand.navy)
-            .frame(width: 20, height: 20)
-            .background(Brand.white, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        GeometryReader { geo in
+            let s = min(geo.size.width, geo.size.height) / 120
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(Self.dots.enumerated()), id: \.offset) { _, dot in
+                    Circle()
+                        .fill(color.opacity(dot.3))
+                        .frame(width: dot.2 * 2 * s, height: dot.2 * 2 * s)
+                        .offset(x: (dot.0 - dot.2) * s, y: (dot.1 - dot.2) * s)
+                }
+                // Plane: the 24-box glyph scaled ×2.1, centred at (90, 32),
+                // rotated 45° so it climbs up-right.
+                PlaneShape()
+                    .fill(color)
+                    .frame(width: 24 * 2.1 * s, height: 24 * 2.1 * s)
+                    .rotationEffect(.degrees(45))
+                    .offset(x: (90 - 11.5 * 2.1) * s, y: (32 - 12 * 2.1) * s)
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+        }
+    }
+}
+
+/// Material "flight" airliner silhouette in a 24×24 box, nose up — the same
+/// path the app icon and the Android tracker icon use.
+private struct PlaneShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let k = min(rect.width, rect.height) / 24
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + x * k, y: rect.minY + y * k)
+        }
+        var path = Path()
+        path.move(to: p(21, 16))
+        path.addLine(to: p(21, 14))
+        path.addLine(to: p(13, 9))
+        path.addLine(to: p(13, 3.5))
+        path.addCurve(to: p(11.5, 2), control1: p(13, 2.67), control2: p(12.33, 2))
+        path.addCurve(to: p(10, 3.5), control1: p(10.67, 2), control2: p(10, 2.67))
+        path.addLine(to: p(10, 9))
+        path.addLine(to: p(2, 14))
+        path.addLine(to: p(2, 16))
+        path.addLine(to: p(10, 13.5))
+        path.addLine(to: p(10, 19))
+        path.addLine(to: p(8, 20.5))
+        path.addLine(to: p(8, 22))
+        path.addLine(to: p(11.5, 21))
+        path.addLine(to: p(15, 22))
+        path.addLine(to: p(15, 20.5))
+        path.addLine(to: p(13, 19))
+        path.addLine(to: p(13, 13.5))
+        path.addLine(to: p(21, 16))
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -448,47 +539,33 @@ private struct ChipView: View {
     }
 }
 
-/// Slim stage-progress capsule under the route — the plane already flies the
-/// dotted path above, so the track stays clean (matches the in-app hero).
-private struct ProgressTrack: View {
-    let progress: Double
-    let delayed: Bool
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Brand.whiteFaint)
-                Capsule()
-                    .fill(delayed ? Brand.amber : Brand.cobalt)
-                    // Never fully empty — a sliver shows it's alive.
-                    .frame(width: max(0.04, progress) * geo.size.width)
-            }
-        }
-        .frame(height: 4)
-    }
-}
-
-/// Thin progress track with a plane riding the fill edge — kept for the
-/// Dynamic Island's bottom region, where there's no route row to carry the
-/// plane. Never fully empty so it reads alive.
+/// Thin progress track with the plane riding the fill edge — for the
+/// Dynamic Island's bottom region and the watch tile, where there's no route
+/// row to carry the plane. Flight progress: the plane sits at the start
+/// until departure (no fake sliver — the plane itself says it's alive).
 private struct ContrailProgress: View {
     let progress: Double
     let delayed: Bool
 
+    private let planeSize: CGFloat = 11
+
     var body: some View {
         GeometryReader { geo in
-            let fill = max(0.04, progress) * geo.size.width
+            let travel = max(0, geo.size.width - planeSize)
+            let x = travel * progress
             ZStack(alignment: .leading) {
-                Capsule().fill(Brand.whiteFaint)
+                Capsule().fill(Brand.whiteFaint).frame(height: 4)
                 Capsule()
                     .fill(delayed ? Brand.amber : Brand.cobalt)
-                    .frame(width: fill)
+                    .frame(width: x + planeSize / 2, height: 4)
                 Image(systemName: "airplane")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(Brand.white)
-                    .offset(x: max(0, fill - 11))
+                    .frame(width: planeSize, height: planeSize)
+                    .offset(x: x)
             }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
         }
-        .frame(height: 5)
+        .frame(height: 12)
     }
 }

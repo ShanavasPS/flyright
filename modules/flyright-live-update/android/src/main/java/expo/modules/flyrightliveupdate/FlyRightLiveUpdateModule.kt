@@ -22,10 +22,13 @@ import expo.modules.kotlin.records.Record
  * the contract with the JS wrapper's LiveUpdateContent — change them together. */
 class LiveUpdateContent : Record {
   @Field val title: String = ""
+  /** "Flight in 3h" / "Lands in 40 min" / "Landed" — leads the content line. */
+  @Field val headline: String = ""
   @Field val subtitle: String = ""
   @Field val fromCode: String = ""
   @Field val toCode: String = ""
   @Field val flightLabel: String = ""
+  /** Flight progress 0..1: zero until departure, then time-based, 1 landed. */
   @Field val progress: Double = 0.0
   @Field val compactLabel: String = ""
   @Field val gate: String? = null
@@ -103,10 +106,16 @@ class FlyRightLiveUpdateModule : Module() {
         @Suppress("DEPRECATION")
         Notification.Builder(context).setPriority(Notification.PRIORITY_DEFAULT)
       }
+    // The content line leads with the time fact ("Flight in 3h") and follows
+    // with the next step — the headline has no slot of its own in a
+    // notification, and the status-bar chip only shows the compact word.
+    val line = listOf(content.headline, content.subtitle).filter { it.isNotEmpty() }.joinToString(" · ")
     builder
-      .setSmallIcon(R.drawable.flyright_live_flight)
+      // The brand mark, not a generic plane: it's what shows in the status
+      // bar and the Android 16 Live Update chip.
+      .setSmallIcon(R.drawable.flyright_live_brand)
       .setContentTitle(route)
-      .setContentText(content.subtitle)
+      .setContentText(line)
       .setOnlyAlertOnce(true)
       .setOngoing(live)
       .setAutoCancel(!live)
@@ -120,14 +129,15 @@ class FlyRightLiveUpdateModule : Module() {
       builder.setStyle(
         Notification.ProgressStyle()
           // Full-length single segment; styled-by-progress dims the un-flown
-          // remainder so the tracker plane splits flown from ahead.
+          // remainder so the tracker plane splits flown from ahead. Progress
+          // is flight progress: the plane waits at the origin until take-off.
           .setProgressSegments(
             listOf(Notification.ProgressStyle.Segment(100).setColor(track)),
           )
           .setProgress(percent)
           .setStyledByProgress(true)
           .setProgressTrackerIcon(
-            Icon.createWithResource(context, R.drawable.flyright_live_flight),
+            Icon.createWithResource(context, R.drawable.flyright_live_tracker),
           ),
       )
       if (live) {
@@ -145,7 +155,7 @@ class FlyRightLiveUpdateModule : Module() {
       }
     } else {
       builder.setProgress(100, percent, false)
-      val big = listOf(content.subtitle, facts).filter { it.isNotEmpty() }.joinToString("\n")
+      val big = listOf(line, facts).filter { it.isNotEmpty() }.joinToString("\n")
       if (big.isNotEmpty()) builder.setStyle(Notification.BigTextStyle().bigText(big))
     }
 

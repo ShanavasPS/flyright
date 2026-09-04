@@ -312,6 +312,11 @@ export function activeJourney<T extends TravelJourney>(
  * screen, the notification, the banner, and the timeline in agreement. */
 export interface LiveContent {
   title: string;
+  /** The time-anchored status that heads every surface: "Flight in 3h",
+   * "Departing now", "Lands in 40 min", "Landed". Counts to the estimated
+   * departure when the airline has posted one, so a delay reads honestly. */
+  headline: string;
+  /** What to do next — never repeats the headline's countdown. */
   subtitle: string;
   /** Route endpoints, rendered as the big boarding-pass style codes. */
   fromCode: string;
@@ -321,7 +326,10 @@ export interface LiveContent {
   /** Estimated-over-scheduled clock times under each route code. */
   depTime: string | null;
   arrTime: string | null;
-  /** 0..1 across STAGE_ORDER; 0 before the first stamp. */
+  /** Flight progress, 0..1: exactly 0 until the flight departs, then the
+   * share of the departure→arrival span elapsed (clamped just inside both
+   * ends so the plane visibly leaves and hasn't yet landed), 1 once landed.
+   * The airport walk never moves it — that's what the stepper is for. */
   progress: number;
   stageIndex: number;
   stageLabel: string | null;
@@ -345,6 +353,32 @@ function countdownLabel(departure: number, now: Date): string {
   return mins > 0 ? `in ${mins} min` : 'now';
 }
 
+/** How much of the flight has been flown — the plane's position on every
+ * route line. Zero until the flight has departed (taps never move it),
+ * then time-based between the real/estimated departure and the estimated
+ * arrival, held just inside both ends until the landing stamp closes it.
+ * Mirrored by flightProgress in convex/liveShared.ts. */
+export function flightProgress(
+  j: TravelJourney,
+  state: TravelDayState,
+  facts: FlightFacts,
+  now: Date,
+): number {
+  const index = stageIndex(state.stage);
+  if (index < stageIndex('departed')) return 0;
+  if (state.stage === 'landed') return 1;
+  const departed = Date.parse(
+    facts.actualDeparture ??
+      state.stamps.departed ??
+      facts.estimatedDeparture ??
+      j.scheduledDeparture,
+  );
+  const arrives = Date.parse(facts.estimatedArrival ?? j.scheduledArrival);
+  if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
+  const fraction = (now.getTime() - departed) / (arrives - departed);
+  return Math.min(0.97, Math.max(0.03, fraction));
+}
+
 export function liveContent(
   j: TravelJourney,
   state: TravelDayState,
@@ -362,45 +396,56 @@ export function liveContent(
   const boardingOpen = !!facts.boardingTime && Date.parse(facts.boardingTime) <= now.getTime();
   const gateWord = facts.gate ? `gate ${facts.gate}` : 'your gate';
 
+  // The headline is the one time fact that matters right now: the countdown
+  // to (estimated) departure until the wheels leave, the countdown to
+  // landing in the air, then "Landed". The clock times themselves sit under
+  // the route codes, so nothing here repeats them.
+  const effectiveDeparture = facts.estimatedDeparture ?? j.scheduledDeparture;
+  const departureMs = Date.parse(effectiveDeparture);
+  const arrivalMs = Date.parse(facts.estimatedArrival ?? j.scheduledArrival);
+  let headline: string;
+  if (state.stage === 'landed') {
+    headline = 'Landed';
+  } else if (state.stage === 'departed') {
+    const toLanding = Number.isNaN(arrivalMs) ? null : countdownLabel(arrivalMs, now);
+    headline = toLanding === null ? 'In the air' : toLanding === 'now' ? 'Landing now' : `Lands ${toLanding}`;
+  } else if (Number.isNaN(departureMs)) {
+    headline = `Departs ${formatTime(effectiveDeparture)}`;
+  } else {
+    const toDeparture = countdownLabel(departureMs, now);
+    headline = toDeparture === 'now' ? 'Departing now' : `Flight ${toDeparture}`;
+  }
+
   // The traveler's line reads as the NEXT thing to do, not the last thing
-  // done (followers get the done-stage feed via the server's push copy).
-  // Before the first tap it is just the countdown — the departure time is
-  // the one fact that matters until you're at the airport.
+  // done (followers get the done-stage feed via the server's push copy) —
+  // and never the countdown, which the headline already carries.
   let subtitle: string;
   if (state.stage === 'landed') {
-    subtitle = facts.baggageBelt
-      ? `Landed in ${j.toCode} · Bags at belt ${facts.baggageBelt}`
-      : `Landed in ${j.toCode}`;
+    subtitle = facts.baggageBelt ? `Bags at belt ${facts.baggageBelt}` : `Welcome to ${j.toCode}`;
   } else if (state.stage === 'departed') {
-    subtitle = facts.estimatedArrival
-      ? `In the air · lands ${formatTime(facts.estimatedArrival)}`
-      : 'In the air';
+    subtitle = facts.baggageBelt ? `In the air · Bags at belt ${facts.baggageBelt}` : 'In the air';
   } else if (state.stage === 'boarded') {
     subtitle = 'On board · ready for pushback';
   } else if (boardingOpen) {
     // Boarding has opened: wherever the walk stands, the gate is the task.
     subtitle = facts.gate ? `Boarding now · Gate ${facts.gate}` : 'Boarding now';
+  } else if (state.stage === null || next === null) {
+    // Before the first tap: the airport once the live window opens (T−4h),
+    // honesty before that — a lock screen saying "head to the airport" the
+    // evening before helps nobody.
+    subtitle =
+      !Number.isNaN(departureMs) && now.getTime() >= departureMs - LIVE_LEAD_MS
+        ? NEXT_STEP_LABELS.at_airport
+        : 'Nothing to do yet';
+  } else if (next === 'boarded') {
+    // The gate step carries the boarding time when the airline posts one.
+    subtitle = facts.boardingTime
+      ? `Go to ${gateWord} · boards ${formatTime(facts.boardingTime)}`
+      : `Go to ${gateWord}`;
+  } else if (next === 'checked_in' && facts.checkInDesk) {
+    subtitle = `Check in at desk ${facts.checkInDesk}`;
   } else {
-    // The clock time already sits under the route code on every surface —
-    // the countdown only ("Departs in 75 min", "Departs now").
-    const effective = facts.estimatedDeparture ?? j.scheduledDeparture;
-    const effectiveMs = Date.parse(effective);
-    const countdown = Number.isNaN(effectiveMs)
-      ? `Departs ${formatTime(effective)}`
-      : `Departs ${countdownLabel(effectiveMs, now)}`;
-    if (state.stage === null || next === null) {
-      subtitle = countdown;
-    } else if (next === 'boarded') {
-      // The gate step carries the boarding time when the airline posts one;
-      // otherwise the departure countdown keeps the pressure visible.
-      subtitle = facts.boardingTime
-        ? `Go to ${gateWord} · boards ${formatTime(facts.boardingTime)}`
-        : `Go to ${gateWord} · ${countdown}`;
-    } else if (next === 'checked_in' && facts.checkInDesk) {
-      subtitle = `Check in at desk ${facts.checkInDesk} · ${countdown}`;
-    } else {
-      subtitle = `${NEXT_STEP_LABELS[next]} · ${countdown}`;
-    }
+    subtitle = NEXT_STEP_LABELS[next];
   }
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
 
@@ -409,7 +454,7 @@ export function liveContent(
   // stage word — and the baggage belt after landing, the last thing to find.
   let compactLabel: string;
   if (state.stage === null) {
-    compactLabel = formatTime(facts.estimatedDeparture ?? j.scheduledDeparture);
+    compactLabel = formatTime(effectiveDeparture);
   } else if (state.stage === 'landed' && facts.baggageBelt) {
     compactLabel = `Belt ${facts.baggageBelt}`;
   } else if (index >= stageIndex('boarded') || next === null) {
@@ -425,13 +470,14 @@ export function liveContent(
 
   return {
     title: `${flight} · ${routeLabel(j)}`,
+    headline,
     subtitle,
     fromCode: j.fromCode,
     toCode: j.toCode,
     flightLabel: flight,
     depTime: timeOf(facts.estimatedDeparture ?? j.scheduledDeparture),
     arrTime: timeOf(facts.estimatedArrival ?? j.scheduledArrival),
-    progress: (index + 1) / STAGE_ORDER.length,
+    progress: flightProgress(j, state, facts, now),
     stageIndex: index,
     stageLabel,
     compactLabel,

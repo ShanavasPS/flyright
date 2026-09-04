@@ -15,6 +15,7 @@
 
 /** Only the keys the widget renders may pass through. */
 const STATE_KEYS = [
+  'headline',
   'subtitle',
   'progress',
   'stageLabel',

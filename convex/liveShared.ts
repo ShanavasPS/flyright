@@ -126,11 +126,26 @@ function nextStep(currentStage: string | null): string | null {
   return STAGE_ORDER[index + 1];
 }
 
+/** Mirrors flightProgress in src/services/travel-day.ts: zero until the
+ * flight has departed, time-based between departure and estimated arrival
+ * (held just inside both ends), 1 once landed. */
+export function flightProgress(s: Doc<'liveSessions'>, now: number): number {
+  const index = stageIndex(s.currentStage);
+  if (index < stageIndex('departed')) return 0;
+  if (s.currentStage === 'landed') return 1;
+  const departed = Date.parse(
+    s.actualDeparture ?? s.stageTimes.departed ?? s.estimatedDeparture ?? s.scheduledDeparture,
+  );
+  const arrives = Date.parse(s.estimatedArrival ?? s.scheduledArrival);
+  if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
+  return Math.min(0.97, Math.max(0.03, (now - departed) / (arrives - departed)));
+}
+
 /** Server-side mirror of liveContent() for the Live Activity content state —
  * same dict keys the Swift widget reads. Clock times render as UTC (the
  * server doesn't know the traveler's timezone); the in-app timeline stays
- * local. The pre-departure subtitle counts down instead — the clock time
- * already sits under the route code. */
+ * local. The headline carries the countdown ("Flight in 3h", "Lands in 40
+ * min"); the subtitle is the next step and never repeats it. */
 export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<string, unknown> {
   const delayed = s.delayMinutes != null && s.delayMinutes >= 30;
   const delayLabel = delayed
@@ -139,48 +154,63 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   const next = nextStep(s.currentStage);
   const index = stageIndex(s.currentStage);
   const gateWord = s.gate ? `gate ${s.gate}` : 'your gate';
+
+  const effectiveDeparture = s.estimatedDeparture ?? s.scheduledDeparture;
+  const departureMs = Date.parse(effectiveDeparture);
+  const arrivalMs = Date.parse(s.estimatedArrival ?? s.scheduledArrival);
+  let headline: string;
+  if (s.currentStage === 'landed') {
+    headline = 'Landed';
+  } else if (s.currentStage === 'departed') {
+    const toLanding = Number.isNaN(arrivalMs) ? null : countdownBit(arrivalMs, now);
+    headline = toLanding === null ? 'In the air' : toLanding === 'now' ? 'Landing now' : `Lands ${toLanding}`;
+  } else if (Number.isNaN(departureMs)) {
+    headline = `Departs ${fmtTime(effectiveDeparture)}`;
+  } else {
+    const toDeparture = countdownBit(departureMs, now);
+    headline = toDeparture === 'now' ? 'Departing now' : `Flight ${toDeparture}`;
+  }
+
   let subtitle: string;
   if (s.currentStage === 'landed') {
-    subtitle = s.baggageBelt
-      ? `Landed in ${s.toCode} · Bags at belt ${s.baggageBelt}`
-      : `Landed in ${s.toCode}`;
+    subtitle = s.baggageBelt ? `Bags at belt ${s.baggageBelt}` : `Welcome to ${s.toCode}`;
   } else if (s.currentStage === 'departed') {
-    subtitle = s.estimatedArrival ? `In the air · lands ${fmtTime(s.estimatedArrival)}` : 'In the air';
+    subtitle = s.baggageBelt ? `In the air · Bags at belt ${s.baggageBelt}` : 'In the air';
   } else if (s.currentStage === 'boarded') {
     subtitle = 'On board · ready for pushback';
-  } else {
-    const departureMs = Date.parse(s.estimatedDeparture ?? s.scheduledDeparture);
-    const countdown = Number.isNaN(departureMs)
-      ? `Departs ${fmtTime(s.estimatedDeparture ?? s.scheduledDeparture)}`
-      : `Departs ${countdownBit(departureMs, now)}`;
-    // Next step, not last step — the session has no boarding time or
-    // check-in desk, so those refinements stay client-side.
+  } else if (next === null) {
+    // Before the first tap: the airport once the live window opens (T−4h).
     subtitle =
-      next === null
-        ? countdown
-        : next === 'boarded'
-          ? `Go to ${gateWord} · ${countdown}`
-          : `${NEXT_STEP_LABELS[next]} · ${countdown}`;
+      !Number.isNaN(departureMs) && now >= departureMs - 4 * HOUR_MS
+        ? 'Head to the airport'
+        : 'Nothing to do yet';
+  } else if (next === 'boarded') {
+    // The session has no boarding time or check-in desk, so those
+    // refinements stay client-side.
+    subtitle = `Go to ${gateWord}`;
+  } else {
+    subtitle = NEXT_STEP_LABELS[next];
   }
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
 
   let compactLabel: string;
-  if (s.currentStage === null) compactLabel = fmtTime(s.estimatedDeparture ?? s.scheduledDeparture);
+  if (s.currentStage === null) compactLabel = fmtTime(effectiveDeparture);
   else if (s.currentStage === 'landed' && s.baggageBelt) compactLabel = `Belt ${s.baggageBelt}`;
   else if (index >= BOARDED_INDEX || next === null) compactLabel = STAGE_COMPACT[s.currentStage] ?? '';
   else if (next === 'boarded') compactLabel = s.gate ? `G${s.gate}` : NEXT_STEP_COMPACT.boarded;
   else compactLabel = NEXT_STEP_COMPACT[next];
 
   return {
+    headline,
     subtitle,
     compactLabel,
-    progress: (stageIndex(s.currentStage) + 1) / STAGE_ORDER.length,
+    progress: flightProgress(s, now),
     stageLabel: s.currentStage ? (STAGE_LABELS[s.currentStage] ?? '') : '',
     gate: s.gate ?? '',
     terminal: s.terminal ?? '',
     delayLabel,
     emphasis: delayed ? 'delay' : s.gate ? 'gate' : 'none',
-    depTime: fmtTime(s.estimatedDeparture ?? s.scheduledDeparture),
+    depTime: fmtTime(effectiveDeparture),
     arrTime: fmtTime(s.estimatedArrival ?? s.scheduledArrival),
   };
 }

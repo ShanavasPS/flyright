@@ -109,6 +109,7 @@ async function ensureChannel(): Promise<void> {
 /** The subset of LiveContent the Android native module renders. */
 const toLiveUpdate = (content: LiveContent): LiveUpdateContent => ({
   title: content.title,
+  headline: content.headline,
   subtitle: content.subtitle,
   fromCode: content.fromCode,
   toCode: content.toCode,
@@ -180,7 +181,17 @@ async function doReconcile(): Promise<void> {
     if (phase === 'reminder' || phase === 'live') {
       const facts = getFlightFacts(j.id);
       const content = liveContent(j, state, facts, now);
-      const fingerprint = `${content.title}|${content.subtitle}|${content.gate ?? ''}|${content.depTime ?? ''}|${content.arrTime ?? ''}`;
+      // Progress is bucketed to 2% so the in-flight plane creeps along on
+      // each reconcile without re-posting for sub-pixel changes.
+      const fingerprint = [
+        content.title,
+        content.headline,
+        content.subtitle,
+        content.gate ?? '',
+        content.depTime ?? '',
+        content.arrTime ?? '',
+        Math.round(content.progress * 50),
+      ].join('|');
       // Unchanged content only skips work when the surface actually exists —
       // on iOS a stale fingerprint (app update mid-window) must not block the
       // first Live Activity start.

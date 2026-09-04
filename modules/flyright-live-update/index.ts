@@ -11,11 +11,13 @@ import { requireOptionalNativeModule } from 'expo';
 
 export interface LiveUpdateContent {
   title: string;
+  /** "Flight in 3h" / "Lands in 40 min" / "Landed" — leads the content line. */
+  headline: string;
   subtitle: string;
   fromCode: string;
   toCode: string;
   flightLabel: string;
-  /** 0..1 across the journey stages. */
+  /** Flight progress 0..1: zero until departure, then time-based, 1 landed. */
   progress: number;
   /** One-or-two-word status for the Android 16 status-bar chip. */
   compactLabel: string;
