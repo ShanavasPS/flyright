@@ -18,7 +18,7 @@
  * is proximity to the anchor within a bounded window.
  */
 
-import { CARRIERS, carrierCodeForName } from '@/constants/carriers';
+import { CARRIERS, operatingBrand } from '@/constants/carriers';
 import { airportRank, hubAirports, isValidIata } from '@/services/airports';
 import { parseBcbp, resolveFlightDate } from '@/services/bcbp';
 
@@ -45,10 +45,12 @@ export interface ImportedSegment {
   toCode: string | null;
   pnr: string | null;
   seat: string | null;
-  /** The airline actually flying the leg when the document says so
-   * ("Operated by: ALASKA" on a Qatar-sold ticket). `code` is null when the
-   * name isn't in the carrier table; `name` is the table's spelling when it
-   * is, the document's otherwise. Null when the document is silent. */
+  /** The airline the passenger flies with when the document's disclosure
+   * line says so ("Operated by: HORIZON AIR AS ALASKAHORIZON" on a Qatar-sold
+   * ticket → Alaska Airlines): the brand, not the regional's corporate name.
+   * `code` is null when the name isn't in the carrier table; `name` is the
+   * table's spelling when it is, the document's otherwise. Null when the
+   * document is silent. */
   operatedBy: { code: string | null; name: string } | null;
   sources: SegmentSource[];
 }
@@ -404,12 +406,12 @@ function findPnr(text: string): string | null {
  * end or the next label. */
 const OPERATED_BY_RE = /\boperated\s+by\s*:?\s*([A-Za-z][A-Za-z0-9 .&'-]{1,48}?)\s*(?=\n|\s{2,}|\s+(?:Marketed|Booking|Cabin|Class|Seat|Baggage|Fare|Frequent|NVA|NVB)\b|$)/i;
 
-function findOperator(window: string): ImportedSegment['operatedBy'] {
+function findOperator(window: string, marketing: string | null): ImportedSegment['operatedBy'] {
   const m = OPERATED_BY_RE.exec(window);
   if (!m) return null;
   const raw = m[1].trim();
   if (raw.length < 3) return null;
-  const code = carrierCodeForName(raw);
+  const code = operatingBrand(raw, marketing);
   return { code, name: code ? CARRIERS[code].name : raw };
 }
 
@@ -473,7 +475,7 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     // Only after the anchor: the window before it belongs to the previous leg's details.
     const tail = text.slice(anchor.end, to);
     const seatMatch = SEAT_RE.exec(tail);
-    const operatedBy = findOperator(tail);
+    const operatedBy = findOperator(tail, anchor.flight.match(/^([A-Z]{2}|[A-Z]\d|\d[A-Z])/)?.[1] ?? null);
 
     segments.push({
       key: `${anchor.flight}-${departure.value}`,

@@ -96,6 +96,77 @@ export const CARRIERS: Record<string, { name: string; country: string }> = {
   N7: { name: 'Nordic Regional Airlines', country: 'FI' },
 };
 
+/** Regional operators → the brand they fly under. Null means "whoever sold
+ * the ticket": SkyWest and Republic fly as Delta Connection, United Express
+ * or American Eagle depending on the leg, so the marketing carrier is the
+ * brand. Codes not listed here are their own brand. */
+const BRAND_OF_OPERATOR: Record<string, string | null> = {
+  QX: 'AS',
+  MQ: 'AA',
+  CL: 'LH',
+  EN: 'LH',
+  WA: 'KL',
+  CJ: 'BA',
+  N7: 'AY',
+  OO: null,
+  YX: null,
+};
+
+/** Brand names as they appear after "as" in the disclosure line ("operated by
+ * Horizon Air as AlaskaHorizon"), normalised, → the brand's carrier code. */
+const BRAND_ALIASES: Record<string, string> = {
+  ALASKAHORIZON: 'AS',
+  ALASKASKYWEST: 'AS',
+  'DELTA CONNECTION': 'DL',
+  'UNITED': 'UA',
+  'AMERICAN EAGLE': 'AA',
+  'LUFTHANSA REGIONAL': 'LH',
+  'KLM CITYHOPPER': 'KL',
+  'BA CITYFLYER': 'BA',
+  'AIR FRANCE HOP': 'AF',
+  HOP: 'AF',
+  'IBERIA REGIONAL': 'IB',
+  'AUSTRIAN': 'OS',
+  'SWISS': 'LX',
+  'SAS LINK': 'SK',
+  'SAS CONNECT': 'SK',
+};
+
+/**
+ * The airline a passenger experiences on a leg, from the disclosure line
+ * airlines must print: "operated by <corporate name> as <brand>" (US DOT
+ * form) or just "operated by <corporate name>" (EU 2111/2005 form).
+ *
+ *  - A brand after "as" wins ("HORIZON AIR AS ALASKAHORIZON" → Alaska).
+ *  - Otherwise a regional's parent brand (Horizon → Alaska, CityLine →
+ *    Lufthansa); regionals that fly for several majors resolve to whoever
+ *    sold the ticket (`marketing`).
+ *  - Anything else is its own brand.
+ *
+ * Null when the text names no carrier we know.
+ */
+export function operatingBrand(disclosure: string, marketing: string | null): string | null {
+  const text = disclosure.replace(/\s+/g, ' ').trim();
+  const asBrand = /\s+(?:AS|D\/?B\/?A|DBA)\s+(.+)$/i.exec(text);
+  if (asBrand) {
+    const brand = brandCodeForName(asBrand[1]) ?? carrierCodeForName(asBrand[1]);
+    if (brand) return brand;
+  }
+  const corporate = carrierCodeForName(asBrand ? text.slice(0, asBrand.index) : text);
+  if (!corporate) return null;
+  if (!(corporate in BRAND_OF_OPERATOR)) return corporate;
+  return BRAND_OF_OPERATOR[corporate] ?? marketing;
+}
+
+function brandCodeForName(name: string): string | null {
+  const target = normalizeCarrierName(name);
+  for (const [alias, code] of Object.entries(BRAND_ALIASES)) {
+    const known = normalizeCarrierName(alias);
+    if (target === known || target.startsWith(`${known} `)) return code;
+  }
+  return null;
+}
+
 /** "Horizon Air" / "HORIZON AIR AS ALASKAHORIZON" / "Alaska" → the carrier
  * code, matched on the name with the generic airline words stripped. Null
  * when no known carrier fits — callers fall back to the flight prefix. */
