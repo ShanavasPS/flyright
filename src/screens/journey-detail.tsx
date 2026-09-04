@@ -232,9 +232,12 @@ export function JourneyDetail({
 
   // Inside the travel window the live timeline takes over from the passive
   // "watching" copy; the verdict card still wins when there's money on it.
-  const travelPhase =
-    !isDemo && row ? travelWindow(row, travelState, new Date(now)).phase : 'unsupported';
+  const travelWin = !isDemo && row ? travelWindow(row, travelState, new Date(now)) : null;
+  const travelPhase = travelWin?.phase ?? 'unsupported';
   const travelActive = travelPhase === 'reminder' || travelPhase === 'live';
+  // Before the window the steps still show, locked, so the traveler knows
+  // what the day will look like and when the card comes alive.
+  const travelPreview = travelPhase === 'before';
 
   // Journal entries without user-entered times store the placeholder noon
   // pair — no schedule worth showing. A lone entered time reads as a departure.
@@ -323,12 +326,34 @@ export function JourneyDetail({
           return outlook ? <InboundCard outlook={outlook} /> : null;
         })()}
 
-        {travelActive && row && (
+        {(travelActive || travelPreview) && row && (
           <TravelDayTimeline
             journey={row}
             state={travelState}
             facts={getFlightFacts(row.id)}
             action={shareActions}
+            locked={travelPreview}
+            unlocksAt={travelWin?.startsAt}
+            title={travelPreview ? 'Upcoming trip' : 'Travel day'}
+            // Before the window this card IS the upcoming-trip card, so the
+            // summary that used to have its own card sits under the steps.
+            footer={
+              travelPreview ? (
+                <View style={styles.timelineFooter}>
+                  <ThemedText type="small">
+                    You&apos;ll fly {Math.round(journey.distanceKm).toLocaleString()} km
+                    {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
+                  </ThemedText>
+                  {!journalOnly && (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {status.isPending
+                        ? 'Checking the latest status…'
+                        : "We're watching this flight. If a delay makes you eligible for compensation, you'll know here first."}
+                    </ThemedText>
+                  )}
+                </View>
+              ) : undefined
+            }
             onAdvance={(stage: TravelStage) => {
               void advanceStage(row.id, stage, row.source === 'manual').then(() =>
                 reconcileTravelDay(),
@@ -347,7 +372,7 @@ export function JourneyDetail({
 
         {disruption ? (
           <VerdictCard journey={journey} disruption={disruption} />
-        ) : travelActive ? null : journalOnly ? (
+        ) : travelActive || travelPreview ? null : journalOnly ? (
           <Card>
             <View style={styles.cardHeader}>
               <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
@@ -777,6 +802,10 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
 }
 
 const styles = StyleSheet.create({
+  timelineFooter: {
+    gap: Spacing.two,
+    paddingTop: Spacing.two,
+  },
   container: {
     flex: 1,
   },
