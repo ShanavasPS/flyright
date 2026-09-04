@@ -12,7 +12,13 @@ import { useCountUp } from '@/hooks/use-count-up';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { useJourneys, type JourneyRow } from '@/services/journeys';
-import { airlineOf, cityOf, earthComparison, travelRecap } from '@/services/timeline';
+import {
+  airlineOf,
+  cityOf,
+  formatKm,
+  timeAloftComparison,
+  travelRecap,
+} from '@/services/timeline';
 
 /** The deep-dive behind the My travels summary card: records, places,
  * airlines, and logbook facts computed from the same local journey rows. */
@@ -34,20 +40,20 @@ export function TravelStats() {
     );
   }
 
-  const orbit = earthComparison(recap.totalKm);
+  const aloft = timeAloftComparison(recap.hoursAloft);
 
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.list}>
         <View style={styles.hero}>
           <ThemedText type="display" themeColor="heading">
-            {shownKm.toLocaleString()}
+            {formatKm(shownKm)}
           </ThemedText>
           <ThemedText themeColor="textSecondary">kilometres flown</ThemedText>
-          {orbit && (
-            <ThemedView type="backgroundSelected" style={styles.orbitPill}>
+          {aloft && (
+            <ThemedView type="backgroundSelected" style={styles.aloftPill}>
               <ThemedText type="smallBold" themeColor="heading">
-                {orbit}
+                {recap.hoursEstimated ? `≈ ${aloft}` : aloft}
               </ThemedText>
             </ThemedView>
           )}
@@ -121,7 +127,12 @@ export function TravelStats() {
               value={`${recap.busiestYear.year} · ${plural(recap.busiestYear.trips, 'trip')}`}
             />
           )}
-          {recap.hoursAloft > 0 && <InfoRow label="Time in the air" value={`≈ ${recap.hoursAloft} h`} />}
+          {recap.hoursAloft > 0 && (
+            <InfoRow
+              label="Time in the air"
+              value={`${recap.hoursEstimated ? '≈ ' : ''}${Math.round(recap.hoursAloft).toLocaleString()} h`}
+            />
+          )}
         </SheenCard>
       </ScrollView>
     </ThemedView>
@@ -264,7 +275,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     paddingVertical: Spacing.four,
   },
-  orbitPill: {
+  aloftPill: {
     marginTop: Spacing.two,
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,

@@ -70,6 +70,7 @@ import {
   reconcileTravelDay,
 } from '@/services/travel-day-lifecycle';
 import { advanceStage, rewindStage, undoStage, useTravelDay } from '@/services/travel-day-store';
+import { blockMinutes } from '@/services/timeline';
 
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
 // have usually lapsed — the trip is journal material, not a claim.
@@ -99,14 +100,11 @@ function cityLabel(place: Journey['from']): string {
   return getAirport(place.code)?.city ?? place.code;
 }
 
-/** Block duration, "16h 35m", when both timestamps carry a UTC offset (lookup
- * rows do; manual entries store bare wall-clock times whose difference is
- * meaningless across time zones). Null otherwise. */
+/** Block duration, "16h 35m" — null for manual entries whose bare wall-clock
+ * times can't be differenced (see blockMinutes). */
 function durationLabel(departure: string, arrival: string): string | null {
-  const zoned = /(Z|[+-]\d\d:\d\d)$/;
-  if (!zoned.test(departure) || !zoned.test(arrival)) return null;
-  const minutes = Math.round((Date.parse(arrival) - Date.parse(departure)) / 60_000);
-  if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 36 * 60) return null;
+  const minutes = blockMinutes(departure, arrival);
+  if (minutes === null) return null;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;

@@ -1,5 +1,13 @@
 import type { JourneyRow } from './journeys';
-import { cityOf, groupJourneys, travelRecap, travelStats } from './timeline';
+import {
+  blockMinutes,
+  cityOf,
+  formatKm,
+  groupJourneys,
+  timeAloftComparison,
+  travelRecap,
+  travelStats,
+} from './timeline';
 
 const NOW = new Date('2026-08-17T12:00:00Z');
 
@@ -84,12 +92,18 @@ describe('travelStats', () => {
       row({ fromCountry: 'FI', toCountry: 'DE', distanceKm: 1539 }),
       row({ fromCountry: 'DE', toCountry: 'US', distanceKm: 6200 }),
     ];
-    expect(travelStats(rows)).toEqual({ trips: 2, totalKm: 7739, countries: 3 });
+    expect(travelStats(rows)).toMatchObject({ trips: 2, totalKm: 7739, countries: 3 });
   });
 
   it('ignores empty country codes and handles no rows', () => {
     expect(travelStats([row({ fromCountry: '', toCountry: '' })]).countries).toBe(0);
-    expect(travelStats([])).toEqual({ trips: 0, totalKm: 0, countries: 0 });
+    expect(travelStats([])).toEqual({
+      trips: 0,
+      totalKm: 0,
+      countries: 0,
+      hoursAloft: 0,
+      hoursEstimated: false,
+    });
   });
 });
 
@@ -208,7 +222,56 @@ describe('travelRecap', () => {
     expect(travelRecap([y(2024), y(2024)]).busiestYear).toBeNull();
   });
 
-  it('estimates hours aloft from distance', () => {
-    expect(travelRecap([trip('HEL', 'BKK', { distanceKm: 7500 })]).hoursAloft).toBe(10);
+  it('sums real block time and estimates only trips with bare wall-clock times', () => {
+    // HEL→FRA 08:00Z→10:35Z = 2h35 exactly, no estimate involved.
+    const real = travelRecap([trip('HEL', 'FRA')]);
+    expect(real.hoursAloft).toBeCloseTo(2.6, 1);
+    expect(real.hoursEstimated).toBe(false);
+    // A manual row with zone-less times falls back to ~750 km/h.
+    const manual = trip('HEL', 'BKK', {
+      source: 'manual',
+      distanceKm: 7500,
+      scheduledDeparture: '2026-08-20T12:00:00',
+      scheduledArrival: '2026-08-20T12:00:00',
+    });
+    const mixed = travelRecap([trip('HEL', 'FRA'), manual]);
+    expect(mixed.hoursAloft).toBeCloseTo(2.58 + 10, 0);
+    expect(mixed.hoursEstimated).toBe(true);
+  });
+});
+
+describe('blockMinutes', () => {
+  it('differences zoned timestamps and rejects bare or implausible ones', () => {
+    expect(blockMinutes('2026-08-20T08:00:00Z', '2026-08-20T10:35:00Z')).toBe(155);
+    expect(blockMinutes('2026-08-20T08:00:00+03:00', '2026-08-20T10:35:00+01:00')).toBe(275);
+    expect(blockMinutes('2026-08-20T08:00:00', '2026-08-20T10:35:00')).toBeNull();
+    expect(blockMinutes('2026-08-20T10:35:00Z', '2026-08-20T08:00:00Z')).toBeNull();
+    expect(blockMinutes('2026-08-20T08:00:00Z', '2026-08-22T08:00:00Z')).toBeNull();
+  });
+});
+
+describe('formatKm', () => {
+  it('groups digits below a million and goes compact from there', () => {
+    expect(formatKm(17467)).toBe('17,467');
+    expect(formatKm(999_999)).toBe('999,999');
+    expect(formatKm(1_000_000)).toBe('1M');
+    expect(formatKm(1_250_000)).toBe('1.3M');
+    expect(formatKm(12_600_000)).toBe('13M');
+  });
+});
+
+describe('timeAloftComparison', () => {
+  it('picks the unit that keeps the number small', () => {
+    expect(timeAloftComparison(0.5)).toBeNull();
+    expect(timeAloftComparison(1)).toBe('1 hour in the air');
+    expect(timeAloftComparison(14.4)).toBe('14 hours in the air');
+    expect(timeAloftComparison(47)).toBe('47 hours in the air');
+    expect(timeAloftComparison(48)).toBe('2 days in the air');
+    expect(timeAloftComparison(60)).toBe('2.5 days in the air');
+    expect(timeAloftComparison(13 * 24)).toBe('13 days in the air');
+    expect(timeAloftComparison(14 * 24)).toBe('2 weeks in the air');
+    expect(timeAloftComparison(24 * 7 * 3.5)).toBe('3.5 weeks in the air');
+    expect(timeAloftComparison(24 * 30.44 * 2)).toBe('2 months in the air');
+    expect(timeAloftComparison(24 * 30.44 * 14.2)).toBe('14 months in the air');
   });
 });

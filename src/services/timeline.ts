@@ -41,24 +41,88 @@ export interface TravelStats {
   trips: number;
   totalKm: number;
   countries: number;
+  /** Time in the air: the real block time of every trip that has zoned
+   * timestamps, plus a ~750 km/h cruise estimate for the rest. */
+  hoursAloft: number;
+  /** True when at least one trip had to be estimated — label the total "≈". */
+  hoursEstimated: boolean;
+}
+
+/** A typical long-haul cruise, for trips whose times can't be trusted. */
+const CRUISE_KMH = 750;
+
+/** Block time in minutes when both timestamps carry a UTC offset (lookup rows
+ * do; manual entries store bare wall-clock times whose difference is
+ * meaningless across time zones). Null otherwise, and for implausible spans. */
+export function blockMinutes(departure: string, arrival: string): number | null {
+  const zoned = /(Z|[+-]\d\d:\d\d)$/;
+  if (!zoned.test(departure) || !zoned.test(arrival)) return null;
+  const minutes = Math.round((Date.parse(arrival) - Date.parse(departure)) / 60_000);
+  if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 36 * 60) return null;
+  return minutes;
 }
 
 export function travelStats(rows: JourneyRow[]): TravelStats {
   const countries = new Set<string>();
   let totalKm = 0;
+  let minutesAloft = 0;
+  let hoursEstimated = false;
   for (const row of rows) {
     totalKm += row.distanceKm;
     if (row.fromCountry) countries.add(row.fromCountry);
     if (row.toCountry) countries.add(row.toCountry);
+    const block = blockMinutes(row.scheduledDeparture, row.scheduledArrival);
+    if (block === null) {
+      minutesAloft += (row.distanceKm / CRUISE_KMH) * 60;
+      hoursEstimated = true;
+    } else {
+      minutesAloft += block;
+    }
   }
-  return { trips: rows.length, totalKm: Math.round(totalKm), countries: countries.size };
+  return {
+    trips: rows.length,
+    totalKm: Math.round(totalKm),
+    countries: countries.size,
+    hoursAloft: Math.round(minutesAloft / 6) / 10,
+    hoursEstimated,
+  };
+}
+
+/** The headline kilometre figure. Grouped digits up to six of them; from a
+ * million on, a compact "1.2M" — seven-plus digits at display size overflow
+ * the stats column and shrink to the unreadable. */
+export function formatKm(totalKm: number): string {
+  if (totalKm >= 10_000_000) return `${Math.round(totalKm / 1_000_000)}M`;
+  if (totalKm >= 1_000_000) return `${(totalKm / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  return Math.round(totalKm).toLocaleString();
+}
+
+const HOURS_PER_DAY = 24;
+const HOURS_PER_WEEK = 7 * HOURS_PER_DAY;
+const HOURS_PER_MONTH = 30.44 * HOURS_PER_DAY;
+
+/** "14 hours in the air" → "2.5 days" → "3 weeks" → "1.5 months": the flown
+ * time in whatever unit keeps the number small enough to feel. One decimal
+ * under ten, whole numbers above; null under an hour, where it'd deflate. */
+export function timeAloftComparison(hoursAloft: number): string | null {
+  if (hoursAloft < 1) return null;
+  const unit =
+    hoursAloft < 2 * HOURS_PER_DAY
+      ? { name: 'hour', hours: 1 }
+      : hoursAloft < 2 * HOURS_PER_WEEK
+        ? { name: 'day', hours: HOURS_PER_DAY }
+        : hoursAloft < 2 * HOURS_PER_MONTH
+          ? { name: 'week', hours: HOURS_PER_WEEK }
+          : { name: 'month', hours: HOURS_PER_MONTH };
+  const raw = hoursAloft / unit.hours;
+  const value = unit.name === 'hour' || raw >= 10 ? Math.round(raw) : Math.round(raw * 10) / 10;
+  const label = value === 1 ? unit.name : `${unit.name}s`;
+  return `${value} ${label} in the air`;
 }
 
 export interface TravelRecap extends TravelStats {
   airports: number;
   airlines: number;
-  /** Rounded estimate at a ~750 km/h cruise — always label it "≈" in the UI. */
-  hoursAloft: number;
   firstYear: string | null;
   /** Null when every trip falls in the same year — nothing to compare. */
   busiestYear: { year: string; trips: number } | null;
@@ -84,16 +148,6 @@ export interface TravelRecap extends TravelStats {
 export function cityOf(iata: string): string {
   const city = getAirport(iata)?.city;
   return city ? city.replace(/\s*\(.*$/, '') : iata;
-}
-
-const EARTH_CIRCUMFERENCE_KM = 40_075;
-
-/** "0.4× around the Earth" once past ~1% of the equator, so even a short
- * history gets a hook; below that the comparison would deflate ("0.0×"). */
-export function earthComparison(totalKm: number): string | null {
-  const ratio = totalKm / EARTH_CIRCUMFERENCE_KM;
-  if (ratio < 0.01) return null;
-  return `${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)}× around the Earth`;
 }
 
 /** Manual entries without a recognised flight number store the mode label
@@ -171,7 +225,6 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
     ...base,
     airports: airports.size,
     airlines: airlineCounts.size,
-    hoursAloft: Math.round(base.totalKm / 750),
     firstYear,
     busiestYear: busiest ? { year: busiest.key, trips: busiest.count } : null,
     longest,

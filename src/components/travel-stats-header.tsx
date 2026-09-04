@@ -5,7 +5,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { earthComparison, type TravelStats } from '@/services/timeline';
+import { formatKm, timeAloftComparison, type TravelStats } from '@/services/timeline';
 
 // The card keeps the brand's night-flight navy in BOTH themes — on the light
 // porcelain page it reads as the one premium object on screen, in dark mode
@@ -45,7 +45,7 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
 export function TravelStatsBody({ stats }: { stats: TravelStats }) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
-  const orbit = earthComparison(stats.totalKm);
+  const aloft = timeAloftComparison(stats.hoursAloft);
 
   return (
     <View style={styles.statsBody}>
@@ -58,16 +58,17 @@ export function TravelStatsBody({ stats }: { stats: TravelStats }) {
 
         <View style={styles.statsRow}>
           <Stat label={stats.trips === 1 ? 'trip' : 'trips'} value={stats.trips.toLocaleString()} />
-          <Stat align="center" label="km flown" value={stats.totalKm.toLocaleString()} />
+          <Stat align="center" label="km flown" value={formatKm(stats.totalKm)} />
           <Stat
             align="right"
             label={stats.countries === 1 ? 'country' : 'countries'}
             value={stats.countries.toLocaleString()}
           />
         </View>
-        {orbit && (
-          <ThemedText type="small" style={styles.orbit}>
-            That&apos;s {orbit}
+        {aloft && (
+          <ThemedText type="small" style={styles.aloft}>
+            That&apos;s {stats.hoursEstimated ? 'about ' : ''}
+            {aloft}
           </ThemedText>
         )}
 
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     fontVariant: ['tabular-nums'],
   },
-  orbit: {
+  aloft: {
     color: COBALT,
     marginTop: -Spacing.two,
   },
