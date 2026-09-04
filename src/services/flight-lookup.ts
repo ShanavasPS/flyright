@@ -1,5 +1,13 @@
 /** Client for GET /api/flight-status. Relative fetch resolves against the dev
- * server in development and the expo-router `origin` in production builds. */
+ * server in development and the expo-router `origin` in production builds.
+ *
+ * Live lookups are metered per account (the route proxies a paid provider),
+ * so every request carries the Clerk session token when there is one. Signed
+ * out, the route answers 401 and the screens offer sign-in instead; over the
+ * daily budget it answers 429 and the trip is saved as a journal row. */
+
+import { getClerkInstance } from '@clerk/expo';
+import { Platform } from 'react-native';
 
 export interface FlightStatus {
   flight: string;
@@ -53,7 +61,28 @@ export class FlightLookupError extends Error {
     super(message);
     this.name = 'FlightLookupError';
   }
+
+  /** The caller must sign in before live lookups work. */
+  get signInRequired(): boolean {
+    return this.status === 401;
+  }
+
+  /** Today's live-lookup budget is spent. */
+  get quotaExceeded(): boolean {
+    return this.status === 429;
+  }
 }
+
+/** The signed-in session's token for the Authorization header, or null when
+ * signed out (or on web before Clerk has loaded). */
+async function sessionToken(): Promise<string | null> {
+  try {
+    return (await getClerkInstance().session?.getToken()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 
 /** IATA flight designator: 2-char airline code + 1–4 digits (+ optional suffix). */
 const FLIGHT_NUMBER = /^([A-Z]{2}|[A-Z]\d|\d[A-Z])\d{1,4}[A-Z]?$/;
@@ -69,17 +98,34 @@ export async function lookupFlight(
   options?: { inbound?: boolean },
 ): Promise<FlightStatus> {
   const inbound = options?.inbound ? '&inbound=1' : '';
+  const token = await sessionToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  } else if (Platform.OS === 'web') {
+    // The public compensation checker on our own site is the one anonymous
+    // caller the route allows, budgeted per address. Browsers omit `Origin`
+    // on same-origin GETs (and a referrer policy can drop `Referer`), so the
+    // web client says so explicitly. This is not a secret — the daily
+    // per-address budget, not the header, is what limits abuse.
+    headers['X-FlyRight-Web'] = '1';
+  }
   const response = await fetch(
     `/api/flight-status?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}${inbound}`,
+    Object.keys(headers).length ? { headers } : undefined,
   );
 
   if (!response.ok) {
     const message =
       response.status === 404
         ? 'No flight found for that number and day.'
-        : response.status === 501
-          ? 'Flight lookup is not configured yet.'
-          : 'Flight lookup failed — try again.';
+        : response.status === 401
+          ? 'Sign in to look flights up live.'
+          : response.status === 429
+            ? "Today's live lookups are used up — try again tomorrow."
+            : response.status === 501
+              ? 'Flight lookup is not configured yet.'
+              : 'Flight lookup failed — try again.';
     throw new FlightLookupError(message, response.status);
   }
 

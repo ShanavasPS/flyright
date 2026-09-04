@@ -116,7 +116,7 @@ export function ImportDocument() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { userId } = useAuth();
+  const { userId, isSignedIn } = useAuth();
   const { uri, name } = useLocalSearchParams<{ uri?: string; name?: string }>();
   const fileUri = uri ?? null;
   const label = fileLabel(fileUri, name || undefined);
@@ -167,11 +167,14 @@ export function ImportDocument() {
 
   const segments = phase.kind === 'review' || phase.kind === 'saving' ? phase.segments : [];
 
+  // Live lookups are per-account; signed out, every leg is saved from the
+  // document alone and the header says how to get tracking.
+  const lookupAllowed = !!isSignedIn;
   const lookups = useQueries({
     queries: segments.map((s) => ({
       queryKey: ['flight-status', s.flight, s.date],
       queryFn: () => lookupFlight(s.flight!, s.date!),
-      enabled: !!s.flight && !!s.date && withinLookupReach(s.date, today),
+      enabled: lookupAllowed && !!s.flight && !!s.date && withinLookupReach(s.date, today),
       retry: false,
     })),
   });
@@ -194,7 +197,14 @@ export function ImportDocument() {
     const already = !!segment.flight && !!segment.date && existing.has(`${segment.flight}-${segment.date}`);
     const selectable = !already && (plan.kind === 'lookup' || plan.kind === 'journal');
     const selected = selectable && !deselected.has(segment.key);
-    return { segment, plan, already, selectable, selected, error: query.error };
+    return {
+      segment,
+      plan,
+      already,
+      selectable,
+      selected,
+      error: lookupAllowed ? query.error : new FlightLookupError('Sign in to look flights up live.', 401),
+    };
   });
 
   const selectedRows = rows.filter((r) => r.selected);
@@ -402,6 +412,16 @@ export function ImportDocument() {
               ? ` · ${phase.barcodes === 1 ? 'one boarding pass' : `${phase.barcodes} boarding passes`} read`
               : ''}
           </ThemedText>
+          {!lookupAllowed && (
+            <Pressable onPress={() => router.push('/sign-in')} hitSlop={Spacing.two}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Saved as journal entries.{' '}
+                <ThemedText type="small" themeColor="tint">
+                  Sign in to track them live →
+                </ThemedText>
+              </ThemedText>
+            </Pressable>
+          )}
           <ScrollView
             style={styles.body}
             contentContainerStyle={styles.bodyContent}
@@ -502,11 +522,15 @@ function SegmentCard({
       // is the lookup's problem, not the flight's. No error at all means the
       // date was outside the provider's reach and the lookup never ran.
       const why =
-        lookupError instanceof FlightLookupError && lookupError.status === 404
-          ? 'No live record for this flight'
-          : lookupError
-            ? 'Live lookup unavailable right now'
-            : 'Outside live lookup';
+        lookupError instanceof FlightLookupError && lookupError.signInRequired
+          ? 'Sign in for live tracking'
+          : lookupError instanceof FlightLookupError && lookupError.quotaExceeded
+            ? "Today's live lookups are used up"
+            : lookupError instanceof FlightLookupError && lookupError.status === 404
+              ? 'No live record for this flight'
+              : lookupError
+                ? 'Live lookup unavailable right now'
+                : 'Outside live lookup';
       return { text: `${why} — saved as a journal entry, times as printed`, color: WHITE_DIM };
     }
     return { text: 'Route not recognised — add the airports to save it', color: PASS_AMBER };

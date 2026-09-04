@@ -14,6 +14,7 @@
  */
 
 import { carrierFor } from '@/constants/carriers';
+import { gateLookup } from '@/server/lookup-gate';
 
 /** AeroDataBox uses "2026-08-10 08:00Z"; the app stores strict ISO. */
 function toIso(s: string | undefined): string | null {
@@ -171,6 +172,15 @@ export async function GET(request: Request) {
       { error: 'flight data provider not configured' },
       { status: 501 },
     );
+  }
+
+  // Real provider calls are metered per caller: a verified account, or the
+  // web checker by address. Signed-out app users get 401 and are offered
+  // sign-in; a spent budget gets 429. The inbound rotation is a second
+  // provider call, so it costs two units. (The mock above is free.)
+  const gate = await gateLookup(request, wantInbound ? 2 : 1);
+  if (!gate.ok) {
+    return Response.json({ error: gate.error }, { status: gate.status });
   }
 
   const upstream = await adbFetch(

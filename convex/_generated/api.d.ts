@@ -21,6 +21,8 @@ import type * as live from "../live.js";
 import type * as liveHelpers from "../liveHelpers.js";
 import type * as liveInternal from "../liveInternal.js";
 import type * as liveShared from "../liveShared.js";
+import type * as lookupShared from "../lookupShared.js";
+import type * as lookups from "../lookups.js";
 import type * as onesignal from "../onesignal.js";
 import type * as photos from "../photos.js";
 import type * as support from "../support.js";
@@ -46,6 +48,8 @@ declare const fullApi: ApiFromModules<{
   liveHelpers: typeof liveHelpers;
   liveInternal: typeof liveInternal;
   liveShared: typeof liveShared;
+  lookupShared: typeof lookupShared;
+  lookups: typeof lookups;
   onesignal: typeof onesignal;
   photos: typeof photos;
   support: typeof support;

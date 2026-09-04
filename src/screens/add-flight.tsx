@@ -100,7 +100,7 @@ export function AddFlight() {
   // not SafeAreaView — inside a fullScreenModal the native SafeAreaView can
   // resolve its top inset as 0 on iOS (same workaround as onboarding).
   const insets = useSafeAreaInsets();
-  const { userId } = useAuth();
+  const { userId, isSignedIn } = useAuth();
   // Edit mode: the journey detail screen reopens this sheet with ?editId=<id>
   // for a manual entry, prefilled below. The row id stays stable across the
   // save so claims/disruptions references and the cloud sync key survive.
@@ -255,10 +255,14 @@ export function AddFlight() {
     setStep('date');
   };
 
+  // Live lookups are per-account (the route meters a paid provider), so the
+  // result step asks for sign-in first instead of firing a request that
+  // would be refused. The journal path stays open without an account.
+  const lookupAllowed = !!isSignedIn;
   const lookup = useQuery({
     queryKey: ['flight-status', flightNumber, date],
     queryFn: () => lookupFlight(flightNumber!, date!),
-    enabled: step === 'result' && !!flightNumber && !!date,
+    enabled: step === 'result' && !!flightNumber && !!date && lookupAllowed,
     retry: false,
   });
 
@@ -694,7 +698,31 @@ export function AddFlight() {
           </View>
         )}
 
-        {step === 'result' && lookup.isPending && (
+        {step === 'result' && !lookupAllowed && (
+          <PassCard>
+            <MicroLabel>Live tracking</MicroLabel>
+            <ThemedText type="smallBold" style={styles.passTitle}>
+              Sign in to look up {flightNumber} live
+            </ThemedText>
+            <ThemedText type="small" style={styles.passHint}>
+              Live status, gates, delays and what you&apos;re owed come with a free
+              account. Without one, the flight still goes in your journal.
+            </ThemedText>
+            <PassDivider />
+            <PassAction
+              icon={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }}
+              label="Sign in →"
+              onPress={() => router.push('/sign-in')}
+            />
+            <Pressable onPress={startManual} hitSlop={Spacing.two}>
+              <ThemedText type="smallBold" style={[styles.passLink, styles.centered]}>
+                Save to journal instead →
+              </ThemedText>
+            </Pressable>
+          </PassCard>
+        )}
+
+        {step === 'result' && lookupAllowed && lookup.isPending && (
           <PassCard style={styles.loadingCard}>
             <ActivityIndicator color={WHITE} />
             <ThemedText type="small" style={styles.passHint}>
@@ -703,7 +731,7 @@ export function AddFlight() {
           </PassCard>
         )}
 
-        {step === 'result' && lookup.isError && (
+        {step === 'result' && lookupAllowed && lookup.isError && (
           <ThemedView type="backgroundElement" style={styles.card}>
             <ThemedText type="smallBold">
               {lookup.error instanceof FlightLookupError
@@ -711,8 +739,9 @@ export function AddFlight() {
                 : 'Flight lookup failed — try again.'}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Flight records only reach back about a year — you can still add this
-              trip to your journal.
+              {lookup.error instanceof FlightLookupError && lookup.error.quotaExceeded
+                ? 'Your daily live lookups reset at midnight UTC — the trip can still go in your journal now.'
+                : 'Flight records only reach back about a year — you can still add this trip to your journal.'}
             </ThemedText>
             <Pressable onPress={startManual} hitSlop={Spacing.two}>
               <ThemedText type="link">Add it manually instead →</ThemedText>
@@ -864,7 +893,7 @@ export function AddFlight() {
           </View>
         )}
 
-        {step === 'result' && flight && (
+        {step === 'result' && lookupAllowed && flight && (
           <Animated.View entering={ZoomIn.springify().duration(400)}>
             <PassCard>
               {/* Boarding-pass header: the airline's mark left, the day right. */}
@@ -1048,6 +1077,15 @@ const styles = StyleSheet.create({
   },
   passHint: {
     color: WHITE_DIM,
+  },
+  passTitle: {
+    color: WHITE,
+  },
+  passLink: {
+    color: COBALT,
+  },
+  centered: {
+    textAlign: 'center',
   },
   passHeader: {
     flexDirection: 'row',

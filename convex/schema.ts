@@ -233,4 +233,15 @@ export default defineSchema({
     source: v.string(),
     updatedAt: v.string(),
   }).index('by_user', ['userId']),
+
+  /** Daily meter for the metered flight-status lookups — one row per caller
+   * per UTC day, keyed `user:<clerkId>:<day>` or `ip:<hash>:<day>` (see
+   * lookups.ts / lookupShared.ts). Rows for past days are dead weight; a
+   * cron may sweep them later. */
+  lookupQuota: defineTable({
+    key: v.string(),
+    day: v.string(),
+    count: v.number(),
+    updatedAt: v.string(),
+  }).index('by_key', ['key']),
 });

@@ -5,7 +5,7 @@ import * as TaskManager from 'expo-task-manager';
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import { recordDelay } from '@/services/disruptions';
-import { lookupFlight } from '@/services/flight-lookup';
+import { FlightLookupError, lookupFlight } from '@/services/flight-lookup';
 import { inboundNewsworthy, inboundOutlook } from '@/services/inbound';
 import { toDomainJourney } from '@/services/journeys';
 import { maybeNotifyDelay, maybeNotifyInbound } from '@/services/notification-lifecycle';
@@ -90,7 +90,13 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
       if (status.delayMinutes == null) continue;
       await recordDelay(row.id, status.delayMinutes);
       await maybeNotifyDelay(toDomainJourney(row), status.delayMinutes);
-    } catch {
+    } catch (error) {
+      // Signed out (or over today's budget) the answer is the same for every
+      // row, and neither costs a provider call — stop the sweep instead of
+      // asking once per watched flight. Clerk's singleton may not exist in a
+      // headless background launch, so this is checked by the answer rather
+      // than by the session.
+      if (error instanceof FlightLookupError && (error.signInRequired || error.quotaExceeded)) break;
       // One flight's lookup failing must not abort the rest of the sweep.
     }
   }
