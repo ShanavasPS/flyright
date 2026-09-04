@@ -6,6 +6,7 @@ import {
   maySpend,
   pollStretch,
   poolFrom,
+  providerBills,
   readProviderBudget,
   UNITS_PER_FLIGHT_CALL,
 } from '../../convex/providerShared';
@@ -219,6 +220,26 @@ describe('readProviderBudget', () => {
 
   it('reports nothing when the provider says nothing', () => {
     expect(readProviderBudget(() => null)).toBeNull();
+  });
+});
+
+describe('providerBills', () => {
+  it('charges for a hit and for a legitimate miss', () => {
+    // A "no such flight" was processed upstream and appears on the invoice,
+    // so the caller pays for their typo just like for a hit.
+    expect(providerBills(200, true)).toBe(true);
+    expect(providerBills(404, false)).toBe(true);
+    expect(providerBills(204, false)).toBe(true);
+  });
+
+  it('charges nothing for a refusal or a failure', () => {
+    // These did no work upstream. Counting them would drain our accounting
+    // for calls the invoice never sees, and billing the caller would make
+    // them pay for our outage — hence the refund path.
+    expect(providerBills(429, false)).toBe(false);
+    expect(providerBills(502, false)).toBe(false);
+    expect(providerBills(500, false)).toBe(false);
+    expect(providerBills(503, false)).toBe(false);
   });
 });
 

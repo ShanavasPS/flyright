@@ -137,13 +137,14 @@ describe('GET /api/flight-status', () => {
     });
   });
 
-  it('still reports a genuine provider outage as an upstream error', async () => {
+    it('still reports a genuine provider outage as an upstream error', async () => {
     upstream.mockResolvedValueOnce({ ok: false, status: 500 } as Response);
 
     const response = await GET(request('flight=AY1331&date=2026-08-30'));
 
     expect(response.status).toBe(502);
   });
+
 
   it('treats the provider empty-body answer as flight not found', async () => {
     // AeroDataBox answers 204 with no body for a flight/date it has nothing

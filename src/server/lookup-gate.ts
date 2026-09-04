@@ -302,6 +302,9 @@ export async function recordLookup(args: {
   flight: string;
   date: string;
   want: 'base' | 'inbound';
+  /** Present when the lookup failed for a reason of ours, so the caller gets
+   * their daily allowance back rather than paying for our error. */
+  refund?: { day: string; cost: number; subject: GateSubject } | null;
   /** null charges the pool without caching anything — a call that cost units
    * but produced no answer worth keeping (a 404, an upstream error). */
   payload: string | null;
@@ -314,7 +317,13 @@ export async function recordLookup(args: {
   const client = convex();
   if (!secret || !client) return;
   try {
-    await client.mutation(api.provider.record, { secret, ...args });
+    // `...args` must come first: it carries `refund` as possibly-undefined,
+    // and the validator accepts an object or null, never undefined.
+    await client.mutation(api.provider.record, {
+      ...args,
+      secret,
+      refund: args.refund ?? null,
+    });
   } catch (error) {
     console.warn('[lookup-gate] could not cache the answer', error);
   }

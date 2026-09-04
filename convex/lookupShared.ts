@@ -13,6 +13,12 @@ export type LookupSubject =
   | { kind: 'user'; userId: string; pro: boolean }
   | { kind: 'anonymous'; address: string };
 
+/** Just who the caller is, without the entitlement. Keying and refunding a
+ * counter need only this; the Pro flag matters solely for the limit. */
+export type LookupIdentity =
+  | { kind: 'user'; userId: string }
+  | { kind: 'anonymous'; address: string };
+
 export const LOOKUP_LIMITS = {
   pro: 100,
   free: 20,
@@ -30,7 +36,7 @@ export function lookupDay(now: Date): string {
 }
 
 /** Storage key for one caller's counter on one day. */
-export function lookupKey(subject: LookupSubject, day: string): string {
+export function lookupKey(subject: LookupIdentity | LookupSubject, day: string): string {
   const who = subject.kind === 'user' ? `user:${subject.userId}` : `ip:${subject.address}`;
   return `${who}:${day}`;
 }

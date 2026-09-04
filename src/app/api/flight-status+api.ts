@@ -23,6 +23,7 @@ import {
 import { normalizeLeg, toIso } from '../../../convex/flightNormalize';
 import { cacheExpiry, flightPhase, maySpend } from '../../../convex/providerShared';
 import { carrierFor } from '@/constants/carriers';
+import { lookupDay } from '../../../convex/lookupShared';
 import { beginLookup, identifyCaller, recordLookup } from '@/server/lookup-gate';
 
 /** Offline/dev stand-in: HEL→FRA on the requested date. Past flights with an
@@ -197,14 +198,15 @@ export async function GET(request: Request) {
   }
 
   const want = wantInbound ? 'inbound' : 'base';
+  // The inbound rotation is an extra provider call, so it costs two units.
+  const cost = wantInbound ? 2 : 1;
   // One round trip: is this answer already bought, is there pool left, and
-  // does this caller have daily allowance? The inbound rotation is an extra
-  // provider call, so it costs two units of the caller's allowance.
+  // does this caller have daily allowance?
   const begin = await beginLookup(caller.subject, {
     flight,
     date,
     want,
-    cost: wantInbound ? 2 : 1,
+    cost,
   });
 
   // Someone already asked this question recently — free, and doesn't touch
@@ -228,9 +230,15 @@ export async function GET(request: Request) {
   }
 
   const spent: ProviderResponse[] = [];
+
   /** A call that produced nothing cacheable still cost units — charge them,
-   * or a run of "flight not found" lookups is invisible to the pool. */
-  const chargePool = (responses: ProviderResponse[]) =>
+   * or a run of "flight not found" lookups is invisible to the pool.
+   *
+   * `ours` says the failure was not the caller's doing (the provider unwell,
+   * or our own pool dry), which hands their daily allowance back. A genuine
+   * "no such flight" is theirs to pay for: the provider processed it and
+   * bills us the same as a hit. */
+  const chargePool = (responses: ProviderResponse[], ours = false) =>
     recordLookup({
       flight,
       date,
@@ -238,6 +246,7 @@ export async function GET(request: Request) {
       payload: null,
       phase: 'uncacheable',
       expiresAt: 0,
+      refund: ours ? { day: lookupDay(new Date()), cost, subject: caller.subject } : null,
       ...poolCharge(responses),
     });
 
@@ -250,7 +259,7 @@ export async function GET(request: Request) {
     return Response.json({ error: 'flight not found' }, { status: 404 });
   }
   if (!upstream.ok) {
-    await chargePool(spent);
+    await chargePool(spent, true);
     // The provider itself refusing on quota is the same user-visible state as
     // our own pool being spent, and must read the same way.
     return upstream.status === 429

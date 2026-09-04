@@ -28,6 +28,20 @@
  * If a plan's dashboard ever disagrees with this, this constant is wrong. */
 export const UNITS_PER_FLIGHT_CALL = 2;
 
+/**
+ * Whether the provider bills us for a response with this status.
+ *
+ * It charges for a request it processed — a hit and a genuine "no such
+ * flight" alike. It does not charge for one it refused (429, pool spent) or
+ * failed outright (5xx), because no work was done. Counting those would
+ * drain our own accounting for calls the invoice never sees, and the caller's
+ * daily allowance is refunded for exactly the same set (convex/provider.ts
+ * refundQuota).
+ */
+export function providerBills(status: number, ok: boolean): boolean {
+  return ok || status === 404 || status === 204;
+}
+
 /** The provider's hard ceiling on how long a response may be retained. */
 export const CACHE_MAX_AGE_MS = 7 * 24 * 3_600_000;
 

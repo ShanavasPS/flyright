@@ -17,7 +17,13 @@ import { v } from 'convex/values';
 
 import { internalMutation, mutation, type MutationCtx } from './_generated/server';
 import { isPro } from './entitlements';
-import { budget, lookupKey, lookupLimit, type LookupSubject } from './lookupShared';
+import {
+  budget,
+  lookupKey,
+  lookupLimit,
+  type LookupIdentity,
+  type LookupSubject,
+} from './lookupShared';
 import { configuredMonthlyUnits } from './providerFetch';
 import {
   CACHE_MAX_AGE_MS,
@@ -189,6 +195,33 @@ async function decide(
   return { outcome: 'permit', level };
 }
 
+/** Give a caller back allowance they spent on nothing.
+ *
+ * `decide` charges the daily meter before the provider is called, because it
+ * has to — the permit is what authorises the call. When that call then fails
+ * for a reason of ours (the provider unwell, or our own monthly pool dry),
+ * the caller has paid for an error, and five of those used to be a whole
+ * day's allowance spent on nothing. A genuine "no such flight" is not
+ * refunded: the provider processed it and bills us either way. */
+async function refundQuota(
+  ctx: MutationCtx,
+  identity: LookupIdentity,
+  day: string,
+  cost: number,
+  now: number,
+): Promise<void> {
+  if (cost <= 0) return;
+  const row = await ctx.db
+    .query('lookupQuota')
+    .withIndex('by_key', (q) => q.eq('key', lookupKey(identity, day)))
+    .unique();
+  if (!row) return;
+  await ctx.db.patch(row._id, {
+    count: Math.max(0, row.count - cost),
+    updatedAt: new Date(now).toISOString(),
+  });
+}
+
 async function store(
   ctx: MutationCtx,
   args: {
@@ -268,10 +301,18 @@ export const record = mutation({
       v.object({ remaining: v.number(), limit: v.number() }),
       v.null(),
     ),
+    /** Set when the call failed for a reason of ours, to hand the caller
+     * back the allowance the permit charged them. */
+    refund: v.union(
+      v.object({ day: v.string(), cost: v.number(), subject: subjectArg }),
+      v.null(),
+    ),
   },
-  handler: async (ctx, { secret, ...args }) => {
+  handler: async (ctx, { secret, refund, ...args }) => {
     assertSecret(secret);
-    await store(ctx, args, Date.now());
+    const now = Date.now();
+    await store(ctx, args, now);
+    if (refund) await refundQuota(ctx, refund.subject, refund.day, refund.cost, now);
   },
 });
 

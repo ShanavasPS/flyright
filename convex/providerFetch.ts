@@ -24,6 +24,7 @@
 
 import {
   UNITS_PER_FLIGHT_CALL,
+  providerBills,
   readProviderBudget,
   type ProviderBudgetReading,
 } from './providerShared';
@@ -94,7 +95,7 @@ export async function providerFetch(path: string): Promise<ProviderResponse> {
     // header bag may be absent; a missing reading just means the local
     // backstop counter decides instead.
     budget: readProviderBudget((name) => response.headers?.get?.(name) ?? null),
-    units: UNITS_PER_FLIGHT_CALL,
+    units: providerBills(response.status, response.ok) ? UNITS_PER_FLIGHT_CALL : 0,
   };
 }
 
