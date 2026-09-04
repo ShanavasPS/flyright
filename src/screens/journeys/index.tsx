@@ -68,8 +68,10 @@ function headerEyebrow(sections: ReturnType<typeof groupJourneys>, now: Date): s
   const next = sections[0]?.key === 'upcoming' ? sections[0].data[0] : undefined;
   if (next) {
     const timer = countdown(next.scheduledDeparture, now);
-    const when = timer.unit === 'now' ? 'boarding soon' : timerLabel(timer);
-    return `Next trip ${when} · ${next.fromCode} → ${next.toCode}`;
+    const route = `${next.fromCode} → ${next.toCode}`;
+    // Once it's happening, the trip isn't "next" any more — lead with the moment.
+    if (timer.unit === 'now') return `Boarding soon · ${route}`;
+    return `Next trip ${timerLabel(timer)} · ${route}`;
   }
   return now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 }
