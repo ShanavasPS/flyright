@@ -291,25 +291,93 @@ describe('liveContent', () => {
     expect(last).toBeLessThanOrEqual(1);
   });
 
-  it('compactLabel: departure clock → gate → stage word once boarded', () => {
-    // No stage, no gate: the scheduled departure clock (stable, useful).
+  it('compactLabel: departure clock → next step → gate code → stage word', () => {
+    // No stage: the scheduled departure clock (stable, useful).
     const before = liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, liveNow);
     expect(before.compactLabel).toBe(formatTime('2026-08-25T08:00Z'));
 
-    // Gate outranks the walk until boarding — it's where you're headed.
-    const atAirport = advance(EMPTY_TRAVEL_DAY, 'security', liveNow);
+    // Once the walk starts, the slot names the NEXT step, not the last one —
+    // and a posted gate waits until the gate is where you're headed.
+    const atAirport = advance(EMPTY_TRAVEL_DAY, 'at_airport', liveNow);
     expect(liveContent(journey(), atAirport, facts({ gate: '24' }), liveNow).compactLabel).toBe(
-      'G24',
+      'Check in',
     );
-    expect(liveContent(journey(), atAirport, EMPTY_FACTS, liveNow).compactLabel).toBe('Security');
+    const throughSecurity = advance(atAirport, 'security', liveNow);
+    expect(liveContent(journey(), throughSecurity, EMPTY_FACTS, liveNow).compactLabel).toBe(
+      'Passport',
+    );
+    const throughImmigration = advance(throughSecurity, 'immigration', liveNow);
+    expect(
+      liveContent(journey(), throughImmigration, facts({ gate: '24' }), liveNow).compactLabel,
+    ).toBe('G24');
+    expect(liveContent(journey(), throughImmigration, EMPTY_FACTS, liveNow).compactLabel).toBe(
+      'Gate',
+    );
 
     // From boarded on, the stage word wins even with a gate posted.
-    const boarded = advance(atAirport, 'boarded', liveNow);
+    const boarded = advance(throughImmigration, 'boarded', liveNow);
     expect(liveContent(journey(), boarded, facts({ gate: '24' }), liveNow).compactLabel).toBe(
       'Boarded',
     );
     const landed = applyFlightFacts(boarded, facts({ actualArrival: '2026-08-25T10:50Z' }));
     expect(liveContent(journey(), landed, EMPTY_FACTS, liveNow).compactLabel).toBe('Landed');
+    expect(liveContent(journey(), landed, facts({ baggageBelt: '7' }), liveNow).compactLabel).toBe(
+      'Belt 7',
+    );
+  });
+
+  it('subtitle tells the traveler the next step, never the finished one', () => {
+    const atAirport = advance(EMPTY_TRAVEL_DAY, 'at_airport', liveNow);
+    expect(liveContent(journey(), atAirport, EMPTY_FACTS, liveNow).subtitle).toBe(
+      'Check in · Departs in 3h',
+    );
+    expect(liveContent(journey(), atAirport, facts({ checkInDesk: '214' }), liveNow).subtitle).toBe(
+      'Check in at desk 214 · Departs in 3h',
+    );
+    const checkedIn = advance(atAirport, 'checked_in', liveNow);
+    expect(liveContent(journey(), checkedIn, EMPTY_FACTS, liveNow).subtitle).toBe(
+      'Drop your bags · Departs in 3h',
+    );
+    // Skipping bag drop is normal — the next step simply moves on.
+    const throughSecurity = advance(checkedIn, 'security', liveNow);
+    expect(liveContent(journey(), throughSecurity, EMPTY_FACTS, liveNow).subtitle).toBe(
+      'Passport control · Departs in 3h',
+    );
+    const throughImmigration = advance(throughSecurity, 'immigration', liveNow);
+    expect(liveContent(journey(), throughImmigration, EMPTY_FACTS, liveNow).subtitle).toBe(
+      'Go to your gate · Departs in 3h',
+    );
+    expect(
+      liveContent(
+        journey(),
+        throughImmigration,
+        facts({ gate: 'A12', boardingTime: '2026-08-25T07:30Z' }),
+        liveNow,
+      ).subtitle,
+    ).toBe(`Go to gate A12 · boards ${formatTime('2026-08-25T07:30Z')}`);
+    // Boarding open: the gate is the task wherever the walk stands.
+    expect(
+      liveContent(
+        journey(),
+        checkedIn,
+        facts({ gate: 'A12', boardingTime: '2026-08-25T04:50Z' }),
+        liveNow,
+      ).subtitle,
+    ).toBe('Boarding now · Gate A12');
+    const boarded = advance(throughImmigration, 'boarded', liveNow);
+    expect(liveContent(journey(), boarded, EMPTY_FACTS, liveNow).subtitle).toBe(
+      'On board · ready for pushback',
+    );
+  });
+
+  it('manual trips walk the next step through take-off', () => {
+    const manual = journey({ source: 'manual', number: '' });
+    const boarded = advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, true);
+    expect(liveContent(manual, boarded, EMPTY_FACTS, liveNow).subtitle).toBe(
+      'On board · ready for pushback',
+    );
+    const departed = advance(boarded, 'departed', liveNow, true);
+    expect(liveContent(manual, departed, EMPTY_FACTS, liveNow).compactLabel).toBe('In air');
   });
 
   it('reflects in-air and landed states', () => {
@@ -323,5 +391,8 @@ describe('liveContent', () => {
     ).toContain('In the air');
     const landed = applyFlightFacts(inAir, facts({ actualArrival: '2026-08-25T10:50Z' }));
     expect(liveContent(journey(), landed, EMPTY_FACTS, liveNow).subtitle).toBe('Landed in LHR');
+    expect(liveContent(journey(), landed, facts({ baggageBelt: '7' }), liveNow).subtitle).toBe(
+      'Landed in LHR · Bags at belt 7',
+    );
   });
 });

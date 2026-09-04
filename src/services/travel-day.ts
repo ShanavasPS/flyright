@@ -68,6 +68,36 @@ export const STAGE_PROMPTS: Record<TravelStage, string> = {
   landed: "We've landed",
 };
 
+/** What the traveler should do NEXT, keyed by the stage that tap will
+ * reach. The traveler's own surfaces (Live Activity, Android Live Update,
+ * home banner) speak in these — a lock screen that says "Through security"
+ * tells you nothing you don't know, "Passport control" tells you where to
+ * walk. Followers keep the completed-stage vocabulary (STAGE_LABELS and the
+ * server's push copy); that's news to them. The gate step is composed in
+ * nextStepLabel because it folds in the gate and boarding time. */
+export const NEXT_STEP_LABELS: Record<TravelStage, string> = {
+  at_airport: 'Head to the airport',
+  checked_in: 'Check in',
+  bag_dropped: 'Drop your bags',
+  security: 'Head to security',
+  immigration: 'Passport control',
+  boarded: 'Go to your gate',
+  departed: 'Ready for take-off',
+  landed: 'Landing',
+};
+
+/** One-word form of the next step for the Dynamic Island / status-bar chip. */
+export const NEXT_STEP_COMPACT: Record<TravelStage, string> = {
+  at_airport: 'Airport',
+  checked_in: 'Check in',
+  bag_dropped: 'Bag drop',
+  security: 'Security',
+  immigration: 'Passport',
+  boarded: 'Gate',
+  departed: 'Take-off',
+  landed: 'Landing',
+};
+
 export interface TravelDayState {
   /** Furthest stage reached; null before the first tap. */
   stage: TravelStage | null;
@@ -136,6 +166,16 @@ export function advance(
 ): TravelDayState {
   if (!canAdvanceTo(state, target, manualTrip)) return state;
   return { stage: target, stamps: { ...state.stamps, [target]: now.toISOString() } };
+}
+
+/** The step the traveler takes next: the first stage they're still allowed
+ * to advance to. Stamps are forward-only, so this is simply the stage after
+ * the current one, bounded by what the traveler may set — 'boarded' on
+ * tracked flights, 'landed' on manual trips. Null once nothing is left. The
+ * timeline highlights this same stage as its action row, so the lock screen
+ * and the in-app stepper always point at the same thing. */
+export function nextStage(state: TravelDayState, manualTrip = false): TravelStage | null {
+  return STAGE_ORDER.find((s) => canAdvanceTo(state, s, manualTrip)) ?? null;
 }
 
 /** Undo the most recent stamp only — one level, and on tracked flights never
@@ -285,9 +325,10 @@ export interface LiveContent {
   progress: number;
   stageIndex: number;
   stageLabel: string | null;
-  /** The Dynamic Island's compact trailing slot: one word of status.
-   * Gate wins until boarding (it's the walk's destination); after that the
-   * stage word; before any stage, the departure clock. */
+  /** The Dynamic Island's compact trailing slot: one word. The departure
+   * clock before the first tap; then the NEXT step ("Security", "Passport",
+   * the gate code once the gate is the destination); from boarding on, the
+   * stage word; the baggage belt after landing. */
   compactLabel: string;
   gate: string | null;
   terminal: string | null;
@@ -316,36 +357,68 @@ export function liveContent(
 
   const index = stageIndex(state.stage);
   const stageLabel = state.stage ? STAGE_LABELS[state.stage] : null;
+  const manualTrip = j.source === 'manual';
+  const next = nextStage(state, manualTrip);
+  const boardingOpen = !!facts.boardingTime && Date.parse(facts.boardingTime) <= now.getTime();
+  const gateWord = facts.gate ? `gate ${facts.gate}` : 'your gate';
 
+  // The traveler's line reads as the NEXT thing to do, not the last thing
+  // done (followers get the done-stage feed via the server's push copy).
+  // Before the first tap it is just the countdown — the departure time is
+  // the one fact that matters until you're at the airport.
   let subtitle: string;
   if (state.stage === 'landed') {
-    subtitle = `Landed in ${j.toCode}`;
+    subtitle = facts.baggageBelt
+      ? `Landed in ${j.toCode} · Bags at belt ${facts.baggageBelt}`
+      : `Landed in ${j.toCode}`;
   } else if (state.stage === 'departed') {
     subtitle = facts.estimatedArrival
       ? `In the air · lands ${formatTime(facts.estimatedArrival)}`
       : 'In the air';
-  } else if (state.stage === 'boarded' || (facts.boardingTime && Date.parse(facts.boardingTime) <= now.getTime())) {
-    subtitle = state.stage === 'boarded' ? 'On board · ready for pushback' : 'Boarding';
+  } else if (state.stage === 'boarded') {
+    subtitle = 'On board · ready for pushback';
+  } else if (boardingOpen) {
+    // Boarding has opened: wherever the walk stands, the gate is the task.
+    subtitle = facts.gate ? `Boarding now · Gate ${facts.gate}` : 'Boarding now';
   } else {
     // The clock time already sits under the route code on every surface —
-    // the subtitle only counts down ("Departs in 75 min", "Departs now").
+    // the countdown only ("Departs in 75 min", "Departs now").
     const effective = facts.estimatedDeparture ?? j.scheduledDeparture;
     const effectiveMs = Date.parse(effective);
-    subtitle = Number.isNaN(effectiveMs)
+    const countdown = Number.isNaN(effectiveMs)
       ? `Departs ${formatTime(effective)}`
       : `Departs ${countdownLabel(effectiveMs, now)}`;
-    if (stageLabel) subtitle = `${stageLabel} · ${subtitle}`;
+    if (state.stage === null || next === null) {
+      subtitle = countdown;
+    } else if (next === 'boarded') {
+      // The gate step carries the boarding time when the airline posts one;
+      // otherwise the departure countdown keeps the pressure visible.
+      subtitle = facts.boardingTime
+        ? `Go to ${gateWord} · boards ${formatTime(facts.boardingTime)}`
+        : `Go to ${gateWord} · ${countdown}`;
+    } else if (next === 'checked_in' && facts.checkInDesk) {
+      subtitle = `Check in at desk ${facts.checkInDesk} · ${countdown}`;
+    } else {
+      subtitle = `${NEXT_STEP_LABELS[next]} · ${countdown}`;
+    }
   }
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
 
-  const compactLabel =
-    state.stage && index >= stageIndex('boarded')
-      ? STAGE_COMPACT[state.stage]
-      : facts.gate
-        ? `G${facts.gate}`
-        : state.stage
-          ? STAGE_COMPACT[state.stage]
-          : formatTime(facts.estimatedDeparture ?? j.scheduledDeparture);
+  // Compact slot: departure clock until the first tap; then the next step
+  // (the gate code once the gate is the destination); from boarding on, the
+  // stage word — and the baggage belt after landing, the last thing to find.
+  let compactLabel: string;
+  if (state.stage === null) {
+    compactLabel = formatTime(facts.estimatedDeparture ?? j.scheduledDeparture);
+  } else if (state.stage === 'landed' && facts.baggageBelt) {
+    compactLabel = `Belt ${facts.baggageBelt}`;
+  } else if (index >= stageIndex('boarded') || next === null) {
+    compactLabel = STAGE_COMPACT[state.stage];
+  } else if (next === 'boarded') {
+    compactLabel = facts.gate ? `G${facts.gate}` : NEXT_STEP_COMPACT.boarded;
+  } else {
+    compactLabel = NEXT_STEP_COMPACT[next];
+  }
 
   const timeOf = (iso: string | null) =>
     iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso) : null;

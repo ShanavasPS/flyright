@@ -24,6 +24,7 @@ import {
   STAGE_LABELS,
   STAGE_ORDER,
   STAGE_PROMPTS,
+  nextStage as nextStageOf,
   canAdvanceTo,
   canRewindTo,
   stageIndex,
@@ -132,9 +133,7 @@ export function TravelDayTimeline({
   }
 
   // The one tap that's usually next: the first un-stamped tappable stage.
-  const nextStage = interactive
-    ? STAGE_ORDER.find((s) => canAdvanceTo(state, s, manualTrip))
-    : undefined;
+  const nextStage = interactive ? nextStageOf(state, manualTrip) : null;
 
   // Each row reports its center Y (relative to the stages container); the
   // rail spans first-to-last center and the fill/thumb aim at the current

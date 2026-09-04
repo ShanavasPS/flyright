@@ -92,6 +92,40 @@ function countdownBit(departureMs: number, now: number): string {
   return mins > 0 ? `in ${mins} min` : 'now';
 }
 
+/** Mirrors NEXT_STEP_LABELS / NEXT_STEP_COMPACT in src/services/travel-day.ts:
+ * the traveler's own lock screen speaks in next steps, followers get the
+ * done-stage copy above. Sessions are tracked flights, so the walk ends at
+ * 'boarded' — flight data takes over from there. */
+const NEXT_STEP_LABELS: Record<string, string> = {
+  checked_in: 'Check in',
+  bag_dropped: 'Drop your bags',
+  security: 'Head to security',
+  immigration: 'Passport control',
+  boarded: 'Go to your gate',
+};
+const NEXT_STEP_COMPACT: Record<string, string> = {
+  checked_in: 'Check in',
+  bag_dropped: 'Bag drop',
+  security: 'Security',
+  immigration: 'Passport',
+  boarded: 'Gate',
+};
+const STAGE_COMPACT: Record<string, string> = {
+  boarded: 'Boarded',
+  departed: 'In air',
+  landed: 'Landed',
+};
+const BOARDED_INDEX = stageIndex('boarded');
+
+/** The traveler's next tappable stage: the one after the current stage, up
+ * to 'boarded'. Null before the first tap (the countdown speaks then) and
+ * once boarding is done. */
+function nextStep(currentStage: string | null): string | null {
+  const index = stageIndex(currentStage);
+  if (index < 0 || index >= BOARDED_INDEX) return null;
+  return STAGE_ORDER[index + 1];
+}
+
 /** Server-side mirror of liveContent() for the Live Activity content state —
  * same dict keys the Swift widget reads. Clock times render as UTC (the
  * server doesn't know the traveler's timezone); the in-app timeline stays
@@ -102,20 +136,44 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   const delayLabel = delayed
     ? `${Math.floor(s.delayMinutes! / 60) ? `${Math.floor(s.delayMinutes! / 60)}h ` : ''}${s.delayMinutes! % 60} min late`.replace('h 0 min', 'h')
     : '';
+  const next = nextStep(s.currentStage);
+  const index = stageIndex(s.currentStage);
+  const gateWord = s.gate ? `gate ${s.gate}` : 'your gate';
   let subtitle: string;
-  if (s.currentStage === 'landed') subtitle = `Landed in ${s.toCode}`;
-  else if (s.currentStage === 'departed')
+  if (s.currentStage === 'landed') {
+    subtitle = s.baggageBelt
+      ? `Landed in ${s.toCode} · Bags at belt ${s.baggageBelt}`
+      : `Landed in ${s.toCode}`;
+  } else if (s.currentStage === 'departed') {
     subtitle = s.estimatedArrival ? `In the air · lands ${fmtTime(s.estimatedArrival)}` : 'In the air';
-  else {
-    const stageBit = s.currentStage ? `${STAGE_LABELS[s.currentStage] ?? s.currentStage} · ` : '';
+  } else if (s.currentStage === 'boarded') {
+    subtitle = 'On board · ready for pushback';
+  } else {
     const departureMs = Date.parse(s.estimatedDeparture ?? s.scheduledDeparture);
-    subtitle = Number.isNaN(departureMs)
-      ? `${stageBit}Departs ${fmtTime(s.estimatedDeparture ?? s.scheduledDeparture)}`
-      : `${stageBit}Departs ${countdownBit(departureMs, now)}`;
+    const countdown = Number.isNaN(departureMs)
+      ? `Departs ${fmtTime(s.estimatedDeparture ?? s.scheduledDeparture)}`
+      : `Departs ${countdownBit(departureMs, now)}`;
+    // Next step, not last step — the session has no boarding time or
+    // check-in desk, so those refinements stay client-side.
+    subtitle =
+      next === null
+        ? countdown
+        : next === 'boarded'
+          ? `Go to ${gateWord} · ${countdown}`
+          : `${NEXT_STEP_LABELS[next]} · ${countdown}`;
   }
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
+
+  let compactLabel: string;
+  if (s.currentStage === null) compactLabel = fmtTime(s.estimatedDeparture ?? s.scheduledDeparture);
+  else if (s.currentStage === 'landed' && s.baggageBelt) compactLabel = `Belt ${s.baggageBelt}`;
+  else if (index >= BOARDED_INDEX || next === null) compactLabel = STAGE_COMPACT[s.currentStage] ?? '';
+  else if (next === 'boarded') compactLabel = s.gate ? `G${s.gate}` : NEXT_STEP_COMPACT.boarded;
+  else compactLabel = NEXT_STEP_COMPACT[next];
+
   return {
     subtitle,
+    compactLabel,
     progress: (stageIndex(s.currentStage) + 1) / STAGE_ORDER.length,
     stageLabel: s.currentStage ? (STAGE_LABELS[s.currentStage] ?? '') : '',
     gate: s.gate ?? '',
