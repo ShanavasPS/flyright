@@ -54,13 +54,31 @@ export function useJourney(id: string, currentUserId: string | null | undefined)
 export async function addJourney(row: NewJourneyRow) {
   const now = new Date().toISOString();
   // id is the natural key (number + date). Re-adding a soft-deleted trip
-  // revives it; re-adding a live one is a no-op.
+  // revives it, and either way the trip's facts are refreshed from the new
+  // source — a receipt that names the operating airline of a codeshare leg
+  // must win over the marketing carrier a plain lookup stored earlier. The
+  // journal fields (notes, rating, photos) are never touched; seat and
+  // booking reference only when the new source knows them.
   await db
     .insert(journeys)
     .values({ ...row, updatedAt: row.updatedAt ?? now })
     .onConflictDoUpdate({
       target: journeys.id,
-      set: { deletedAt: null, updatedAt: now },
+      set: {
+        deletedAt: null,
+        updatedAt: now,
+        carrier: row.carrier,
+        carrierCountry: row.carrierCountry,
+        fromCode: row.fromCode,
+        fromCountry: row.fromCountry,
+        toCode: row.toCode,
+        toCountry: row.toCountry,
+        distanceKm: row.distanceKm,
+        scheduledDeparture: row.scheduledDeparture,
+        scheduledArrival: row.scheduledArrival,
+        ...(row.seat != null ? { seat: row.seat } : {}),
+        ...(row.bookingReference != null ? { bookingReference: row.bookingReference } : {}),
+      },
     });
   void reconcileNotifications();
   void reconcileTravelDay();

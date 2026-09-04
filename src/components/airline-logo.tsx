@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { PLANE_CLIMBING } from '@/components/sheen-card';
+import { carrierCodeForName } from '@/constants/carriers';
 import { useTheme } from '@/hooks/use-theme';
 
 /** "LH873" → "LH": the two-character IATA airline designator (letters or a
@@ -33,7 +34,11 @@ export function AirlineLogo({
 }) {
   const theme = useTheme();
   const [failed, setFailed] = useState(false);
-  const code = airlineCode(number);
+  // The carrier name wins over the number's prefix: a codeshare leg imported
+  // from a receipt is stored as its operating airline ("Alaska Airlines")
+  // under the marketing number (QR3387), and the mark should be the airline
+  // actually flying it. Unknown names fall back to the prefix as before.
+  const code = carrierCodeForName(carrier) ?? airlineCode(number);
   const chip = { width: size, height: size, borderRadius: size * 0.35 };
 
   if (!code || failed) {

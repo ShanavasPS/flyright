@@ -59,6 +59,20 @@ describe('extractItinerary — Amadeus e-ticket receipt', () => {
     expect(segments.find((s) => s.flight === 'QR3387')!.seat).toBeNull();
   });
 
+  it.each([
+    ['PDFKit', QATAR_RECEIPT_PDFKIT],
+    ['PDFBox', QATAR_RECEIPT_PDFBOX],
+  ])('names the operating airline on codeshare legs (%s)', (_label, pages) => {
+    const { segments } = extractItinerary(pages, TODAY);
+    const by = (flight: string) => segments.find((s) => s.flight === flight)!.operatedBy;
+    // "Operated by: ALASKA" / "HORIZON AIR AS ALASKAHORIZON" under Qatar-sold numbers.
+    expect(by('QR3387')).toEqual({ code: 'AS', name: 'Alaska Airlines' });
+    expect(by('QR2175')).toEqual({ code: 'QX', name: 'Horizon Air' });
+    // Qatar's own legs name Qatar — the caller decides that's not a codeshare.
+    expect(by('QR517')).toEqual({ code: 'QR', name: 'Qatar Airways' });
+    expect(by('QR516')).toEqual({ code: 'QR', name: 'Qatar Airways' });
+  });
+
   it('reads printed arrival days, including overnight legs', () => {
     const { segments } = extractItinerary(QATAR_RECEIPT_PDFBOX, TODAY);
     expect(segments.find((s) => s.flight === 'QR720')!.arrivalDate).toBe('2026-08-02');
@@ -131,6 +145,7 @@ describe('extractItinerary — barcodes alone', () => {
       toCode: 'FRA',
       pnr: 'ABC123',
       seat: '1A',
+      operatedBy: null,
       sources: ['barcode'],
     });
   });

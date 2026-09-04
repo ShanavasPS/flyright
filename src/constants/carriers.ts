@@ -82,7 +82,47 @@ export const CARRIERS: Record<string, { name: string; country: string }> = {
   AM: { name: 'Aeroméxico', country: 'MX' },
   CM: { name: 'Copa Airlines', country: 'PA' },
   AV: { name: 'Avianca', country: 'CO' },
+  // Regional operators that fly under a major's number ("Operated by: HORIZON
+  // AIR" on a Qatar-sold ticket). EU261 judges the operating carrier, so the
+  // import records these, not the marketing airline, on codeshare legs.
+  QX: { name: 'Horizon Air', country: 'US' },
+  OO: { name: 'SkyWest Airlines', country: 'US' },
+  MQ: { name: 'Envoy Air', country: 'US' },
+  YX: { name: 'Republic Airways', country: 'US' },
+  CL: { name: 'Lufthansa CityLine', country: 'DE' },
+  WA: { name: 'KLM Cityhopper', country: 'NL' },
+  CJ: { name: 'BA CityFlyer', country: 'GB' },
+  EN: { name: 'Air Dolomiti', country: 'IT' },
+  N7: { name: 'Nordic Regional Airlines', country: 'FI' },
 };
+
+/** "Horizon Air" / "HORIZON AIR AS ALASKAHORIZON" / "Alaska" → the carrier
+ * code, matched on the name with the generic airline words stripped. Null
+ * when no known carrier fits — callers fall back to the flight prefix. */
+export function carrierCodeForName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const target = normalizeCarrierName(name);
+  if (target.length < 3) return null;
+  let best: { code: string; length: number } | null = null;
+  for (const [code, carrier] of Object.entries(CARRIERS)) {
+    const known = normalizeCarrierName(carrier.name);
+    if (known.length < 3) continue;
+    // Exact, or the document text starts with the known name ("HORIZON AIR AS
+    // ALASKAHORIZON"). Not the reverse: "Lufthansa" must not become CityLine.
+    const fits = target === known || target.startsWith(`${known} `);
+    if (fits && (!best || known.length > best.length)) best = { code, length: known.length };
+  }
+  return best?.code ?? null;
+}
+
+function normalizeCarrierName(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, ' ')
+    .replace(/\b(AIRLINES?|AIRWAYS|AIR LINES|AIR|AVIATION|FLY|EXPRESS|INTERNATIONAL|THE)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export function carrierFor(flight: string) {
   const prefix = flight.slice(0, 2).toUpperCase();

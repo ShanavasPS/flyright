@@ -22,7 +22,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { COBALT, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
-import { carrierFor } from '@/constants/carriers';
+import { CARRIERS, carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getAirport } from '@/services/airports';
@@ -91,6 +91,17 @@ type Plan =
   | { kind: 'journal'; from: string; to: string }
   | { kind: 'incomplete' }
   | { kind: 'pending' };
+
+/** The operating airline named by the document, with its country when the
+ * carrier table knows it — null when the document names none or it is the
+ * marketing carrier itself. */
+function operatorOf(segment: ImportedSegment): { code: string | null; name: string; country: string | null } | null {
+  const op = segment.operatedBy;
+  if (!op) return null;
+  const marketing = segment.flight ? carrierFor(segment.flight).iata : null;
+  if (op.code && op.code === marketing) return null;
+  return { code: op.code, name: op.name, country: op.code ? CARRIERS[op.code]?.country ?? null : null };
+}
 
 function planFor(segment: ImportedSegment, lookup: { data?: FlightStatus; isPending: boolean } | null): Plan {
   if (lookup?.isPending) return { kind: 'pending' };
@@ -204,6 +215,9 @@ export function ImportDocument() {
     const now = new Date().toISOString();
     for (const { segment, plan } of selectedRows) {
       const details = { bookingReference: segment.pnr, seat: segment.seat };
+      // A codeshare leg is stored as the airline flying it — EU261's carrier
+      // test is about the operator — under the number on the ticket.
+      const operator = operatorOf(segment);
       if (plan.kind === 'lookup') {
         const flight = plan.flight;
         const row: NewJourneyRow = {
@@ -211,8 +225,8 @@ export function ImportDocument() {
           userId,
           mode: 'flight',
           source: 'lookup',
-          carrier: flight.carrier.name,
-          carrierCountry: flight.carrierCountry,
+          carrier: operator?.name ?? flight.carrier.name,
+          carrierCountry: operator?.country ?? flight.carrierCountry,
           number: flight.flight,
           fromCode: flight.from.code!,
           fromCountry: flight.from.country ?? '',
@@ -237,7 +251,7 @@ export function ImportDocument() {
         const arrivalDay =
           segment.arrivalDate ??
           (arrClock < depClock ? localDateString(new Date(`${segment.date}T12:00:00`), 1) : segment.date);
-        const carrier = segment.flight ? carrierFor(segment.flight) : null;
+        const carrier = operator ?? (segment.flight ? carrierFor(segment.flight) : null);
         await addJourney({
           id: `${segment.flight ?? 'TRIP'}-${from.iata}-${to.iata}-${segment.date}`,
           userId,
@@ -467,7 +481,9 @@ function SegmentCard({
   const date = flight?.date ?? segment.date;
   const thisYear = date ? date.slice(0, 4) === `${new Date().getFullYear()}` : true;
   const carrier = segment.flight ? carrierFor(segment.flight) : null;
-  const carrierName = flight?.carrier.name ?? carrier?.name ?? 'Flight';
+  const operator = operatorOf(segment);
+  const marketingName = flight?.carrier.name ?? carrier?.name ?? 'Flight';
+  const carrierName = operator?.name ?? marketingName;
 
   const status = (() => {
     if (already) return { text: 'Already in My travels', color: WHITE_DIM };
@@ -496,7 +512,11 @@ function SegmentCard({
     return { text: 'Route not recognised — add the airports to save it', color: PASS_AMBER };
   })();
 
-  const details = [segment.seat && `Seat ${segment.seat}`, segment.pnr && `Booking ${segment.pnr}`]
+  const details = [
+    operator && `Codeshare · sold as ${marketingName}`,
+    segment.seat && `Seat ${segment.seat}`,
+    segment.pnr && `Booking ${segment.pnr}`,
+  ]
     .filter(Boolean)
     .join(' · ');
 

@@ -18,7 +18,7 @@
  * is proximity to the anchor within a bounded window.
  */
 
-import { CARRIERS } from '@/constants/carriers';
+import { CARRIERS, carrierCodeForName } from '@/constants/carriers';
 import { airportRank, hubAirports, isValidIata } from '@/services/airports';
 import { parseBcbp, resolveFlightDate } from '@/services/bcbp';
 
@@ -45,6 +45,11 @@ export interface ImportedSegment {
   toCode: string | null;
   pnr: string | null;
   seat: string | null;
+  /** The airline actually flying the leg when the document says so
+   * ("Operated by: ALASKA" on a Qatar-sold ticket). `code` is null when the
+   * name isn't in the carrier table; `name` is the table's spelling when it
+   * is, the document's otherwise. Null when the document is silent. */
+  operatedBy: { code: string | null; name: string } | null;
   sources: SegmentSource[];
 }
 
@@ -395,6 +400,19 @@ function findPnr(text: string): string | null {
   return null;
 }
 
+/** "Operated by: HORIZON AIR AS ALASKAHORIZON" — the name runs to the line
+ * end or the next label. */
+const OPERATED_BY_RE = /\boperated\s+by\s*:?\s*([A-Za-z][A-Za-z0-9 .&'-]{1,48}?)\s*(?=\n|\s{2,}|\s+(?:Marketed|Booking|Cabin|Class|Seat|Baggage|Fare|Frequent|NVA|NVB)\b|$)/i;
+
+function findOperator(window: string): ImportedSegment['operatedBy'] {
+  const m = OPERATED_BY_RE.exec(window);
+  if (!m) return null;
+  const raw = m[1].trim();
+  if (raw.length < 3) return null;
+  const code = carrierCodeForName(raw);
+  return { code, name: code ? CARRIERS[code].name : raw };
+}
+
 const SEAT_RE = /\bseat\s*(?:no\.?|number|assignment)?\s*:?\s*(\d{1,3}\s?[A-K])\b/i;
 
 function normalizeSeat(seat: string | null | undefined): string | null {
@@ -453,7 +471,9 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
 
     const airports = findAirports(text.slice(from, to));
     // Only after the anchor: the window before it belongs to the previous leg's details.
-    const seatMatch = SEAT_RE.exec(text.slice(anchor.end, to));
+    const tail = text.slice(anchor.end, to);
+    const seatMatch = SEAT_RE.exec(tail);
+    const operatedBy = findOperator(tail);
 
     segments.push({
       key: `${anchor.flight}-${departure.value}`,
@@ -466,6 +486,7 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
       toCode: airports[1] ?? null,
       pnr,
       seat: normalizeSeat(seatMatch?.[1]),
+      operatedBy,
       sources: ['text'],
     });
   });
@@ -499,6 +520,8 @@ function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[
         toCode: leg.toCode,
         pnr: leg.pnr || null,
         seat: normalizeSeat(leg.seat),
+        // BCBP's leg block names the operating carrier, so the flight prefix already is it.
+        operatedBy: null,
         sources: ['barcode'],
       });
     }
