@@ -16,7 +16,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Flight lookups',
-    body: 'When you add a flight, the flight number and date are sent to our lookup service, which queries an aviation data provider (AeroDataBox) to fetch the schedule, route, and delay status. These requests are not linked to your identity and are not stored by us.',
+    body: 'When you add a flight, the flight number and date are sent to our lookup service, which queries an aviation data provider (AeroDataBox) to fetch the schedule, route, and delay status. We keep the answer about that flight for up to seven days so the same question is not bought twice — it describes the flight, not you, and is never linked to your identity.',
   },
   {
     title: 'Purchases',

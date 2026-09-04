@@ -121,4 +121,38 @@ describe('GET /api/flight-status', () => {
     expect(body.aircraft).toBeNull();
     expect(body.inbound).toBeNull();
   });
+
+  it('reports a spent provider pool as paused, not as a failure', async () => {
+    // The provider answers 429 once the month's units are gone. Retrying
+    // cannot fix that, so it must not reach the app as 'try again' — the
+    // screens key the add-manually path off this status.
+    upstream.mockResolvedValueOnce({ ok: false, status: 429 } as Response);
+
+    const response = await GET(request('flight=AY1331&date=2026-08-30'));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: 'live_data_paused',
+      reason: 'provider_budget',
+    });
+  });
+
+  it('still reports a genuine provider outage as an upstream error', async () => {
+    upstream.mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+
+    const response = await GET(request('flight=AY1331&date=2026-08-30'));
+
+    expect(response.status).toBe(502);
+  });
+
+  it('treats the provider empty-body answer as flight not found', async () => {
+    // AeroDataBox answers 204 with no body for a flight/date it has nothing
+    // for; json() would throw on it.
+    upstream.mockResolvedValueOnce({ ok: false, status: 204 } as Response);
+
+    const response = await GET(request('flight=AY1331&date=2026-08-30'));
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error).toBe('flight not found');
+  });
 });

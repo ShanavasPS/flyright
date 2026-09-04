@@ -15,6 +15,7 @@ import {
   toPublicSession,
 } from './liveShared';
 import { pushLiveActivity, sendFollowerPush } from './onesignal';
+import { poolStretchFactor } from './provider';
 
 /** Internal half of the live sessions: the self-rescheduling poll chain,
  * flight-fact merging, follower push fan-out, and Live Activity updates. */
@@ -163,7 +164,8 @@ export const applyFlightFacts = internalMutation({
 
     // Re-arm the chain from the fresh state.
     const updated = (await ctx.db.get(sessionId))!;
-    const delay = nextPollDelayMs(updated, now);
+    const base = nextPollDelayMs(updated, now);
+    const delay = base === null ? null : base * (await poolStretchFactor(ctx, now));
     const pollScheduledId =
       delay === null
         ? null
@@ -181,6 +183,7 @@ export const poll = internalAction({
     let facts = null;
     if (session.shareToken || session.activityId) {
       facts = await fetchFlightFacts(
+        ctx,
         session.number,
         session.scheduledDeparture.slice(0, 10),
       ).catch(() => null);

@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from './_generated/server';
 import { FREE_CIRCLE_SIZE } from './circleShared';
 import { isPro } from './entitlements';
 import { makeToken, nextPollDelayMs } from './liveShared';
+import { poolStretchFactor } from './provider';
 
 /** ctx-bound helpers shared by the public live API, the circle API and the
  * scheduled heads-up. Pure helpers stay in liveShared.ts. */
@@ -53,7 +54,10 @@ export async function schedulePoll(ctx: MutationCtx, session: Doc<'liveSessions'
   if (session.pollScheduledId) {
     await ctx.scheduler.cancel(session.pollScheduledId).catch(() => {});
   }
-  const delay = nextPollDelayMs(session, Date.now());
+  const now = Date.now();
+  const base = nextPollDelayMs(session, now);
+  // A thin monthly pool stretches the cadence rather than killing the chain.
+  const delay = base === null ? null : base * (await poolStretchFactor(ctx, now));
   const pollScheduledId =
     delay === null
       ? null

@@ -67,9 +67,16 @@ export class FlightLookupError extends Error {
     return this.status === 401;
   }
 
-  /** Today's live-lookup budget is spent. */
+  /** Today's live-lookup budget is spent. Resets at midnight UTC. */
   get quotaExceeded(): boolean {
     return this.status === 429;
+  }
+
+  /** Our own monthly provider budget is spent, not the caller's — nothing
+   * they do makes live data come back today, so screens offer the manual
+   * path rather than a retry. */
+  get liveDataPaused(): boolean {
+    return this.status === 503;
   }
 }
 
@@ -123,9 +130,11 @@ export async function lookupFlight(
           ? 'Sign in to look flights up live.'
           : response.status === 429
             ? "Today's live lookups are used up — try again tomorrow."
-            : response.status === 501
-              ? 'Flight lookup is not configured yet.'
-              : 'Flight lookup failed — try again.';
+            : response.status === 503
+              ? 'Live flight data is paused right now — you can add this flight by hand.'
+              : response.status === 501
+                ? 'Flight lookup is not configured yet.'
+                : 'Flight lookup failed — try again.';
     throw new FlightLookupError(message, response.status);
   }
 

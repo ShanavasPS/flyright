@@ -13,13 +13,17 @@
  * add-flight flow and E2E tests work offline (see mockLeg below).
  */
 
+import {
+  flightByNumberPath,
+  flightsByRegistrationPath,
+  providerConfigured,
+  providerFetch,
+  type ProviderResponse,
+} from '../../../convex/providerFetch';
+import { normalizeLeg, toIso } from '../../../convex/flightNormalize';
+import { cacheExpiry, flightPhase, maySpend } from '../../../convex/providerShared';
 import { carrierFor } from '@/constants/carriers';
-import { gateLookup } from '@/server/lookup-gate';
-
-/** AeroDataBox uses "2026-08-10 08:00Z"; the app stores strict ISO. */
-function toIso(s: string | undefined): string | null {
-  return s ? s.replace(' ', 'T') : null;
-}
+import { beginLookup, identifyCaller, recordLookup } from '@/server/lookup-gate';
 
 /** Offline/dev stand-in: HEL→FRA on the requested date. Past flights with an
  * odd flight number arrive 195 min late (EU261-eligible); even ones are on
@@ -78,12 +82,22 @@ function mockLeg(flight: string, date: string) {
   };
 }
 
-const ADB_HOST = 'aerodatabox.p.rapidapi.com';
-
-function adbFetch(path: string, apiKey: string) {
-  return fetch(`https://${ADB_HOST}${path}`, {
-    headers: { 'X-RapidAPI-Key': apiKey, 'X-RapidAPI-Host': ADB_HOST },
-  });
+/** What a set of provider calls cost, and the freshest thing the provider
+ * said about what is left. The provider bills us, so its own reading beats
+ * any counter of ours; the last response in a call carries the newest one. */
+function poolCharge(responses: ProviderResponse[]): {
+  units: number;
+  reported: { remaining: number; limit: number } | null;
+} {
+  const units = responses.reduce((total, r) => total + r.units, 0);
+  const latest = responses.reduce<ProviderResponse['budget']>(
+    (seen, r) => r.budget ?? seen,
+    null,
+  );
+  return {
+    units,
+    reported: latest ? { remaining: latest.remaining, limit: latest.limit } : null,
+  };
 }
 
 /** Once the flight is operating, the inbound rotation is history — the
@@ -98,11 +112,11 @@ const PRE_DEPARTURE = ['Unknown', 'Expected', 'CheckIn', 'Boarding', 'Delayed', 
  * Best-effort by design — any provider hiccup just means `inbound: null`.
  */
 async function fetchInbound(
-  apiKey: string,
   reg: string,
   depAirport: string,
   scheduledDeparture: string,
   date: string,
+  spent: ProviderResponse[],
 ): Promise<Record<string, unknown> | null> {
   const departureMs = Date.parse(scheduledDeparture.replace(' ', 'T'));
   if (Number.isNaN(departureMs)) return null;
@@ -115,9 +129,10 @@ async function fetchInbound(
   let best: any = null;
   let bestArrival = -Infinity;
   for (const day of dates) {
-    const response = await adbFetch(`/flights/reg/${encodeURIComponent(reg)}/${day}`, apiKey);
+    const response = await providerFetch(flightsByRegistrationPath(reg, day));
+    spent.push(response);
     if (!response.ok) continue;
-    const legs: any[] = await response.json().catch(() => null);
+    const legs = response.body as any[];
     if (!Array.isArray(legs)) continue;
     for (const leg of legs) {
       if (leg.arrival?.airport?.iata !== depAirport) continue;
@@ -159,8 +174,7 @@ export async function GET(request: Request) {
     return Response.json({ error: 'flight and date are required' }, { status: 400 });
   }
 
-  const apiKey = process.env.AERODATABOX_API_KEY;
-  if (!apiKey) {
+  if (!providerConfigured()) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[flight-status] no AERODATABOX_API_KEY — serving mock data');
       const leg = mockLeg(flight, date);
@@ -174,104 +188,132 @@ export async function GET(request: Request) {
     );
   }
 
-  // Real provider calls are metered per caller: a verified account, or the
-  // web checker by address. Signed-out app users get 401 and are offered
-  // sign-in; a spent budget gets 429. The inbound rotation is a second
-  // provider call, so it costs two units. (The mock above is free.)
-  const gate = await gateLookup(request, wantInbound ? 2 : 1);
-  if (!gate.ok) {
-    return Response.json({ error: gate.error }, { status: gate.status });
+  // Who is asking: a verified account, or the web checker by address.
+  // Signed-out app users get 401 and are offered sign-in. (The mock is free,
+  // so this only guards real provider calls.)
+  const caller = await identifyCaller(request);
+  if (!caller.ok) {
+    return Response.json({ error: caller.error }, { status: caller.status });
   }
 
-  const upstream = await adbFetch(
-    `/flights/number/${encodeURIComponent(flight)}/${date}`,
-    apiKey,
-  );
+  const want = wantInbound ? 'inbound' : 'base';
+  // One round trip: is this answer already bought, is there pool left, and
+  // does this caller have daily allowance? The inbound rotation is an extra
+  // provider call, so it costs two units of the caller's allowance.
+  const begin = await beginLookup(caller.subject, {
+    flight,
+    date,
+    want,
+    cost: wantInbound ? 2 : 1,
+  });
+
+  // Someone already asked this question recently — free, and doesn't touch
+  // anyone's allowance.
+  if (begin.outcome === 'cached') {
+    return new Response(begin.payload, {
+      headers: { 'content-type': 'application/json', 'x-flyright-cache': 'hit' },
+    });
+  }
+
+  if (begin.outcome === 'refused') {
+    // A spent personal allowance is the caller's problem and resets at
+    // midnight UTC; a spent monthly pool is ours, and saying so honestly
+    // lets the app offer "add it manually" instead of "try again".
+    return begin.reason === 'quota'
+      ? Response.json({ error: 'quota_exceeded' }, { status: 429 })
+      : Response.json(
+          { error: 'live_data_paused', reason: 'provider_budget' },
+          { status: 503 },
+        );
+  }
+
+  const spent: ProviderResponse[] = [];
+  /** A call that produced nothing cacheable still cost units — charge them,
+   * or a run of "flight not found" lookups is invisible to the pool. */
+  const chargePool = (responses: ProviderResponse[]) =>
+    recordLookup({
+      flight,
+      date,
+      want,
+      payload: null,
+      phase: 'uncacheable',
+      expiresAt: 0,
+      ...poolCharge(responses),
+    });
+
+  const upstream = await providerFetch(flightByNumberPath(flight, date));
+  spent.push(upstream);
 
   // AeroDataBox answers 204 (empty body) when the flight/date has no data.
   if (upstream.status === 404 || upstream.status === 204) {
+    await chargePool(spent);
     return Response.json({ error: 'flight not found' }, { status: 404 });
   }
   if (!upstream.ok) {
-    return Response.json({ error: 'upstream error' }, { status: 502 });
+    await chargePool(spent);
+    // The provider itself refusing on quota is the same user-visible state as
+    // our own pool being spent, and must read the same way.
+    return upstream.status === 429
+      ? Response.json(
+          { error: 'live_data_paused', reason: 'provider_budget' },
+          { status: 503 },
+        )
+      : Response.json({ error: 'upstream error' }, { status: 502 });
   }
 
-  const legs: any[] = await upstream.json().catch(() => null);
+  const legs = upstream.body as any[];
   if (!Array.isArray(legs) || legs.length === 0) {
+    await chargePool(spent);
     return Response.json({ error: 'flight not found' }, { status: 404 });
   }
 
-  // Normalize to the shape the app needs: the rules-engine fields plus the
-  // travel-day facts (gate/terminal/times) the live timeline renders.
+  // One normalizer for both runtimes (convex/flightNormalize.ts) — the poll
+  // chain reads these same cached records, so the shape must not diverge.
   const leg = legs[0];
   const dep = leg.departure ?? {};
-  const arr = leg.arrival ?? {};
 
-  // AeroDataBox's live fields: runwayTime is an actual (touchdown/takeoff),
-  // revisedTime the airline's current estimate — which, once the flight has
-  // landed, is the last known gate-arrival time (actualTime often never fills
-  // in). predictedTime exists even for unflown flights.
-  const landed = leg.status === 'Arrived' || !!arr.actualTime?.utc || !!arr.runwayTime?.utc;
-  const actualArrival =
-    arr.actualTime?.utc ?? arr.runwayTime?.utc ?? (landed ? arr.revisedTime?.utc : null);
-
-  // Before landing, an airline-announced revision always counts as a delay
-  // signal, but predictedTime is a speculative ML estimate — it exists for
-  // flights days away, so it only counts once the flight is operating. Either
-  // way a slip within a few minutes of schedule is jitter, not a delay; delay
-  // alerts start at 30 min, so a 15-min floor loses no signal.
-  const OPERATING = ['CheckIn', 'Boarding', 'GateClosed', 'Departed', 'EnRoute', 'Approaching', 'Delayed', 'Diverted'];
-  const PREDICTED_SLIP_MIN = 15;
-  const scheduled = arr.scheduledTime?.utc;
-  const arrivalBasis = landed
-    ? actualArrival
-    : (arr.revisedTime?.utc ?? (OPERATING.includes(leg.status) ? arr.predictedTime?.utc : null));
-  const rawDelay =
-    scheduled && arrivalBasis
-      ? Math.max(0, Math.round((Date.parse(arrivalBasis) - Date.parse(scheduled)) / 60000))
-      : null;
-  const delayMinutes = landed || (rawDelay ?? 0) >= PREDICTED_SLIP_MIN ? rawDelay : null;
-  const carrier = carrierFor(flight);
-
-  // The rotation lookup is a second provider call, so it's opt-in and only
-  // runs while the inbound can still tell the user something the departure
-  // board doesn't. Its failure must never break the status response.
+  // The rotation lookup is another one or two provider calls, so it's opt-in
+  // and only runs while the inbound can still tell the user something the
+  // departure board doesn't — and only while the monthly pool has room for a
+  // nicety (`speculative`). Its failure must never break the status response.
   const reg = leg.aircraft?.reg as string | undefined;
   let inbound: Record<string, unknown> | null = null;
-  if (wantInbound && reg && dep.airport?.iata && PRE_DEPARTURE.includes(leg.status) && dep.scheduledTime?.utc) {
+  if (
+    wantInbound &&
+    maySpend(begin.level, 'speculative') &&
+    reg &&
+    dep.airport?.iata &&
+    PRE_DEPARTURE.includes(leg.status) &&
+    dep.scheduledTime?.utc
+  ) {
     inbound = await fetchInbound(
-      apiKey,
       reg,
       dep.airport.iata,
       dep.scheduledTime.utc,
       date,
+      spent,
     ).catch(() => null);
   }
 
-  return Response.json({
-    aircraft: reg ? { reg, model: leg.aircraft?.model ?? null } : null,
-    inbound,
+  const facts = normalizeLeg(leg, flight, date, inbound);
+
+  // File the answer so the next caller asking the same question — the other
+  // traveller on this flight, this journey's detail screen reopened, the next
+  // poll in the chain — gets it for free. How long it stays usable follows
+  // the flight's phase: a landed flight is history, one boarding now is not.
+  const payload = JSON.stringify(facts);
+  const now = Date.now();
+  await recordLookup({
     flight,
     date,
-    status: leg.status ?? 'unknown',
-    landed,
-    delayMinutes,
-    distanceKm: leg.greatCircleDistance?.km ?? null,
-    carrier: { name: leg.airline?.name ?? carrier.name, iata: leg.airline?.iata ?? carrier.iata },
-    carrierCountry: carrier.country,
-    from: { code: dep.airport?.iata, country: dep.airport?.countryCode },
-    to: { code: arr.airport?.iata, country: arr.airport?.countryCode },
-    scheduledDeparture: toIso(dep.scheduledTime?.utc),
-    scheduledArrival: toIso(arr.scheduledTime?.utc),
-    gate: dep.gate ?? null,
-    terminal: dep.terminal ?? null,
-    checkInDesk: dep.checkInDesk ?? null,
-    baggageBelt: arr.baggageBelt ?? null,
-    // AeroDataBox has no separate boarding time; the widget derives one.
-    boardingTime: null,
-    estimatedDeparture: toIso(dep.predictedTime?.utc ?? dep.revisedTime?.utc),
-    actualDeparture: toIso(dep.actualTime?.utc ?? dep.runwayTime?.utc),
-    estimatedArrival: toIso(arr.predictedTime?.utc ?? arr.revisedTime?.utc),
-    actualArrival: toIso(actualArrival),
+    want,
+    payload,
+    phase: flightPhase(facts, now),
+    expiresAt: cacheExpiry(facts, now),
+    ...poolCharge(spent),
+  });
+
+  return new Response(payload, {
+    headers: { 'content-type': 'application/json', 'x-flyright-cache': 'miss' },
   });
 }

@@ -1,31 +1,39 @@
-/** Who may spend a live flight lookup, and how many they have left today.
+/** Who may spend a live flight lookup, and whether there is anything left to
+ * spend — for them, and for us.
  *
- * The flight-status route proxies a metered provider, so it is gated:
+ * The flight-status route proxies a metered provider, so it is gated in two
+ * separable halves:
  *
- *  1. Identity. A `Bearer` Clerk session token identifies an account; the
- *     token is verified here against the Clerk instance's JWKS (RS256, via
- *     WebCrypto — the route runs on Cloudflare Workers and in the Expo dev
- *     server, both of which have it). No token: only the web compensation
- *     checker may proceed, recognised by its Origin/Referer, and it is
- *     budgeted per address. The native app signed out gets 401 and offers
- *     sign-in instead.
- *  2. Budget. Every request spends units against a per-caller daily counter
- *     kept in Convex (convex/lookups.ts) — Workers have no memory of their
- *     own. Pro accounts get the larger limit, read server-side from the
- *     entitlements mirror. Infra hiccups fail open: a metering outage must
- *     not take lookups down; bots are the concern, not the counter.
+ *  1. Identity (`identifyCaller`). A `Bearer` Clerk session token identifies
+ *     an account; the token is verified here against the Clerk instance's
+ *     JWKS (RS256, via WebCrypto — the route runs on Cloudflare Workers and
+ *     in the Expo dev server, both of which have it). No token: only the web
+ *     compensation checker may proceed, recognised by its Origin/Referer, and
+ *     it is budgeted per address. The native app signed out gets 401 and
+ *     offers sign-in instead. This half is local and free.
+ *  2. Spending (`beginLookup`). One Convex round trip that answers three
+ *     questions at once — is this answer already cached, is there monthly
+ *     provider pool left, and does this caller have daily allowance — because
+ *     Workers pay a network hop for each question asked separately. See
+ *     convex/provider.ts. Pro accounts get the larger daily limit, read
+ *     server-side from the entitlements mirror.
+ *
+ * Infra hiccups fail open: a metering outage must not take lookups down;
+ * bots are the concern, not the counter.
  *
  * Server-only: never import from app code. */
 
 import { ConvexHttpClient } from 'convex/browser';
 
 import { api } from '../../convex/_generated/api';
-import { lookupDay, type LookupBudget } from '../../convex/lookupShared';
+import { lookupDay } from '../../convex/lookupShared';
+import type { BeginResult } from '../../convex/provider';
+import type { Degradation } from '../../convex/providerShared';
 
 export type GateSubject = { kind: 'user'; userId: string } | { kind: 'anonymous'; address: string };
 
 export type GateResult =
-  | { ok: true; subject: GateSubject; budget: LookupBudget | null }
+  | { ok: true; subject: GateSubject }
   | { ok: false; status: 401 | 429 | 500; error: string };
 
 /** Sites whose visitors may look a flight up without an account (the
@@ -40,7 +48,7 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
-export async function gateLookup(request: Request, cost: number): Promise<GateResult> {
+export async function identifyCaller(request: Request): Promise<GateResult> {
   const token = bearerToken(request);
   let subject: GateSubject;
 
@@ -62,9 +70,7 @@ export async function gateLookup(request: Request, cost: number): Promise<GateRe
     return { ok: false, status: 401, error: 'sign_in_required' };
   }
 
-  const budget = await spend(subject, cost);
-  if (budget && !budget.allowed) return { ok: false, status: 429, error: 'quota_exceeded' };
-  return { ok: true, subject, budget };
+  return { ok: true, subject };
 }
 
 // -- identity -----------------------------------------------------------------
@@ -247,24 +253,71 @@ function convex(): ConvexHttpClient | null {
   return convexClient;
 }
 
-/** Spend `cost` units of the subject's daily budget. Null when metering is
- * not configured or unreachable — the route then proceeds unmetered. */
-async function spend(subject: GateSubject, cost: number): Promise<LookupBudget | null> {
+export interface LookupRequest {
+  flight: string;
+  date: string;
+  /** Whether the answer must include the resolved inbound rotation. */
+  want: 'base' | 'inbound';
+  /** Units of the caller's daily allowance this costs on a cache miss. */
+  cost: number;
+}
+
+/**
+ * Cache, pool and daily allowance in one round trip. A `permit` also carries
+ * the current degradation level, which tells the route whether the pool is
+ * thin enough to skip the speculative inbound call.
+ *
+ * Fails open to a permit: if metering is unconfigured or Convex is
+ * unreachable, a lookup is better than an outage. The provider's own monthly
+ * ceiling is the backstop in that case.
+ */
+export async function beginLookup(
+  subject: GateSubject,
+  request: LookupRequest,
+): Promise<BeginResult> {
   const secret = process.env.LOOKUP_QUOTA_SECRET;
   const client = convex();
   if (!secret || !client) {
-    if (isProduction()) console.warn('[lookup-gate] quota metering not configured');
-    return null;
+    if (isProduction()) console.warn('[lookup-gate] lookup metering not configured');
+    return { outcome: 'permit', level: 'full' };
   }
   try {
-    return await client.mutation(api.lookups.consume, {
+    return await client.mutation(api.provider.begin, {
       secret,
       day: lookupDay(new Date()),
-      cost,
+      kind: 'interactive',
       subject,
+      ...request,
     });
   } catch (error) {
-    console.warn('[lookup-gate] quota check failed, proceeding unmetered', error);
-    return null;
+    console.warn('[lookup-gate] metering unreachable, proceeding unmetered', error);
+    return { outcome: 'permit', level: 'full' };
   }
 }
+
+/** File a fresh answer in the shared cache and charge the pool. Best-effort:
+ * a failure here costs money on the next identical request but must never
+ * fail the response the caller is waiting for. */
+export async function recordLookup(args: {
+  flight: string;
+  date: string;
+  want: 'base' | 'inbound';
+  /** null charges the pool without caching anything — a call that cost units
+   * but produced no answer worth keeping (a 404, an upstream error). */
+  payload: string | null;
+  phase: string;
+  expiresAt: number;
+  units: number;
+  reported: { remaining: number; limit: number } | null;
+}): Promise<void> {
+  const secret = process.env.LOOKUP_QUOTA_SECRET;
+  const client = convex();
+  if (!secret || !client) return;
+  try {
+    await client.mutation(api.provider.record, { secret, ...args });
+  } catch (error) {
+    console.warn('[lookup-gate] could not cache the answer', error);
+  }
+}
+
+export type { BeginResult, Degradation };

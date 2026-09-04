@@ -244,4 +244,39 @@ export default defineSchema({
     count: v.number(),
     updatedAt: v.string(),
   }).index('by_key', ['key']),
+
+  /** Shared cache of provider answers, keyed `<FLIGHT>:<YYYY-MM-DD>`, so the
+   * same question is bought once however many callers ask it — two travellers
+   * on one flight, a reopened journey detail, the next poll in a chain, a
+   * compensation check repeated on a flight from March.
+   *
+   * The provider's terms permit retention for at most 7 consecutive days, so
+   * `crons.ts` prunes on that horizon; `expiresAt` is the (much shorter)
+   * freshness horizon, which follows the flight's phase. `payload` is the
+   * normalized response as JSON, not the provider's raw body — the shape the
+   * app consumes, so a served hit needs no re-normalizing. */
+  flightFacts: defineTable({
+    key: v.string(),
+    payload: v.string(),
+    /** Phase at the moment of caching, for debugging TTL choices. */
+    phase: v.string(),
+    fetchedAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index('by_key', ['key'])
+    .index('by_fetchedAt', ['fetchedAt']),
+
+  /** The monthly provider pool — one row per billing period. The provider is
+   * the authority when it sends budget headers (`reported*`); `unitsSpent` is
+   * the backstop for routes that send none, counted against the plan size in
+   * AERODATABOX_MONTHLY_UNITS. Read by providerShared.degradationFor to
+   * decide how freely the pool may still be spent. */
+  providerBudget: defineTable({
+    period: v.string(),
+    unitsSpent: v.number(),
+    reportedRemaining: v.union(v.number(), v.null()),
+    reportedLimit: v.union(v.number(), v.null()),
+    reportedAt: v.union(v.number(), v.null()),
+    updatedAt: v.string(),
+  }).index('by_period', ['period']),
 });

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as carriersShared from "../carriersShared.js";
 import type * as circle from "../circle.js";
 import type * as circleInternal from "../circleInternal.js";
 import type * as circleShared from "../circleShared.js";
@@ -15,6 +16,7 @@ import type * as crons from "../crons.js";
 import type * as entitlementShared from "../entitlementShared.js";
 import type * as entitlements from "../entitlements.js";
 import type * as flightData from "../flightData.js";
+import type * as flightNormalize from "../flightNormalize.js";
 import type * as http from "../http.js";
 import type * as journeys from "../journeys.js";
 import type * as live from "../live.js";
@@ -25,6 +27,9 @@ import type * as lookupShared from "../lookupShared.js";
 import type * as lookups from "../lookups.js";
 import type * as onesignal from "../onesignal.js";
 import type * as photos from "../photos.js";
+import type * as provider from "../provider.js";
+import type * as providerFetch from "../providerFetch.js";
+import type * as providerShared from "../providerShared.js";
 import type * as support from "../support.js";
 import type * as users from "../users.js";
 
@@ -35,6 +40,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  carriersShared: typeof carriersShared;
   circle: typeof circle;
   circleInternal: typeof circleInternal;
   circleShared: typeof circleShared;
@@ -42,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   entitlementShared: typeof entitlementShared;
   entitlements: typeof entitlements;
   flightData: typeof flightData;
+  flightNormalize: typeof flightNormalize;
   http: typeof http;
   journeys: typeof journeys;
   live: typeof live;
@@ -52,6 +59,9 @@ declare const fullApi: ApiFromModules<{
   lookups: typeof lookups;
   onesignal: typeof onesignal;
   photos: typeof photos;
+  provider: typeof provider;
+  providerFetch: typeof providerFetch;
+  providerShared: typeof providerShared;
   support: typeof support;
   users: typeof users;
 }>;
