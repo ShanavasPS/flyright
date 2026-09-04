@@ -32,11 +32,35 @@ describe('gateLookup', () => {
     expect(result.ok && result.subject.kind).toBe('anonymous');
   });
 
-  it('ignores the web marker when the request comes from another site', async () => {
+  it('refuses another site that has no marker', async () => {
+    // A site cannot make a browser send the marker: a cross-site request
+    // with a custom header needs a preflight this route does not answer.
+    const result = await gateLookup(request({ origin: 'https://scraper.example' }), 1);
+    expect(result).toEqual({ ok: false, status: 401, error: 'sign_in_required' });
+  });
+
+  it('keeps the marker working when infrastructure adds an origin of the host', async () => {
+    // EAS Hosting forwards an Origin/Referer of the requested host; on a
+    // preview deployment that host is not in the allow-list, and it must not
+    // override the page's own marker.
     const result = await gateLookup(
-      request({ 'x-flyright-web': '1', origin: 'https://scraper.example' }),
+      request({
+        'x-flyright-web': '1',
+        origin: 'https://flyright--abc123.expo.app',
+        referer: 'https://flyright--abc123.expo.app/check',
+      }),
       1,
     );
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts a browser referrer from one of our sites without a marker', async () => {
+    const result = await gateLookup(request({ referer: 'https://getflyright.com/check' }), 1);
+    expect(result.ok).toBe(true);
+  });
+
+  it('refuses a referrer from anywhere else', async () => {
+    const result = await gateLookup(request({ referer: 'https://scraper.example/x' }), 1);
     expect(result).toEqual({ ok: false, status: 401, error: 'sign_in_required' });
   });
 

@@ -84,9 +84,7 @@ function bearerToken(request: Request): string | null {
   return match ? match[1] : null;
 }
 
-function requestOrigin(request: Request): string | null {
-  const origin = header(request, 'origin');
-  if (origin) return origin;
+function refererOrigin(request: Request): string | null {
   const referer = header(request, 'referer');
   if (!referer) return null;
   try {
@@ -103,14 +101,24 @@ function webOriginAllowed(origin: string): boolean {
 }
 
 /** Our own public compensation checker, the only caller allowed without an
- * account. The page identifies itself with a header, because a browser sends
- * no `Origin` on a same-origin GET; when it does send an origin or referrer,
- * that has to be one of our sites. The header is not a credential — anyone
- * can copy it — so the per-address daily budget is what actually limits it. */
+ * account.
+ *
+ * The page's own marker decides first. It is not a credential — anyone can
+ * copy it — but a *website* cannot make a visitor's browser send it: a
+ * cross-site request carrying a custom header needs a CORS preflight, which
+ * this route does not answer. What it does do is survive infrastructure:
+ * EAS Hosting forwards an `Origin` and `Referer` of the host being requested,
+ * so an origin-first rule refuses the checker on any host outside the list
+ * (a preview deployment) while rubber-stamping every caller on the hosts
+ * inside it. Server-side callers can send anything, and are held by the
+ * per-address daily budget rather than by any header.
+ *
+ * Origin (or, failing that, Referer) is the fallback for a browser that
+ * sends no marker: it has to name one of our sites. */
 function isWebChecker(request: Request): boolean {
-  const origin = requestOrigin(request);
-  if (origin) return webOriginAllowed(origin);
-  return header(request, 'x-flyright-web') === '1';
+  if (header(request, 'x-flyright-web') === '1') return true;
+  const origin = header(request, 'origin') ?? refererOrigin(request);
+  return !!origin && webOriginAllowed(origin);
 }
 
 function clientAddress(request: Request): string {
