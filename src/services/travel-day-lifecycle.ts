@@ -38,6 +38,7 @@ import {
   postTravelLiveUpdate,
   type LiveUpdateContent,
 } from '../../modules/flyright-live-update';
+import { endOrphanLiveActivities } from '../../modules/flyright-live-activities';
 import {
   allTravelDayRows,
   markActivity,
@@ -163,6 +164,7 @@ async function doReconcile(): Promise<void> {
     for (const row of stateRows) {
       if (row.activityStartedAt && !row.endedAt) await teardown(row.journeyId, 'disabled');
     }
+    await sweepOrphanActivities([]);
     return;
   }
 
@@ -221,5 +223,31 @@ async function doReconcile(): Promise<void> {
       // last state ("Landed in LHR") instead of a generic goodbye.
       await teardown(j.id, 'ended', liveContent(j, state, getFlightFacts(j.id), now));
     }
+  }
+
+  if (Platform.OS === 'ios') {
+    const keep = journeyRows
+      .filter((j) => {
+        const { phase } = travelWindow(j, rowToState(byJourney.get(j.id)), now);
+        return phase === 'reminder' || phase === 'live';
+      })
+      .map((j) => getActivityId(j.id))
+      .filter((id): id is string => !!id);
+    await sweepOrphanActivities(keep);
+  }
+}
+
+/** The OS is the source of truth for what's on the lock screen; the store
+ * above only remembers one id per journey. Anything ActivityKit still holds
+ * that isn't a remembered, in-window activity — a journey deleted around the
+ * lifecycle, a start whose id was lost, a card carried across an update —
+ * gets ended here so it can't sit next to the real one for hours. */
+async function sweepOrphanActivities(keep: string[]): Promise<void> {
+  if (Platform.OS !== 'ios') return;
+  try {
+    const ended = await endOrphanLiveActivities(keep);
+    if (ended > 0) Observe.logEvent('travel_day.orphan_activities_ended', { attributes: { count: ended } });
+  } catch (error) {
+    console.warn('[travel-day-lifecycle] orphan sweep failed', error);
   }
 }
