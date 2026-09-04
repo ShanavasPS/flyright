@@ -472,7 +472,9 @@ function shareTrip(journey: Journey) {
 /** The trip at a glance, the boarding-pass row the journeys list uses but on
  * the page: airline and flight number as an eyebrow with a relative date
  * chip, the two codes big at the edges with the contrail and plane between,
- * cities and times beneath, then the distance / block time / date line. */
+ * cities and times beneath. The block time sits over the contrail and the
+ * distance under it, so both read as facts about the segment rather than as
+ * a footnote — the pattern Polarsteps, Qantas and Flighty all use. */
 function RouteHero({
   journey,
   now,
@@ -488,9 +490,9 @@ function RouteHero({
   const flown = Date.parse(journey.scheduledDeparture) <= now;
   const chip = dateChipLabel(journey.scheduledDeparture, new Date(now));
   const duration = durationLabel(journey.scheduledDeparture, journey.scheduledArrival);
-  // The date lives in the screen header (travelDayTitle); this line keeps
-  // to distance and duration.
-  const meta = [`${Math.round(journey.distanceKm).toLocaleString()} km`, duration].filter(Boolean);
+  // The date lives in the screen header (travelDayTitle); the contrail
+  // column carries only what belongs to the segment itself.
+  const distance = `${Math.round(journey.distanceKm).toLocaleString()} km`;
 
   return (
     <View style={styles.hero}>
@@ -524,14 +526,32 @@ function RouteHero({
           {schedule && <ThemedText style={styles.time}>{schedule.departure}</ThemedText>}
         </View>
         <View style={styles.contrail}>
-          <ContrailDots />
-          <SymbolView
-            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-            size={18}
-            tintColor={theme.tint}
-            style={Platform.OS === 'ios' ? undefined : styles.rotated}
-          />
-          <ContrailDots />
+          {/* A blank keeps the line centred on the codes when the lookup
+              carried no UTC offsets and there is no block time to show. */}
+          <ThemedText
+            type="smallBold"
+            themeColor="heading"
+            style={styles.contrailLabel}
+            numberOfLines={1}>
+            {duration ?? ' '}
+          </ThemedText>
+          <View style={styles.contrailLine}>
+            <ContrailDots />
+            <SymbolView
+              name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+              size={18}
+              tintColor={theme.tint}
+              style={Platform.OS === 'ios' ? undefined : styles.rotated}
+            />
+            <ContrailDots />
+          </View>
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            style={styles.contrailLabel}
+            numberOfLines={1}>
+            {distance}
+          </ThemedText>
         </View>
         <View style={[styles.endpoint, styles.endpointRight]}>
           <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
@@ -545,10 +565,6 @@ function RouteHero({
           )}
         </View>
       </View>
-
-      <ThemedText type="small" themeColor="textSecondary" style={styles.meta}>
-        {meta.join(' · ')}
-      </ThemedText>
     </View>
   );
 }
@@ -897,14 +913,28 @@ const styles = StyleSheet.create({
     fontWeight: 600,
     marginTop: Spacing.one,
   },
-  // Sits on the codes' baseline band, not the whole endpoint column.
+  // Label + line + label total 54pt; the -4 margin centres the plane on the
+  // 46pt code line rather than on the whole endpoint column.
   contrail: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.half,
+    height: 54,
+    marginTop: -4,
+    paddingHorizontal: Spacing.one,
+  },
+  contrailLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
+  },
+  contrailLine: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    height: 46,
-    paddingHorizontal: Spacing.one,
+    height: 18,
   },
   contrailDots: {
     flex: 1,
@@ -920,9 +950,6 @@ const styles = StyleSheet.create({
   },
   rotated: {
     transform: [{ rotate: '90deg' }],
-  },
-  meta: {
-    textAlign: 'center',
   },
   cardHeader: {
     flexDirection: 'row',
