@@ -31,7 +31,7 @@ const SHOTS = [
   {
     raw: 'phone-05-travel-day.png',
     headline: 'Your travel day, live',
-    sub: 'A boarding pass that counts you down to departure',
+    sub: 'Every step from the airport to the gate, ticked off',
   },
   {
     raw: 'phone-03-verdict.png',

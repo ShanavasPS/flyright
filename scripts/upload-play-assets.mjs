@@ -12,10 +12,13 @@ const LANGUAGE = 'en-US';
 const API = 'https://androidpublisher.googleapis.com/androidpublisher/v3';
 const UPLOAD = 'https://androidpublisher.googleapis.com/upload/androidpublisher/v3';
 
+/** All six panels the generator produces — the listing carries the whole set,
+ *  so a shorter list here would silently drop the last two on every upload. */
+const PANELS = [1, 2, 3, 4, 5, 6];
 const IMAGE_SETS = {
-  phoneScreenshots: ['phone-01.png', 'phone-02.png', 'phone-03.png', 'phone-04.png'],
-  sevenInchScreenshots: ['tablet7-01.png', 'tablet7-02.png', 'tablet7-03.png', 'tablet7-04.png'],
-  tenInchScreenshots: ['tablet10-01.png', 'tablet10-02.png', 'tablet10-03.png', 'tablet10-04.png'],
+  phoneScreenshots: PANELS.map((n) => `phone-0${n}.png`),
+  sevenInchScreenshots: PANELS.map((n) => `tablet7-0${n}.png`),
+  tenInchScreenshots: PANELS.map((n) => `tablet10-0${n}.png`),
   icon: ['play-icon-512.png'],
   featureGraphic: ['feature-graphic-1024x500.png'],
 };
