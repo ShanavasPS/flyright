@@ -1,0 +1,18 @@
+FlyRight 1.0.21 — a feature release on top of 1.0.20.
+
+NEW IN THIS BUILD:
+
+1) People — inviting someone inside the app. Until now, inviting family or friends to follow your trips meant sending them a link. The People tab now also searches FlyRight itself: type a person's exact first name or the email address they signed in with, tap Invite, and the invitation arrives as a push and as a row in their People tab, where they tap Follow or Ignore. Search matches whole names and whole addresses only, never prefixes, and a result shows a name and a photo — never anyone's email address. Nobody joins anyone's circle without accepting an invitation, and either side can remove the other at any time (long-press a row). The share link still exists, one tap further in, for people who don't have the app yet.
+
+2) Ticket import now leads with the barcode. A shared or uploaded ticket is read from its boarding-pass barcode (PDF417/QR/Aztec) first, and the printed text only fills in what the code does not carry. A document with no barcode is declined with an explanation instead of being guessed at. This fixes legs that imported on the wrong date or between the wrong airports. Parsing is still done entirely on the device; documents are never uploaded to be read.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- People, both ends on one device: signed in as the demo account, open the People tab -> "Invite someone" -> type App -> tap Invite. A second test account, reviewer+clerk_test@getflyright.com, signs in with the email-code flow (a test address: no mail is sent and the code is always 424242) and shows that invitation under "Invitations" with Follow and Ignore.
+- Ticket import: My travels -> + -> "Upload a ticket PDF or screenshot", or share an airline PDF into FlyRight from Files or Mail. Any e-ticket or boarding pass carrying a barcode imports; a document without one is declined by design.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.20: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos, and push for flight status, claim deadlines and the trip updates above. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
