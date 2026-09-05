@@ -1,8 +1,7 @@
-import { useAuth, useUser } from '@clerk/expo';
+import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
@@ -36,7 +35,7 @@ import {
 } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { shareInvite } from '@/services/circle-share';
+import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
 import { useProLocked } from '@/services/purchases';
 import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
@@ -44,25 +43,25 @@ import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
 type CircleList = NonNullable<ReturnType<typeof useQuery<typeof api.circle.list>>>;
 type Following = CircleList['following'][number];
 type Follower = CircleList['followers'][number];
+type Incoming = CircleList['incoming'][number];
+type Outgoing = CircleList['outgoing'][number];
 
 // The navy the hero avatars are ringed in — the pass card's own surface, so
 // overlapping faces cut cleanly into each other.
 const NAVY = '#0C1B36';
 const LIVE_GREEN = '#2FD68C';
 
-/** Mint an invite link and hand it to the share sheet — the only way into
- * someone's circle. Signed-out users go through sign-in first: followers
- * are addressed by Clerk id. A free account at FREE_CIRCLE_SIZE followers
- * goes to the paywall instead — the server refuses the link anyway. */
+/** The one way into someone's circle: the add-person sheet, which searches
+ * FlyRight for people who already have it and falls back to the share link
+ * for everyone else. Signed-out users go through sign-in first (followers
+ * are addressed by Clerk id); a free account already at FREE_CIRCLE_SIZE
+ * goes to the paywall, since the server would refuse either invitation. */
 function useInvite(full: boolean) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
-  const { user } = useUser();
   const proLocked = useProLocked();
-  const createInvite = useMutation(api.circle.createInvite);
-  const [busy, setBusy] = useState(false);
 
-  const invite = async () => {
+  return () => {
     if (!isSignedIn) {
       router.push({ pathname: '/sign-in', params: { next: '/people' } });
       return;
@@ -71,34 +70,17 @@ function useInvite(full: boolean) {
       router.push({ pathname: '/paywall', params: { next: '/people' } });
       return;
     }
-    setBusy(true);
-    try {
-      const { token } = await createInvite({});
-      Observe.logEvent('circle.invited');
-      await shareInvite(token, user?.firstName);
-    } catch (e) {
-      // The SDK says Pro but the webhook mirror hasn't caught up yet (or a
-      // build that can't sell Pro is at the cap) — say so rather than spin.
-      if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
-        Alert.alert(
-          'Your circle is full',
-          proLocked
-            ? `Free accounts share with ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`}. Pro lets your whole family follow.`
-            : 'Your Pro purchase is still syncing — try again in a moment.',
-        );
-      }
-      // Otherwise offline — the button stays, retry works.
-    } finally {
-      setBusy(false);
-    }
+    router.push('/add-person');
   };
-  return { invite, busy };
 }
 
 /** "2 following · 3 watching you" — the header eyebrow, My travels-style. */
 function circleEyebrow(data: CircleList | null | undefined): string {
   if (!data) return 'Your circle';
   const parts: string[] = [];
+  if (data.incoming.length) {
+    parts.push(`${data.incoming.length} invitation${data.incoming.length > 1 ? 's' : ''}`);
+  }
   if (data.following.length) parts.push(`${data.following.length} following`);
   if (data.followers.length) parts.push(`${data.followers.length} watching you`);
   return parts.join(' · ') || 'Your circle';
@@ -110,7 +92,7 @@ function circleEyebrow(data: CircleList | null | undefined): string {
 export function People() {
   const { isSignedIn } = useAuth();
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
-  const { invite, busy } = useInvite(!!data?.full);
+  const invite = useInvite(!!data?.full);
   const proLocked = useProLocked();
 
   let body: React.ReactNode;
@@ -128,14 +110,18 @@ export function People() {
   } else if (data == null) {
     // undefined while loading; null while Convex auth is still settling.
     body = <ActivityIndicator style={styles.spinner} />;
-  } else if (!data.following.length && !data.followers.length) {
+  } else if (
+    !data.following.length &&
+    !data.followers.length &&
+    !data.incoming.length &&
+    !data.outgoing.length
+  ) {
     body = (
       <>
         <CircleHero
           headline="Nobody's following you yet"
           pitch="Invite the people who'd text “boarded yet?” — they'll know before they think to ask."
           action="Invite someone"
-          busy={busy}
           onAction={invite}
         />
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
@@ -146,6 +132,15 @@ export function People() {
   } else {
     body = (
       <>
+        {/* Answer first: someone is waiting on it. */}
+        {data.incoming.length > 0 && (
+          <>
+            <SectionLabel>Invitations</SectionLabel>
+            {data.incoming.map((r) => (
+              <RequestRow key={r.id} request={r} />
+            ))}
+          </>
+        )}
         {data.following.length > 0 && (
           <>
             <SectionLabel>Following</SectionLabel>
@@ -158,7 +153,10 @@ export function People() {
         {data.followers.map((p) => (
           <FollowerRow key={p.userId} person={p} />
         ))}
-        <InviteRow busy={busy} locked={data.full && proLocked} onInvite={invite} />
+        {data.outgoing.map((r) => (
+          <PendingRow key={r.id} request={r} />
+        ))}
+        <InviteRow locked={data.full && proLocked} onInvite={invite} />
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           People you share with see your upcoming flights and get updates on travel day. Remove
           anyone at any time.
@@ -183,7 +181,7 @@ export function People() {
               People
             </ThemedText>
           </View>
-          {isSignedIn && <InviteButton disabled={busy} onPress={invite} />}
+          {isSignedIn && <InviteButton onPress={invite} />}
         </View>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
@@ -197,7 +195,7 @@ export function People() {
 }
 
 /** The header's round invite button — same glass disc as My travels' "+". */
-function InviteButton({ onPress, disabled }: { onPress: () => void; disabled: boolean }) {
+function InviteButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme();
   const glass = isLiquidGlassAvailable();
   const icon = (
@@ -212,7 +210,6 @@ function InviteButton({ onPress, disabled }: { onPress: () => void; disabled: bo
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Invite someone to follow your trips"
-      disabled={disabled}
       onPress={onPress}>
       {glass ? (
         <GlassView glassEffectStyle="regular" isInteractive style={styles.addCircle}>
@@ -479,20 +476,120 @@ function FollowerRow({ person }: { person: Follower }) {
 
 /** Dashed "add another" row closing the list. `locked` is the free cap:
  * same row, Pro pitch, and the tap opens the paywall (see useInvite). */
-function InviteRow({
-  busy,
-  locked,
-  onInvite,
-}: {
-  busy: boolean;
-  locked: boolean;
-  onInvite: () => void;
-}) {
+/** An invitation waiting on me: "<name> invited you to follow their trips",
+ * with the two answers on the row. Accepting runs the same join a redeemed
+ * link does, so this lands in Following exactly like the web invite. */
+function RequestRow({ request }: { request: Incoming }) {
+  const theme = useTheme();
+  const respond = useMutation(api.circle.respondToRequest);
+  const [busy, setBusy] = useState(false);
+
+  const answer = async (accept: boolean) => {
+    setBusy(true);
+    try {
+      await respond({ requestId: request.id, accept });
+      if (accept) trackEvent('circle_joined');
+    } catch (e) {
+      // Their circle filled up while the invitation sat here; it stays
+      // pending, so nothing is lost by saying so and leaving it.
+      Alert.alert(
+        e instanceof ConvexError && e.data === CIRCLE_FULL
+          ? `${request.name}'s circle is full`
+          : `Couldn't answer that just now`,
+        e instanceof ConvexError && e.data === CIRCLE_FULL
+          ? `${request.name} can make room with FlyRight Pro. The invitation stays here.`
+          : 'Check your connection and try again.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SheenCard style={styles.rowCard}>
+      <Avatar name={request.name} imageUrl={request.imageUrl} size={44} />
+      <View style={styles.rowBody}>
+        <ThemedText themeColor="heading" numberOfLines={1}>
+          {request.name}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+          Invited you to follow their trips
+        </ThemedText>
+      </View>
+      <View style={styles.answerRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Follow ${request.name}'s trips`}
+          disabled={busy}
+          onPress={() => void answer(true)}
+          style={({ pressed }) => [
+            styles.answerChip,
+            { backgroundColor: theme.tint },
+            pressed && styles.pressed,
+          ]}>
+          {busy ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <ThemedText type="smallBold" style={styles.answerChipLabel}>
+              Follow
+            </ThemedText>
+          )}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Ignore ${request.name}'s invitation`}
+          disabled={busy}
+          onPress={() => void answer(false)}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Ignore
+          </ThemedText>
+        </Pressable>
+      </View>
+    </SheenCard>
+  );
+}
+
+/** An invitation I sent that hasn't been answered — a seat held open in
+ * Sharing with, tap to take it back. */
+function PendingRow({ request }: { request: Outgoing }) {
+  const cancel = useMutation(api.circle.cancelRequest);
+
+  const actions = () =>
+    Alert.alert(request.name, `Invited ${formatDayLabel(request.since)}. Not answered yet.`, [
+      {
+        text: 'Withdraw invitation',
+        style: 'destructive',
+        onPress: () => void cancel({ requestId: request.id }),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={actions}
+      style={({ pressed }) => pressed && styles.pressed}>
+      <SheenCard style={[styles.rowCard, styles.pendingRow]}>
+        <Avatar name={request.name} imageUrl={request.imageUrl} size={44} />
+        <View style={styles.rowBody}>
+          <ThemedText themeColor="heading" numberOfLines={1}>
+            {request.name}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            Invited — waiting for them
+          </ThemedText>
+        </View>
+      </SheenCard>
+    </Pressable>
+  );
+}
+
+function InviteRow({ locked, onInvite }: { locked: boolean; onInvite: () => void }) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={busy}
       onPress={onInvite}
       testID={locked ? 'invite-row-locked' : 'invite-row'}
       style={({ pressed }) => pressed && styles.pressed}>
@@ -512,7 +609,7 @@ function InviteRow({
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
             {locked
               ? `Free includes ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`} — Pro has no limit`
-              : 'Share a link — it works for 7 days'}
+              : 'Search FlyRight by name or email, or share a link'}
           </ThemedText>
         </View>
       </View>
@@ -719,6 +816,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: Spacing.two,
     marginTop: Spacing.one,
+  },
+  answerRow: {
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  answerChip: {
+    minWidth: 84,
+    alignItems: 'center',
+    borderRadius: 999,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  answerChipLabel: {
+    color: '#ffffff',
+  },
+  pendingRow: {
+    opacity: 0.75,
   },
   pressed: {
     opacity: 0.9,

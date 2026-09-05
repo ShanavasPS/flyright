@@ -1,7 +1,34 @@
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
-import { internalMutation, mutation } from './_generated/server';
+import { internalMutation, mutation, type MutationCtx } from './_generated/server';
+import { searchKey } from './circleShared';
+
+/** One writer for the profile mirror, so the webhook and the client's own
+ * sync can't disagree about what a row holds — including the two lowercased
+ * keys "add someone" searches on. A null email leaves whatever is already
+ * stored alone: the webhook always knows the address, the client may not. */
+async function writeProfile(
+  ctx: MutationCtx,
+  userId: string,
+  name: string,
+  imageUrl: string | null,
+  email: string | null,
+) {
+  const existing = await ctx.db
+    .query('profiles')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .unique();
+  const fields = {
+    name,
+    imageUrl,
+    email: searchKey(email) ?? existing?.email ?? null,
+    searchName: searchKey(name),
+    updatedAt: new Date().toISOString(),
+  };
+  if (existing) await ctx.db.patch(existing._id, fields);
+  else await ctx.db.insert('profiles', { userId, ...fields });
+}
 
 /** Hard-deletes everything a user synced — called from the Clerk
  * user.deleted webhook (see http.ts), so account deletion leaves no
@@ -60,6 +87,16 @@ export const purge = internalMutation({
       .withIndex('by_owner', (q) => q.eq('ownerId', userId))
       .collect();
     for (const i of invites) await ctx.db.delete(i._id);
+
+    // In-app invitations they sent or received (circleRequests).
+    for (const index of ['by_from_status', 'by_to_status'] as const) {
+      const field = index === 'by_from_status' ? 'fromUserId' : 'toUserId';
+      const requests = await ctx.db
+        .query('circleRequests')
+        .withIndex(index, (q) => q.eq(field, userId))
+        .collect();
+      for (const r of requests) await ctx.db.delete(r._id);
+    }
     for (const row of rows) {
       if (row.headsUpScheduledId) await ctx.scheduler.cancel(row.headsUpScheduledId).catch(() => {});
     }
@@ -83,15 +120,14 @@ export const purge = internalMutation({
 /** Display-name mirror for follower-facing copy, fed by the Clerk webhook
  * (user.created/user.updated) — Convex JWTs only carry the subject. */
 export const upsertProfile = internalMutation({
-  args: { userId: v.string(), name: v.string(), imageUrl: v.union(v.string(), v.null()) },
-  handler: async (ctx, { userId, name, imageUrl }) => {
-    const existing = await ctx.db
-      .query('profiles')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .unique();
-    const updatedAt = new Date().toISOString();
-    if (existing) await ctx.db.patch(existing._id, { name, imageUrl, updatedAt });
-    else await ctx.db.insert('profiles', { userId, name, imageUrl, updatedAt });
+  args: {
+    userId: v.string(),
+    name: v.string(),
+    imageUrl: v.union(v.string(), v.null()),
+    email: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, { userId, name, imageUrl, email }) => {
+    await writeProfile(ctx, userId, name, imageUrl, email ?? null);
   },
 });
 
@@ -100,8 +136,12 @@ export const upsertProfile = internalMutation({
  * a webhook was missed or the deployment (dev) has none configured. Only
  * ever writes the caller's own row. */
 export const syncMyProfile = mutation({
-  args: { name: v.string(), imageUrl: v.union(v.string(), v.null()) },
-  handler: async (ctx, { name, imageUrl }) => {
+  args: {
+    name: v.string(),
+    imageUrl: v.union(v.string(), v.null()),
+    email: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, { name, imageUrl, email }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return;
     const trimmed = name.trim();
@@ -110,9 +150,17 @@ export const syncMyProfile = mutation({
       .query('profiles')
       .withIndex('by_user', (q) => q.eq('userId', identity.subject))
       .unique();
-    if (existing && existing.name === trimmed && existing.imageUrl === imageUrl) return;
-    const updatedAt = new Date().toISOString();
-    if (existing) await ctx.db.patch(existing._id, { name: trimmed, imageUrl, updatedAt });
-    else await ctx.db.insert('profiles', { userId: identity.subject, name: trimmed, imageUrl, updatedAt });
+    // Nothing to write — including the search keys, which rows synced before
+    // "add someone" existed are missing and get backfilled by this call.
+    if (
+      existing &&
+      existing.name === trimmed &&
+      existing.imageUrl === imageUrl &&
+      existing.searchName === searchKey(trimmed) &&
+      (searchKey(email) ?? existing.email ?? null) === (existing.email ?? null)
+    ) {
+      return;
+    }
+    await writeProfile(ctx, identity.subject, trimmed, imageUrl, email ?? null);
   },
 });

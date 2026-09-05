@@ -251,6 +251,17 @@ function RootLayout() {
                   sheetAllowedDetents: [1.0],
                 }}
               />
+              {/* Search FlyRight for someone, or fall back to the link.
+                A sheet over People, so the circle stays behind it. */}
+              <Stack.Screen
+                name="add-person"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.9],
+                }}
+              />
               {/* No swipe-to-dismiss: AuthView's onDismiss fires on native view
                 disappearance, so a native-initiated close plus our
                 router.back() would double-pop into the tab navigator. Clerk's

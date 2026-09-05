@@ -32,6 +32,8 @@ http.route({
         last_name?: string | null;
         username?: string | null;
         image_url?: string | null;
+        primary_email_address_id?: string | null;
+        email_addresses?: { id?: string; email_address?: string }[];
       };
     };
     try {
@@ -55,10 +57,16 @@ http.route({
       const d = event.data;
       const userId = event.data.id;
       const name = d.first_name?.trim() || d.username?.trim() || 'A traveler';
+      // The address is how someone finds them in "add someone" — it is
+      // stored lowercased and never returned to another user (circle.ts).
+      const emails = d.email_addresses ?? [];
+      const primary =
+        emails.find((e) => e.id && e.id === d.primary_email_address_id) ?? emails[0];
       await ctx.runMutation(internal.users.upsertProfile, {
         userId,
         name,
         imageUrl: d.image_url ?? null,
+        email: primary?.email_address ?? null,
       });
     }
 

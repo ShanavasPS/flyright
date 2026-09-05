@@ -4,15 +4,38 @@ import {
   ALASKA_CONFIRMATION_PDFBOX,
   ALASKA_CONFIRMATION_PDFKIT,
   DELTA_CONFIRMATION_PDFBOX,
+  FINNAIR_RECEIPT,
   DELTA_CONFIRMATION_PDFKIT,
   QATAR_RECEIPT_PDFBOX,
   QATAR_RECEIPT_PDFKIT,
   QATAR_RECEIPT_PHOTO,
 } from './__fixtures__/itinerary-documents';
-import { extractItinerary } from './itinerary';
+import { extractItinerary, extractSegmentsFromText } from './itinerary';
 
 // Every fixture was shared in the season it describes.
 const TODAY = new Date(2026, 8, 4, 12); // 4 Sep 2026
+
+const shape = (s: {
+  flight: string | null;
+  date: string | null;
+  fromCode: string | null;
+  toCode: string | null;
+  depTime: string | null;
+  arrTime: string | null;
+}) => ({
+  flight: s.flight,
+  date: s.date,
+  from: s.fromCode,
+  to: s.toCode,
+  dep: s.depTime,
+  arr: s.arrTime,
+});
+
+/** What the reader makes of a code-less document's text. The app refuses
+ * these files (extractItinerary → 'no-barcode'), but their layouts are the
+ * hardest ones to parse, so they stay covered here. */
+const textOnly = (pages: { text: string }[], today = TODAY) =>
+  extractSegmentsFromText(pages.map((p) => p.text).join('\n'), today).map(shape);
 
 const summary = (pages: Parameters<typeof extractItinerary>[0], today = TODAY) =>
   extractItinerary(pages, today).segments.map((s) => ({
@@ -92,42 +115,76 @@ describe('extractItinerary — Amadeus e-ticket receipt', () => {
   });
 });
 
-describe('extractItinerary — booking confirmations', () => {
+describe('extractItinerary — Finnair receipt, five legs behind one barcode', () => {
+  it('dates every leg from the calendar, not from the clock beside it', () => {
+    expect(summary(FINNAIR_RECEIPT)).toEqual([
+      { flight: 'BA777', date: '2026-11-28', from: 'ARN', to: 'LHR', dep: '11:30', arr: '13:25' },
+      { flight: 'AY5435', date: '2026-11-28', from: 'LHR', to: 'LAS', dep: '16:05', arr: '18:50' },
+      { flight: 'AY4121', date: '2026-12-04', from: 'LAS', to: 'LAX', dep: '12:00', arr: '13:20' },
+      { flight: 'AY2', date: '2026-12-04', from: 'LAX', to: 'HEL', dep: '18:50', arr: '15:20' },
+      { flight: 'AY815', date: '2026-12-05', from: 'HEL', to: 'ARN', dep: '16:50', arr: '16:55' },
+    ]);
+  });
+
+  it('takes the first leg from the code and the rest from the page', () => {
+    const { segments, boardingPassBarcodes } = extractItinerary(FINNAIR_RECEIPT, TODAY);
+    expect(boardingPassBarcodes).toBe(1);
+    const [first] = segments;
+    expect(first.sources).toEqual(['barcode', 'text']);
+    expect(first.pnr).toBe('9ITC7L');
+    expect(segments.slice(1).every((s) => s.sources.join() === 'text')).toBe(true);
+    // The overnight hop keeps the day the page gives it.
+    expect(segments.find((s) => s.flight === 'AY2')!.arrivalDate).toBe('2026-12-05');
+  });
+});
+
+describe('extractItinerary — documents with no boarding-pass code', () => {
+  // A ticket and a boarding pass carry a barcode; a booking confirmation
+  // emailed as a PDF often doesn't. Those are refused rather than read from
+  // the page alone — the page is a layout to guess at, and the guesses fail
+  // silently. The layouts still have to parse (textOnly), so the reader
+  // keeps its coverage either way.
+  it.each([
+    ['Delta', DELTA_CONFIRMATION_PDFKIT],
+    ['Delta, PDFBox order', DELTA_CONFIRMATION_PDFBOX],
+    ['Alaska', ALASKA_CONFIRMATION_PDFKIT],
+    ['Alaska, PDFBox order', ALASKA_CONFIRMATION_PDFBOX],
+    ['American', AA_RECEIPT_PDFKIT],
+    ['American, PDFBox order', AA_RECEIPT_PDFBOX],
+  ])('refuses %s', (_label, pages) => {
+    const result = extractItinerary(pages, TODAY);
+    expect(result.rejected).toBe('no-barcode');
+    expect(result.segments).toEqual([]);
+  });
+
   it.each([
     ['PDFKit', DELTA_CONFIRMATION_PDFKIT],
     ['PDFBox', DELTA_CONFIRMATION_PDFBOX],
   ])('Delta: resolves a weekday date without a year (%s)', (_label, pages) => {
     // "Wed, Oct 1": Wednesday rules out 2026 (a Thursday) even though it is nearer.
-    expect(summary(pages)).toEqual([
+    expect(textOnly(pages)).toEqual([
       { flight: 'DL1559', date: '2025-10-01', from: 'LAX', to: 'SFO', dep: '16:00', arr: '17:18' },
     ]);
-    const [leg] = extractItinerary(pages, TODAY).segments;
-    expect(leg.pnr).toBe('ABCDEF');
-    expect(leg.arrivalDate).toBe('2025-10-01');
   });
 
   it.each([
     ['PDFKit', ALASKA_CONFIRMATION_PDFKIT],
     ['PDFBox', ALASKA_CONFIRMATION_PDFBOX],
   ])('Alaska: spaced designator, 12-hour clocks, cities as airports (%s)', (_label, pages) => {
-    expect(summary(pages)).toEqual([
+    expect(textOnly(pages)).toEqual([
       { flight: 'AS774', date: '2025-10-04', from: 'SFO', to: 'LAS', dep: '15:51', arr: '17:33' },
     ]);
-    expect(extractItinerary(pages, TODAY).segments[0].pnr).toBe('GHJKLM');
   });
 
   it.each([
     ['PDFKit', AA_RECEIPT_PDFKIT],
     ['PDFBox', AA_RECEIPT_PDFBOX],
   ])('American: airline name plus a bare flight number (%s)', (_label, pages) => {
-    expect(summary(pages)).toEqual([
+    expect(textOnly(pages)).toEqual([
       { flight: 'AA3018', date: '2025-10-08', from: 'LAS', to: 'DFW', dep: '23:59', arr: '04:34' },
     ]);
-    const [leg] = extractItinerary(pages, TODAY).segments;
-    expect(leg.arrivalDate).toBe('2025-10-09');
-    expect(leg.pnr).toBe('PQRSTU');
-    expect(leg.seat).toBe('18F');
-    // The record-locator PDF417 is not a boarding pass.
+    // Its record-locator PDF417 is not a boarding pass, so it doesn't rescue
+    // the document either.
     expect(extractItinerary(pages, TODAY).boardingPassBarcodes).toBe(0);
   });
 });

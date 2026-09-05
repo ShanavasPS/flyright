@@ -55,8 +55,14 @@ export interface ImportedSegment {
   sources: SegmentSource[];
 }
 
+export type ItineraryRefusal = 'no-barcode';
+
 export interface ItineraryExtraction {
   segments: ImportedSegment[];
+  /** Why nothing was read, when nothing was: 'no-barcode' means the file
+   * carries no boarding-pass code, so it isn't a ticket we can stand
+   * behind. Null whenever the document was read. */
+  rejected: ItineraryRefusal | null;
   /** How many decoded barcodes parsed as boarding passes. */
   boardingPassBarcodes: number;
 }
@@ -169,7 +175,7 @@ const DATE_PATTERNS: {
   // 25Jul2026 · 25 Jul 2026 · 25-Jul-26 · 4 October 2025 (optional weekday before)
   {
     re: new RegExp(
-      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|\\d{2})(?!\\d)`,
+      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|\\d{2})(?![\\d:])`,
       'g',
     ),
     build: (m) => {
@@ -224,6 +230,22 @@ const DATE_PATTERNS: {
       const month = monthNumber(m[3]);
       if (!month) return null;
       return resolveYearless(month, Number(m[2]), weekdayNumber(m[1]), today);
+    },
+  },
+  // 28Nov · 4 Oct — a day and a month with no year anywhere near them, the
+  // way an Amadeus itinerary table prints every leg of a trip. Last in the
+  // list: everything above owns the dates that do carry a year, and this
+  // one's lookahead yields to them — while letting through the clock that
+  // usually follows, which is not a year (see the first pattern).
+  {
+    re: new RegExp(
+      `\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\b(?![\\s,-]{0,2}(?:\\d{2}|\\d{4})(?![\\d:]))`,
+      'g',
+    ),
+    build: (m, today) => {
+      const month = monthNumber(m[2]);
+      if (!month) return null;
+      return resolveYearless(month, Number(m[1]), null, today);
     },
   },
 ];
@@ -364,7 +386,10 @@ function findAirports(window: string): string[] {
   for (const m of window.matchAll(/\b([A-Z]{3})\s+([A-Z]{3})\b/g)) {
     if (hub(m[1]) && hub(m[2])) pairs.push(m[1], m[2]);
   }
-  for (const m of window.matchAll(/\b([A-Z]{3})([A-Z]{3})\b(?=\s*:|\s|$)/g)) {
+  // Amadeus route keys ("COKDOH:"). The colon is required: without it the
+  // same six letters occur in fare and baggage tables ("ARNLAS") far from
+  // any leg, and those stole the route off the last leg of a receipt.
+  for (const m of window.matchAll(/\b([A-Z]{3})([A-Z]{3})\b(?=\s*:)/g)) {
     if (hub(m[1]) && hub(m[2])) pairs.push(m[1], m[2]);
   }
   if (distinct(pairs).length >= 2) return distinct(pairs);
@@ -376,6 +401,14 @@ function findAirports(window: string): string[] {
   for (const airport of hubAirports()) {
     const city = airport.city.split(' (')[0];
     if (city.length < 4 || CITY_WORDS.has(city.toUpperCase())) continue;
+    // A city with several hubs names all of them at the same spot in the
+    // text ("LONDON" is LHR, LGW, LCY and STN), and taking them in table
+    // order turned one leg into London → London. Only the city's main
+    // international airport answers to the bare city name; the exact one is
+    // the barcode's business (extractItinerary) or the traveller's.
+    if (PRIMARY_AIRPORT[city.toUpperCase()] && PRIMARY_AIRPORT[city.toUpperCase()] !== airport.iata) {
+      continue;
+    }
     // No lookbehind (Hermes): the leading group eats the non-letter, so the
     // city starts one character in when the group matched.
     const re = new RegExp(`(^|[^A-Z])${city.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Z])`);
@@ -388,6 +421,25 @@ function findAirports(window: string): string[] {
 
 /** Hub cities that are also ordinary words in travel documents. */
 const CITY_WORDS = new Set(['NICE', 'MALE', 'READING', 'MOBILE', 'GEORGE', 'VICTORIA']);
+
+/** The one airport a bare city name means, for the thirteen cities whose
+ * curated hubs collide. The main long-haul international field in each —
+ * what "LONDON" prints on a ticket that is really flying from Heathrow. */
+const PRIMARY_AIRPORT: Record<string, string> = {
+  BANGKOK: 'BKK',
+  BEIJING: 'PEK',
+  'BUENOS AIRES': 'EZE',
+  CHENGDU: 'CTU',
+  CHICAGO: 'ORD',
+  HOUSTON: 'IAH',
+  LONDON: 'LHR',
+  MOSCOW: 'SVO',
+  'NEW YORK': 'JFK',
+  OSAKA: 'KIX',
+  SEOUL: 'ICN',
+  SHANGHAI: 'PVG',
+  'SÃO PAULO': 'GRU',
+};
 
 function distinct<T>(items: T[]): T[] {
   return Array.from(new Set(items));
@@ -455,6 +507,13 @@ function dayOfYear(iso: string): number {
 // Extraction
 // ---------------------------------------------------------------------------
 
+/** The text half of extractItinerary, on its own. Exported for the tests:
+ * documents with no barcode are refused by the product (see below) but
+ * their layouts still have to parse, so the reader keeps its net. */
+export function extractSegmentsFromText(text: string, today = new Date()): ImportedSegment[] {
+  return segmentsFromText(text, today);
+}
+
 function segmentsFromText(text: string, today: Date): ImportedSegment[] {
   const dates = findDates(text, today);
   let anchors = findDesignators(text);
@@ -478,7 +537,11 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     const departure = nearby.reduce((best, d) => (distance(d) < distance(best) ? d : best));
 
     const after = nearby.filter((d) => d.index >= departure.end && d.index - departure.end <= ARRIVAL_DATE_REACH);
-    let arrivalDate = after.find((d) => d.value >= departure.value)?.value ?? null;
+    // Strictly later, or it isn't telling us anything the clocks can't: an
+    // itinerary table repeats the departure day in its validity columns
+    // ("Ok 28Nov 28Nov"), and taking that as the arrival buried the
+    // overnight legs on their departure day.
+    let arrivalDate = after.find((d) => d.value > departure.value)?.value ?? null;
 
     const clocks = times.filter((t) => t.index >= anchor.end && t.end <= to).map((t) => t.value);
     const depTime = clocks[0] ?? null;
@@ -545,12 +608,23 @@ function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[
   return segments;
 }
 
-/** Every flight the document describes, departure order. Barcode legs are
- * authoritative for the route and seat; the text supplies the year the
- * barcode lacks and the printed times. */
+/** Every flight the document describes, departure order.
+ *
+ * The barcode leads. A boarding-pass code is exact — route, flight, day —
+ * where the printed page is a layout to be guessed at, and the guesses fail
+ * quietly: a receipt whose legs read "28Nov 11:30" once became flights in
+ * 2011, and a leg between two of London's airports. So a document with no
+ * code at all is refused rather than guessed at (tickets and passes carry
+ * one; a forwarded itinerary email does not), the code's own legs are taken
+ * whole, and the text is left to fill what the code doesn't carry: the
+ * other legs of the trip, the printed clock times, the operating airline.
+ *
+ * One thing no barcode carries is the year — BCBP dates are a bare day of
+ * the year (see bcbp.resolveFlightDate). */
 export function extractItinerary(pages: DocumentPage[], today = new Date()): ItineraryExtraction {
   const text = pages.map((p) => p.text).join('\n');
   const barcodeLegs = segmentsFromBarcodes(pages.flatMap((p) => p.barcodes), today);
+  if (!barcodeLegs.length) return { segments: [], rejected: 'no-barcode', boardingPassBarcodes: 0 };
   const textLegs = segmentsFromText(text, today);
 
   const merged: ImportedSegment[] = [];
@@ -567,8 +641,15 @@ export function extractItinerary(pages: DocumentPage[], today = new Date()): Iti
       continue;
     }
     claimed.add(match.key);
+    // The code's day beats the page's: same leg, and the printed one has
+    // only a day and a month to go on. An arrival the text put on the next
+    // day stays on the next day.
+    const date = match.date ?? leg.date;
+    const overnight = !!leg.date && !!leg.arrivalDate && leg.arrivalDate > leg.date;
     merged.push({
       ...leg,
+      date,
+      arrivalDate: date ? (overnight ? nextDay(date) : date) : leg.arrivalDate,
       fromCode: match.fromCode ?? leg.fromCode,
       toCode: match.toCode ?? leg.toCode,
       seat: match.seat ?? leg.seat,
@@ -581,5 +662,5 @@ export function extractItinerary(pages: DocumentPage[], today = new Date()): Iti
   }
 
   merged.sort((a, b) => `${a.date ?? ''}T${a.depTime ?? ''}`.localeCompare(`${b.date ?? ''}T${b.depTime ?? ''}`));
-  return { segments: merged, boardingPassBarcodes: barcodeLegs.length };
+  return { segments: merged, rejected: null, boardingPassBarcodes: barcodeLegs.length };
 }

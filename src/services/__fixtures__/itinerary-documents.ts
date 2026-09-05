@@ -666,3 +666,76 @@ TACOMA INTL
     barcodes: [QR517_BCBP],
   },
 ];
+
+/** A Finnair (Amadeus) e-ticket receipt for a five-leg trip, as pdftotext
+ * lays it out — the document that first showed the reader guessing a clock
+ * hour for a year ("28Nov 11:30" → 2011) and reading a London-to-London leg
+ * off two of the city's airports. Its PDF417 stripe is a single-leg M1: the
+ * code covers the first flight only, which is why the text still has to
+ * carry the other four. Traveller and ticket numbers replaced. */
+export const FINNAIR_RECEIPT: DocumentPage[] = [
+  {
+    text: `Itinerary
+    From               To                   Flight     Class    Date Departure Arrival Resa (1) NVB(2)           NVA(3)     Last check-in Baggage (4)         Seat
+
+    STOCKHOLM         LONDON                BA0777       O      28Nov 11:30         13:25       Ok      28Nov     28Nov                             0PC
+    ARLANDA           HEATHROW
+    Terminal 2        Terminal 5                                                     Fare Basis                                 OLN7T8BW/EUSI
+    Operated by                                 BRITISH AIRWAYS                      Marketed by                                BRITISH AIRWAYS
+    Frequent flyer number                       700000000
+
+_
+    LONDON            LAS VEGAS       AY5435   O    28Nov 16:05                     18:50       Ok      28Nov     28Nov           15:20             0PC
+    HEATHROW          HARRY REID INTL
+    Terminal 5        Terminal 3                                                     Fare Basis                                 OLN7T8BW/EUSI
+    Operated by                         BRITISH AIRWAYS                              Marketed by                                FINNAIR
+    Frequent flyer number               700000000
+
+_
+    LAS VEGAS         LOS ANGELES           AY4121       O      04Dec 12:00         13:20       Ok      04Dec     04Dec           10:45             0PC
+    HARRY REID INTL LOS ANGELES
+                      INTL
+    Terminal 1        Terminal 0                                                     Fare Basis                                 OLN7T8BW/EUSI
+    Operated by                                 AMERICAN AIRLINES                    Marketed by                                FINNAIR
+    Frequent flyer number                       700000000
+
+_
+    LOS ANGELES       HELSINKI              AY0002       O      04Dec 18:50         15:20       Ok      04Dec     04Dec           17:50             0PC
+    LOS ANGELES       HELSINKI
+    INTL              VANTAA
+    Terminal B                                                                       Fare Basis                                 OLN7T8BW/EUSI
+    Operated by                                 FINNAIR                              Marketed by                                FINNAIR
+    Frequent flyer number                       700000000                            Arrival Day+1
+
+_
+    HELSINKI           STOCKHOLM            AY0815       O      05Dec 16:50         16:55       Ok      05Dec     05Dec           16:05             0PC
+    HELSINKI           ARLANDA
+    VANTAA
+                      Terminal 2                                                     Fare Basis                                 OLN7T8BW/EUSI
+    Operated by                                 FINNAIR                              Marketed by                                FINNAIR
+    Frequent flyer number                       700000000
+
+_
+
+(1) Ok = confirmed (2) NVB = Not valid before (3) NVA = Not valid after (4)Each passenger can check in a specific amount of baggage at no extra cost as indicated
+above in the column baggage.
+
+
+Baggage Policy
+
+ARNLAS
+1st Checked Bag:                                       86.82EUR                        BAG MAX 23KG 51LB 208LCM 81LI
+
+2nd Checked Bag:                                       104.19EUR                       BAG MAX 23KG 51LB 208LCM 81LI
+
+LASARN
+
+1st Checked Bag:                                       86.82EUR                        BAG MAX 23KG 51LB 208LCM 81LI
+
+2nd Checked Bag:                                       104.19EUR                       BAG MAX 23KG 51LB 208LCM 81LI
+CARRY-ON BAG:
+ARNLHR: MAX         2PC      Free of Charge                     HANDBAG UPTO 40 X 30 X 15CM AND/OR CABIN BAG UPTO 56 X 45 X 25CM
+LHRLAS: MAX`,
+    barcodes: ['M1TRAVELLER/EXAMPLE MRE9ITC7L ARNLHRBA 0777 332O000 0000 043>218   0000I                251051234567890'],
+  },
+];

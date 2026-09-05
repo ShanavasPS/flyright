@@ -53,6 +53,13 @@ public class FlyRightDocumentImportModule: Module {
   /// Letter) to stay well inside memory on every supported iPhone.
   private static let renderScale: CGFloat = 3
 
+  /// Second pass for a page that came back empty. A stripe printed small (a
+  /// Finnair e-ticket's is 1.4 inches wide) or a page scanned at low quality
+  /// is a few pixels per module at 216 dpi; twice that reads it. Only ever
+  /// runs when the cheap pass found nothing, so the usual document still
+  /// costs one render.
+  private static let retryRenderScale: CGFloat = 6
+
   private static func read(url: URL, maxPages: Int) throws -> [String: Any] {
     // No-op for Inbox copies; needed if the file were opened in place.
     let scoped = url.startAccessingSecurityScopedResource()
@@ -79,6 +86,12 @@ public class FlyRightDocumentImportModule: Module {
   }
 
   private static func barcodes(on page: PDFPage) -> [String] {
+    let found = barcodes(on: page, scale: renderScale)
+    if !found.isEmpty { return found }
+    return barcodes(on: page, scale: retryRenderScale)
+  }
+
+  private static func barcodes(on page: PDFPage, scale renderScale: CGFloat) -> [String] {
     let bounds = page.bounds(for: .mediaBox)
     let size = CGSize(width: bounds.width * renderScale, height: bounds.height * renderScale)
     // Draw the page ourselves at exactly renderScale: PDFPage.thumbnail(of:)
@@ -111,6 +124,12 @@ public class FlyRightDocumentImportModule: Module {
     // development builds to exercise the barcode path. Devices keep the
     // default revision, which decodes everything (verified with the same
     // PDFKit + Vision calls on macOS).
+    //
+    // Some stripes are invisible to the classic detector at any render
+    // scale — a Finnair e-ticket's 1.4-inch PDF417 reads on the default
+    // revision at 3x and never on revision 1, even at 8x (measured). A
+    // document that imports on a phone can therefore be refused on the
+    // simulator; that is the simulator, not the reader.
     if VNDetectBarcodesRequest.supportedRevisions.contains(VNDetectBarcodesRequestRevision1) {
       request.revision = VNDetectBarcodesRequestRevision1
     }

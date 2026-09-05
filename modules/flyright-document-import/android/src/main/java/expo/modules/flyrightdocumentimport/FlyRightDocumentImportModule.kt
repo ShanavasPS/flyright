@@ -162,6 +162,11 @@ class FlyRightDocumentImportModule : Module() {
    * one page at a time. */
   private val renderScale = 4f
 
+  /** Second pass for a page that came back empty — a stripe printed small
+   * (a Finnair e-ticket's is 1.4 inches wide) is only a few pixels per
+   * module at 4x. Only runs when the cheap pass found nothing. */
+  private val retryRenderScale = 8f
+
   private fun readPdf(uri: String, maxPages: Int): Map<String, Any> {
     val path = Uri.parse(uri).path ?: throw DocumentUnreadableException(uri)
     val file = File(path)
@@ -213,20 +218,23 @@ class FlyRightDocumentImportModule : Module() {
         val renderer = PdfRenderer(pfd)
         try {
           for (i in 0 until minOf(pages, renderer.pageCount)) {
-            val bitmap = renderer.openPage(i).use { page ->
-              Bitmap.createBitmap(
-                (page.width * renderScale).toInt(),
-                (page.height * renderScale).toInt(),
-                Bitmap.Config.ARGB_8888,
-              ).also {
-                it.eraseColor(Color.WHITE)
-                page.render(it, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            for (scale in listOf(renderScale, retryRenderScale)) {
+              val bitmap = renderer.openPage(i).use { page ->
+                Bitmap.createBitmap(
+                  (page.width * scale).toInt(),
+                  (page.height * scale).toInt(),
+                  Bitmap.Config.ARGB_8888,
+                ).also {
+                  it.eraseColor(Color.WHITE)
+                  page.render(it, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                }
               }
-            }
-            try {
-              result[i] = payloads(scanner, bitmap)
-            } finally {
-              bitmap.recycle()
+              try {
+                result[i] = payloads(scanner, bitmap)
+              } finally {
+                bitmap.recycle()
+              }
+              if (result[i].isNotEmpty()) break
             }
           }
         } finally {

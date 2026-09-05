@@ -31,7 +31,11 @@ import { formatDayLabel, formatDayLabelWithYear, formatTime, localDateString } f
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
-import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
+import {
+  extractItinerary,
+  type ImportedSegment,
+  type ItineraryRefusal,
+} from '@/services/itinerary';
 import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
@@ -60,7 +64,14 @@ import {
 type Phase =
   | { kind: 'reading' }
   | { kind: 'unreadable'; message: string }
-  | { kind: 'review'; segments: ImportedSegment[]; barcodes: number }
+  | {
+      kind: 'review';
+      segments: ImportedSegment[];
+      barcodes: number;
+      /** Why there is nothing to review, when there is nothing — see
+       * services/itinerary. */
+      rejected: ItineraryRefusal | null;
+    }
   | { kind: 'saving'; segments: ImportedSegment[]; barcodes: number }
   | { kind: 'added'; count: number; tracked: number };
 
@@ -168,9 +179,9 @@ export function ImportDocument() {
             throw reason;
           }),
         );
-        const { segments, boardingPassBarcodes } = extractItinerary(contents.pages, today);
+        const { segments, boardingPassBarcodes, rejected } = extractItinerary(contents.pages, today);
         if (cancelled) return;
-        setPhase({ kind: 'review', segments, barcodes: boardingPassBarcodes });
+        setPhase({ kind: 'review', segments, barcodes: boardingPassBarcodes, rejected });
         const read = {
           flights: segments.length,
           barcodes: boardingPassBarcodes,
@@ -426,11 +437,22 @@ export function ImportDocument() {
       {phase.kind === 'review' && segments.length === 0 && (
         <View style={styles.rowGroup}>
           <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold">No flights found in {label}</ThemedText>
+            <ThemedText type="smallBold">
+              {phase.rejected === 'no-barcode'
+                ? `No boarding-pass barcode in ${label}`
+                : `No flights found in ${label}`}
+            </ThemedText>
+            {/* A ticket and a pass both carry a code, and the code is what
+                makes the reading exact — the printed page alone has put
+                flights on the wrong day and between the wrong airports. */}
             <ThemedText type="small" themeColor="textSecondary">
-              {kind === 'image'
-                ? 'We look for the barcode on a pass, then for flight numbers and dates in the picture. A blurred or cropped barcode reads as nothing — try the airline’s e-ticket PDF instead.'
-                : 'We look for flight numbers, dates and boarding-pass barcodes. Scanned images and hotel or car bookings don’t carry those — try the airline’s e-ticket or confirmation PDF.'}
+              {phase.rejected === 'no-barcode'
+                ? kind === 'image'
+                  ? 'A boarding pass or e-ticket has a barcode; we read the flights out of it. Make sure the code is in the picture, sharp and uncropped — or share the airline’s e-ticket PDF.'
+                  : 'A boarding pass or e-ticket has a barcode; we read the flights out of it. A booking confirmation or an itinerary email usually doesn’t — ask the airline for the e-ticket receipt, or add the flight by number.'
+                : kind === 'image'
+                  ? 'We look for the barcode on a pass, then for flight numbers and dates in the picture. A blurred or cropped barcode reads as nothing — try the airline’s e-ticket PDF instead.'
+                  : 'We look for flight numbers, dates and boarding-pass barcodes. Scanned images and hotel or car bookings don’t carry those — try the airline’s e-ticket or confirmation PDF.'}
             </ThemedText>
           </ThemedView>
           <PrimaryButton label="Add a flight by number →" onPress={() => router.replace('/add-flight')} />

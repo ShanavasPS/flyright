@@ -217,7 +217,37 @@ export default defineSchema({
     name: v.string(),
     imageUrl: v.union(v.string(), v.null()),
     updatedAt: v.string(),
-  }).index('by_user', ['userId']),
+    /** How this person is found in "add someone" (circle.findPeople): their
+     * address and their name, both lowercased, both matched WHOLE. Prefix
+     * matching would turn the search box into a directory of everyone who
+     * uses the app. Optional: rows written before search existed fill them
+     * in on the owner's next profile sync, and neither ever leaves the
+     * server — a search result carries the name and photo, nothing else. */
+    email: v.optional(v.union(v.string(), v.null())),
+    searchName: v.optional(v.union(v.string(), v.null())),
+  })
+    .index('by_user', ['userId'])
+    .index('by_email', ['email'])
+    .index('by_search_name', ['searchName']),
+
+  /** An invitation sent inside the app, to someone who already has it:
+   * "Shamnad invited you to follow their trips", delivered as a push and a
+   * row in the receiver's People tab instead of a link in WhatsApp. Same
+   * offer and the same redemption (liveHelpers-backed join) as
+   * circleInvites — only the delivery differs, so an account nobody can
+   * reach by link is still reachable. Rows outlive the answer so the sender
+   * sees what they sent; a withdrawal deletes. */
+  circleRequests: defineTable({
+    /** The traveller offering their trips — the circle owner on accept. */
+    fromUserId: v.string(),
+    toUserId: v.string(),
+    status: v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined')),
+    createdAt: v.string(),
+    respondedAt: v.union(v.string(), v.null()),
+  })
+    .index('by_to_status', ['toUserId', 'status'])
+    .index('by_from_status', ['fromUserId', 'status'])
+    .index('by_pair', ['fromUserId', 'toUserId']),
 
   /** Server-side mirror of the RevenueCat 'Owed Pro' entitlement, fed by the
    * RC webhook (http.ts /rc-webhook) — the client's SDK state can't be

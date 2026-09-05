@@ -1,0 +1,43 @@
+# Inviting someone who already has the app: search FlyRight by name or
+# email, send the invitation, and see it waiting in Sharing with. The
+# receiving half (Invitations → Follow) needs a second signed-in device —
+# run this on device A, then on device B open People and answer:
+#   maestro --device <B> test - <<< '...tapOn: "Follow <Name>'"'"'s trips"'
+# Both halves were verified two-device on 2026-09-05 (iPhone 17 + 16 Pro).
+#
+# Prereqs: signed in (Settings shows an account), a circle with room, and a
+# findable target — a profile whose searchName is NAME lowercased:
+#   npx convex import --append --table profiles owner.jsonl
+#     {"userId":"…","name":"Shamnad","searchName":"shamnad","email":null,…}
+# Run: maestro --device <udid> test .maestro/add-person.yaml -e NAME=Shamnad
+# No `env:` defaults on purpose — a declared default wins over -e.
+appId: com.shanavasshaji.flyright
+tags:
+  - people
+---
+- launchApp
+- openLink: flyright://people
+- extendedWaitUntil:
+    visible: ".*Invite someone.*"
+    timeout: 30000
+- tapOn: ".*Invite someone.*"
+- extendedWaitUntil:
+    visible: "Add someone"
+    timeout: 20000
+- tapOn: "First name or email"
+- inputText: ${NAME}
+# Whole-name match: the row carries the person, not a directory of them.
+- extendedWaitUntil:
+    visible: "On FlyRight"
+    timeout: 20000
+# The chip's label is the accessibility one — its "Invite" text isn't
+# exposed once the Pressable owns the a11y node.
+- tapOn: "Invite ${NAME} to follow your trips"
+- extendedWaitUntil:
+    visible: ".*Invited — waiting for them.*"
+    timeout: 20000
+- tapOn: "Done"
+# And it's waiting on the People tab too, until they answer.
+- extendedWaitUntil:
+    visible: ".*Invited — waiting for them.*"
+    timeout: 20000
