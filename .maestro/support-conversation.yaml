@@ -19,10 +19,14 @@ appId: com.shanavasshaji.flyright
           timeout: 30000
 - tapOn:
     id: "contact-support"
+# Composing is the header's pencil, so it is there whether the inbox is empty
+# (where the hero repeats it) or full of conversations.
 - extendedWaitUntil:
-    visible: "New message"
+    visible:
+      id: "new-message"
     timeout: 10000
-- tapOn: "New message"
+- tapOn:
+    id: "new-message"
 - extendedWaitUntil:
     visible: "What can we help with?"
     timeout: 10000

@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
 import { Platform } from 'react-native';
 
+import { NewMessageButton } from '@/screens/support-messages';
+
 // See (journeys)/_layout.tsx for why pushed screens live inside the tab.
 export default function SettingsStack() {
   return (
@@ -14,9 +16,15 @@ export default function SettingsStack() {
         name="contact"
         options={{ title: 'Contact support', headerBackButtonDisplayMode: 'minimal' }}
       />
+      {/* Composing lives in the navigation bar (see screens/support-messages),
+          the way an inbox does — not as a button stacked over the list. */}
       <Stack.Screen
         name="messages/index"
-        options={{ title: 'Support', headerBackButtonDisplayMode: 'minimal' }}
+        options={{
+          title: 'Support',
+          headerBackButtonDisplayMode: 'minimal',
+          headerRight: () => <NewMessageButton />,
+        }}
       />
       <Stack.Screen
         name="messages/[id]"
