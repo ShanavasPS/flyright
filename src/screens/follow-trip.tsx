@@ -18,7 +18,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { DETOUR_LINK_BASE } from '@/constants/config';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabelWithYear } from '@/services/dates';
-import { storeLink } from '@/services/deferred-links';
+import { appLink, storeLink } from '@/services/deferred-links';
 import {
   EMPTY_FACTS,
   type FlightFacts,
@@ -183,6 +183,11 @@ export function FollowTrip({ token }: { token: string }) {
                 <ThemedText type="linkPrimary">Google Play</ThemedText>
               </Pressable>
             </View>
+            {/* Already installed: hand the trip to the app rather than
+                offering the stores again (see join-circle). */}
+            <Pressable onPress={() => window.location.assign(appLink(`/t/${token}`) ?? '')}>
+              <ThemedText type="link">Already have FlyRight? Open this trip</ThemedText>
+            </Pressable>
           </Card>
         ) : (
           <PrimaryButton

@@ -1,9 +1,9 @@
 import { useAuth } from '@clerk/expo';
-import { useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import { Observe } from 'expo-observe';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,8 +20,9 @@ import { DETOUR_LINK_BASE } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { trackEvent } from '@/services/analytics';
 import { INVITE_URL } from '@/services/circle';
-import { storeLink } from '@/services/deferred-links';
+import { appLink, storeLink } from '@/services/deferred-links';
 import { requestPushPermission } from '@/services/notifications';
+import { clearPendingFollow, markPendingFollow, pendingFollowFor } from '@/services/pending-follow';
 import { useProLocked } from '@/services/purchases';
 
 const APP_STORE_ID = STORE_URLS.ios.match(/id(\d+)/)?.[1] ?? '';
@@ -32,6 +33,9 @@ const APP_STORE_ID = STORE_URLS.ios.match(/id(\d+)/)?.[1] ?? '';
 export function JoinCircle({ token }: { token: string }) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
+  // Clerk knows the account before Convex holds a token for it; the invite is
+  // redeemed with a Convex identity, so that is the signal to wait for.
+  const { isAuthenticated } = useConvexAuth();
   const invite = useQuery(api.circle.inviteByToken, { token });
   const accept = useMutation(api.circle.accept);
   const shareBack = useMutation(api.circle.shareBack);
@@ -40,31 +44,73 @@ export function JoinCircle({ token }: { token: string }) {
   // Owner hit the free cap between minting the link and this tap — the
   // reactive query normally catches it first (invite.full).
   const [ownerFull, setOwnerFull] = useState(false);
+  // A follow that didn't land (offline, invite redeemed elsewhere). Shown
+  // rather than swallowed: a button that does nothing when tapped is how an
+  // invite dies silently, which is exactly what used to happen here.
+  const [failed, setFailed] = useState(false);
+  // This invite is the one they tapped "Sign in to follow" on — set on that
+  // tap, and re-read from storage on mount so it survives a screen the
+  // sign-in sheet re-created (or an app the OAuth round trip relaunched).
+  const [pending, setPending] = useState(() => pendingFollowFor(token));
+  // One automatic redemption per visit — accept() also spends one of the
+  // invite's uses, so a re-entrant effect must not double-tap it.
+  const redeeming = useRef(false);
   const proLocked = useProLocked();
 
   // Back to the People tab, wherever this page was pushed from.
-  const done = () => router.replace('/(tabs)/(people)/people');
+  const done = useCallback(() => router.replace('/(tabs)/(people)/people'), [router]);
 
-  const onAccept = async () => {
+  const onAccept = useCallback(async () => {
     setBusy(true);
+    setFailed(false);
     try {
       const result = await accept({ token });
+      clearPendingFollow();
+      setPending(false);
       Observe.logEvent('circle.joined');
       trackEvent('circle_joined');
+      // Land on "you're following" before the OS prompt covers it — the
+      // reactive query flips relation to 'member' the moment the mutation
+      // commits, and that branch would otherwise win the race and swallow
+      // the share-back offer.
+      setJoined(result);
       // The whole point of following is the pushes, and someone who only
       // follows may never hit the app's other permission moments — ask now,
       // while "you'll get a heads-up" is still on screen. One-shot OS prompt;
       // a no here is respected like everywhere else (Settings can flip it).
       await requestPushPermission();
-      setJoined(result);
       if (result.sharingBack) done();
     } catch (e) {
       if (e instanceof ConvexError && e.data === CIRCLE_FULL) setOwnerFull(true);
-      // Otherwise expired mid-view; the reactive query flips to gone.
+      // Otherwise offline, or expired mid-view (the reactive query flips to
+      // gone). Either way the traveller gets a reason and a retry.
+      else setFailed(true);
     } finally {
       setBusy(false);
     }
-  };
+  }, [accept, done, token]);
+
+  // "Sign in to follow" has to mean follow: with an account and a Convex
+  // identity in hand, redeem the invite they already said yes to. Without
+  // this the traveller comes back to a screen that looks like the one they
+  // left, its button quietly relabelled, and the follow waits on a second
+  // tap nobody made (see services/pending-follow).
+  useEffect(() => {
+    if (redeeming.current || !pending || !isAuthenticated || busy || joined || failed) return;
+    if (invite === undefined || 'gone' in invite) return;
+    if (invite.relation !== 'none' || invite.full) {
+      // Their own link, already following, or the circle filled up while
+      // they signed in — nothing left to redeem, so drop the intent (the
+      // flag alone decides nothing on screen).
+      clearPendingFollow();
+      return;
+    }
+    redeeming.current = true;
+    // The busy/failed flags this sets are the point — the traveller watches
+    // the invite redeem itself, and sees it if that fails.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: signing in *is* the tap
+    void onAccept();
+  }, [pending, isAuthenticated, busy, joined, failed, invite, onAccept]);
 
   const onShareBack = async () => {
     if (!joined) return;
@@ -132,14 +178,35 @@ export function JoinCircle({ token }: { token: string }) {
               <ThemedText type="linkPrimary">Google Play</ThemedText>
             </Pressable>
           </View>
+          {/* Tapping the link again after installing used to land right back
+              here, on two store buttons — the app is on the phone, so offer
+              it. Its own scheme, because the https link is this page. */}
+          <Pressable onPress={() => window.location.assign(appLink(`/i/${token}`) ?? '')}>
+            <ThemedText type="link">Already have FlyRight? Open the invite</ThemedText>
+          </Pressable>
         </Card>
       );
     } else if (!isSignedIn) {
       action = (
         <PrimaryButton
           label="Sign in to follow"
-          onPress={() => router.push({ pathname: '/sign-in', params: { next: `/i/${token}` } })}
+          onPress={() => {
+            // Remember what the tap was for, so signing in finishes it.
+            markPendingFollow(token);
+            setPending(true);
+            router.push({ pathname: '/sign-in', params: { next: `/i/${token}` } });
+          }}
         />
+      );
+    } else if (pending && busy) {
+      // Redeeming the invite they signed in for — no button to find.
+      action = (
+        <View style={styles.following}>
+          <ActivityIndicator />
+          <ThemedText type="small" themeColor="textSecondary">
+            Following {name}…
+          </ThemedText>
+        </View>
       );
     } else if (invite.relation === 'self') {
       action = (
@@ -181,7 +248,16 @@ export function JoinCircle({ token }: { token: string }) {
         </>
       );
     } else {
-      action = <PrimaryButton label={`Follow ${name}'s trips`} disabled={busy} onPress={onAccept} />;
+      action = (
+        <>
+          <PrimaryButton label={`Follow ${name}'s trips`} disabled={busy} onPress={onAccept} />
+          {failed && (
+            <ThemedText type="small" themeColor="danger" style={styles.centered}>
+              That didn&apos;t go through — check your connection and tap again.
+            </ThemedText>
+          )}
+        </>
+      );
     }
 
     body = (
@@ -270,5 +346,9 @@ const styles = StyleSheet.create({
   storeRow: {
     flexDirection: 'row',
     gap: Spacing.four,
+  },
+  following: {
+    alignItems: 'center',
+    gap: Spacing.two,
   },
 });

@@ -1,0 +1,51 @@
+# "Sign in to follow" finishes the follow by itself — the regression from
+# 2026-09-05, when every invitee signed in, landed back on the invite page and
+# never tapped the second button, so circle.accept was never called once.
+#
+# Needs a redeemable invite and an account that isn't in that circle yet:
+#   npx convex import --append --table circleInvites invite.jsonl   (token TOKEN, some ownerId)
+#   npx convex import --append --table profiles owner.jsonl         (a name for that ownerId)
+#   clerk users create --instance dev -d '{"email_address":["bea+clerk_test@example.com"],…}'
+# Run: maestro --device <udid> test .maestro/invite-follow.yaml -e TOKEN=… -e EMAIL=…
+# Both are single-use: the invite spends a use and the account joins for good,
+# so a re-run needs a fresh pair. No `env:` defaults on purpose — a declared
+# default wins over -e, which silently runs the flow against a stale token.
+#
+# Start SIGNED OUT (Settings → your email → Sign out). Neither clearState nor
+# an uninstall does it for you: Clerk's session lives in the keychain, which
+# survives both on the simulator.
+appId: com.shanavasshaji.flyright
+tags:
+  - people
+---
+- launchApp:
+    clearState: true
+# A clear-state launch raises the ATT prompt (simctl can't pre-grant it);
+# clear it before it sits over onboarding.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 30000
+- tapOn: "Skip"
+- openLink: flyright://i/${TOKEN}
+- extendedWaitUntil:
+    visible: "Sign in to follow"
+    timeout: 30000
+- tapOn: "Sign in to follow"
+- runFlow: clerk-dev-sign-in.yaml
+# No second tap: the invite redeems itself and the share-back offer is what
+# the traveller comes back to.
+- extendedWaitUntil:
+    visible: ".*You're following.*"
+    timeout: 30000
+- assertVisible: ".*Share your trips back.*"

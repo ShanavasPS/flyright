@@ -1,6 +1,6 @@
 import { STORE_URLS } from '@/constants/store-links';
 
-import { deferrablePath, storeLink } from './deferred-links';
+import { appLink, deferrablePath, storeLink } from './deferred-links';
 
 const IPHONE =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1';
@@ -41,5 +41,17 @@ describe('storeLink', () => {
     expect(storeLink('ios', '/i/tok', { base: BASE, userAgent: MAC })).toBe(STORE_URLS.ios);
     expect(storeLink('ios', '/i/tok', { base: '', userAgent: IPHONE })).toBe(STORE_URLS.ios);
     expect(storeLink('ios', '/settings', { base: BASE, userAgent: IPHONE })).toBe(STORE_URLS.ios);
+  });
+});
+
+describe('appLink', () => {
+  it('turns a landing path into the app URL', () => {
+    expect(appLink('/i/tok_9X-y')).toBe('flyright://i/tok_9X-y');
+    expect(appLink('/t/abc?fromDeepLink=true')).toBe('flyright://t/abc');
+  });
+
+  it('refuses anything the app would not open', () => {
+    expect(appLink('/settings')).toBeNull();
+    expect(appLink('/i/')).toBeNull();
   });
 });

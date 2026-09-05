@@ -2,7 +2,7 @@
  * the unit tests stay cheap. The provider lives in
  * components/deferred-link-router.tsx. */
 
-import { STORE_URLS } from '@/constants/store-links';
+import { APP_SCHEME, STORE_URLS } from '@/constants/store-links';
 
 /** The only in-app paths a deferred link may open: trip share pages and
  * circle invites. Anything else the match API hands back is dropped — the
@@ -31,4 +31,13 @@ export function storeLink(
     platform === 'ios' ? /iPhone|iPad|iPod/i.test(userAgent) : /Android/i.test(userAgent);
   if (!base || !onPlatform || !deferrablePath(path)) return STORE_URLS[platform];
   return `${base.replace(/\/+$/, '')}${path}`;
+}
+
+/** The in-app URL for a landing's own path — "already have the app? open it
+ * there". The invitee who installs from this page and taps the link again
+ * (WhatsApp, or the browser's back stack) otherwise lands right back on the
+ * store buttons, which is a dead end once the app is on the phone. */
+export function appLink(path: string): string | null {
+  const inApp = deferrablePath(path);
+  return inApp ? `${APP_SCHEME}:/${inApp}` : null;
 }
