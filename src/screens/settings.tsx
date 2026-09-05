@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { ThemePicker } from '@/components/theme-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -374,18 +375,23 @@ export function Settings() {
 
           <RowSeparator />
 
+          {/* Two different doors behind one row: signed in it opens the
+              conversations (replies land there and by email), so it is named
+              for them and carries the unread count; anonymous it is the form
+              itself, since there is nothing to list. */}
           <Pressable
             testID="contact-support"
-            // Signed-in users see their conversations (replies land there and
-            // by email); anonymous users go straight to the form.
             onPress={() => router.push(isSignedIn ? '/messages' : '/contact')}
             style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
             <View style={styles.rowLabel}>
-              <ThemedText>Contact support</ThemedText>
+              <ThemedText>{isSignedIn ? 'Support messages' : 'Contact support'}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Send us a message — we reply by email.
+                {isSignedIn
+                  ? 'Your conversations — we reply by email.'
+                  : 'Send us a message — we reply by email.'}
               </ThemedText>
             </View>
+            <SupportUnreadBadge />
             {chevron}
           </Pressable>
         </ThemedView>

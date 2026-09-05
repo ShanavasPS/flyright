@@ -1,5 +1,6 @@
-# Signed-in support flow: Settings → Contact support opens the conversation
-# list, "New message" starts a thread, and the app lands on the thread view
+# Signed-in support flow: Settings → Support messages (the row is named for
+# the inbox once there is an account behind it) opens the conversation list,
+# the header's pencil starts a thread, and the app lands on the thread view
 # where support's email replies appear (convex/support.ts). Uses the Clerk DEV
 # test user (OTP 424242) so it only passes against dev Clerk + dev Convex.
 # Run: maestro --device <udid> test .maestro/support-conversation.yaml

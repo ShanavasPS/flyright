@@ -1,4 +1,6 @@
 # Settings → Contact support: the in-app message form (convex/support.ts).
+# Signed OUT, that row IS the form; signed in it opens the inbox instead and
+# .maestro/support-conversation.yaml covers that path.
 # Sends a real message to the dev deployment — the row is emailed to the
 # support inbox when CLOUDFLARE_EMAIL_TOKEN is set there, otherwise it stays
 # in supportMessages with deliveryError set (check: npx convex data supportMessages).

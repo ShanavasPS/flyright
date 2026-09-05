@@ -1,9 +1,8 @@
 import { useAuth } from '@clerk/expo';
-import { useQuery } from 'convex/react';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -16,11 +15,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { api } from '../../../convex/_generated/api';
-
 import { AirlineLogo } from '@/components/airline-logo';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { SheenCard } from '@/components/sheen-card';
+import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
@@ -366,39 +364,8 @@ function MessagesButton() {
           {icon}
         </View>
       )}
-      {!!CONVEX_URL && isSignedIn && (
-        <QuietBoundary>
-          <UnreadBadge />
-        </QuietBoundary>
-      )}
+      <SupportUnreadBadge style={styles.badge} />
     </Pressable>
-  );
-}
-
-/** A decoration must never take the screen down: Convex query errors throw
- * during render, so the badge renders nothing if its query fails. */
-class QuietBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
-
-/** Count of conversations with an unopened support reply. Its own component
- * so the Convex hook only mounts with a provider and a signed-in user. */
-function UnreadBadge() {
-  const theme = useTheme();
-  const count = useQuery(api.support.unreadCount, {});
-  if (!count) return null;
-  return (
-    <View
-      style={[styles.badge, { backgroundColor: theme.danger }]}
-      accessibilityLabel={`${count} unread`}>
-      <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
-    </View>
   );
 }
 
@@ -669,24 +636,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  // Placement only — the pill is components/support-unread-badge.
   badge: {
     position: 'absolute',
     top: -3,
     right: -3,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#ffffff',
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: 700,
-    lineHeight: 12,
   },
   addFallback: {
     shadowColor: '#0B1520',
