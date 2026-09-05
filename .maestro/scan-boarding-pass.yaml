@@ -1,7 +1,8 @@
-# Boarding-pass scanner: the "Scan your boarding pass" entry on the add-flight
-# sheet opens the camera viewfinder and closes back to typed entry. A simulator
-# camera can't present a real barcode, so this covers the UI wiring only — the
-# BCBP parsing itself is unit-tested (src/services/bcbp.test.ts).
+# Boarding-pass scanner: the "Scan ticket or boarding pass" entry on the
+# add-flight sheet opens the camera viewfinder and closes back to typed entry.
+# A simulator camera can't present a real barcode, so this covers the UI wiring
+# only — the BCBP parsing itself is unit-tested (src/services/bcbp.test.ts).
+# The upload entry beside it has its own flow (upload-document.yaml).
 # Run: maestro test .maestro/scan-boarding-pass.yaml   (requires a booted
 # simulator with the dev build installed and `npx expo start` serving :8081)
 appId: com.shanavasshaji.flyright
@@ -31,6 +32,19 @@ appId: com.shanavasshaji.flyright
     visible: "Skip"
     timeout: 90000
 - tapOn: "Skip"
+# The ATT prompt lands AFTER onboarding (it is raised once the journal shows),
+# so it gets cleared here rather than only up front.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Ask App Not to Track"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
 - extendedWaitUntil:
     visible: "My travels"
     timeout: 30000
@@ -38,8 +52,8 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Add Flight"
     timeout: 10000
-- assertVisible: ".*Scan your boarding pass.*"
-- tapOn: ".*Scan your boarding pass.*"
+- assertVisible: ".*Scan ticket or boarding pass.*"
+- tapOn: ".*Scan ticket or boarding pass.*"
 # Viewfinder open: the hint replaces the entry links.
 - extendedWaitUntil:
     visible: ".*Fill the frame with the barcode.*"
@@ -48,6 +62,6 @@ appId: com.shanavasshaji.flyright
 # And close cleanly back to typed entry.
 - tapOn: ".*Type the flight instead.*"
 - extendedWaitUntil:
-    visible: ".*Scan your boarding pass.*"
+    visible: ".*Scan ticket or boarding pass.*"
     timeout: 5000
 - assertVisible: ".*No flight number.*"

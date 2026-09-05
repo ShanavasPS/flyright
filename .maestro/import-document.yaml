@@ -1,5 +1,9 @@
 # Document import: a PDF shared into the app opens the "Add from document"
 # sheet, its flights show as selectable pass cards, and one tap saves them.
+# The same screen reads the in-app upload (.maestro/upload-document.yaml),
+# including a picture of a pass — stage a .png/.jpg as DOC_URL and the flow
+# below runs unchanged, with `type` left off so the extension decides the
+# reader (adjust the flight assertions to whatever the image carries).
 #
 # The share sheet itself can't be driven from a flow, so the document is
 # staged where the app can read it and the import route is opened with its

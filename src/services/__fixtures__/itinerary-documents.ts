@@ -558,3 +558,111 @@ REFUNDABLE`,
     barcodes: ['PQRSTUAR'],
   },
 ];
+
+/** The FIRST PAGE of the same Qatar receipt as a picture — a photo of the
+ * printout, read by Vision's text recogniser rather than PDFKit (page 1 of 3,
+ * so 4 of the 6 legs are on it). Kept verbatim apart from the redactions,
+ * including the recogniser's slips: "25Jul2026" comes back as "25Ju|2026",
+ * "Booking" loses its g, and the first leg's two clocks land in the wrong
+ * order. Lines arrive row-banded, the order the module produces on both
+ * platforms. Regenerate with the same Vision calls the module makes:
+ *
+ *   swift imageprobe.swift <page.png>   (VNRecognizeText + VNDetectBarcodes)
+ */
+export const QATAR_RECEIPT_PHOTO: DocumentPage[] = [
+  {
+    text: `Going places together
+oneworld
+QATAR
+AIRWAYS&jbüll
+Passenger: Doe Jane Elizabeth Mrs (ADT)
+Bookina ref:
+1A/7K2ABC
+AS/RWOGPX
+QR/7K2ABC
+Itinerary Printing Office:
+Ticket number: 157 2100000000 - 04
+QATAR AIRWAYS MOBILE, DIGITAL OFFICE,
+BOMBAY
+Telephone: TBA
+Date: 11Jun2026
+ELECTRONIC TICKET RECEIPT
+Qatar Airways may request additional payment verification for itineraries paid for with credit cards
+From
+Flight
+Departure
+Arrival
+Last check-in
+QR517
+06:05
+KOCHI COCHIN INTL
+DOHA HAMAD
+04:15
+(KOCHI)
+INTERNATIONAL
+25Ju|2026
+25Ju|2026
+Terminal: 3
+Class: BCLASSIC, R
+Operated by: QATAR AIRWAYS
+Baggage (4): 2PC
+Cabin: Business
+Marketed by: QATAR AIRWAYS
+Booking status (1): OK
+NVA (3): 25Jan2027
+Fare basis: RJINPORE
+Frequent flyer number: 517900000
+Duration: 04:20
+Seat: 03K
+Special Service Request
+DOCS - PASSENGER/CREW PRIMARY TRAVEL DOCUMENT INFO - CONFIRMED
+DOHA HAMAD
+SEATTLE SEATTLE
+QR719
+07:50
+12:25
+INTERNATIONAL
+TACOMA INTL
+25Ju|2026
+25Ju|2026
+Class: BCLASSIC, R
+Operated by: QATAR AIRWAYS
+Cabin: Business
+Marketed by: QATAR AIRWAYS
+Baggage (4): 2PC
+Booking status (1): OK
+NVA (3): 25Jan2027
+Fare basis: RJINP9RE
+Frequent flyer number: 517900000
+Duration: 14:35
+Seat: 06J
+Special Service Request
+DOCS - PASSENGER/CREW PRIMARY TRAVEL DOCUMENT INFO - CONFIRMED
+SEATTLE SEATTLE TACOMA PORTLAND PORTLAND
+QR3387 15:55
+16:55
+INTL
+INTL
+25Ju|2026
+25Ju/2026
+Class: BCLASSIC, B
+Operated by: ALASKA
+Cabin: Economy
+Marketed by: QATAR AIRWAYS
+Baggage (4): 2PC
+Booking status (1): OK
+NVA (3): 25Jan2027
+Fare basis: RJINP9RE
+Frequent flyer number: 517900000
+Duration: 01:00
+Seat:
+Special Service Request
+DOCS - PASSENGER/CREW PRIMARY TRAVEL DOCUMENT INFO - CONFIRMED
+PORTLAND PORTLAND INTL SEATTLE SEATTLE
+QR2175 13:48
+14:43
+TACOMA INTL
+01Aug2026 01Aug2026`,
+    barcodes: [QR517_BCBP],
+  },
+];

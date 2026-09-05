@@ -7,6 +7,7 @@ import {
   DELTA_CONFIRMATION_PDFKIT,
   QATAR_RECEIPT_PDFBOX,
   QATAR_RECEIPT_PDFKIT,
+  QATAR_RECEIPT_PHOTO,
 } from './__fixtures__/itinerary-documents';
 import { extractItinerary } from './itinerary';
 
@@ -128,6 +129,32 @@ describe('extractItinerary — booking confirmations', () => {
     expect(leg.seat).toBe('18F');
     // The record-locator PDF417 is not a boarding pass.
     expect(extractItinerary(pages, TODAY).boardingPassBarcodes).toBe(0);
+  });
+});
+
+describe('extractItinerary — a picture of a document', () => {
+  // The upload path (a screenshot or a photo, read by the platform text
+  // recogniser) is noisier than a PDF: 'l' comes back as '|', and a cell read
+  // in visual order can put an arrival before its departure. Every leg the
+  // page names should still land, on the right day and route.
+  it('reads the legs off a photographed receipt page', () => {
+    expect(summary(QATAR_RECEIPT_PHOTO)).toEqual([
+      // The one clock pair the recogniser hands over reversed — the times are
+      // saved as printed, and a lookup overrides them for anyone signed in.
+      { flight: 'QR517', date: '2026-07-25', from: 'COK', to: 'DOH', dep: '06:05', arr: '04:15' },
+      { flight: 'QR719', date: '2026-07-25', from: 'DOH', to: 'SEA', dep: '07:50', arr: '12:25' },
+      { flight: 'QR3387', date: '2026-07-25', from: 'SEA', to: 'PDX', dep: '15:55', arr: '16:55' },
+      { flight: 'QR2175', date: '2026-08-01', from: 'PDX', to: 'SEA', dep: '13:48', arr: '14:43' },
+    ]);
+  });
+
+  it('still merges the boarding-pass barcode into its leg', () => {
+    const { segments, boardingPassBarcodes } = extractItinerary(QATAR_RECEIPT_PHOTO, TODAY);
+    expect(boardingPassBarcodes).toBe(1);
+    const first = segments[0];
+    expect(first.sources).toContain('barcode');
+    expect(first.pnr).toBe('7K2ABC');
+    expect(first.seat).toBe('3K');
   });
 });
 

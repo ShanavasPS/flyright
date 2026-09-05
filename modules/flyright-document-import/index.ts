@@ -10,7 +10,11 @@
  *
  *  2. Reading. `readPdf` renders each page's text (PDFKit / PDFBox) and
  *     decodes every barcode on it (Vision / ML Kit: PDF417, QR, Aztec, Data
- *     Matrix). Pure parsing of the result lives in src/services/itinerary.ts.
+ *     Matrix). `readImage` does the same for a picture — a screenshot of a
+ *     mobile pass, a photo of a paper one, as picked in the app — with the
+ *     platform text recogniser standing in for the page text, and hands back
+ *     a single page so callers can treat both alike. Pure parsing of the
+ *     result lives in src/services/itinerary.ts.
  *
  * On web the module is absent: `requireOptionalNativeModule` yields null and
  * every call degrades to "nothing shared / cannot read". */
@@ -42,6 +46,7 @@ type Events = { onDocumentShared: (doc: SharedDocument) => void };
 declare class DocumentImportModule extends NativeModule<Events> {
   consumePendingDocument(): SharedDocument | null;
   readPdf(uri: string, maxPages: number): Promise<PdfContents>;
+  readImage(uri: string): Promise<PdfContents>;
 }
 
 const native = requireOptionalNativeModule<DocumentImportModule>('FlyRightDocumentImport');
@@ -70,4 +75,30 @@ export function addDocumentSharedListener(
 export async function readPdf(uri: string): Promise<PdfContents> {
   if (!native) throw new Error('Document import is not available on this platform.');
   return native.readPdf(uri, MAX_PAGES);
+}
+
+/** A picture of a travel document: its barcodes, plus whatever text the
+ * platform recogniser can read off it. Always one page. */
+export async function readImage(uri: string): Promise<PdfContents> {
+  if (!native) throw new Error('Document import is not available on this platform.');
+  return native.readImage(uri);
+}
+
+/** Image extensions worth handing to `readImage` — what the pickers can
+ * return and what the platform decoders read. */
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|heic|heif|webp|tiff?|bmp|gif)$/i;
+
+export type DocumentKind = 'pdf' | 'image';
+
+/** Which reader a file needs, from the mime type when a picker gave one (an
+ * iOS photo can arrive with no extension at all) and the file name or URI
+ * otherwise. PDF is the assumption: that is what every share hands over. */
+export function documentKind(nameOrUri: string, mimeType?: string | null): DocumentKind {
+  if (mimeType) return mimeType.startsWith('image/') ? 'image' : 'pdf';
+  return IMAGE_EXTENSIONS.test(nameOrUri.split('?')[0]) ? 'image' : 'pdf';
+}
+
+/** Reads a travel document of either kind into pages. */
+export async function readDocument(uri: string, kind: DocumentKind): Promise<PdfContents> {
+  return kind === 'image' ? readImage(uri) : readPdf(uri);
 }

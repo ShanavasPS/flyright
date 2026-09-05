@@ -126,7 +126,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "FlyRight lets you attach photos from your library to the trips in your travel journal.",
+          "photosPermission": "FlyRight reads tickets and boarding passes you upload from your library, and lets you attach photos to the trips in your travel journal.",
           "cameraPermission": "FlyRight scans boarding passes and lets you photograph moments from your trips.",
           "microphonePermission": false
         }

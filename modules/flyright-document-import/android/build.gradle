@@ -28,4 +28,12 @@ dependencies {
   // Second opinion for PDF417: ML Kit skips the small, wide stripes on
   // e-ticket receipts that ZXing's TRY_HARDER pass reads reliably.
   implementation 'com.google.zxing:core:3.5.3'
+  // OCR for uploaded images — the stand-in for PDFBox's page text when the
+  // upload is a screenshot of an itinerary rather than a pass with a barcode.
+  // The bundled Latin model (~4 MB) rather than the Play-Services variant:
+  // that one downloads on first use, and a silent "no text yet" would read
+  // as "no flights in this image".
+  implementation 'com.google.mlkit:text-recognition:16.0.1'
+  // EXIF orientation for camera photos (ZXing reads raw pixels).
+  implementation 'androidx.exifinterface:exifinterface:1.3.7'
 }

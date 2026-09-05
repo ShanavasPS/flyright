@@ -4,17 +4,23 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
+import androidx.exifinterface.media.ExifInterface
 import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
@@ -46,7 +52,13 @@ import java.util.UUID
  *
  * Reading: PdfBox-Android for the text of each page (sorted by position, so
  * table rows come out as lines), Android's PdfRenderer to rasterise pages,
- * and ML Kit to decode every barcode on them. */
+ * and ML Kit to decode every barcode on them.
+ *
+ * `readImage` is the same job for a picture instead of a PDF — a screenshot
+ * of a mobile pass, a photo of a paper one — so an in-app upload lands in the
+ * same import screen. The barcode pass is identical once the bitmap exists;
+ * ML Kit's text recogniser stands in for PDFBox when the image carries no
+ * barcode (a screenshot of a confirmation email). */
 class FlyRightDocumentImportModule : Module() {
   private var pending: Map<String, Any?>? = null
 
@@ -76,6 +88,10 @@ class FlyRightDocumentImportModule : Module() {
     // must not run on main.
     AsyncFunction("readPdf") { uri: String, maxPages: Int ->
       readPdf(uri, maxPages)
+    }
+
+    AsyncFunction("readImage") { uri: String ->
+      readImage(uri)
     }
   }
 
@@ -176,16 +192,21 @@ class FlyRightDocumentImportModule : Module() {
     return mapOf("pageCount" to pageCount, "pages" to pages)
   }
 
-  private fun decodeBarcodes(file: File, pages: Int): List<List<String>> {
-    val options = BarcodeScannerOptions.Builder()
+  /** The symbologies travel documents actually carry: PDF417 on printed
+   * passes and e-ticket receipts, Aztec/QR on mobile ones. */
+  private fun newBarcodeScanner(): BarcodeScanner = BarcodeScanning.getClient(
+    BarcodeScannerOptions.Builder()
       .setBarcodeFormats(
         Barcode.FORMAT_PDF417,
         Barcode.FORMAT_QR_CODE,
         Barcode.FORMAT_AZTEC,
         Barcode.FORMAT_DATA_MATRIX,
       )
-      .build()
-    val scanner = BarcodeScanning.getClient(options)
+      .build(),
+  )
+
+  private fun decodeBarcodes(file: File, pages: Int): List<List<String>> {
+    val scanner = newBarcodeScanner()
     val result = MutableList<List<String>>(pages) { emptyList() }
     try {
       ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
@@ -202,23 +223,11 @@ class FlyRightDocumentImportModule : Module() {
                 page.render(it, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
               }
             }
-            val payloads = LinkedHashSet<String>()
             try {
-              val found = Tasks.await(scanner.process(InputImage.fromBitmap(bitmap, 0)))
-              // rawValue keeps BCBP's whitespace-significant layout intact;
-              // displayValue would "clean" it.
-              found.mapNotNullTo(payloads) { it.rawValue?.takeIf(String::isNotEmpty) }
-            } catch (e: Exception) {
-              // ML Kit failing on a page only means ZXing gets the whole job.
-            }
-            try {
-              payloads.addAll(zxingDecode(bitmap))
-            } catch (e: Exception) {
-              // Same: a page that fails to scan simply contributes no barcodes.
+              result[i] = payloads(scanner, bitmap)
             } finally {
               bitmap.recycle()
             }
-            result[i] = payloads.toList()
           }
         } finally {
           renderer.close()
@@ -230,6 +239,118 @@ class FlyRightDocumentImportModule : Module() {
       scanner.close()
     }
     return result
+  }
+
+  /** Both decoders over one bitmap: ML Kit first, then ZXing for the small
+   * PDF417 stripes it skips. Either failing only costs its own findings. */
+  private fun payloads(scanner: BarcodeScanner, bitmap: Bitmap): List<String> {
+    val found = LinkedHashSet<String>()
+    try {
+      // rawValue keeps BCBP's whitespace-significant layout intact;
+      // displayValue would "clean" it.
+      Tasks.await(scanner.process(InputImage.fromBitmap(bitmap, 0)))
+        .mapNotNullTo(found) { it.rawValue?.takeIf(String::isNotEmpty) }
+    } catch (e: Exception) {
+      // ML Kit failing only means ZXing gets the whole job.
+    }
+    try {
+      found.addAll(zxingDecode(bitmap))
+    } catch (e: Exception) {
+      // Same: an image that fails to scan simply contributes no barcodes.
+    }
+    return found.toList()
+  }
+
+  // -- images ---------------------------------------------------------------
+
+  /** One "page" out, so the pure extractor downstream needs no notion of
+   * images at all. */
+  private fun readImage(uri: String): Map<String, Any> {
+    val path = Uri.parse(uri).path ?: throw ImageUnreadableException(uri)
+    val file = File(path)
+    if (!file.exists()) throw ImageUnreadableException(uri)
+    val bitmap = loadBitmap(file) ?: throw ImageUnreadableException(uri)
+    return try {
+      val scanner = newBarcodeScanner()
+      val codes = try {
+        payloads(scanner, bitmap)
+      } finally {
+        scanner.close()
+      }
+      mapOf(
+        "pageCount" to 1,
+        "pages" to listOf(mapOf("text" to imageText(bitmap), "barcodes" to codes)),
+      )
+    } finally {
+      bitmap.recycle()
+    }
+  }
+
+  /** A 12-megapixel camera photo is more pixels than either detector needs
+   * and enough to matter for peak memory (ARGB, a 24 MP one would be ~96 MB),
+   * so the longest edge is capped here — still denser than the ~2450 px the
+   * PDF path rasterises and reads PDF417 off reliably. A phone photo's EXIF
+   * rotation is applied too: ZXing reads raw pixels and would otherwise see
+   * the pass sideways. */
+  private val maxImageEdge = 3200
+
+  private fun loadBitmap(file: File): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > maxImageEdge) sample *= 2
+    val options = BitmapFactory.Options().apply {
+      inSampleSize = sample
+      inPreferredConfig = Bitmap.Config.ARGB_8888
+    }
+    val bitmap = BitmapFactory.decodeFile(file.path, options) ?: return null
+    val degrees = try {
+      when (ExifInterface(file).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+        ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+        ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+        else -> 0f
+      }
+    } catch (e: Exception) {
+      0f
+    }
+    if (degrees == 0f) return bitmap
+    val rotated = Bitmap.createBitmap(
+      bitmap, 0, 0, bitmap.width, bitmap.height,
+      Matrix().apply { postRotate(degrees) }, true,
+    )
+    if (rotated != bitmap) bitmap.recycle()
+    return rotated
+  }
+
+  /** Text as printed, in reading order. `Text.text` would hand back ML Kit's
+   * own blocks, which group an itinerary table by COLUMN — every departure
+   * airport in one run, far from the flight number it belongs to — and the
+   * extractor reads proximity inside the string, so the legs fall apart.
+   * Sorting the lines by position instead gives the same top-to-bottom,
+   * left-to-right order as PDFBox's sortByPosition and Vision's reader. */
+  private fun imageText(bitmap: Bitmap): String {
+    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    return try {
+      val lines = Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap, 0)))
+        .textBlocks
+        .flatMap { it.lines }
+        .mapNotNull { line -> line.boundingBox?.let { line.text to it } }
+      // Rows are banded by a typical line height so two cells of the same
+      // table row stay together instead of sorting by a few stray pixels.
+      val band = (lines.map { it.second.height() }.sorted().getOrNull(lines.size / 2) ?: 1)
+        .coerceAtLeast(1)
+      lines
+        .sortedWith(compareBy({ it.second.centerY() / band }, { it.second.left }))
+        .joinToString("\n") { it.first }
+    } catch (e: Exception) {
+      // No OCR (an unavailable model, an unsupported image): the barcode
+      // path still imports.
+      ""
+    } finally {
+      recognizer.close()
+    }
   }
 }
 
@@ -259,6 +380,9 @@ private fun zxingDecode(bitmap: Bitmap): List<String> {
 
 private class DocumentUnreadableException(uri: String) :
   CodedException("ERR_DOCUMENT_UNREADABLE", "'$uri' could not be opened as a PDF.", null)
+
+private class ImageUnreadableException(uri: String) :
+  CodedException("ERR_IMAGE_UNREADABLE", "'$uri' could not be opened as an image.", null)
 
 private class DocumentLockedException :
   CodedException("ERR_DOCUMENT_LOCKED", "This PDF is password-protected.", null)

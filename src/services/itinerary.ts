@@ -145,9 +145,17 @@ function resolveYearless(month: number, day: number, weekday: number | null, tod
   return best?.iso ?? null;
 }
 
+/** Month names, with the glyphs a recogniser confuses for 'l' folded back.
+ * A photographed or screenshotted receipt reads "25Jul2026" as "25Ju|2026"
+ * or "25Ju12026" often enough to lose the whole leg, and no month name
+ * contains a pipe, a slash, a bang or a digit — so folding them costs
+ * nothing and the MONTHS lookup still gates every match. */
 function monthNumber(name: string): number | null {
-  return MONTHS[name.toLowerCase()] ?? null;
+  return MONTHS[name.toLowerCase().replace(/[|!1/]/g, 'l')] ?? null;
 }
+
+/** A month name as printed or as misread — see monthNumber. */
+const MONTH_NAME = '[A-Za-z][A-Za-z|!1/]{2,8}';
 
 function weekdayNumber(name: string | undefined): number | null {
   if (!name) return null;
@@ -160,7 +168,10 @@ const DATE_PATTERNS: {
 }[] = [
   // 25Jul2026 · 25 Jul 2026 · 25-Jul-26 · 4 October 2025 (optional weekday before)
   {
-    re: /(?:\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?,?\s+)?\b(\d{1,2})(?:st|nd|rd|th)?[\s-]?([A-Za-z]{3,9})\.?[\s,-]{0,2}(\d{4}|\d{2})(?!\d)/g,
+    re: new RegExp(
+      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|\\d{2})(?!\\d)`,
+      'g',
+    ),
     build: (m) => {
       const month = monthNumber(m[3]);
       if (!month) return null;
@@ -170,7 +181,10 @@ const DATE_PATTERNS: {
   },
   // October 8, 2025 · Oct 8 2025 · Wednesday October 8, 2025
   {
-    re: /(?:\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?,?\s+)?\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/g,
+    re: new RegExp(
+      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(${MONTH_NAME})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b`,
+      'g',
+    ),
     build: (m) => {
       const month = monthNumber(m[2]);
       if (!month) return null;

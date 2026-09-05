@@ -10,6 +10,12 @@ import Vision
 /// the import route. This module only reads the file: PDFKit for the text of
 /// each page, Vision for every barcode drawn on it (PDF417 on printed passes
 /// and Amadeus receipts, Aztec/QR on mobile passes).
+///
+/// `readImage` is the same job for a picture instead of a PDF — a screenshot
+/// of a mobile pass, a photo of a paper one — so an in-app upload lands in
+/// the same import screen. Vision reads the barcode; when the image has none
+/// (a screenshot of a confirmation email) its text recogniser stands in for
+/// PDFKit's page text.
 public class FlyRightDocumentImportModule: Module {
   public func definition() -> ModuleDefinition {
     Name("FlyRightDocumentImport")
@@ -25,6 +31,16 @@ public class FlyRightDocumentImportModule: Module {
       DispatchQueue.global(qos: .userInitiated).async {
         do {
           promise.resolve(try Self.read(url: uri, maxPages: maxPages))
+        } catch {
+          promise.reject(error)
+        }
+      }
+    }
+
+    AsyncFunction("readImage") { (uri: URL, promise: Promise) in
+      DispatchQueue.global(qos: .userInitiated).async {
+        do {
+          promise.resolve(try Self.readImage(url: uri))
         } catch {
           promise.reject(error)
         }
@@ -82,7 +98,10 @@ public class FlyRightDocumentImportModule: Module {
       page.draw(with: .mediaBox, to: cg)
     }
     guard let cgImage = image.cgImage else { return [] }
+    return barcodes(in: cgImage)
+  }
 
+  private static func barcodes(in cgImage: CGImage) -> [String] {
     let request = VNDetectBarcodesRequest()
     request.symbologies = [.pdf417, .qr, .aztec, .dataMatrix]
     #if targetEnvironment(simulator)
@@ -112,11 +131,95 @@ public class FlyRightDocumentImportModule: Module {
     }
     return payloads
   }
+
+  // -- images ---------------------------------------------------------------
+
+  /// Vision's detectors work on the pixels they are given, so an upload is
+  /// read the same way a rendered PDF page is — one "page" out, so the pure
+  /// extractor downstream needs no notion of images at all.
+  private static func readImage(url: URL) throws -> [String: Any] {
+    let scoped = url.startAccessingSecurityScopedResource()
+    defer {
+      if scoped { url.stopAccessingSecurityScopedResource() }
+    }
+
+    guard let data = try? Data(contentsOf: url), let image = UIImage(data: data),
+      let cgImage = downscaled(image)
+    else {
+      throw ImageUnreadableException(url.lastPathComponent)
+    }
+    return [
+      "pageCount": 1,
+      "pages": [["text": text(in: cgImage), "barcodes": barcodes(in: cgImage)]],
+    ]
+  }
+
+  /// A 12-megapixel camera photo is more pixels than either detector needs
+  /// and enough to matter for peak memory; anything already smaller is left
+  /// exactly as it is, since a barcode loses bars to resampling. Redrawing
+  /// also normalises the EXIF orientation a phone photo carries, which the
+  /// raw CGImage would not.
+  private static let maxImageEdge: CGFloat = 3200
+
+  private static func downscaled(_ image: UIImage) -> CGImage? {
+    let size = image.size
+    guard size.width > 0, size.height > 0 else { return nil }
+    let scale = min(1, maxImageEdge / max(size.width, size.height))
+    let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    format.opaque = true
+    let drawn = UIGraphicsImageRenderer(size: target, format: format).image { context in
+      UIColor.white.setFill()
+      context.fill(CGRect(origin: .zero, size: target))
+      image.draw(in: CGRect(origin: .zero, size: target))
+    }
+    return drawn.cgImage
+  }
+
+  /// Text as printed, row by row: the extractor reads proximity inside the
+  /// string, so an itinerary table has to come out in reading order or a
+  /// leg's airports end up far from its flight number. Lines are banded into
+  /// rows by a typical line height and ordered left to right within a row —
+  /// the same order PDFBox's sortByPosition gives on Android. Language
+  /// correction stays off; it "fixes" flight numbers and airport codes into
+  /// words.
+  private static func text(in cgImage: CGImage) -> String {
+    let request = VNRecognizeTextRequest()
+    request.recognitionLevel = .accurate
+    request.usesLanguageCorrection = false
+    let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+    do {
+      try handler.perform([request])
+    } catch {
+      NSLog("[FlyRightDocumentImport] text recognition failed: %@", error.localizedDescription)
+      return ""
+    }
+    let observations = request.results ?? []
+    let heights = observations.map { $0.boundingBox.height }.sorted()
+    let band = max(heights.isEmpty ? 0.01 : heights[heights.count / 2], 0.001)
+    let lines = observations
+      .compactMap { observation -> (row: Int, x: CGFloat, text: String)? in
+        guard let string = observation.topCandidates(1).first?.string else { return nil }
+        let box = observation.boundingBox
+        // Vision's origin is bottom-left; flip so the row index grows downward.
+        return (Int(((1 - box.midY) / band).rounded(.down)), box.minX, string)
+      }
+      .sorted { $0.row != $1.row ? $0.row < $1.row : $0.x < $1.x }
+      .map(\.text)
+    return lines.joined(separator: "\n")
+  }
 }
 
 private final class DocumentUnreadableException: GenericException<String> {
   override var reason: String {
     "'\(param)' could not be opened as a PDF."
+  }
+}
+
+private final class ImageUnreadableException: GenericException<String> {
+  override var reason: String {
+    "'\(param)' could not be opened as an image."
   }
 }
 

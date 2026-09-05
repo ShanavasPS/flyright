@@ -35,17 +35,26 @@ import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
 import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
-import { readPdf } from '../../modules/flyright-document-import';
+import {
+  documentKind,
+  readDocument,
+  type DocumentKind,
+} from '../../modules/flyright-document-import';
 
 /**
- * "Share → FlyRight" lands here with a PDF: a boarding pass, an e-ticket
- * receipt, a booking confirmation. The native reader hands over each page's
- * text and barcodes, the pure extractor turns that into legs, and every leg
- * with a flight number and a date is looked up so the cards show the same
- * live facts add-flight would. One tap saves them all: lookup rows where the
- * provider knows the flight, journal rows (route and times as printed) where
- * it doesn't, and a "fill in the route" hand-off for the rare leg the
- * document names but never spells out.
+ * Where a travel document becomes trips. Two ways in: "Share → FlyRight" on
+ * a PDF (a boarding pass, an e-ticket receipt, a booking confirmation), and
+ * the in-app upload on the add-flight sheet, which also accepts a picture —
+ * a screenshot of a mobile pass, a photo of a paper one.
+ *
+ * The native reader hands over each page's text and barcodes (for a picture:
+ * its barcodes and whatever the platform recogniser reads off it), the pure
+ * extractor turns that into legs, and every leg with a flight number and a
+ * date is looked up so the cards show the same live facts add-flight would.
+ * One tap saves them all: lookup rows where the provider knows the flight,
+ * journal rows (route and times as printed) where it doesn't, and a "fill in
+ * the route" hand-off for the rare leg the document names but never spells
+ * out.
  */
 
 type Phase =
@@ -74,8 +83,12 @@ function estimatedArrival(depClock: string, distanceKm: number): string {
   return `${`${Math.floor(total / 60)}`.padStart(2, '0')}:${`${total % 60}`.padStart(2, '0')}`;
 }
 
-function fileLabel(uri: string | null, name: string | undefined): string {
+/** What to call the file on screen. A share carries its name; a picture from
+ * the library often has none, and the picker's cache filename is a UUID no
+ * traveler would recognise, so that reads as "this picture". */
+function fileLabel(uri: string | null, name: string | undefined, kind: DocumentKind): string {
   if (name) return name;
+  if (kind === 'image') return 'this picture';
   if (!uri) return 'document';
   const last = uri.split('/').pop() ?? 'document';
   try {
@@ -117,9 +130,19 @@ export function ImportDocument() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { userId, isSignedIn } = useAuth();
-  const { uri, name } = useLocalSearchParams<{ uri?: string; name?: string }>();
+  // `type` comes from the in-app pickers, which know the mime type; a share
+  // arrives with the file name only and is read by its extension.
+  const { uri, name, type, via } = useLocalSearchParams<{
+    uri?: string;
+    name?: string;
+    type?: string;
+    /** 'upload' when the traveler picked the file inside the app; a share
+     * from another app says nothing and reads as 'share'. */
+    via?: string;
+  }>();
   const fileUri = uri ?? null;
-  const label = fileLabel(fileUri, name || undefined);
+  const kind = documentKind(name || fileUri || '', type || null);
+  const label = fileLabel(fileUri, name || undefined, kind);
   const { data: journeys } = useJourneys(userId);
 
   const [phase, setPhase] = useState<Phase>(() =>
@@ -128,25 +151,35 @@ export function ImportDocument() {
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const today = useMemo(() => new Date(), []);
 
-  // Read once per file. The copy is ours (Inbox on iOS, cache on Android) and
-  // deleted as soon as it has been parsed — the app never keeps the PDF.
+  // Read once per file. The copy is ours (the share Inbox, the picker's cache)
+  // and deleted as soon as it has been parsed — the app keeps neither the PDF
+  // nor the picture.
   useEffect(() => {
     if (!fileUri) return;
     let cancelled = false;
     (async () => {
       try {
-        const contents = await readPdf(fileUri);
+        // The kind is a guess from a mime type or a file name, so a picture
+        // named .pdf (or the reverse) gets read by the other reader rather
+        // than refused. If neither can read it, the first attempt's reason is
+        // the one worth showing — it was the likelier reader.
+        const contents = await readDocument(fileUri, kind).catch((reason) =>
+          readDocument(fileUri, kind === 'image' ? 'pdf' : 'image').catch(() => {
+            throw reason;
+          }),
+        );
         const { segments, boardingPassBarcodes } = extractItinerary(contents.pages, today);
         if (cancelled) return;
         setPhase({ kind: 'review', segments, barcodes: boardingPassBarcodes });
-        trackEvent('document_shared', {
+        const read = {
           flights: segments.length,
           barcodes: boardingPassBarcodes,
           pages: contents.pageCount,
-        });
-        Observe.logEvent('document.imported', {
-          attributes: { flights: segments.length, barcodes: boardingPassBarcodes, pages: contents.pageCount },
-        });
+          kind,
+          via: via === 'upload' ? 'upload' : 'share',
+        };
+        trackEvent('document_shared', read);
+        Observe.logEvent('document.imported', { attributes: read });
       } catch (error) {
         if (cancelled) return;
         const message = error instanceof Error ? error.message : 'This file could not be read.';
@@ -163,7 +196,7 @@ export function ImportDocument() {
     return () => {
       cancelled = true;
     };
-  }, [fileUri, today]);
+  }, [fileUri, kind, today, via]);
 
   const segments = phase.kind === 'review' || phase.kind === 'saving' ? phase.segments : [];
 
@@ -382,8 +415,8 @@ export function ImportDocument() {
               {phase.message}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Share a PDF boarding pass, e-ticket receipt or booking confirmation — or add the
-              flight by number.
+              A PDF boarding pass, e-ticket receipt or booking confirmation works — so does a
+              screenshot or photo of a pass. Or add the flight by number.
             </ThemedText>
           </ThemedView>
           <PrimaryButton label="Add a flight by number →" onPress={() => router.replace('/add-flight')} />
@@ -395,9 +428,9 @@ export function ImportDocument() {
           <ThemedView type="backgroundElement" style={styles.card}>
             <ThemedText type="smallBold">No flights found in {label}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              We look for flight numbers, dates and boarding-pass barcodes. Scanned images and
-              hotel or car bookings don&apos;t carry those — try the airline&apos;s e-ticket or
-              confirmation PDF.
+              {kind === 'image'
+                ? 'We look for the barcode on a pass, then for flight numbers and dates in the picture. A blurred or cropped barcode reads as nothing — try the airline’s e-ticket PDF instead.'
+                : 'We look for flight numbers, dates and boarding-pass barcodes. Scanned images and hotel or car bookings don’t carry those — try the airline’s e-ticket or confirmation PDF.'}
             </ThemedText>
           </ThemedView>
           <PrimaryButton label="Add a flight by number →" onPress={() => router.replace('/add-flight')} />

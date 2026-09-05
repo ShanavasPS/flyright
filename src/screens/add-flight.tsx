@@ -7,7 +7,9 @@ import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -55,6 +57,11 @@ import {
 } from '@/services/flight-lookup';
 import { recordDelay } from '@/services/disruptions';
 import { addJourney, updateJourney, useJourney } from '@/services/journeys';
+import {
+  LibraryPermissionError,
+  promptForTravelDocument,
+} from '@/services/travel-documents';
+import { canImportDocuments } from '../../modules/flyright-document-import';
 
 // Progressive token entry: each confirmed value becomes a chip and the screen
 // moves to the next step. Tapping a chip reopens that step.
@@ -227,6 +234,47 @@ export function AddFlight() {
       attributes: { legs: pass.legs.length, lookupable: !!designator },
     });
     trackEvent('boarding_pass_scanned', { legs: pass.legs.length, lookupable: !!designator });
+  };
+
+  /** The other way in for a pass that isn't in front of the camera: the PDF
+   * the airline emailed, or the screenshot of the one on the phone. Reading
+   * it is the import screen's job — the same screen a shared document opens
+   * — so this hands the file over and steps aside (replace, not push: the
+   * form has nothing left to do, and cancelling the import lands back on the
+   * journal rather than on a half-filled sheet). */
+  const uploadDocument = async () => {
+    Keyboard.dismiss();
+    setScanning(false);
+    try {
+      const picked = await promptForTravelDocument();
+      if (!picked) return;
+      trackEvent('document_upload_picked', { mimeType: picked.mimeType ?? 'unknown' });
+      router.replace({
+        pathname: '/import-document',
+        params: {
+          uri: picked.uri,
+          name: picked.name ?? '',
+          type: picked.mimeType ?? '',
+          via: 'upload',
+        },
+      });
+    } catch (error) {
+      if (error instanceof LibraryPermissionError) {
+        Alert.alert(
+          'Photo access is off',
+          'FlyRight needs access to your photos to read a pass from your library.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
+      Alert.alert(
+        'That file could not be opened',
+        'Please try again, or type the flight number instead.',
+      );
+    }
   };
 
   const confirmDate = (day: string) => {
@@ -588,12 +636,28 @@ export function AddFlight() {
                           android: 'qr_code_scanner',
                           web: 'qr_code_scanner',
                         }}
-                        label="Scan your boarding pass"
+                        label="Scan ticket or boarding pass"
                         onPress={() => {
                           Keyboard.dismiss();
                           setScanning(true);
                         }}
                       />
+                      {/* The pass that isn't in front of the camera: the
+                          emailed PDF, or the screenshot of the mobile one.
+                          Quieter than the stub's one loud action, since the
+                          camera is the faster path when the pass is at hand. */}
+                      {canImportDocuments && (
+                        <Pressable
+                          testID="upload-boarding-pass"
+                          hitSlop={Spacing.two}
+                          onPress={uploadDocument}>
+                          <ThemedText
+                            type="smallBold"
+                            style={[styles.passLink, styles.centered]}>
+                            Upload a ticket PDF or screenshot →
+                          </ThemedText>
+                        </Pressable>
+                      )}
                     </>
                   )
                 )}
@@ -601,7 +665,11 @@ export function AddFlight() {
             )}
 
             {scanning && (
-              <BoardingPassScanner onScan={applyScan} onClose={() => setScanning(false)} />
+              <BoardingPassScanner
+                onScan={applyScan}
+                onClose={() => setScanning(false)}
+                onUpload={canImportDocuments ? uploadDocument : undefined}
+              />
             )}
 
             {!scanning && !editId && (

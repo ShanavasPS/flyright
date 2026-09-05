@@ -1,0 +1,90 @@
+# Uploading a ticket: the "Upload a ticket PDF or screenshot" entry beside the
+# scanner asks where the file is (Photo library / Files) and hands the pick to
+# the import screen.
+#
+# The system pickers themselves are out of a flow's reach — a photo library or
+# a Files browser is another process, and what it contains isn't ours to set up
+# — so this covers everything up to the choice, on both entry points (the
+# add-flight stub and the open viewfinder). The reading half is covered by
+# import-document.yaml, which takes any staged file, image or PDF.
+#
+# Run: maestro test .maestro/upload-document.yaml   (requires a booted
+# simulator with the dev build installed and `npx expo start` serving :8081)
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true # deterministic: the journeys DB starts empty
+    permissions:
+      camera: allow # so the viewfinder half needs no system dialog mid-flow
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# First launch also raises the ATT prompt (simctl can't pre-grant it); clear
+# it when it shows so it doesn't sit over onboarding.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+# clearState wipes the dev client's cached bundle — the first Metro download
+# can sit on a splash well past 30s (same as the other flows).
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+- tapOn: "Skip"
+# The ATT prompt lands AFTER onboarding (it is raised once the journal shows),
+# so it gets cleared here rather than only up front.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Ask App Not to Track"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+# The quiet second way in, under the pass's scan stub.
+- assertVisible: ".*Upload a ticket PDF or screenshot.*"
+- tapOn: ".*Upload a ticket PDF or screenshot.*"
+# Both sources offered, natively (action sheet on iOS, dialog on Android).
+- extendedWaitUntil:
+    visible: "Photo library"
+    timeout: 10000
+- assertVisible: "Files"
+- takeScreenshot: ${SHOTS}/upload-source-sheet
+- tapOn: "Cancel"
+# Backing out leaves the form exactly as it was.
+- extendedWaitUntil:
+    visible: ".*Scan ticket or boarding pass.*"
+    timeout: 10000
+# And the same offer stands with the viewfinder open, for the pass that isn't
+# in front of the camera.
+- tapOn: ".*Scan ticket or boarding pass.*"
+- extendedWaitUntil:
+    visible: ".*Fill the frame with the barcode.*"
+    timeout: 10000
+- assertVisible: ".*Upload a ticket PDF or screenshot.*"
+- tapOn: ".*Upload a ticket PDF or screenshot.*"
+- extendedWaitUntil:
+    visible: "Photo library"
+    timeout: 10000
+- tapOn: "Cancel"
+# Tapping upload shuts the camera down first, so backing out of the sheet
+# lands on typed entry rather than back in the viewfinder.
+- extendedWaitUntil:
+    visible: ".*Scan ticket or boarding pass.*"
+    timeout: 10000
