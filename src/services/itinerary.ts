@@ -469,8 +469,14 @@ function findPnr(text: string): string | null {
 }
 
 /** "Operated by: HORIZON AIR AS ALASKAHORIZON" — the name runs to the line
- * end or the next label. */
-const OPERATED_BY_RE = /\boperated\s+by\s*:?\s*([A-Za-z][A-Za-z0-9 .&'-]{1,48}?)\s*(?=\n|\s{2,}|\s+(?:Marketed|Booking|Cabin|Class|Seat|Baggage|Fare|Frequent|NVA|NVB)\b|$)/i;
+ * end or the next label.
+ *
+ * The airline has to sit on the label's own line: whitespace between the two
+ * is same-line only, never a newline. A page whose columns come out in the
+ * wrong order otherwise reads the *next line's* first words as the operator —
+ * a Finnair receipt yielded "Frequent flyer number" as an airline that way. */
+const OPERATED_BY_RE =
+  /\boperated\s+by[^\S\n]*:?[^\S\n]*([A-Za-z][A-Za-z0-9 .&'-]{1,48}?)[^\S\n]*(?=\n|[^\S\n]{2,}|[^\S\n]+(?:Marketed|Booking|Cabin|Class|Seat|Baggage|Fare|Frequent|NVA|NVB)\b|$)/i;
 
 function findOperator(window: string, marketing: string | null): ImportedSegment['operatedBy'] {
   const m = OPERATED_BY_RE.exec(window);

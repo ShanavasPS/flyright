@@ -78,11 +78,92 @@ public class FlyRightDocumentImportModule: Module {
     for index in 0..<min(document.pageCount, max(maxPages, 1)) {
       guard let page = document.page(at: index) else { continue }
       pages.append([
-        "text": page.string ?? "",
+        "text": rowOrderedText(on: page),
         "barcodes": barcodes(on: page),
       ])
     }
     return ["pageCount": document.pageCount, "pages": pages]
+  }
+
+  /// A page's text in reading order, the same shape the OCR path produces and
+  /// the same order PDFBox's sortByPosition gives on Android.
+  ///
+  /// `PDFPage.string` is content-stream order, not visual order, and a table
+  /// drawn column by column comes out interleaved. On a Finnair e-ticket the
+  /// operating airline lands on a line of its own while the "Operated by"
+  /// label runs straight into the *marketing* column, so the text reads
+  /// "Operated by FINNAIR" about a leg British Airways flies — PDFKit itself
+  /// reports label and far value as one contiguous range. The parser matches
+  /// labels to values by proximity, so it has no way to see past that.
+  ///
+  /// Geometry is the only thing that still knows the truth, so rows are
+  /// rebuilt from it: each character is placed by its own bounds, banded into
+  /// rows by a typical glyph height, ordered left to right, and any gap wider
+  /// than a word space — including the single very wide space PDFKit puts
+  /// between two columns — becomes the double space the itinerary parser
+  /// reads as a column break. Falls back to `page.string` if the page carries
+  /// no measurable glyph.
+  ///
+  /// `characterBounds(at:)` is deliberately not used: its indices drift out of
+  /// step with `string` on this document. A one-character selection is both
+  /// index-correct and cheap (~2 ms for a page).
+  private static func rowOrderedText(on page: PDFPage) -> String {
+    let raw = page.string ?? ""
+    let ns = raw as NSString
+    guard ns.length > 0 else { return raw }
+
+    var boxes: [CGRect] = []
+    boxes.reserveCapacity(ns.length)
+    for index in 0..<ns.length {
+      let bounds = page.selection(for: NSRange(location: index, length: 1))?.bounds(for: page)
+      boxes.append(bounds ?? .null)
+    }
+    let heights = boxes.filter { !$0.isNull && $0.height > 0 }.map(\.height).sorted()
+    guard !heights.isEmpty, let top = boxes.filter({ !$0.isNull }).map(\.maxY).max() else {
+      return raw
+    }
+    let band = max(heights[heights.count / 2], 1)
+    // Wider than any word space at this text size: a column break.
+    let columnGap = band * 0.8
+
+    var glyphs: [(row: Int, minX: CGFloat, maxX: CGFloat, text: String, isColumnBreak: Bool)] = []
+    glyphs.reserveCapacity(ns.length)
+    for index in 0..<ns.length {
+      let box = boxes[index]
+      if box.isNull || box.isInfinite { continue }
+      let character = ns.substring(with: NSRange(location: index, length: 1))
+      if character == "\n" || character == "\r" { continue }
+      let blank = character.trimmingCharacters(in: .whitespaces).isEmpty
+      // PDF's origin is bottom-left; flip so the row index grows downward.
+      let row = Int(((top - box.midY) / band).rounded(.down))
+      glyphs.append((row, box.minX, box.maxX, character, blank && box.width > columnGap))
+    }
+    guard !glyphs.isEmpty else { return raw }
+    glyphs.sort { $0.row != $1.row ? $0.row < $1.row : $0.minX < $1.minX }
+
+    var lines: [String] = []
+    var line = ""
+    var row = glyphs[0].row
+    var previousMaxX: CGFloat?
+    for glyph in glyphs {
+      if glyph.row != row {
+        lines.append(line)
+        line = ""
+        row = glyph.row
+        previousMaxX = nil
+      }
+      let gapped = previousMaxX.map { glyph.minX - $0 > columnGap } ?? false
+      if (glyph.isColumnBreak || gapped) && !line.isEmpty && !line.hasSuffix("  ") {
+        line += "  "
+      }
+      if !glyph.isColumnBreak { line += glyph.text }
+      previousMaxX = glyph.maxX
+    }
+    lines.append(line)
+    return lines
+      .map { $0.trimmingCharacters(in: .whitespaces) }
+      .filter { !$0.isEmpty }
+      .joined(separator: "\n")
   }
 
   private static func barcodes(on page: PDFPage) -> [String] {
