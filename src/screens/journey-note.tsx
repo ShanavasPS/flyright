@@ -16,6 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { noteSuccess } from '@/services/haptics';
 import { saveJourneyNotes, useJourney } from '@/services/journeys';
@@ -56,7 +57,7 @@ export function JourneyNote() {
   };
 
   const tripLine = row
-    ? [row.number, `${row.fromCode} → ${row.toCode}`, formatDayLabelWithYear(row.scheduledDeparture)]
+    ? [row.number, `${row.fromCode} → ${row.toCode}`, formatDayLabelWithYear(row.scheduledDeparture, airportZone(row.fromCode))]
         .filter(Boolean)
         .join(' · ')
     : '';

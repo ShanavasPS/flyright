@@ -36,6 +36,7 @@ import { JourneyDetail } from '@/screens/journey-detail';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
+import { airportZone } from '@/services/airports';
 import { requestTrackingConsent } from '@/services/analytics';
 import { useClaims, type ClaimRow } from '@/services/claims';
 import { countdown, formatDayLabel, formatTime } from '@/services/dates';
@@ -410,12 +411,14 @@ function AddFlightButton({ onPress }: { onPress: () => void }) {
 function scheduleLabel(row: JourneyRow): string {
   const { scheduledDeparture: dep, scheduledArrival: arr } = row;
   const km = `${Math.round(row.distanceKm).toLocaleString()} km`;
+  // Each clock belongs to the code beside it, so the line reads the way a
+  // boarding pass does no matter which zone the phone is in.
   if (row.source === 'manual' && dep === arr) {
     return dep.endsWith('T12:00:00')
       ? `${row.fromCode} → ${row.toCode} · ${km}`
-      : `${row.fromCode} ${formatTime(dep)} → ${row.toCode} · ${km}`;
+      : `${row.fromCode} ${formatTime(dep, airportZone(row.fromCode))} → ${row.toCode} · ${km}`;
   }
-  return `${row.fromCode} ${formatTime(dep)} → ${row.toCode} ${formatTime(arr)}`;
+  return `${row.fromCode} ${formatTime(dep, airportZone(row.fromCode))} → ${row.toCode} ${formatTime(arr, airportZone(row.toCode))}`;
 }
 
 /** The first non-empty line of a note, for the list row's one-line peek. */
@@ -513,7 +516,8 @@ function JourneyItem({
                 {/* The logo already names the airline, so the flight number
                     alone follows the date (Flighty's pattern); carrier is the
                     fallback for number-less journal entries. */}
-                {formatDayLabel(row.scheduledDeparture)} · {row.number || row.carrier}
+                {formatDayLabel(row.scheduledDeparture, airportZone(row.fromCode))} ·{' '}
+                {row.number || row.carrier}
               </ThemedText>
               {/* One right slot: the money moment outranks the countdown. */}
               {claim || owed ? (

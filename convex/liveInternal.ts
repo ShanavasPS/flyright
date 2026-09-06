@@ -1,3 +1,4 @@
+import { flightDay } from './airportZones';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
@@ -185,7 +186,8 @@ export const poll = internalAction({
       facts = await fetchFlightFacts(
         ctx,
         session.number,
-        session.scheduledDeparture.slice(0, 10),
+        // The flight's local date at its origin — see airportZones.flightDay.
+        flightDay(session.scheduledDeparture, session.fromCode),
       ).catch(() => null);
     }
     await ctx.runMutation(internal.liveInternal.applyFlightFacts, { sessionId, facts });

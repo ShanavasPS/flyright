@@ -12,6 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
 import { NEXT_STATUSES, isClosed, parseSentSnapshot } from '@/services/claim-status';
 import { useClaims, type ClaimWithJourney } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
@@ -164,7 +165,8 @@ function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; in
           <View style={styles.chipRow}>
             <StatusChip status={claim.status} overdue={overdue} />
             <ThemedText type="small" themeColor="textSecondary">
-              {claim.regulation} · {formatDayLabelWithYear(journey.scheduledDeparture)}
+              {claim.regulation} ·{' '}
+              {formatDayLabelWithYear(journey.scheduledDeparture, airportZone(journey.fromCode))}
             </ThemedText>
           </View>
           <ThemedText type="smallBold">

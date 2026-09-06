@@ -17,7 +17,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatDayLabel, formatTime, localDateString } from '@/services/dates';
+import { airportZone } from '@/services/airports';
+import { formatDayLabel, formatTime } from '@/services/dates';
 import { tapLight, tapMedium } from '@/services/haptics';
 import {
   FLIGHT_STAGES,
@@ -113,6 +114,11 @@ export function TravelDayTimeline({
   const theme = useTheme();
   const interactive = !readOnly && !locked;
   const currentIndex = stageIndex(state.stage);
+  // The walk happens at the departure airport, so its clock is the one the
+  // traveler is living by — until they land, where the destination's takes
+  // over. Neither follows the phone around.
+  const departureZone = airportZone(journey.fromCode);
+  const arrivalZone = airportZone(journey.toCode);
   const factsWithData = journey.source === 'lookup';
   // Journal trips have no status feed, so the traveler stamps departed/landed
   // too; tracked flights keep those data-only (and say so on the row).
@@ -126,7 +132,9 @@ export function TravelDayTimeline({
     if (facts.gate) chips.push({ label: 'Gate', value: facts.gate });
     if (facts.terminal) chips.push({ label: 'Terminal', value: facts.terminal });
     if (facts.checkInDesk) chips.push({ label: 'Check-in', value: facts.checkInDesk });
-    if (facts.boardingTime) chips.push({ label: 'Boarding', value: formatTime(facts.boardingTime) });
+    if (facts.boardingTime) {
+      chips.push({ label: 'Boarding', value: formatTime(facts.boardingTime, departureZone) });
+    }
     if (state.stage === 'landed' && facts.baggageBelt) {
       chips.push({ label: 'Baggage', value: facts.baggageBelt });
     }
@@ -167,7 +175,7 @@ export function TravelDayTimeline({
   const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateY: thumbY.value }] }));
 
   const unlockLabel = unlocksAt
-    ? `${formatDayLabel(localDateString(unlocksAt))} at ${formatTime(unlocksAt.toISOString())}`
+    ? `${formatDayLabel(unlocksAt.toISOString(), departureZone)} at ${formatTime(unlocksAt.toISOString(), departureZone)}`
     : null;
 
   return (
@@ -290,7 +298,7 @@ export function TravelDayTimeline({
                   : theme.textSecondary;
 
           const caption = reached
-            ? formatTime(stamp)
+            ? formatTime(stamp, stage === 'landed' ? arrivalZone : departureZone)
             : skipped
               ? 'Skipped'
               : autoStamped && !readOnly

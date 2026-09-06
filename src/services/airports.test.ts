@@ -1,4 +1,6 @@
-import { getAirport, isValidIata, searchAirports } from './airports';
+import AIRPORTS_JSON from '../../assets/data/airports.json';
+
+import { airportZone, getAirport, isValidIata, searchAirports } from './airports';
 
 describe('getAirport', () => {
   it('resolves a known code, case-insensitively', () => {
@@ -57,5 +59,37 @@ describe('searchAirports', () => {
   it('respects the limit and empty queries', () => {
     expect(searchAirports('A', 3)).toHaveLength(3);
     expect(searchAirports('  ')).toHaveLength(0);
+  });
+});
+
+describe('airportZone', () => {
+  it('names the zone each airport keeps its clocks in', () => {
+    expect(airportZone('ARN')).toBe('Europe/Stockholm');
+    expect(airportZone('LHR')).toBe('Europe/London');
+    expect(airportZone('HEL')).toBe('Europe/Helsinki');
+    expect(airportZone('DEL')).toBe('Asia/Kolkata');
+    // Opened 2020 — the IATA→zone columns in the usual open datasets stop
+    // well before it, which is why the table is derived from coordinates.
+    expect(airportZone('BER')).toBe('Europe/Berlin');
+  });
+
+  it('splits a country across its zones', () => {
+    expect(airportZone('JFK')).toBe('America/New_York');
+    expect(airportZone('LAX')).toBe('America/Los_Angeles');
+    expect(airportZone('HNL')).toBe('Pacific/Honolulu');
+  });
+
+  it('is case- and whitespace-insensitive, and null for what it does not know', () => {
+    expect(airportZone(' hel ')).toBe('Europe/Helsinki');
+    expect(airportZone('ZZZ')).toBeNull();
+    expect(airportZone(null)).toBeNull();
+    expect(airportZone(undefined)).toBeNull();
+  });
+
+  it('covers every airport the dataset carries', () => {
+    // A zone missing here silently falls back to the device's clock, which is
+    // the failure this whole table exists to prevent — so cover all of them.
+    const missing = Object.keys(AIRPORTS_JSON).filter((iata) => !airportZone(iata));
+    expect(missing).toEqual([]);
   });
 });

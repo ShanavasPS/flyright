@@ -38,7 +38,7 @@ import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats
 import { carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getAirport, searchAirports, type Airport } from '@/services/airports';
+import { airportZone, getAirport, searchAirports, type Airport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
 import {
@@ -975,9 +975,15 @@ export function AddFlight() {
                     fromCode={flight.from.code!}
                     toCode={flight.to.code!}
                     depTime={
-                      flight.scheduledDeparture ? formatTime(flight.scheduledDeparture) : null
+                      flight.scheduledDeparture
+                        ? formatTime(flight.scheduledDeparture, airportZone(flight.from.code))
+                        : null
                     }
-                    arrTime={flight.scheduledArrival ? formatTime(flight.scheduledArrival) : null}
+                    arrTime={
+                      flight.scheduledArrival
+                        ? formatTime(flight.scheduledArrival, airportZone(flight.to.code))
+                        : null
+                    }
                     delayed={!flight.landed && (flight.delayMinutes ?? 0) > 0}
                   />
                   <View style={styles.passMeta}>

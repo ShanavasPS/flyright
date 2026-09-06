@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useCountUp } from '@/hooks/use-count-up';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
 import { formatDayLabelWithYear } from '@/services/dates';
 import { useJourneys, type JourneyRow } from '@/services/journeys';
 import {
@@ -161,7 +162,7 @@ function SectionLabel({ children }: { children: string }) {
 function RecordCard({ label, row }: { label: string; row: JourneyRow }) {
   const theme = useTheme();
   const airline = airlineOf(row);
-  const when = formatDayLabelWithYear(row.scheduledDeparture);
+  const when = formatDayLabelWithYear(row.scheduledDeparture, airportZone(row.fromCode));
   return (
     <SheenCard>
       <View style={styles.spacedRow}>

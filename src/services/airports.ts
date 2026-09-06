@@ -4,6 +4,7 @@
 
 // Relative import (not @/assets) so jest resolves it without extra config.
 import data from '../../assets/data/airports.json';
+import zoneData from '../../assets/data/airport-timezones.json';
 
 import { COUNTRY_NAMES } from '@/constants/countries';
 
@@ -79,6 +80,29 @@ export function searchAirports(query: string, limit = 6): Airport[] {
   return results
     .concat(ranked(codePrefix), ranked(cityWord), ranked(citySubstring))
     .slice(0, limit);
+}
+
+/** IATA → IANA zone, unpacked once from the zone-keyed table (see
+ * scripts/build-airport-timezones.mjs) on the first lookup that needs it. */
+let zoneCache: Record<string, string> | null = null;
+
+/** The IANA zone the airport keeps its clocks in ("ARN" → "Europe/Stockholm"),
+ * or null for a code the dataset doesn't carry.
+ *
+ * A flight's times belong to its airports, not to whoever is reading them:
+ * an Arlanda departure is 12:25 in Stockholm from anywhere on earth. Every
+ * formatter that renders a stored instant takes one of these — see
+ * services/dates.
+ */
+export function airportZone(iata: string | null | undefined): string | null {
+  if (!iata) return null;
+  if (!zoneCache) {
+    zoneCache = {};
+    for (const [zone, codes] of Object.entries(zoneData as Record<string, string>)) {
+      for (const code of codes.split(',')) zoneCache[code] = zone;
+    }
+  }
+  return zoneCache[iata.trim().toUpperCase()] ?? null;
 }
 
 /** 2 = curated major hub, 1 = large airport, 0 = everything else. The tier

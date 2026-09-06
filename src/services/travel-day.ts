@@ -8,6 +8,7 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
+import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
 import { formatTime } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
@@ -402,6 +403,12 @@ export function liveContent(
   // the route codes, so nothing here repeats them.
   const effectiveDeparture = facts.estimatedDeparture ?? j.scheduledDeparture;
   const departureMs = Date.parse(effectiveDeparture);
+  // Travel day is the one screen read while crossing zones, so every clock
+  // on it names the airport it happens at: gate times in the departure
+  // airport's, the landing time in the destination's. The countdowns are
+  // durations and stay zone-free.
+  const departureZone = airportZone(j.fromCode);
+  const arrivalZone = airportZone(j.toCode);
   const arrivalMs = Date.parse(facts.estimatedArrival ?? j.scheduledArrival);
   let headline: string;
   if (state.stage === 'landed') {
@@ -410,7 +417,7 @@ export function liveContent(
     const toLanding = Number.isNaN(arrivalMs) ? null : countdownLabel(arrivalMs, now);
     headline = toLanding === null ? 'In the air' : toLanding === 'now' ? 'Landing now' : `Lands ${toLanding}`;
   } else if (Number.isNaN(departureMs)) {
-    headline = `Departs ${formatTime(effectiveDeparture)}`;
+    headline = `Departs ${formatTime(effectiveDeparture, departureZone)}`;
   } else {
     const toDeparture = countdownLabel(departureMs, now);
     headline = toDeparture === 'now' ? 'Departing now' : `Flight ${toDeparture}`;
@@ -440,7 +447,7 @@ export function liveContent(
   } else if (next === 'boarded') {
     // The gate step carries the boarding time when the airline posts one.
     subtitle = facts.boardingTime
-      ? `Go to ${gateWord} · boards ${formatTime(facts.boardingTime)}`
+      ? `Go to ${gateWord} · boards ${formatTime(facts.boardingTime, departureZone)}`
       : `Go to ${gateWord}`;
   } else if (next === 'checked_in' && facts.checkInDesk) {
     subtitle = `Check in at desk ${facts.checkInDesk}`;
@@ -454,7 +461,7 @@ export function liveContent(
   // stage word — and the baggage belt after landing, the last thing to find.
   let compactLabel: string;
   if (state.stage === null) {
-    compactLabel = formatTime(effectiveDeparture);
+    compactLabel = formatTime(effectiveDeparture, departureZone);
   } else if (state.stage === 'landed' && facts.baggageBelt) {
     compactLabel = `Belt ${facts.baggageBelt}`;
   } else if (index >= stageIndex('boarded') || next === null) {
@@ -465,8 +472,8 @@ export function liveContent(
     compactLabel = NEXT_STEP_COMPACT[next];
   }
 
-  const timeOf = (iso: string | null) =>
-    iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso) : null;
+  const timeOf = (iso: string | null, zone: string | null) =>
+    iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso, zone) : null;
 
   return {
     title: `${flight} · ${routeLabel(j)}`,
@@ -475,8 +482,8 @@ export function liveContent(
     fromCode: j.fromCode,
     toCode: j.toCode,
     flightLabel: flight,
-    depTime: timeOf(facts.estimatedDeparture ?? j.scheduledDeparture),
-    arrTime: timeOf(facts.estimatedArrival ?? j.scheduledArrival),
+    depTime: timeOf(facts.estimatedDeparture ?? j.scheduledDeparture, departureZone),
+    arrTime: timeOf(facts.estimatedArrival ?? j.scheduledArrival, arrivalZone),
     progress: flightProgress(j, state, facts, now),
     stageIndex: index,
     stageLabel,

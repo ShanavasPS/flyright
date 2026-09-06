@@ -5,6 +5,7 @@
 
 import { evaluate } from '@/rules/engine';
 import type { Journey } from '@/rules/types';
+import { airportZone } from '@/services/airports';
 import { formatDayLabel, formatTime } from '@/services/dates';
 import type { InboundOutlook } from '@/services/inbound';
 import type { JourneyRow } from '@/services/journeys';
@@ -23,7 +24,14 @@ export interface PlannedReminder {
 
 export type ReminderJourney = Pick<
   JourneyRow,
-  'id' | 'number' | 'carrier' | 'toCode' | 'source' | 'scheduledDeparture' | 'scheduledArrival'
+  | 'id'
+  | 'number'
+  | 'carrier'
+  | 'fromCode'
+  | 'toCode'
+  | 'source'
+  | 'scheduledDeparture'
+  | 'scheduledArrival'
 >;
 
 export interface ReminderClaim {
@@ -64,7 +72,11 @@ function tripReminder(j: ReminderJourney, now: Date): PlannedReminder | null {
     j.source === 'lookup'
       ? "FlyRight is watching it — if it runs late, you'll know what you're owed."
       : 'Safe travels! Your journal has the trip covered.';
-  const when = hasRealTime(j) ? `Departs ${formatTime(j.scheduledDeparture)}. ` : '';
+  // "Departs 08:35" means 08:35 at the gate they're walking to — a push that
+  // re-times itself to wherever the phone is would be worse than silent.
+  const when = hasRealTime(j)
+    ? `Departs ${formatTime(j.scheduledDeparture, airportZone(j.fromCode))}. `
+    : '';
 
   return {
     id: `trip-${j.id}`,
@@ -186,6 +198,7 @@ export function inboundLegLabel(outlook: InboundOutlook): string {
 
 /** The proactive heads-up: the departure board still says on time, but the
  * aircraft flying this leg is late enough that the schedule can't hold. */
+
 export function inboundNotification(
   journey: Journey,
   outlook: InboundOutlook,

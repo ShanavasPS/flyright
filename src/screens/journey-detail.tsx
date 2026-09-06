@@ -36,7 +36,7 @@ import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
-import { countryName, getAirport } from '@/services/airports';
+import { airportZone, countryName, getAirport } from '@/services/airports';
 import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
 import {
@@ -264,14 +264,19 @@ export function JourneyDetail({
 
   // Journal entries without user-entered times store the placeholder noon
   // pair — no schedule worth showing. A lone entered time reads as a departure.
+  // Each end in its own airport's time. "Departs 12:25" has to mean 12:25 on
+  // the departure board, not 12:25 re-timed to wherever the phone happens to
+  // be — which is what showed a Stockholm departure as 16:55 in India.
+  const departureZone = airportZone(journey.from.code);
+  const arrivalZone = airportZone(journey.to.code);
   const schedule: { departure: string; arrival: string | null } | null =
     journey.scheduledDeparture === journey.scheduledArrival
       ? journey.scheduledDeparture.endsWith('T12:00:00')
         ? null
-        : { departure: formatTime(journey.scheduledDeparture), arrival: null }
+        : { departure: formatTime(journey.scheduledDeparture, departureZone), arrival: null }
       : {
-          departure: formatTime(journey.scheduledDeparture),
-          arrival: formatTime(journey.scheduledArrival),
+          departure: formatTime(journey.scheduledDeparture, departureZone),
+          arrival: formatTime(journey.scheduledArrival, arrivalZone),
         };
 
   // Share + circle pills for the trip cards' headers, while there's something
@@ -485,7 +490,7 @@ function HeaderIcon({
 function shareTrip(journey: Journey) {
   const flight = journey.number ? ` on ${journey.number}` : '';
   void Share.share({
-    message: `${cityLabel(journey.from)} → ${cityLabel(journey.to)}${flight}, ${formatDayLabelWithYear(journey.scheduledDeparture)} — tracked with FlyRight`,
+    message: `${cityLabel(journey.from)} → ${cityLabel(journey.to)}${flight}, ${formatDayLabelWithYear(journey.scheduledDeparture, airportZone(journey.from.code))} — tracked with FlyRight`,
   }).catch(() => {});
 }
 

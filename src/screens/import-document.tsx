@@ -25,9 +25,15 @@ import { COBALT, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { CARRIERS, carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getAirport } from '@/services/airports';
+import { airportZone, getAirport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
-import { formatDayLabel, formatDayLabelWithYear, formatTime, localDateString } from '@/services/dates';
+import {
+  flightDay,
+  formatDayLabel,
+  formatDayLabelWithYear,
+  formatTime,
+  localDateString,
+} from '@/services/dates';
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
@@ -37,6 +43,7 @@ import {
   type ItineraryRefusal,
 } from '@/services/itinerary';
 import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
+import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
 import {
@@ -229,7 +236,12 @@ export function ImportDocument() {
     const ids = new Set<string>();
     for (const j of journeys ?? []) {
       ids.add(j.id);
-      if (j.number) ids.add(`${j.number}-${j.scheduledDeparture.slice(0, 10)}`);
+      // The flight's local day, which is what a segment carries — slicing the
+      // stored instant would miss a match across UTC midnight and re-offer a
+      // leg the journal already has (see dates.flightDay).
+      if (j.number) {
+        ids.add(`${j.number}-${flightDay(j.scheduledDeparture, airportZone(j.fromCode))}`);
+      }
     }
     return ids;
   }, [journeys]);
@@ -274,6 +286,7 @@ export function ImportDocument() {
       const operator = operatorOf(segment);
       if (plan.kind === 'lookup') {
         const flight = plan.flight;
+        const schedule = legSchedule(segment, flight);
         const row: NewJourneyRow = {
           id: `${flight.flight}-${flight.date}`,
           userId,
@@ -287,8 +300,8 @@ export function ImportDocument() {
           toCode: flight.to.code!,
           toCountry: flight.to.country ?? '',
           distanceKm: flight.distanceKm ?? 0,
-          scheduledDeparture: flight.scheduledDeparture ?? `${flight.date}T00:00:00Z`,
-          scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
+          scheduledDeparture: schedule.departure ?? `${flight.date}T00:00:00Z`,
+          scheduledArrival: schedule.arrival ?? `${flight.date}T00:00:00Z`,
           ...details,
           createdAt: now,
         };
@@ -543,17 +556,10 @@ function SegmentCard({
   const flight = plan.kind === 'lookup' ? plan.flight : null;
   const fromCode = flight?.from.code ?? segment.fromCode;
   const toCode = flight?.to.code ?? segment.toCode;
-  const depTime = flight?.scheduledDeparture
-    ? formatTime(flight.scheduledDeparture)
-    : segment.depTime && segment.date
-      ? formatTime(`${segment.date}T${segment.depTime}:00`)
-      : null;
-  const arrTime = flight?.scheduledArrival
-    ? formatTime(flight.scheduledArrival)
-    : segment.arrTime && segment.arrivalDate
-      ? formatTime(`${segment.arrivalDate}T${segment.arrTime}:00`)
-      : null;
-  const date = flight?.date ?? segment.date;
+  const schedule = legSchedule(segment, flight);
+  const depTime = schedule.departure ? formatTime(schedule.departure, airportZone(fromCode)) : null;
+  const arrTime = schedule.arrival ? formatTime(schedule.arrival, airportZone(toCode)) : null;
+  const date = segment.date ?? flight?.date;
   const thisYear = date ? date.slice(0, 4) === `${new Date().getFullYear()}` : true;
   const carrier = segment.flight ? carrierFor(segment.flight) : null;
   const operator = operatorOf(segment);

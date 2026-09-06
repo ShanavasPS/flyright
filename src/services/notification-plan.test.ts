@@ -16,6 +16,7 @@ function journey(overrides: Partial<ReminderJourney> = {}): ReminderJourney {
     id: 'AY1331-2026-08-25',
     number: 'AY1331',
     carrier: 'Finnair',
+    fromCode: 'HEL',
     toCode: 'LHR',
     source: 'lookup',
     scheduledDeparture: '2026-08-25T10:15:00Z',

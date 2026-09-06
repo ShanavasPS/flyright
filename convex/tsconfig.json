@@ -7,6 +7,8 @@
     /* These settings are not required by Convex and can be modified. */
     "allowJs": true,
     "strict": true,
+    /* The bundled airport→timezone table is JSON (see airportZones.ts). */
+    "resolveJsonModule": true,
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "skipLibCheck": true,

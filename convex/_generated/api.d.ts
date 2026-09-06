@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as airportZones from "../airportZones.js";
 import type * as carriersShared from "../carriersShared.js";
 import type * as circle from "../circle.js";
 import type * as circleInternal from "../circleInternal.js";
@@ -40,6 +41,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  airportZones: typeof airportZones;
   carriersShared: typeof carriersShared;
   circle: typeof circle;
   circleInternal: typeof circleInternal;

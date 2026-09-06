@@ -36,6 +36,7 @@ import {
 } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
@@ -411,7 +412,8 @@ function FollowingRow({ person }: { person: Following }) {
           </ThemedText>
           {next ? (
             <ThemedText type="small" numberOfLines={1} style={{ color: theme.tint }}>
-              {next.fromCode} → {next.toCode} · {formatDayLabel(next.scheduledDeparture)}
+              {next.fromCode} → {next.toCode} ·{' '}
+              {formatDayLabel(next.scheduledDeparture, airportZone(next.fromCode))}
             </ThemedText>
           ) : (
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>

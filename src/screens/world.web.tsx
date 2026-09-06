@@ -13,6 +13,7 @@ import { WorldMap, mapColors } from '@/components/world-map';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
 import { WORLD, buildWorldMap, fitViewBox, type ViewBox } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
 import { formatDayLabel } from '@/services/dates';
@@ -185,7 +186,7 @@ export function World() {
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {focusedRow
-                  ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture)}`
+                  ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture, airportZone(focusedRow.fromCode))}`
                   : 'Everywhere your journeys have taken you'}
               </ThemedText>
             </View>

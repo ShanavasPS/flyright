@@ -1,4 +1,13 @@
-import { countdown, localDateString, travelDayTitle } from './dates';
+import {
+  countdown,
+  flightDay,
+  formatDayLabel,
+  formatDayLabelWithYear,
+  formatTime,
+  localDateString,
+  travelDayTitle,
+  zonedTimestamp,
+} from './dates';
 
 const NOW = new Date('2026-08-04T12:00:00Z');
 
@@ -66,3 +75,129 @@ function formatDay(iso: string) {
   });
 }
 
+
+/** "04:55 pm" / "16:55" → 1015, so assertions survive a 12-hour locale. */
+function minutesOfDay(label: string): number {
+  const [, h, m] = label.match(/(\d{1,2}):(\d{2})/)!;
+  let hour = Number(h);
+  if (/p/i.test(label) && hour !== 12) hour += 12;
+  if (/a/i.test(label) && hour === 12) hour = 0;
+  return hour * 60 + Number(m);
+}
+
+const at = (h: number, m: number) => h * 60 + m;
+
+// These assertions are absolute on purpose: no test can move the zone V8
+// cached at startup, so the guard is that they must hold wherever the suite
+// runs — a laptop in Helsinki, CI in UTC, a phone in Kolkata. Every one of
+// them fails if the device's zone gets back into a flight time.
+describe('formatTime — the clock belongs to the airport', () => {
+  // BA777 ARN→LHR: 11:25Z off stand, 14:15Z on stand. Arlanda reads that as
+  // 12:25 (UTC+1 in November), Heathrow as 14:15 (UTC+0).
+  const departure = '2026-11-28T11:25Z';
+  const arrival = '2026-11-28T14:15Z';
+
+  it('reads one instant as each airport reads it', () => {
+    expect(minutesOfDay(formatTime(departure, 'Europe/Stockholm'))).toBe(at(12, 25));
+    expect(minutesOfDay(formatTime(arrival, 'Europe/London'))).toBe(at(14, 15));
+  });
+
+  it('follows the zone it is given, not the one the reader is in', () => {
+    // 16:55 is what a phone on IST used to show for this departure. It is a
+    // true clock reading — just of the wrong place, which is the whole bug.
+    expect(minutesOfDay(formatTime(departure, 'Asia/Kolkata'))).toBe(at(16, 55));
+    expect(minutesOfDay(formatTime(departure, 'America/Los_Angeles'))).toBe(at(3, 25));
+  });
+
+  it('renders a manual entry as the traveler typed it, unshifted', () => {
+    // Zone-less strings are already wall clocks — converting one would move a
+    // time the traveler chose themselves, and there is no zone to convert from.
+    expect(minutesOfDay(formatTime('2026-11-28T11:30:00', 'Asia/Kolkata'))).toBe(at(11, 30));
+    expect(minutesOfDay(formatTime('2026-11-28T11:30:00'))).toBe(at(11, 30));
+  });
+
+  it('has nothing to show for a missing or unparsable time', () => {
+    expect(formatTime(null)).toBe('—');
+    expect(formatTime('not-a-time')).toBe('—');
+  });
+});
+
+describe('formatDayLabel — the day belongs to the airport too', () => {
+  // 23:40 in Los Angeles on 3 December — already the 4th in UTC, and the 4th
+  // again in Helsinki, so only the airport's own calendar gets this right.
+  const lateNight = '2026-12-04T07:40Z';
+
+  it('names the day the airport is having', () => {
+    expect(formatDayLabel(lateNight, 'America/Los_Angeles')).toMatch(/\b3\b/);
+    expect(formatDayLabelWithYear(lateNight, 'America/Los_Angeles')).toMatch(/\b3\b/);
+  });
+
+  it('leaves a plain date alone', () => {
+    expect(formatDayLabel('2026-12-04', 'America/Los_Angeles')).toMatch(/\b4\b/);
+  });
+});
+
+describe('travelDayTitle — "Today" means the day it is where the flight leaves', () => {
+  it('counts the calendar days at the departure airport', () => {
+    // 21:00 on 4 August in Auckland, while UTC is still on the 4th at 09:00:
+    // both agree it is the flight's day, and so must the title.
+    const now = new Date('2026-08-04T09:00:00Z');
+    expect(travelDayTitle('2026-08-04T09:00:00Z', now, 'Pacific/Auckland')).toBe('Today');
+    // 23:00 on the 4th in Auckland is 11:00 on the 4th UTC — but a departure
+    // at 12:00 UTC is already the 5th there, and reads as tomorrow's flight.
+    expect(travelDayTitle('2026-08-04T12:00:00Z', now, 'Pacific/Auckland')).toBe('Tomorrow');
+  });
+});
+
+describe('zonedTimestamp — a printed clock back into an instant', () => {
+  it('reads the ticket time as the airport means it', () => {
+    // The receipt prints 11:30 at Arlanda on 28 November; Sweden is on UTC+1
+    // then, so that is 10:30Z — and it must render back as 11:30.
+    const iso = zonedTimestamp('2026-11-28', '11:30', 'Europe/Stockholm');
+    expect(iso).toBe('2026-11-28T10:30:00.000Z');
+    expect(minutesOfDay(formatTime(iso, 'Europe/Stockholm'))).toBe(at(11, 30));
+  });
+
+  it('uses the offset in force on the day, not today’s', () => {
+    // Same airport, same clock, summer time: UTC+2, so an hour earlier in UTC.
+    expect(zonedTimestamp('2026-07-28', '11:30', 'Europe/Stockholm')).toBe(
+      '2026-07-28T09:30:00.000Z',
+    );
+    // A zone that has never observed daylight saving, at a half-hour offset.
+    expect(zonedTimestamp('2026-11-28', '11:30', 'Asia/Kolkata')).toBe(
+      '2026-11-28T06:00:00.000Z',
+    );
+  });
+
+  it('survives midnight and the far side of the date line', () => {
+    expect(zonedTimestamp('2026-11-28', '00:15', 'Pacific/Auckland')).toBe(
+      '2026-11-27T11:15:00.000Z',
+    );
+  });
+
+  it('gives up rather than guess', () => {
+    expect(zonedTimestamp('2026-11-28', '11:30', null)).toBeNull();
+    expect(zonedTimestamp('2026-11-28', 'half past', 'Europe/Stockholm')).toBeNull();
+    expect(zonedTimestamp('not-a-day', '11:30', 'Europe/Stockholm')).toBeNull();
+  });
+});
+
+describe('flightDay — the date a lookup has to ask about', () => {
+  it('names the local day, not the UTC one', () => {
+    // 00:15 on 28 November in Auckland is 11:15Z on the 27th. Slicing the
+    // stored instant asks the provider about a flight that doesn't exist.
+    const departure = '2026-11-27T11:15:00.000Z';
+    expect(departure.slice(0, 10)).toBe('2026-11-27');
+    expect(flightDay(departure, 'Pacific/Auckland')).toBe('2026-11-28');
+  });
+
+  it('holds the other way too, west of UTC', () => {
+    // 22:40 on 3 December in Los Angeles is already the 4th in UTC.
+    expect(flightDay('2026-12-04T06:40:00.000Z', 'America/Los_Angeles')).toBe('2026-12-03');
+  });
+
+  it('leaves the day alone when it is already local', () => {
+    expect(flightDay('2026-11-28T11:30:00', 'Pacific/Auckland')).toBe('2026-11-28');
+    expect(flightDay('2026-11-28T11:15:00.000Z', null)).toBe('2026-11-28');
+  });
+});

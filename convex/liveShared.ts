@@ -1,6 +1,7 @@
 /** Pure helpers for the travel-day live sessions — no ctx, no I/O.
  * Stage keys mirror src/services/travel-day.ts exactly; rename together. */
 
+import { airportZone } from './airportZones';
 import type { Doc } from './_generated/dataModel';
 
 export const STAGE_ORDER = [
@@ -79,10 +80,20 @@ export const STAGE_LABELS: Record<string, string> = {
   landed: 'Landed',
 };
 
-const fmtTime = (iso: string | null): string =>
-  iso
-    ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC'
-    : '';
+/** A flight time as its own airport reads it — the clock the traveler is
+ * living by, and the one their followers want to see, whatever zone either
+ * of them is in. Falls back to a labelled UTC reading for the rare code the
+ * airport table doesn't carry, since an unlabelled wrong clock is worse. */
+const fmtTime = (iso: string | null, iata: string | null): string => {
+  if (!iso) return '';
+  const zone = airportZone(iata);
+  const clock = new Date(iso).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: zone ?? 'UTC',
+  });
+  return zone ? clock : `${clock} UTC`;
+};
 
 /** "Departs in 2h" / "in 75 min" / "now" — mirrors countdownLabel in
  * src/services/travel-day.ts, and is timezone-free (unlike clock times). */
@@ -165,7 +176,7 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
     const toLanding = Number.isNaN(arrivalMs) ? null : countdownBit(arrivalMs, now);
     headline = toLanding === null ? 'In the air' : toLanding === 'now' ? 'Landing now' : `Lands ${toLanding}`;
   } else if (Number.isNaN(departureMs)) {
-    headline = `Departs ${fmtTime(effectiveDeparture)}`;
+    headline = `Departs ${fmtTime(effectiveDeparture, s.fromCode)}`;
   } else {
     const toDeparture = countdownBit(departureMs, now);
     headline = toDeparture === 'now' ? 'Departing now' : `Flight ${toDeparture}`;
@@ -194,7 +205,7 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
 
   let compactLabel: string;
-  if (s.currentStage === null) compactLabel = fmtTime(effectiveDeparture);
+  if (s.currentStage === null) compactLabel = fmtTime(effectiveDeparture, s.fromCode);
   else if (s.currentStage === 'landed' && s.baggageBelt) compactLabel = `Belt ${s.baggageBelt}`;
   else if (index >= BOARDED_INDEX || next === null) compactLabel = STAGE_COMPACT[s.currentStage] ?? '';
   else if (next === 'boarded') compactLabel = s.gate ? `G${s.gate}` : NEXT_STEP_COMPACT.boarded;
@@ -210,8 +221,8 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
     terminal: s.terminal ?? '',
     delayLabel,
     emphasis: delayed ? 'delay' : s.gate ? 'gate' : 'none',
-    depTime: fmtTime(effectiveDeparture),
-    arrTime: fmtTime(s.estimatedArrival ?? s.scheduledArrival),
+    depTime: fmtTime(effectiveDeparture, s.fromCode),
+    arrTime: fmtTime(s.estimatedArrival ?? s.scheduledArrival, s.toCode),
   };
 }
 

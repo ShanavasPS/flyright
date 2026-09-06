@@ -33,6 +33,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption } from '@/rules/types';
+import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { canEmail, emailClaim, generateClaimPdf, shareClaim } from '@/services/claim-delivery';
 import type { SentSnapshot, SentVia } from '@/services/claim-status';
@@ -289,7 +290,8 @@ export function ClaimWizard() {
         <ThemedText type="small" themeColor="textSecondary">
           {journey.carrier}
           {journey.number ? ` ${journey.number}` : ''} · {journey.from.code} →{' '}
-          {journey.to.code} · {formatDayLabelWithYear(journey.scheduledDeparture)}
+          {journey.to.code} ·{' '}
+          {formatDayLabelWithYear(journey.scheduledDeparture, airportZone(journey.from.code))}
         </ThemedText>
         <ThemedText type="subtitle" style={{ color: theme.success }}>
           {formattedAmount(verdict)}

@@ -14,6 +14,7 @@ import { mapColors } from '@/components/world-map';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
 import { formatDayLabel, formatDayLabelWithYear } from '@/services/dates';
 import {
   COMET_LENGTH,
@@ -371,7 +372,7 @@ export function World() {
               style={styles.eyebrow}
               numberOfLines={1}>
               {focusedRow
-                ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture)}`
+                ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture, airportZone(focusedRow.fromCode))}`
                 : 'Everywhere you’ve been'}
             </ThemedText>
             <ThemedText
@@ -514,8 +515,8 @@ function RouteCard({
                   numberOfLines={1}>
                   {bothWays ? `${leg.from.iata} → ${leg.to.iata} · ` : ''}
                   {leg.flown
-                    ? `Flown · ${formatDayLabelWithYear(leg.scheduledDeparture)}`
-                    : `Upcoming · ${formatDayLabel(leg.scheduledDeparture)}`}
+                    ? `Flown · ${formatDayLabelWithYear(leg.scheduledDeparture, airportZone(leg.from.iata))}`
+                    : `Upcoming · ${formatDayLabel(leg.scheduledDeparture, airportZone(leg.from.iata))}`}
                 </ThemedText>
               </View>
               <SymbolView
