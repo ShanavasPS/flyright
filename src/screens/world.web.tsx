@@ -17,7 +17,7 @@ import { airportZone } from '@/services/airports';
 import { WORLD, buildWorldMap, fitViewBox, type ViewBox } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
 import { formatDayLabel } from '@/services/dates';
-import { travelRecap } from '@/services/timeline';
+import { formatKm, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 
 /** Deepest zoom-in: 1/16 of the world across the screen — enough to separate
@@ -206,7 +206,7 @@ export function World() {
                 value={recap.countries}
                 label={recap.countries === 1 ? 'country' : 'countries'}
               />
-              <Stat value={recap.totalKm} label="km" />
+              <Stat value={formatKm(recap.totalKm)} label="km" />
             </Card>
           ) : null}
         </SafeAreaView>
@@ -215,11 +215,11 @@ export function World() {
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({ value, label }: { value: number | string; label: string }) {
   return (
     <View style={styles.stat}>
       <ThemedText type="smallBold" themeColor="heading">
-        {value.toLocaleString()}
+        {typeof value === 'number' ? value.toLocaleString() : value}
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {label}

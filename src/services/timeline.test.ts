@@ -253,9 +253,12 @@ describe('blockMinutes', () => {
 });
 
 describe('formatKm', () => {
-  it('groups digits below a million and goes compact from there', () => {
+  it('groups digits below a hundred thousand and goes compact from there', () => {
     expect(formatKm(17467)).toBe('17,467');
-    expect(formatKm(999_999)).toBe('999,999');
+    expect(formatKm(99_999)).toBe('99,999');
+    expect(formatKm(101_458)).toBe('101k');
+    expect(formatKm(999_499)).toBe('999k');
+    expect(formatKm(999_999)).toBe('1M');
     expect(formatKm(1_000_000)).toBe('1M');
     expect(formatKm(1_250_000)).toBe('1.3M');
     expect(formatKm(12_600_000)).toBe('13M');

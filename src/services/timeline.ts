@@ -88,12 +88,16 @@ export function travelStats(rows: JourneyRow[]): TravelStats {
   };
 }
 
-/** The headline kilometre figure. Grouped digits up to six of them; from a
- * million on, a compact "1.2M" — seven-plus digits at display size overflow
- * the stats column and shrink to the unreadable. */
+/** The headline kilometre figure. Grouped digits up to five of them
+ * ("51,312"); from a hundred thousand on, compact — "101k", "1.3M" — since
+ * six or more digits at display size wrap the World card's four-up stats
+ * column ("101,45 / 8") and seven overflow the header's. One decimal keeps
+ * the figure honest until the leading digits alone carry it. */
 export function formatKm(totalKm: number): string {
   if (totalKm >= 10_000_000) return `${Math.round(totalKm / 1_000_000)}M`;
-  if (totalKm >= 1_000_000) return `${(totalKm / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  // From 999,500 the thousands would round to "1000k"; that is 1M.
+  if (totalKm >= 999_500) return `${(totalKm / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (totalKm >= 100_000) return `${Math.round(totalKm / 1_000)}k`;
   return Math.round(totalKm).toLocaleString();
 }
 

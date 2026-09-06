@@ -36,7 +36,7 @@ import {
   learnZoomFloor,
   regionFor,
 } from '@/services/map-region';
-import { cityOf, travelRecap } from '@/services/timeline';
+import { cityOf, formatKm, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 
 /** Overlay heights below the safe areas, for `mapPadding`. Header: eyebrow
@@ -457,7 +457,7 @@ export function WorldCanvas({
             <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
             <Stat value={recap.airports} label={recap.airports === 1 ? 'airport' : 'airports'} />
             <Stat value={recap.countries} label={recap.countries === 1 ? 'country' : 'countries'} />
-            <Stat value={recap.totalKm} label="km" />
+            <Stat value={formatKm(recap.totalKm)} label="km" />
           </Card>
         ) : null}
       </View>
@@ -578,11 +578,11 @@ function RouteCard({
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({ value, label }: { value: number | string; label: string }) {
   return (
     <View style={styles.stat}>
       <ThemedText themeColor="heading" style={styles.statValue}>
-        {value.toLocaleString()}
+        {typeof value === 'number' ? value.toLocaleString() : value}
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {label}
