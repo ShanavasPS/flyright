@@ -39,8 +39,9 @@ tags:
 # Back unwinds trip → person → People, which is the order a notification
 # opening straight on a trip has to be able to walk out of.
 # `back` is the swipe gesture on iOS and does not always take; the header
-# button is the reliable one.
-- tapOn: "Back"
+# button is the reliable one. Each is named for the screen it returns TO,
+# so the trip's says the person's name and the person's says People.
+- tapOn: "${WHO}"
 - extendedWaitUntil:
     visible: "UPCOMING"
     timeout: 20000

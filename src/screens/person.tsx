@@ -102,10 +102,7 @@ export function Person({ userId }: { userId: string }) {
     body = (
       <>
         <View style={styles.hero}>
-          <Avatar name={p.name} imageUrl={p.imageUrl} size={72} />
-          <ThemedText type="title" themeColor="heading">
-            {p.name}
-          </ThemedText>
+          <Avatar name={p.name} imageUrl={p.imageUrl} size={88} />
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             {p.theyShare
               ? `Sharing their trips with you since ${formatDayLabel(p.since!)}`
@@ -213,7 +210,12 @@ export function Person({ userId }: { userId: string }) {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: '' }} />
+      {/* The name belongs in the bar. Left empty it was a tall blank strip
+        with a hairline under it, which reads as a broken toolbar rather than
+        a header — and once the page is scrolled there was nothing left
+        saying whose trips these are. (Alta, Instagram and Digg all put the
+        person there; the hero below no longer repeats it.) */}
+      <Stack.Screen options={{ title: data && !('gone' in data) ? data.name : '' }} />
       <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
