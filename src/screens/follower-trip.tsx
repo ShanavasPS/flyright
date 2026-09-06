@@ -8,11 +8,12 @@ import type { Id } from '../../convex/_generated/dataModel';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Card } from '@/components/card';
+import { RouteMap } from '@/components/route-map';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { airportZone } from '@/services/airports';
+import { airportZone, getAirport } from '@/services/airports';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { adaptPublicSession } from '@/services/public-session';
 import { relativeWhen } from '@/services/trip-when';
@@ -54,6 +55,20 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
     const when = relativeWhen(trip.scheduledDeparture);
     body = (
       <>
+        {/* The same inset the traveller sees on their own trip. No tap: the
+            World tab draws the viewer's own journal and has nothing to open
+            somebody else's leg on. */}
+        <RouteMap
+          journey={{
+            id: trip.journeyId,
+            fromCode: trip.fromCode,
+            toCode: trip.toCode,
+            number: trip.number,
+            carrier: trip.carrier,
+            scheduledDeparture: trip.scheduledDeparture,
+          }}
+        />
+
         <View style={styles.titleRow}>
           <AirlineLogo number={trip.number} carrier={trip.carrier} size={48} />
           <View style={styles.titleBlock}>
@@ -83,13 +98,13 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             <View style={styles.scheduleRow}>
               <ScheduleCell
                 label="Departs"
-                code={trip.fromCode}
+                place={trip.fromCode}
                 iso={trip.scheduledDeparture}
                 zone={airportZone(trip.fromCode)}
               />
               <ScheduleCell
                 label="Arrives"
-                code={trip.toCode}
+                place={trip.toCode}
                 iso={trip.scheduledArrival}
                 zone={airportZone(trip.toCode)}
               />
@@ -126,12 +141,15 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
  * follower reads the times the traveller will be living by. */
 function ScheduleCell({
   label,
-  code,
+  place,
   iso,
   zone,
 }: {
   label: string;
-  code: string;
+  /** IATA code — rendered as the airport's name, since the codes are
+   * already the headline two lines above and saying LHR twice tells the
+   * reader nothing the second time. */
+  place: string;
   iso: string;
   zone: string | null;
 }) {
@@ -143,7 +161,9 @@ function ScheduleCell({
       <ThemedText type="title" themeColor="heading">
         {formatTime(iso, zone)}
       </ThemedText>
-      <ThemedText themeColor="heading">{code}</ThemedText>
+      <ThemedText themeColor="heading" numberOfLines={2}>
+        {getAirport(place)?.city ?? place}
+      </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {formatDayLabelWithYear(iso, zone)}
       </ThemedText>

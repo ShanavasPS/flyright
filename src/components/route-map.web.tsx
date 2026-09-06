@@ -11,14 +11,25 @@ export const ROUTE_MAP_HEIGHT = 220;
 
 /** Web: the detail screen's inset map is always the SVG atlas the web World
  * tab uses, fitted to this one route. */
-export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: () => void }) {
+/** `onPress` is optional: a followed person's trip shows the same map, but
+ * the World tab draws the viewer's OWN journal and has nothing to open it
+ * on — so there the card is a picture, not a button, and does not pretend
+ * otherwise by staying pressable. */
+export function RouteMap({
+  journey,
+  onPress,
+}: {
+  journey: RouteSource;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
   if (!getAirport(journey.fromCode) || !getAirport(journey.toCode)) return null;
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Open in World"
+      accessibilityRole={onPress ? 'button' : 'image'}
+      accessibilityLabel={onPress ? 'Open in World' : 'Route map'}
       onPress={onPress}
+      disabled={!onPress}
       style={[styles.card, { borderColor: theme.hairline }]}>
       <RouteAtlas journey={journey} height={ROUTE_MAP_HEIGHT} />
       <View style={[styles.expand, { backgroundColor: theme.backgroundElement }]}>

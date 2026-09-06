@@ -33,7 +33,17 @@ const SDK_MAX_LON_SPAN = Platform.OS === 'android' ? 60 : 80;
  * mode on Android: that bitmap ignores marker `rotation` and `anchor`, so the
  * plane drew nose-up and above the arc. Renders nothing when either airport is unknown (manual entries with
  * non-IATA codes). */
-export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: () => void }) {
+/** `onPress` is optional: a followed person's trip shows the same map, but
+ * the World tab draws the viewer's OWN journal and has nothing to open it
+ * on — so there the card is a picture, not a button, and does not pretend
+ * otherwise by staying pressable. */
+export function RouteMap({
+  journey,
+  onPress,
+}: {
+  journey: RouteSource;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
   const dark = useColorScheme() === 'dark';
   const { sea } = mapColors(dark);
@@ -61,9 +71,14 @@ export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: 
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Map of ${route.from.iata} to ${route.to.iata}. Open in World`}
+      accessibilityRole={onPress ? 'button' : 'image'}
+      accessibilityLabel={
+        onPress
+          ? `Map of ${route.from.iata} to ${route.to.iata}. Open in World`
+          : `Map of ${route.from.iata} to ${route.to.iata}`
+      }
       onPress={onPress}
+      disabled={!onPress}
       style={({ pressed }) => [
         styles.card,
         { borderColor: theme.hairline, opacity: pressed ? 0.92 : 1 },
@@ -114,8 +129,14 @@ export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: 
         <RouteAtlas journey={journey} height={ROUTE_MAP_HEIGHT} />
       )}
       {/* Catches the tap for the Pressable on both platforms — Google Maps
-          would otherwise swallow it even with gestures off. */}
+          would otherwise swallow it even with gestures off. Still wanted
+          without an onPress: it stops the map panning under a finger on a
+          card that isn't meant to be interactive either. */}
       <View style={styles.shield} />
+      {/* The pill is a promise to open somewhere. Without a destination it
+          would be a button that lies, so it goes rather than sits there
+          inert. */}
+      {onPress && (
       <View style={[styles.expand, { backgroundColor: theme.backgroundElement }]}>
         <SymbolView
           name={{
@@ -131,6 +152,7 @@ export function RouteMap({ journey, onPress }: { journey: RouteSource; onPress: 
           World
         </ThemedText>
       </View>
+      )}
     </Pressable>
   );
 }
