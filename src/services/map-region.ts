@@ -114,6 +114,110 @@ export function regionFor(coords: LatLng[], airportLons: number[], maxLonSpan: n
   };
 }
 
+/** Points across the whole world at the lowest zoom either SDK will grant in
+ * a card this short. Measured, not guessed: an iPhone 17 asked for 260° of
+ * longitude and got 124°, a Pixel 9a asked for 148° and got 127°, both in the
+ * same 361-point-wide inset — 360 × 361 / 124 ≈ 1048, 360 × 361 / 127 ≈ 1023.
+ * (The World tab's floor is lower, ~89°, because a full-screen map stops
+ * zooming out once the world is about twice its height; a 220-point card
+ * never reaches that and hits the absolute floor instead.) */
+const WORLD_POINTS_AT_MIN_ZOOM = 1024;
+
+/** The widest longitude a card `widthPt` points across can actually show.
+ * Asking for more does not widen the view: the SDK grants this much and then
+ * re-centres it wherever it likes, which is how DXB → LAX came out as an
+ * empty stretch of the North Atlantic with both airports off screen. */
+export const maxLonSpanFor = (widthPt: number) => (360 * widthPt) / WORLD_POINTS_AT_MIN_ZOOM;
+
+/** Clearance an endpoint dot needs from the card's rounded corner, in points.
+ * Small because `WORLD_POINTS_AT_MIN_ZOOM` is already the conservative end of
+ * what was measured — LHR → LAS needs 115 of the 122° this predicts for an
+ * iPhone 17, and lands with 13 points to spare on each side of the 124° the
+ * SDK actually grants. */
+const EDGE_CLEARANCE = 8;
+
+/** Degrees of latitude either side of `centre` that come to `band` of
+ * Mercator. Solved rather than derived: both SDKs read a region back as
+ * latitude ± latitudeDelta/2 in plain degrees, and Mercator stretches the
+ * northern half of that far more than the southern one, so no single factor
+ * converts between the two. */
+function latDeltaForBand(centre: number, band: number): number {
+  const yOf = (lat: number) => toMercator(Math.min(MAX_LAT, Math.max(-MAX_LAT, lat)));
+  let lo = 0;
+  let hi = 2 * MAX_LAT;
+  for (let i = 0; i < 24; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (yOf(centre + mid / 2) - yOf(centre - mid / 2) <= band) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/** Frames one route in the journey inset, and says whether a real map can
+ * hold it at all.
+ *
+ * A card this wide and this short is a thin band of the world: the SDK fills
+ * it, so the longitude it shows fixes the latitude it shows, and neither can
+ * be asked for past `maxLonSpanFor`. That makes two ways a route doesn't fit,
+ * and both have to be caught here rather than discovered as a bad-looking
+ * map — the SDK reports no failure, it just quietly frames something else.
+ *
+ * Too wide: LHR → LAS spans 115°, which fits; DXB → LAX spans 174°, which
+ * cannot. Too tall: a great circle to the far side of the world climbs to the
+ * pole — DXB → LAX peaks at 84.6°N — and Mercator sends the pole to infinity,
+ * so that arc leaves the top of any band we can show. Those go to the offline
+ * atlas, whose flat projection fits anything. */
+export function frameInset(
+  fit: Region,
+  latitudes: number[],
+  widthPt: number,
+  heightPt: number,
+): { region: Region; fits: boolean } {
+  const ceiling = maxLonSpanFor(widthPt);
+  const yOf = (lat: number) => toMercator(Math.min(MAX_LAT, Math.max(-MAX_LAT, lat)));
+  // The card is one shape, so the two axes are the same measurement twice:
+  // this much longitude across it is exactly this much Mercator down it.
+  const lonForY = (y: number) => (360 * widthPt * y) / (2 * Math.PI * heightPt);
+  const yForLon = (lon: number) => (2 * Math.PI * heightPt * lon) / (360 * widthPt);
+
+  // A little more longitude than the bare fit so the endpoint dots clear the
+  // rounded corners; never past the floor, which buys nothing.
+  const wanted = Math.min(fit.longitudeDelta * 1.15, ceiling);
+
+  // And room above and below so the dots don't sit on the top and bottom
+  // edges. A latitude window the SDK can't grant is worse than none, though:
+  // asked for one wider than its floor, Google keeps the floor and re-centres
+  // on somewhere else entirely — HEL → JFK came back centred on the equator,
+  // 38° south of the flight, with the route off the top of the card. So the
+  // latitude ask is capped at what the longitude floor leaves room for, which
+  // keeps longitude the axis that frames the card and the centre ours.
+  const spanOf = (delta: number) =>
+    yOf(fit.latitude + delta / 2) - yOf(fit.latitude - delta / 2);
+  const roomy = spanOf(fit.latitudeDelta * 1.6);
+  const latitudeDelta = latDeltaForBand(fit.latitude, Math.min(roomy, yForLon(ceiling) * 0.98));
+
+  // Whichever axis the SDK has to zoom out further for is the one on screen:
+  // a short hop north-south is framed by its latitude, a long haul by its
+  // longitude.
+  const shown = Math.min(Math.max(wanted, lonForY(spanOf(latitudeDelta))), ceiling);
+
+  const marginLon = (EDGE_CLEARANCE * ceiling) / widthPt;
+  const rawSpan = fit.longitudeDelta / LON_PAD;
+  const lonFits = rawSpan + 2 * marginLon <= ceiling;
+
+  // The band of the world the card will show, against the band the arc
+  // actually occupies.
+  const band = yForLon(shown);
+  const ys = latitudes.map(yOf);
+  const arcBand = Math.max(...ys) - Math.min(...ys);
+  const latFits = arcBand + 2 * ((band * EDGE_CLEARANCE) / heightPt) <= band;
+
+  return {
+    region: { ...fit, latitudeDelta, longitudeDelta: wanted },
+    fits: lonFits && latFits,
+  };
+}
+
 /** Google's night-mode base palette, plus POI/transit clutter removal (the
  * clutter rules also apply in light mode — this is a travel map, not a city
  * guide). Apple Maps ignores this and follows `userInterfaceStyle` instead. */
@@ -137,3 +241,27 @@ export const GOOGLE_NIGHT = [
   { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] },
   ...CLUTTER_OFF,
 ];
+
+/** Whether the window the SDK actually settled on holds the whole route.
+ *
+ * `frameInset` predicts what will fit, but the last word belongs to the SDK,
+ * and near the bottom of its zoom range Google stops taking direction: handed
+ * a window centred on 52°N it framed 14°N instead, leaving HEL → JFK off the
+ * top of the card — no error, no clamp we can read, just the wrong piece of
+ * the world. So the settled region is checked against the route it was meant
+ * to show, and a card that ends up framing something else hands over to the
+ * atlas. The margin keeps an endpoint from counting as visible while it sits
+ * under the card's own rounded corner. */
+export function regionHolds(granted: Region, coords: LatLng[]): boolean {
+  const latMargin = granted.latitudeDelta * 0.02;
+  const lonMargin = granted.longitudeDelta * 0.02;
+  const halfLat = granted.latitudeDelta / 2 - latMargin;
+  const halfLon = granted.longitudeDelta / 2 - lonMargin;
+  return coords.every((c) => {
+    if (Math.abs(c.latitude - granted.latitude) > halfLat) return false;
+    // Wraparound-aware: a route either side of the antimeridian is still one
+    // route, and the shorter way round is the one on screen.
+    const dLon = Math.abs(((c.longitude - granted.longitude + 540) % 360) - 180);
+    return dLon <= halfLon;
+  });
+}

@@ -12,18 +12,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { buildWorldRoutes, routePlane, type RouteSource } from '@/services/geo';
 
-import { CLUTTER_OFF, GOOGLE_NIGHT, MAX_LAT, regionFor } from '@/services/map-region';
+import { CLUTTER_OFF, GOOGLE_NIGHT, frameInset, regionFor, regionHolds } from '@/services/map-region';
 
 /** Inset height: tall enough to read a long-haul arc, short enough that the
  * route hero and the verdict still land above the fold on a small phone. */
 export const ROUTE_MAP_HEIGHT = 220;
-
-/** Widest padded route, in degrees of longitude, the map SDK can still show
- * whole in the inset. Below the World tab's measured zoom-out floors (~89°
- * MapKit on an iPhone, ~72° Google on a Pixel) because the inset is narrower
- * than the tab and a static card can't be panned to recover the rest. Wider
- * routes render on the offline atlas instead, which fits anything. */
-const SDK_MAX_LON_SPAN = Platform.OS === 'android' ? 60 : 80;
 
 /** A journey's own route on a real map, framed as a static card in the
  * detail screen (the Airbnb "getting there" pattern): the great-circle arc,
@@ -31,8 +24,11 @@ const SDK_MAX_LON_SPAN = Platform.OS === 'android' ? 60 : 80;
  * interactive — the whole card is one tap target that hands the trip to the
  * World tab, so the map never fights the screen's scroll. Not Google's lite
  * mode on Android: that bitmap ignores marker `rotation` and `anchor`, so the
- * plane drew nose-up and above the arc. Renders nothing when either airport is unknown (manual entries with
- * non-IATA codes). */
+ * plane drew nose-up and above the arc. A route a map SDK can't hold —
+ * wider than its lowest zoom, or arcing over the pole, where Mercator gives
+ * out — is drawn on the offline atlas instead, whose flat projection fits
+ * anything (see `frameInset`). Renders nothing when either airport is
+ * unknown (manual entries with non-IATA codes). */
 /** `onPress` is optional: a followed person's trip shows the same map, but
  * the World tab draws the viewer's OWN journal and has nothing to open it
  * on — so there the card is a picture, not a button, and does not pretend
@@ -53,19 +49,23 @@ export function RouteMap({
   const data = useMemo(() => buildWorldRoutes([journey], now), [journey, now]);
   const route = data.routes[0];
   const plane = useMemo(() => (route ? routePlane(route) : null), [route]);
-  // Unclamped fit (359 = no floor) so a too-wide span is detectable. The
-  // inset is much wider than tall, so the SDK fits the longitude and the
-  // latitude would land the endpoint dots on the top and bottom edges — give
-  // it room, and a little more longitude so the dots clear the rounded corners.
-  const region = useMemo(() => {
+  // How much of the world a map SDK can show here depends on how wide the
+  // card came out, so the card is measured before either renderer is chosen —
+  // the sea-coloured background covers the frame before the width lands.
+  const [width, setWidth] = useState(0);
+  // Unclamped fit (359 = no floor): `frameInset` does the clamping, and needs
+  // to see the route's true span to know whether it fits at all.
+  const frame = useMemo(() => {
+    if (!width) return null;
     const fit = regionFor(data.fitCoords, data.airports.map((a) => a.lon), 359);
-    return {
-      ...fit,
-      latitudeDelta: Math.min(2 * MAX_LAT, fit.latitudeDelta * 1.6),
-      longitudeDelta: Math.min(359, fit.longitudeDelta * 1.15),
-    };
-  }, [data]);
-  const useSdk = !!route && region.longitudeDelta <= SDK_MAX_LON_SPAN;
+    return frameInset(fit, data.fitCoords.map((c) => c.latitude), width, ROUTE_MAP_HEIGHT);
+  }, [data, width]);
+  // The frame the SDK settled on but didn't honour, which only its own
+  // callback can tell us. Held as the frame itself rather than a flag, so a
+  // new route or a re-measured card is asked afresh instead of inheriting a
+  // refusal that was about something else.
+  const [refused, setRefused] = useState<object | null>(null);
+  const useSdk = !!route && !!frame?.fits && refused !== frame;
 
   if (!route || !plane) return null;
 
@@ -79,15 +79,21 @@ export function RouteMap({
       }
       onPress={onPress}
       disabled={!onPress}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       style={({ pressed }) => [
         styles.card,
-        { borderColor: theme.hairline, opacity: pressed ? 0.92 : 1 },
+        { backgroundColor: sea, borderColor: theme.hairline, opacity: pressed ? 0.92 : 1 },
       ]}>
-      {useSdk ? (
+      {!frame ? null : useSdk ? (
         <MapView
           style={styles.map}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-          initialRegion={region}
+          initialRegion={frame.region}
+          // The SDK has the last word on what it framed; a window that ended
+          // up somewhere other than the route hands over to the atlas.
+          onRegionChangeComplete={(granted) => {
+            if (!regionHolds(granted, data.fitCoords)) setRefused(frame);
+          }}
           // Sea-coloured placeholder until the tiles land, instead of the
           // SDK's grey grid flashing through the push transition; the
           // indicator is painted in the same colour so nothing spins.
