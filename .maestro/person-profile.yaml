@@ -47,8 +47,13 @@ tags:
 - extendedWaitUntil:
     visible: ".*Only ${WHO} can change this trip.*"
     timeout: 30000
-- assertVisible: "DEPARTS"
-- assertVisible: "ARRIVES"
+# The traveller's own route hero, drawn on somebody else's trip: whose it is,
+# then the airline line above the same boarding-pass row the trip's owner
+# reads on their own screen. The codes row itself is one accessibility
+# element (labelled "LHR to LAS"), so its cities, clocks and distance are
+# deliberately not separate nodes to assert on.
+- assertVisible: ".*${WHO}'s trip.*"
+- assertVisible: ".*${FLIGHT}.*"
 - tapOn:
     text: ".*Map of.*"
 - extendedWaitUntil:
@@ -95,10 +100,10 @@ tags:
     direction: DOWN
     timeout: 20000
 
-# The bar steps aside for the full-bleed map and comes straight back. It is
-# the only screen it hides for — Apple's guidance is to keep a tab bar up
-# while people move around an app, and a stuck-hidden bar is the failure
-# this asserts against.
+# The bar steps aside for a subject you chose — a person, their trip, their
+# map — and comes back on the way out. Apple's guidance is to keep a tab bar
+# up while people move around an app, so a bar that stays hidden past the
+# last of those screens is the failure this asserts against.
 # The controls left us at the foot of the page; the map card is at its head.
 - scrollUntilVisible:
     element:
@@ -113,5 +118,15 @@ tags:
 - tapOn: "Back"
 - extendedWaitUntil:
     visible: "UPCOMING"
+    timeout: 20000
+# Still gone: the person is a subject too, not a stop on the way to one.
+- assertNotVisible: "Tab Bar"
+# And back the moment the subject is behind us. The header's back button
+# collides with the tab of the same name, so take the first.
+- tapOn:
+    text: "People"
+    index: 0
+- extendedWaitUntil:
+    visible: "SHARING WITH"
     timeout: 20000
 - assertVisible: "Tab Bar"

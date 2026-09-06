@@ -17,10 +17,10 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { Card } from '@/components/card';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PrimaryButton } from '@/components/primary-button';
+import { RouteHero, cityLabel, type Schedule } from '@/components/route-hero';
 import { RouteMap } from '@/components/route-map';
 import { IconBadge, SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -40,7 +40,6 @@ import { airportZone, countryName, getAirport } from '@/services/airports';
 import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
 import {
-  countdown,
   editedLabel,
   formatDayLabelWithYear,
   formatTime,
@@ -72,7 +71,6 @@ import {
   reconcileTravelDay,
 } from '@/services/travel-day-lifecycle';
 import { advanceStage, rewindStage, undoStage, useTravelDay } from '@/services/travel-day-store';
-import { blockMinutes } from '@/services/timeline';
 
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
 // have usually lapsed — the trip is journal material, not a claim.
@@ -94,55 +92,6 @@ function routeSentence(journey: Journey): string {
       : `from ${countryName(journey.from.country)} to ${countryName(journey.to.country)}`;
   }
   return '';
-}
-
-/** City for the hero's endpoint caption — the code itself when the airport
- * isn't in the dataset (manual train/bus entries). */
-function cityLabel(place: Journey['from']): string {
-  return getAirport(place.code)?.city ?? place.code;
-}
-
-/** The clocks the route hero shows, and — once an airline has moved the
- * flight — the ones the ticket was booked at. */
-interface Schedule {
-  departure: string;
-  arrival: string | null;
-  departureWas: string | null;
-  arrivalWas: string | null;
-  /** "55 min later", once the airline has moved the flight. A struck-through
-   * clock shows THAT something changed; only words say by how much, and in
-   * which direction — which is the part a traveller has to act on. */
-  moved: string | null;
-}
-
-/** Block duration, "16h 35m" — null for manual entries whose bare wall-clock
- * times can't be differenced (see blockMinutes). */
-function durationLabel(departure: string, arrival: string): string | null {
-  const minutes = blockMinutes(departure, arrival);
-  if (minutes === null) return null;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-}
-
-/** "EK215 · Emirates"; just the number when the carrier is only its IATA
- * code (lookup rows store the code); just the carrier for entries without a
- * flight number. */
-function flightLabel(journey: Journey): string {
-  const carrier = journey.carrier.trim();
-  if (!journey.number) return carrier;
-  if (!carrier || carrier.toUpperCase() === airlineCode(journey.number)) return journey.number;
-  return `${journey.number} · ${carrier}`;
-}
-
-/** The date chip's relative reading: a countdown before departure, "Flown"
- * after. */
-function dateChipLabel(departure: string, now: Date): string {
-  const timer = countdown(departure, now);
-  if (timer.unit === 'now') return 'Boarding soon';
-  if (timer.unit.endsWith('ago')) return 'Flown';
-  if (timer.unit === 'hours') return `In ${timer.value} hour${timer.value === 1 ? '' : 's'}`;
-  return timer.value === 1 ? 'Tomorrow' : `In ${timer.value} days`;
 }
 
 export function JourneyDetail({
@@ -789,149 +738,6 @@ function NotesBlock({
   );
 }
 
-/** The trip at a glance, the boarding-pass row the journeys list uses but on
- * the page: airline and flight number as an eyebrow with a relative date
- * chip, the two codes big at the edges with the contrail and plane between,
- * cities and times beneath. The block time sits over the contrail and the
- * distance under it, so both read as facts about the segment rather than as
- * a footnote — the pattern Polarsteps, Qantas and Flighty all use. */
-function RouteHero({
-  journey,
-  now,
-  schedule,
-  action,
-}: {
-  journey: Journey;
-  now: number;
-  schedule: Schedule | null;
-  action?: React.ReactNode;
-}) {
-  const theme = useTheme();
-  const flown = Date.parse(journey.scheduledDeparture) <= now;
-  const chip = dateChipLabel(journey.scheduledDeparture, new Date(now));
-  const duration = durationLabel(journey.scheduledDeparture, journey.scheduledArrival);
-  // The date lives in the screen header (travelDayTitle); the contrail
-  // column carries only what belongs to the segment itself.
-  const distance = `${Math.round(journey.distanceKm).toLocaleString()} km`;
-
-  return (
-    <View style={styles.hero}>
-      <View style={styles.eyebrowRow}>
-        <AirlineLogo number={journey.number} carrier={journey.carrier} size={28} />
-        <ThemedText type="smallBold" themeColor="heading" style={styles.eyebrowText} numberOfLines={1}>
-          {flightLabel(journey)}
-        </ThemedText>
-        <View
-          style={[
-            styles.chip,
-            { backgroundColor: flown ? theme.field : `${theme.tint}1A` },
-          ]}>
-          <ThemedText
-            type="smallBold"
-            style={[styles.chipText, { color: flown ? theme.textSecondary : theme.tint }]}>
-            {chip}
-          </ThemedText>
-        </View>
-        {action}
-      </View>
-
-      {schedule?.moved && schedule.departureWas && (
-        <View style={[styles.movedNotice, { backgroundColor: `${theme.tint}14` }]}>
-          <ThemedText type="smallBold" style={{ color: theme.tint }}>
-            {journey.carrier} moved this flight
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            It now departs {schedule.departure} — {schedule.moved} than the {schedule.departureWas}{' '}
-            on your ticket.
-          </ThemedText>
-        </View>
-      )}
-
-      <View accessible accessibilityLabel={`${journey.from.code} to ${journey.to.code}`} style={styles.codesRow}>
-        <View style={styles.endpoint}>
-          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
-            {journey.from.code}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {cityLabel(journey.from)}
-          </ThemedText>
-          {schedule && <ThemedText style={styles.time}>{schedule.departure}</ThemedText>}
-          {schedule?.departureWas && <MovedFrom clock={schedule.departureWas} />}
-        </View>
-        <View style={styles.contrail}>
-          {/* A blank keeps the line centred on the codes when the lookup
-              carried no UTC offsets and there is no block time to show. */}
-          <ThemedText
-            type="smallBold"
-            themeColor="heading"
-            style={styles.contrailLabel}
-            numberOfLines={1}>
-            {duration ?? ' '}
-          </ThemedText>
-          <View style={styles.contrailLine}>
-            <ContrailDots />
-            <SymbolView
-              name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-              size={18}
-              tintColor={theme.tint}
-              style={Platform.OS === 'ios' ? undefined : styles.rotated}
-            />
-            <ContrailDots />
-          </View>
-          <ThemedText
-            type="small"
-            themeColor="textSecondary"
-            style={styles.contrailLabel}
-            numberOfLines={1}>
-            {distance}
-          </ThemedText>
-        </View>
-        <View style={[styles.endpoint, styles.endpointRight]}>
-          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
-            {journey.to.code}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {cityLabel(journey.to)}
-          </ThemedText>
-          {schedule && (
-            <ThemedText style={styles.time}>{schedule.arrival ?? ' '}</ThemedText>
-          )}
-          {schedule?.arrivalWas && <MovedFrom clock={schedule.arrivalWas} />}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/** What the ticket said before the airline moved the flight. Struck through
- * and quiet: the new time is the one that matters now, but a traveler who
- * wrote 11:30 in their calendar needs to see that we know it said 11:30. */
-function MovedFrom({ clock }: { clock: string }) {
-  return (
-    <ThemedText
-      type="small"
-      themeColor="textSecondary"
-      style={styles.timeWas}
-      numberOfLines={1}
-      accessibilityLabel={`Moved from ${clock}`}>
-      {clock}
-    </ThemedText>
-  );
-}
-
-/** Half of the dotted contrail between the codes — the journeys list's
- * boarding-pass motif in the page's own palette. */
-function ContrailDots() {
-  const theme = useTheme();
-  return (
-    <View style={styles.contrailDots}>
-      {Array.from({ length: 4 }, (_, i) => (
-        <View key={i} style={[styles.contrailDot, { backgroundColor: theme.textSecondary }]} />
-      ))}
-    </View>
-  );
-}
-
 function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>) {
   Alert.alert('Remove this trip?', 'It will disappear from your travel history.', [
     { text: 'Cancel', style: 'cancel' },
@@ -1217,95 +1023,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     marginLeft: Spacing.one,
-  },
-  hero: {
-    gap: Spacing.three,
-    paddingHorizontal: Spacing.one,
-  },
-  eyebrowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  eyebrowText: {
-    flex: 1,
-  },
-  chip: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two + Spacing.half,
-    borderRadius: Spacing.four,
-  },
-  chipText: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  codesRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-  },
-  endpoint: {
-    flexShrink: 1,
-    gap: Spacing.half,
-  },
-  endpointRight: {
-    alignItems: 'flex-end',
-  },
-  code: {
-    fontSize: 40,
-    lineHeight: 46,
-    fontWeight: 700,
-    letterSpacing: -0.5,
-  },
-  time: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: 600,
-    marginTop: Spacing.one,
-  },
-  timeWas: {
-    textDecorationLine: 'line-through',
-  },
-  movedNotice: {
-    gap: Spacing.half,
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.three,
-  },
-  // Label + line + label total 54pt; the -4 margin centres the plane on the
-  // 46pt code line rather than on the whole endpoint column.
-  contrail: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.half,
-    height: 54,
-    marginTop: -4,
-    paddingHorizontal: Spacing.one,
-  },
-  contrailLabel: {
-    fontSize: 12,
-    lineHeight: 16,
-    textAlign: 'center',
-  },
-  contrailLine: {
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    height: 18,
-  },
-  contrailDots: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-  },
-  contrailDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    opacity: 0.55,
   },
   rotated: {
     transform: [{ rotate: '90deg' }],

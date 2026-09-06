@@ -6,17 +6,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 
-import { AirlineLogo } from '@/components/airline-logo';
 import { Card } from '@/components/card';
+import { RouteHero, type Schedule } from '@/components/route-hero';
 import { RouteMap } from '@/components/route-map';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useNow } from '@/hooks/use-now';
 import { airportZone, getAirport } from '@/services/airports';
-import { formatDayLabelWithYear, formatTime } from '@/services/dates';
+import { formatTime, travelDayTitle } from '@/services/dates';
+import { haversineKm } from '@/services/geo';
 import { adaptPublicSession } from '@/services/public-session';
-import { relativeWhen } from '@/services/trip-when';
 
 /**
  * One trip of somebody whose circle you're in — everything a follower may
@@ -34,10 +35,18 @@ import { relativeWhen } from '@/services/trip-when';
  */
 export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyId: string }) {
   const router = useRouter();
+  const now = useNow();
   const result = useQuery(api.circle.trip, {
     ownerId,
     journeyId: journeyId as Id<'journeys'>,
   });
+
+  // The header carries WHEN, exactly as the traveller's own trip screen
+  // does — the route is in big type right below it either way.
+  const shown = result && !('gone' in result) ? result.trip : null;
+  const title = shown
+    ? travelDayTitle(shown.scheduledDeparture, now, airportZone(shown.fromCode))
+    : 'Trip';
 
   let body: React.ReactNode;
   if (result === undefined) {
@@ -53,7 +62,6 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
     );
   } else {
     const { owner, trip, session } = result;
-    const when = relativeWhen(trip.scheduledDeparture);
     body = (
       <>
         {/* The same inset the traveller sees on their own trip. It opens
@@ -76,21 +84,26 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
           }}
         />
 
-        <View style={styles.titleRow}>
-          <AirlineLogo number={trip.number} carrier={trip.carrier} size={48} />
-          <View style={styles.titleBlock}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-              {session ? `${owner.name} is flying` : `${owner.name}'s trip`}
-            </ThemedText>
-            <ThemedText type="title" themeColor="heading">
-              {trip.fromCode} → {trip.toCode}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {trip.number || trip.carrier} ·{' '}
-              {formatDayLabelWithYear(trip.scheduledDeparture, airportZone(trip.fromCode))}
-              {when ? ` · ${when}` : ''}
-            </ThemedText>
-          </View>
+        {/* Whose trip this is, then the trip itself in the same hero the
+            traveller sees on their own — one way to read a flight, however
+            you came to be reading it. */}
+        <View style={styles.heroBlock}>
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
+            {session ? `${owner.name} is flying` : `${owner.name}'s trip`}
+          </ThemedText>
+          <RouteHero
+            journey={{
+              from: { code: trip.fromCode },
+              to: { code: trip.toCode },
+              carrier: trip.carrier,
+              number: trip.number,
+              scheduledDeparture: trip.scheduledDeparture,
+              scheduledArrival: trip.scheduledArrival,
+              distanceKm: legDistanceKm(trip.fromCode, trip.toCode),
+            }}
+            now={now.getTime()}
+            schedule={scheduleOf(trip)}
+          />
         </View>
 
         {session ? (
@@ -98,26 +111,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             const { journey, state, facts } = adaptPublicSession(session);
             return <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />;
           })()
-        ) : (
-          // No session yet, so no stages and no live facts — just the plan,
-          // and the promise of the rest.
-          <Card>
-            <View style={styles.scheduleRow}>
-              <ScheduleCell
-                label="Departs"
-                place={trip.fromCode}
-                iso={trip.scheduledDeparture}
-                zone={airportZone(trip.fromCode)}
-              />
-              <ScheduleCell
-                label="Arrives"
-                place={trip.toCode}
-                iso={trip.scheduledArrival}
-                zone={airportZone(trip.toCode)}
-              />
-            </View>
-          </Card>
-        )}
+        ) : null}
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           {session
@@ -130,7 +124,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: 'Trip' }} />
+      <Stack.Screen options={{ title }} />
       <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
@@ -143,39 +137,32 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
   );
 }
 
-/** One end of the flight: where, when, and at what o'clock in that airport's
- * own time — the same convention the traveller's own trip screen uses, so a
- * follower reads the times the traveller will be living by. */
-function ScheduleCell({
-  label,
-  place,
-  iso,
-  zone,
-}: {
-  label: string;
-  /** IATA code — rendered as the airport's name, since the codes are
-   * already the headline two lines above and saying LHR twice tells the
-   * reader nothing the second time. */
-  place: string;
-  iso: string;
-  zone: string | null;
-}) {
-  return (
-    <View style={styles.scheduleCell}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-        {label}
-      </ThemedText>
-      <ThemedText type="title" themeColor="heading">
-        {formatTime(iso, zone)}
-      </ThemedText>
-      <ThemedText themeColor="heading" numberOfLines={2}>
-        {getAirport(place)?.city ?? place}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {formatDayLabelWithYear(iso, zone)}
-      </ThemedText>
-    </View>
-  );
+/** The two clocks the hero prints, each in its own airport's time — the
+ * pair a boarding pass shows, and the only pair that stays true wherever
+ * the trip is read from. A follower never sees a ticketed-versus-moved
+ * pair: rebooking is the traveller's business, and the trip they are shown
+ * is the one that is flying. */
+function scheduleOf(trip: { fromCode: string; toCode: string; scheduledDeparture: string; scheduledArrival: string }): Schedule {
+  return {
+    departure: formatTime(trip.scheduledDeparture, airportZone(trip.fromCode)),
+    arrival:
+      trip.scheduledArrival === trip.scheduledDeparture
+        ? null
+        : formatTime(trip.scheduledArrival, airportZone(trip.toCode)),
+    departureWas: null,
+    arrivalWas: null,
+    moved: null,
+  };
+}
+
+/** Great-circle distance for the hero's caption, recomputed here because a
+ * follower's copy of a trip carries only the two codes. Null for codes that
+ * aren't in the dataset, which the hero leaves blank rather than calling
+ * zero kilometres. */
+function legDistanceKm(fromCode: string, toCode: string): number | null {
+  const from = getAirport(fromCode);
+  const to = getAirport(toCode);
+  return from && to ? haversineKm(from.lat, from.lon, to.lat, to.lon) : null;
 }
 
 const styles = StyleSheet.create({
@@ -190,18 +177,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   spinner: { marginTop: Spacing.six },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  titleBlock: { flex: 1, gap: Spacing.half },
+  // The caption and the hero it introduces are one block; the scroll's own
+  // gap between cards would read as a floating label.
+  heroBlock: { gap: Spacing.two },
   eyebrow: {
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     fontSize: 11,
   },
-  scheduleRow: { flexDirection: 'row', gap: Spacing.three },
-  scheduleCell: { flex: 1, gap: Spacing.half },
   footnote: { textAlign: 'center', paddingHorizontal: Spacing.two },
 });
