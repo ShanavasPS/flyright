@@ -1,0 +1,25 @@
+FlyRight 1.0.25 — a fix release on top of 1.0.24. No new permissions, no new purchases, no change to the account model.
+
+NEW SINCE 1.0.24:
+
+1) Ticket import reads the airlines' own e-ticket receipts. 1.0.24 declined any PDF without a boarding-pass barcode; that turned away real tickets, because most airline receipts carry no boarding-pass code (Emirates prints an e-ticket record that holds only the ticket number, Etihad prints no code at all). Every leg is now read from the printed page, shown to the traveller as a card to review, and only saved on their tap. When the PDF carries an e-ticket record, the ticket number is shown as provenance.
+
+2) The camera scanner recognises an e-ticket record too. Instead of "That code isn't a ticket", it names the airline and ticket number and explains that the code carries no flights, pointing at the PDF upload.
+
+3) Fixed: a flight the data provider never marked as arrived — some airports' arrival feeds never close a record out — was shown as "Scheduled" months after it flew. It now reads as flown; no delay is claimed for it.
+
+4) Fixed: after sharing a PDF into the app from Files or Mail on a cold start, the "flights added" confirmation could not be dismissed. It now returns to My travels.
+
+5) Fixed: the kilometre total on the World tab wrapped onto two lines once it passed six digits; it is now shown compact (101k).
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- Ticket import: My travels -> + -> "Upload a ticket PDF or screenshot", or share an airline PDF into FlyRight from Files or Mail. Any airline e-ticket receipt, booking confirmation or boarding pass imports; each flight found is a card the reviewer ticks before saving. A PDF with no flight in it (a hotel booking, an invoice) shows "No flights found".
+- Scanner: My travels -> + -> Scan ticket or pass. A boarding-pass barcode fills the form; the barcode on an Emirates e-ticket receipt shows the airline and ticket number with a pointer to the PDF upload.
+- A followed person's page: signed in as the demo account, open the People tab and tap a person you follow. With nobody followed yet, "Invite someone" -> type App -> Invite sends an invitation to the second test account, reviewer+clerk_test@getflyright.com, which signs in with the email-code flow (a test address: no mail is sent and the code is always 424242).
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.24: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos, and push for flight status, claim deadlines and trip updates from people the user follows. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
