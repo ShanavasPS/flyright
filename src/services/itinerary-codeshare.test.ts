@@ -56,9 +56,8 @@ const NOV = new Date('2026-09-05');
 
 describe('a codeshare itinerary', () => {
   it('records the airline that flies each leg, not the one that sold it', () => {
-    const { segments, rejected } = extractItinerary([{ text: RECEIPT, barcodes: [BCBP] }], NOV);
+    const { segments } = extractItinerary([{ text: RECEIPT, barcodes: [BCBP] }], NOV);
 
-    expect(rejected).toBeNull();
     expect(
       segments.map((s) => [s.flight, s.operatedBy?.code ?? null]),
     ).toEqual([

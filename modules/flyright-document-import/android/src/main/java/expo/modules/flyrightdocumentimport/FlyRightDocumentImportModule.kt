@@ -25,11 +25,12 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatReader
-import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.multi.GenericMultipleBarcodeReader
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.pdmodel.encryption.InvalidPasswordException
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
@@ -175,9 +176,13 @@ class FlyRightDocumentImportModule : Module() {
     PDFBoxResourceLoader.init(context)
     val texts = mutableListOf<String>()
     val pageCount: Int
+    // The file the renderer gets: the original, or — for a receipt that is
+    // encrypted against editing but opens without a password, as Emirates
+    // issues them — a decrypted copy, since the platform renderer refuses
+    // any encryption at all. Deleted once the barcodes are read.
+    var renderable = file
     try {
       PDDocument.load(file).use { doc ->
-        if (doc.isEncrypted) throw DocumentLockedException()
         pageCount = doc.numberOfPages
         val stripper = PDFTextStripper().apply { sortByPosition = true }
         for (i in 0 until minOf(pageCount, maxOf(maxPages, 1))) {
@@ -185,14 +190,26 @@ class FlyRightDocumentImportModule : Module() {
           stripper.endPage = i + 1
           texts.add(stripper.getText(doc))
         }
+        if (doc.isEncrypted) {
+          doc.isAllSecurityToBeRemoved = true
+          renderable = File.createTempFile("decrypted-", ".pdf", context.cacheDir)
+          doc.save(renderable)
+        }
       }
+    } catch (e: InvalidPasswordException) {
+      // Encrypted with a user password: only its owner can open it.
+      throw DocumentLockedException()
     } catch (e: CodedException) {
       throw e
     } catch (e: Exception) {
       throw DocumentUnreadableException(uri)
     }
 
-    val barcodes = decodeBarcodes(file, texts.size)
+    val barcodes = try {
+      decodeBarcodes(renderable, texts.size)
+    } finally {
+      if (renderable != file) renderable.delete()
+    }
     val pages = texts.mapIndexed { i, text -> mapOf("text" to text, "barcodes" to barcodes[i]) }
     return mapOf("pageCount" to pageCount, "pages" to pages)
   }
@@ -363,11 +380,32 @@ class FlyRightDocumentImportModule : Module() {
 }
 
 /** ZXing over the whole page, all codes at once. TRY_HARDER makes the
- * PDF417 detector sweep the image instead of sampling its centre. */
+ * PDF417 detector sweep the image instead of sampling its centre.
+ *
+ * The page goes in as one luminance byte per pixel, built a row at a time.
+ * ZXing's own RGBLuminanceSource wants every pixel as an Int first — four
+ * bytes each, on the Java heap, 128 MB for an A4 page at the 8x retry — and
+ * with that in place the binarizer's 4 MB bit matrix was the allocation
+ * that failed: a three-page receipt with no barcode takes the retry on every
+ * page, and could not be read on Android at all. */
 private fun zxingDecode(bitmap: Bitmap): List<String> {
-  val pixels = IntArray(bitmap.width * bitmap.height)
-  bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-  val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
+  val width = bitmap.width
+  val height = bitmap.height
+  val luminance = ByteArray(width * height)
+  val row = IntArray(width)
+  for (y in 0 until height) {
+    bitmap.getPixels(row, 0, width, 0, y, width, 1)
+    val base = y * width
+    for (x in 0 until width) {
+      val p = row[x]
+      // The same weighting RGBLuminanceSource applies: (R + 2G + B) / 4.
+      val r = (p shr 16) and 0xFF
+      val g = (p shr 8) and 0xFF
+      val b = p and 0xFF
+      luminance[base + x] = ((r + 2 * g + b) shr 2).toByte()
+    }
+  }
+  val source = PlanarYUVLuminanceSource(luminance, width, height, 0, 0, width, height, false)
   val hints = mapOf(
     DecodeHintType.TRY_HARDER to true,
     DecodeHintType.POSSIBLE_FORMATS to listOf(

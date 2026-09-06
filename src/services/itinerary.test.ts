@@ -4,6 +4,12 @@ import {
   ALASKA_CONFIRMATION_PDFBOX,
   ALASKA_CONFIRMATION_PDFKIT,
   DELTA_CONFIRMATION_PDFBOX,
+  EMIRATES_CONJUNCTION_PDFBOX,
+  EMIRATES_CONJUNCTION_PDFKIT,
+  EMIRATES_RECEIPT_PDFBOX,
+  EMIRATES_RECEIPT_PDFKIT,
+  ETIHAD_RECEIPT_PDFBOX,
+  ETIHAD_RECEIPT_PDFKIT,
   FINNAIR_RECEIPT,
   DELTA_CONFIRMATION_PDFKIT,
   QATAR_RECEIPT_PDFBOX,
@@ -31,9 +37,8 @@ const shape = (s: {
   arr: s.arrTime,
 });
 
-/** What the reader makes of a code-less document's text. The app refuses
- * these files (extractItinerary → 'no-barcode'), but their layouts are the
- * hardest ones to parse, so they stay covered here. */
+/** What the reader makes of a document's text alone — all a code-less
+ * document has, and the hardest layouts to parse. */
 const textOnly = (pages: { text: string }[], today = TODAY) =>
   extractSegmentsFromText(pages.map((p) => p.text).join('\n'), today).map(shape);
 
@@ -139,11 +144,9 @@ describe('extractItinerary — Finnair receipt, five legs behind one barcode', (
 });
 
 describe('extractItinerary — documents with no boarding-pass code', () => {
-  // A ticket and a boarding pass carry a barcode; a booking confirmation
-  // emailed as a PDF often doesn't. Those are refused rather than read from
-  // the page alone — the page is a layout to guess at, and the guesses fail
-  // silently. The layouts still have to parse (textOnly), so the reader
-  // keeps its coverage either way.
+  // A booking confirmation emailed as a PDF, and most airlines' own e-ticket
+  // receipts, carry no boarding-pass barcode. They are read from the page
+  // alone: what the text reader finds is what the traveller gets to review.
   it.each([
     ['Delta', DELTA_CONFIRMATION_PDFKIT],
     ['Delta, PDFBox order', DELTA_CONFIRMATION_PDFBOX],
@@ -151,10 +154,12 @@ describe('extractItinerary — documents with no boarding-pass code', () => {
     ['Alaska, PDFBox order', ALASKA_CONFIRMATION_PDFBOX],
     ['American', AA_RECEIPT_PDFKIT],
     ['American, PDFBox order', AA_RECEIPT_PDFBOX],
-  ])('refuses %s', (_label, pages) => {
+  ])('reads %s from the page alone', (_label, pages) => {
     const result = extractItinerary(pages, TODAY);
-    expect(result.rejected).toBe('no-barcode');
-    expect(result.segments).toEqual([]);
+    expect(result.boardingPassBarcodes).toBe(0);
+    expect(result.segments.map(shape)).toEqual(textOnly(pages));
+    expect(result.segments.length).toBeGreaterThan(0);
+    expect(result.segments.every((s) => s.sources.join() === 'text')).toBe(true);
   });
 
   it.each([
@@ -183,9 +188,95 @@ describe('extractItinerary — documents with no boarding-pass code', () => {
     expect(textOnly(pages)).toEqual([
       { flight: 'AA3018', date: '2025-10-08', from: 'LAS', to: 'DFW', dep: '23:59', arr: '04:34' },
     ]);
-    // Its record-locator PDF417 is not a boarding pass, so it doesn't rescue
-    // the document either.
-    expect(extractItinerary(pages, TODAY).boardingPassBarcodes).toBe(0);
+    // Its record-locator PDF417 is neither a boarding pass nor an e-ticket
+    // record.
+    const { boardingPassBarcodes, ticketNumbers } = extractItinerary(pages, TODAY);
+    expect(boardingPassBarcodes).toBe(0);
+    expect(ticketNumbers).toEqual([]);
+  });
+});
+
+describe('extractItinerary — Emirates e-ticket receipt', () => {
+  // Emirates' receipt prints an e-ticket record, not a boarding pass: the
+  // stripe names the ticket and nothing about the flights, so every leg is
+  // read from the page. Its leg table puts a check-in column before
+  // departure, and heads each leg with its route as a sentence.
+  const LEGS = [
+    { flight: 'EK533', date: '2026-04-08', from: 'COK', to: 'DXB', dep: '04:30', arr: '06:50' },
+    { flight: 'EK181', date: '2026-04-08', from: 'DXB', to: 'BRU', dep: '13:20', arr: '19:30' },
+    { flight: 'AY1550', date: '2026-04-09', from: 'BRU', to: 'HEL', dep: '06:30', arr: '10:00' },
+  ];
+
+  it.each([
+    ['PDFKit order', EMIRATES_RECEIPT_PDFKIT],
+    ['PDFBox order', EMIRATES_RECEIPT_PDFBOX],
+  ])('finds all three legs in %s, skipping the check-in clock', (_label, pages) => {
+    expect(summary(pages)).toEqual(LEGS);
+  });
+
+  it('reads the ticket number off the stripe, and knows it is no boarding pass', () => {
+    const { segments, boardingPassBarcodes, ticketNumbers } = extractItinerary(EMIRATES_RECEIPT_PDFKIT, TODAY);
+    expect(boardingPassBarcodes).toBe(0);
+    expect(ticketNumbers).toEqual(['176-2400000001']);
+    expect(segments.every((s) => s.sources.join() === 'text')).toBe(true);
+    expect(segments.every((s) => s.pnr === 'PLQWTZ')).toBe(true);
+  });
+
+  const CONJUNCTION_LEGS = [
+    { flight: 'EK533', date: '2025-09-27', from: 'COK', to: 'DXB', dep: '04:25', arr: '06:50' },
+    { flight: 'EK215', date: '2025-09-27', from: 'DXB', to: 'LAX', dep: '08:55', arr: '14:15' },
+    { flight: 'EK222', date: '2025-10-11', from: 'DFW', to: 'DXB', dep: '12:15', arr: '12:00' },
+    { flight: 'EK530', date: '2025-10-13', from: 'DXB', to: 'COK', dep: '03:20', arr: '08:55' },
+  ];
+
+  it.each([
+    ['PDFKit order', EMIRATES_CONJUNCTION_PDFKIT],
+    ['PDFBox order', EMIRATES_CONJUNCTION_PDFBOX],
+  ])('finds all four legs of a conjunction ticket across two pages in %s', (_label, pages) => {
+    expect(summary(pages)).toEqual(CONJUNCTION_LEGS);
+  });
+
+  it.each([
+    ['PDFKit order', EMIRATES_CONJUNCTION_PDFKIT],
+    ['PDFBox order', EMIRATES_CONJUNCTION_PDFBOX],
+  ])('lands the overnight leg the next day and reads the seat column in %s', (_label, pages) => {
+    const { segments, ticketNumbers } = extractItinerary(pages, TODAY);
+    expect(ticketNumbers).toEqual(['176-2400000101']);
+    expect(segments.find((s) => s.flight === 'EK222')!.arrivalDate).toBe('2025-10-12');
+    expect(segments.map((s) => s.seat)).toEqual(['29K', '63K', '39H', '28H']);
+    expect(segments.every((s) => s.pnr === 'RX4TQ7')).toBe(true);
+  });
+});
+
+describe('extractItinerary — Etihad e-ticket receipt', () => {
+  // No barcode anywhere. A summary strip prints the three legs' dates,
+  // numbers and airports as three column-aligned rows before the per-leg
+  // blocks — read in reading order, that is "06 Jun 06 Jun 07 Jun" (not a
+  // date in 2006) over "AY 1305 EY 42 EY 332" — and each block prints the
+  // previous leg's airports closer to the flight number than its own.
+  const LEGS = [
+    { flight: 'AY1305', date: '2026-06-06', from: 'HEL', to: 'AMS', dep: '16:40', arr: '18:15' },
+    { flight: 'EY42', date: '2026-06-06', from: 'AMS', to: 'AUH', dep: '21:55', arr: '06:30' },
+    { flight: 'EY332', date: '2026-06-07', from: 'AUH', to: 'COK', dep: '08:40', arr: '14:15' },
+  ];
+
+  it.each([
+    ['PDFKit order', ETIHAD_RECEIPT_PDFKIT],
+    ['PDFBox order', ETIHAD_RECEIPT_PDFBOX],
+  ])('finds the three legs once each in %s', (_label, pages) => {
+    expect(summary(pages)).toEqual(LEGS);
+  });
+
+  it.each([
+    ['PDFKit order', ETIHAD_RECEIPT_PDFKIT],
+    ['PDFBox order', ETIHAD_RECEIPT_PDFBOX],
+  ])('reads seats, the overnight arrival and the airline reference in %s', (_label, pages) => {
+    const { segments, boardingPassBarcodes, ticketNumbers } = extractItinerary(pages, TODAY);
+    expect(boardingPassBarcodes).toBe(0);
+    expect(ticketNumbers).toEqual([]);
+    expect(segments.map((s) => s.seat)).toEqual([null, '21H', '9F']);
+    expect(segments.find((s) => s.flight === 'EY42')!.arrivalDate).toBe('2026-06-07');
+    expect(segments.every((s) => s.pnr === '3ZQTPV')).toBe(true);
   });
 });
 

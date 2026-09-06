@@ -739,3 +739,742 @@ LHRLAS: MAX`,
     barcodes: ['M1TRAVELLER/EXAMPLE MRE9ITC7L ARNLHRBA 0777 332O000 0000 043>218   0000I                251051234567890'],
   },
 ];
+
+/** The PDF417 on an Emirates e-ticket receipt is not a boarding pass: it is
+ * IATA's e-ticket record — an 'E', then the 13-digit ticket number (airline
+ * accounting code + document number) and four more digits ("0201" on a
+ * single ticket, "0202" on a two-document conjunction ticket) — repeated
+ * three times across the stripe. No route, no flight, no date. */
+const EK_ETICKET_STRIPE =
+  'E                                           17624000000010201                      17624000000010201                      17624000000010201';
+const EK_ETICKET_CONJUNCTION_STRIPE =
+  'E                                           17624000001010202                      17624000001010202                      17624000001010202';
+
+/** Emirates e-ticket receipt (UMC / Apache FOP), three legs on one ticket,
+ * the last operated by Finnair — iOS row-ordered text. Two of its lines are
+ * printed on leading tighter than the glyph band, so the reader interleaves
+ * them ("A08rrAivparl2026" is "Arrival" over "08Apr2026"): the layout the
+ * parser has to survive, not a transcription error. PDFKit hands back no
+ * text at all for the legal-notices page. Traveller, agent, ticket and
+ * booking numbers replaced. */
+export const EMIRATES_RECEIPT_PDFKIT: DocumentPage[] = [
+  {
+    text: `Ticket number: 176 2400000001
+Ticket & receipt  Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Passenger name  Issued by / Date
+DJOAENE/MS  A04GATP 8R612345678E4K5W AWEWWW DUBAI / EMIRATES IBE
+Your booking reference: PLQWTZ
+Your ticket is stored in our booking system. This receipt is your record  Check with your departure airport for restrictions on the carriage of
+of your ticket and is part of your conditions of carriage. For more  liquids, aerosols and gels in hand baggage and check your visa
+information you can read the notices and conditions of carriage.  requirements.
+You might need to show this receipt to enter the airport or to prove  Please check our Dangerous Goods information to find out what you
+your return or onwards travel to immigration.  can and can’t bring on board. Some substances and certain items are
+restricted, like portable electronic devices, spare batteries or smart
+bags.
+............................................................................................................................................................................................................................................................................................................................................
+Caihrpeocrkt sin y oatu  tnheee adir tpoo artr.r iAvte  m3 ohsoturs  9th0r omuignhu tpeass bsepfoorrte c toankter-ool.ff go  6re0a mdyin autt ethse b geafotere ( Ptarekme-ioufmf be  4re5a mdyin autt ethse b geafotere ( Ftiarkste -Colfafs bse,
+before departure, but it can be  Economy, Economy Class).  Business Class).
+up to 4 hours to complete all the
+travel requirements. Please check
+the best time to arrive for your
+journey below.
+Your travel information
+All times shown are local for each city
+Departing » From Kochi (Cochin), India
+Leg 1 of 3 | Kochi (COK) to Dubai (DXB) | Operated by Emirates (equipment owner - Emirates)
+Flight  Check-in at  Departure  KOCHI (COCHIN)
+EK 533  08Apr2026  08Apr2026
+Economy  00:30  04:30  DT3e pNaerwtin Tge CrmOiKna, lKochi International Airport
+Saver
+Seat  Status  A08rrAivparl2026  DUBAI
+Confirmed
+06:50  ATerrrimviinnga lD 3XB, Dubai International Airport
+Coupon validity: not before 08Apr2026 / not after 08Apr2026   Baggage 25Kgs
+Leg 2 of 3 | Dubai (DXB) to Brussels (BRU) | Operated by Emirates (equipment owner - Emirates)
+Flight  Check-in at  Departure  DUBAI
+EK 181  08Apr2026  08Apr2026
+Economy  10:20  13:20  Departing DXB, Dubai International Airport
+Saver  Terminal 3
+Seat  Status  A08rrAivparl2026  BRUSSELS
+Confirmed
+19:30  Arriving BRU, Brussels Airport
+Coupon validity: not before 08Apr2026 / not after 08Apr2026   Baggage 25Kgs
+© Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 1 of 3`,
+    barcodes: [EK_ETICKET_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000001
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Leg 3 of 3 | Brussels (BRU) to Helsinki (HEL) | Operated by Finnair Oyj (equipment owner - Nordic Regional Airlines )
+Flight  Check-in at  Departure
+09Apr2026  09Apr2026  BRUSSELS
+AY 1550
+Economy  03:00  06:30  Departing BRU, Brussels Airport
+Seat  Status  A09rrAivparl2026  HELSINKI
+Confirmed
+10:00  Arriving HEL, Helsinki Airport
+Coupon validity: not before 09Apr2026 / not after 09Apr2026   Baggage 25Kgs
+Baggage allowance  Emirates Skywards  Dining  Young flyers
+Enjoy discounted rates when you  Earn Miles on every flight and  Explore the world in every bite of  Kids get top flight treatment with
+purchase extra baggage online.  enjoy a world of benefits.  our regionally inspired meals.  packs, special meals and more.
+Fare information
+Fare  Equivalent fare  Taxes / Fees / Charges (TFC)  Total fare (Incl. TFC)  Form of payment
+INR43170  -  INR11916-YQ INR3718-BE  INR64945  CREDIT CARD
+INR1268-F6 INR673-IN INR2755-K3
+INR1318-P2 INR127-ZR
+Fare calculation
+COK EK X/DXB EK X/BRU AY HEL465.85QAAOPIN1/EOL4 Q COKHEL3.25NUC469.10END ROE92.025496
+Additional information
+NON-END/SAVER/REWARD UPGDS ALLOWED
+© Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 2 of 3`,
+    barcodes: [EK_ETICKET_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000001
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Hazardous materials and substance control policy
+The carriage of certain hazardous materials like aerosols, fireworks and inflammable liquids aboard the aircraft is forbidden. Personal motorised vehicles such as
+hoverboards, mini-Segways and smart or self-balancing wheels, are also forbidden on our flights as they contain large lithium batteries. For safety reasons, we can’t accept
+these as part of checked-in baggage or as hand luggage. If you do not understand this restriction, further information may be obtained from your airline.
+The United Arab Emirates (UAE) has a very strict, zero-tolerance, anti-drugs policy. All airports within the UAE conduct thorough searches using highly
+sensitive equipment. Possession of any amounts of illegal drugs by travellers entering or transiting the UAE will be subject to punishment.
+Emirates cabin baggage allowances
+Economy Class:
+One piece of carry-on baggage is permitted with maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches) and maximum weight: 7kg (15lb).
+Note: If you’re boarding in India, your carry-on baggage may not exceed 115cm or 45.3 inches (length + width + height). If your itinerary originates from Brazil, you’re
+allowed a carry-on weighing 10kg (22lb).
+Premium Economy:
+One piece of carry-on baggage is permitted with maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches) and maximum weight: 10kg (22lb).
+Note: If you're boarding in India, your carry-on baggage may not exceed 115cm or 45.3 inches (length + width + height).
+First Class and Business Class:
+Two pieces of carry-on baggage permitted: one briefcase plus either one handbag or one garment bag. The briefcase may not exceed 45 x 35 x 20cm (18 x 14 x 8 inches);
+the handbag may not exceed 55 x 38 x 22cm (22 x 15 x 8 inches); the garment bag can be no more than 20cm (8 inches) thick when folded. The weight of each piece must
+not exceed 7kg (15lb). The total combined weight of both pieces may not be more than 14kg (30lb).
+Infants in all cabin classes are permitted one checked-in bag that may not exceed 55 x 38 x 22 cm (22 x 15 x 8 inches) in size and 23kg (50lb) where the piece concept
+applies, or 10kg (22lb) where the weight concept applies. In addition, customers travelling with infants (and without a child seat) are permitted to bring one carry-cot or one
+fully collapsible stroller into the cabin if there is room. If there is no space for these items in the cabin, they will have to be checked. However, if checked, they will not count
+against your baggage allowance.
+Emirates checked baggage notification
+Checked baggage allowances vary by fare type and class of travel. Additional baggage allowances may apply based on your Skywards tier. Make sure to add your
+frequent flyer number through Manage your booking to see your total checked baggage allowance. Please note that any individual item weighing more than 32kg cannot be
+accepted, for health and safety reasons.
+S
+ca
+n  t  Ti  Inflight entertainment
+the  ck
+he  b  e
+sear  t  Fall in love with a classic romance or immerse yourself in
+lf  co  nu
+chde  m  the latest edge-of-the-seat blockbuster - let our ice inflight
+ec  or  b  entertainment take you to places you won't find on a map.
+k-i  u  er
+n  pse  :1  Choose from over 6,500 channels of movies, TV shows and
+oith  7  music from around the world and in multiple languages. Or
+ntse  ti  6
+inck  2  challenge other passengers to a range of gripping games.
+thet  20
+e  nu  8
+airm  7
+pobe  10
+rt.r  a  6
+bo  1
+ve  9
+at
+© Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 3 of 3`,
+    barcodes: [EK_ETICKET_STRIPE],
+  },
+];
+
+/** The same Emirates receipt as PDFBox sorts it by position (Android). The
+ * legal-notices page is cut to its header. */
+export const EMIRATES_RECEIPT_PDFBOX: DocumentPage[] = [
+  {
+    text: `Ticket number: 176 2400000001
+Ticket & receipt Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Passenger name Issued by / Date
+DOE/ AGT 12345678 AE
+JANEMS 04APR2026EKWWWWW DUBAI / EMIRATES IBE
+Your booking reference: PLQWTZ
+Your ticket is stored in our booking system. This receipt is your record Check with your departure airport for restrictions on the carriage of
+of your ticket and is part of your conditions of carriage. For more liquids, aerosols and gels in hand baggage and check your visa
+information you can read the notices and conditions of carriage. requirements.
+You might need to show this receipt to enter the airport or to prove Please check our Dangerous Goods information to find out what you
+your return or onwards travel to immigration. can and can’t bring on board. Some substances and certain items are
+restricted, like portable electronic devices, spare batteries or smart
+bags.
+............................................................................................................................................................................................................................................................................................................................................
+Check in at the airport. At most 90 minutes before take-off go 60 minutes before take-off be 45 minutes before take-off be
+airports you need to arrive 3 hours through passport control. ready at the gate (Premium ready at the gate (First Class,
+before departure, but it can be Economy, Economy Class). Business Class).
+up to 4 hours to complete all the
+travel requirements. Please check
+the best time to arrive for your
+journey below.
+Your travel information
+All times shown are local for each city
+Departing » From Kochi (Cochin), India
+Leg 1 of 3 | Kochi  (COK) to Dubai  (DXB) | Operated by Emirates (equipment owner - Emirates)
+Flight Check-in at Departure
+EK 533 08Apr2026 08Apr2026 KOCHI (COCHIN)
+Economy 00:30 04:30 Departing COK, Kochi International Airport
+T3 New Terminal
+Saver
+Seat Status Arrival
+Confirmed 08Apr2026 DUBAI
+06:50 Arriving DXB, Dubai International Airport
+Terminal 3
+Coupon validity: not before 08Apr2026 /  not after 08Apr2026  Baggage 25Kgs
+Leg 2 of 3 | Dubai  (DXB) to Brussels  (BRU) | Operated by Emirates (equipment owner - Emirates)
+Flight Check-in at Departure
+EK 181 08Apr2026 08Apr2026 DUBAI
+Economy 10:20 13:20 Departing DXB, Dubai International Airport
+Terminal 3
+Saver
+Seat Status Arrival
+Confirmed 08Apr2026 BRUSSELS
+19:30 Arriving BRU, Brussels Airport
+Coupon validity: not before 08Apr2026 /  not after 08Apr2026  Baggage 25Kgs
+© Emirates. All rights reserved Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us Page 1 of 3`,
+    barcodes: [EK_ETICKET_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000001
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Leg 3 of 3 | Brussels  (BRU) to Helsinki  (HEL) | Operated by Finnair Oyj (equipment owner - Nordic Regional Airlines )
+Flight Check-in at Departure
+AY 1550 09Apr2026 09Apr2026 BRUSSELS
+Economy 03:00 06:30 Departing BRU, Brussels Airport
+Seat Status Arrival
+Confirmed 09Apr2026 HELSINKI
+10:00 Arriving HEL, Helsinki Airport
+Coupon validity: not before 09Apr2026 /  not after 09Apr2026  Baggage 25Kgs
+Baggage allowance Emirates Skywards Dining Young flyers
+Enjoy discounted rates when you Earn Miles on every flight and Explore the world in every bite of Kids get top flight treatment with
+purchase extra baggage online. enjoy a world of benefits. our regionally inspired meals. packs, special meals and more.
+Fare information
+Fare Equivalent fare Taxes / Fees / Charges (TFC) Total fare (Incl. TFC) Form of payment
+INR43170 - INR11916-YQ INR3718-BE INR64945 CREDIT CARD
+INR1268-F6 INR673-IN INR2755-K3
+INR1318-P2 INR127-ZR
+Fare calculation
+COK EK X/DXB EK X/BRU AY HEL465.85QAAOPIN1/EOL4 Q COKHEL3.25NUC469.10END ROE92.025496
+Additional information
+NON-END/SAVER/REWARD UPGDS ALLOWED
+© Emirates. All rights reserved Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us Page 2 of 3`,
+    barcodes: [EK_ETICKET_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000001
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.`,
+    barcodes: [EK_ETICKET_STRIPE],
+  },
+];
+
+/** A second Emirates receipt: a conjunction ticket (two documents), four
+ * legs across two pages, an overnight leg (DFW → DXB lands the next day),
+ * seats assigned, Skywards number printed — iOS row-ordered text. */
+export const EMIRATES_CONJUNCTION_PDFKIT: DocumentPage[] = [
+  {
+    text: `Ticket number: 176 2400000101-02
+Ticket & receipt  Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Passenger name  Emirates Skywards number  Issued by / Date
+DJOAENE/MS  EK500000001  A31GATU 8G612345678E4K5 WAEWWWW DUBAI / EMIRATES IBE
+Membership Tier
+BLUE
+Your booking reference: RX4TQ7
+Your ticket is stored in our booking system. This receipt is your record  Check with your departure airport for restrictions on the carriage of
+of your ticket and is part of your conditions of carriage. For more  liquids, aerosols and gels in hand baggage and check your visa
+information you can read the notices and conditions of carriage.  requirements.
+You might need to show this receipt to enter the airport or to prove  Please check our Dangerous Goods information to find out what you
+your return or onwards travel to immigration.  can and can’t bring on board. Some substances and certain items are
+restricted, like portable electronic devices, spare batteries or smart
+bags.
+............................................................................................................................................................................................................................................................................................................................................
+Check in online, or  90 minutes  60 minutes  45 minutes
+Check in at the airport. At most  90 minutes before take-off go  60 minutes before take-off be  45 minutes before take-off be
+airports you need to arrive 3 hours  through passport control.  ready at the gate (Premium  ready at the gate (First Class,
+before departure, but it can be  Economy, Economy Class).  Business Class).
+utrpa vteol  4re hqouuirresm teon ctso.m Ppleleatsee a cllh tehcek
+the best time to arrive for your
+journey below.
+Your travel information
+All times shown are local for each city
+Departing » From Kochi (Cochin), India
+Leg 1 of 4 | Kochi (COK) to Dubai (DXB) | Operated by Emirates (equipment owner - Emirates)
+Flight  Check-in at  Departure
+27Sep2025  27Sep2025  KOCHI (COCHIN)
+EK 533  00:25  04:25  Departing COK, Kochi International Airport
+Economy  T3 New Terminal
+Saver
+Seat  Status  Arrival
+29K  Confirmed  27Sep2025  DUBAI
+06:50  Arriving DXB, Dubai International Airport
+Terminal 3
+Coupon validity: not before 27Sep2025 / not after 27Sep2025   Baggage 2Piece
+Leg 2 of 4 | Dubai (DXB) to Los Angeles (LAX) | Operated by Emirates (equipment owner - Emirates)
+Flight  Check-in at  Departure
+27Sep2025  27Sep2025  DUBAI
+EK 215  05:55  08:55  Departing DXB, Dubai International Airport
+Economy  Terminal 3
+Saver
+Seat  Status  Arrival
+63K  Confirmed  27Sep2025  LOS ANGELES
+14:15  Arriving LAX, Los Angeles International Airport
+Tom Bradley International
+Coupon validity: not before 27Sep2025 / not after 27Sep2025   Baggage 2Piece
+© Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 1 of 4`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000101-02
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Your travel information
+All times shown are local for each city
+Departing » From Dallas, United States
+Leg 3 of 4 | Dallas (DFW) to Dubai (DXB) | Operated by Emirates (equipment owner - Emirates)
+Flight  Check-in at  Departure
+11Oct2025  11Oct2025  DALLAS
+EK 222
+08:15  12:15  Departing DFW, Dallas/Fort Worth International Airport
+Economy  Terminal D
+Saver
+Seat  Status  Arrival  DUBAI
+39H  Confirmed  12Oct2025
+Arriving DXB, Dubai International Airport
+12:00  Terminal 3
+Coupon validity: not before 11Oct2025 / not after 11Oct2025   Baggage 2Piece
+Leg 4 of 4 | Dubai (DXB) to Kochi (COK) | Operated by Emirates (equipment owner - Emirates)
+Flight  Check-in at  Departure
+DUBAI
+EK 530  13Oct2025  13Oct2025
+00:20  03:20  Departing DXB, Dubai International Airport
+Economy  Terminal 3
+Saver
+Seat  Status  Arrival
+Confirmed  13Oct2025  KOCHI (COCHIN)
+28H
+08:55  Arriving COK, Kochi International Airport
+T3 New Terminal
+Coupon validity: not before 13Oct2025 / not after 13Oct2025   Baggage 2Piece
+Fare information
+Fare  Equivalent fare  Taxes / Fees / Charges (TFC)  Total fare (Incl. TFC)  Form of payment
+INR90490  -  INR1241-P2 INR673-IN INR2148-F6  490MILES + INR146667  MILES CREDIT CARD
+INR240-ZR INR4014-US INR631-YC
+INR614-XY INR325-XA INR6488-K3
+INR39252-YQ INR491-AY INR395-
+XF
+Fare calculation
+COK EK X/DXB EK LAX520.64LWAAPIN1/EOL4 /-DFW EK X/DXB EK COK530.34QWAAPIN1/EOL4 Q COKCOK3.49NUC1054.47 XF DFWINR4.5END ROE85.811526
+Additional information
+FQEK500000001 NON-END/SAVER/REWARD UPGDS ALLOWED
+© Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 2 of 4`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000101-02
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Baggage allowance
+Passenger type  Route  Baggage allowance
+ADULT  EK COKLAX 2PC  BAG 1 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 2 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 3 19715 INR UPTO50LB 23KG MAX59IN 150CM
+HTTPS://WWW.EMIRATES.COM/ENGLISH/BEFORE-YOU-FLY/BAGGAGE/
+Passenger type  Route  Baggage allowance
+ADULT  EK DFWCOK 2PC  BAG 1 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 2 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 3 19715 INR UPTO50LB 23KG MAX59IN 150CM
+HTTPS://WWW.EMIRATES.COM/ENGLISH/BEFORE-YOU-FLY/BAGGAGE/
+Passenger type  Route  Carry on baggage
+ADULT  EK COKDXB 1PC  BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+Passenger type  Route  Carry on baggage
+ADULT  EK DXBLAX 1PC  BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+Passenger type  Route  Carry on baggage
+ADULT  EK DFWDXB 1PC  BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+Passenger type  Route  Carry on baggage
+ADULT  EK DXBCOK 1PC  BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+If you go over the baggage allowance you may be charged. If you purchase extra baggage on emirates.com, you could get a discount. Alternatively you can pay for any extra baggage
+charges at check-in. For more information please visit our baggage section.
+Hazardous materials and substance control policy
+The carriage of certain hazardous materials like aerosols, fireworks and inflammable liquids aboard the aircraft is forbidden. Personal motorised vehicles such as
+hoverboards, mini-Segways and smart or self-balancing wheels, are also forbidden on our flights as they contain large lithium batteries. For safety reasons, we can’t accept
+these as part of checked-in baggage or as hand luggage. If you do not understand this restriction, further information may be obtained from your airline.
+The United Arab Emirates (UAE) has a very strict, zero-tolerance, anti-drugs policy. All airports within the UAE conduct thorough searches using highly
+sensitive equipment. Possession of any amounts of illegal drugs by travellers entering or transiting the UAE will be subject to punishment.
+Emirates cabin baggage allowances
+Economy Class:
+One piece of carry-on baggage is permitted with maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches) and maximum weight: 7kg (15lb).
+Note: If you’re boarding in India, your carry-on baggage may not exceed 115cm or 45.3 inches (length + width + height). If your itinerary originates from Brazil, you’re
+allowed a carry-on weighing 10kg (22lb).
+Premium Economy:
+One piece of carry-on baggage is permitted with maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches) and maximum weight: 10kg (22lb).
+Note: If you're boarding in India, your carry-on baggage may not exceed 115cm or 45.3 inches (length + width + height).
+First Class and Business Class:
+Two pieces of carry-on baggage permitted: one briefcase plus either one handbag or one garment bag. The briefcase may not exceed 45 x 35 x 20cm (18 x 14 x 8 inches);
+the handbag may not exceed 55 x 38 x 22cm (22 x 15 x 8 inches); the garment bag can be no more than 20cm (8 inches) thick when folded. The weight of each piece must
+not exceed 7kg (15lb). The total combined weight of both pieces may not be more than 14kg (30lb).
+Infants in all cabin classes are permitted one checked-in bag: maximum weight 23kg (50lb) with total dimensions (length + width + height) not exceeding 115cm (45 inches)
+and one carry-on bag for inflight food and disposable items (weight not to exceed 5kg (11lb) and maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches).
+© Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 3 of 4`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000101-02
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+S
+can  Ti
+th  ck  Inflight entertainment
+thee  b  et
+sear  nu  Fall in love with a classic romance or immerse yourself in
+lf  ccod  m
+hee  be  the latest edge-of-the-seat blockbuster - let our ice inflight
+ck-or  u  r:1  entertainment take you to places you won't find on a map.
+in  se  7  Choose from over 6,500 channels of movies, TV shows and
+poi  the  6  music from around the world and in multiple languages. Or
+nts  tic  23
+in  tke  9  challenge other passengers to a range of gripping games.
+het  n  32
+airum  35
+porber  4
+t.  ab  67
+ov  -6
+e  a  8
+t
+© Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 4 of 4`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+];
+
+/** The conjunction receipt via PDFBox. */
+export const EMIRATES_CONJUNCTION_PDFBOX: DocumentPage[] = [
+  {
+    text: `Ticket number: 176 2400000101-02
+Ticket & receipt Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Passenger name Emirates Skywards number Issued by / Date
+DOE/ EK500000001 AGT 12345678 AE
+JANEMS 31AUG2025EKWWWWW DUBAI / EMIRATES IBE
+Membership Tier
+BLUE
+Your booking reference: RX4TQ7
+Your ticket is stored in our booking system. This receipt is your record Check with your departure airport for restrictions on the carriage of
+of your ticket and is part of your conditions of carriage. For more liquids, aerosols and gels in hand baggage and check your visa
+information you can read the notices and conditions of carriage. requirements.
+You might need to show this receipt to enter the airport or to prove Please check our Dangerous Goods information to find out what you
+your return or onwards travel to immigration. can and can’t bring on board. Some substances and certain items are
+restricted, like portable electronic devices, spare batteries or smart
+bags.
+............................................................................................................................................................................................................................................................................................................................................
+Check in online, or 90 minutes 60 minutes 45 minutes
+Check in at the airport. At most 90 minutes before take-off go 60 minutes before take-off be 45 minutes before take-off be
+airports you need to arrive 3 hours through passport control. ready at the gate (Premium ready at the gate (First Class,
+before departure, but it can be Economy, Economy Class). Business Class).
+up to 4 hours to complete all the
+travel requirements. Please check
+the best time to arrive for your
+journey below.
+Your travel information
+All times shown are local for each city
+Departing » From Kochi (Cochin), India
+Leg 1 of 4 | Kochi  (COK) to Dubai  (DXB) | Operated by Emirates (equipment owner - Emirates)
+Flight Check-in at Departure
+EK 533 27Sep2025 27Sep2025 KOCHI (COCHIN)
+Economy 00:25 04:25 Departing COK, Kochi International Airport
+T3 New Terminal
+Saver
+Seat Status Arrival
+29K Confirmed 27Sep2025 DUBAI
+06:50 Arriving DXB, Dubai International Airport
+Terminal 3
+Coupon validity: not before 27Sep2025 /  not after 27Sep2025  Baggage 2Piece
+Leg 2 of 4 | Dubai  (DXB) to Los Angeles  (LAX) | Operated by Emirates (equipment owner - Emirates)
+Flight Check-in at Departure
+EK 215 27Sep2025 27Sep2025 DUBAI
+Economy 05:55 08:55 Departing DXB, Dubai International Airport
+Terminal 3
+Saver
+Seat Status Arrival
+63K Confirmed 27Sep2025 LOS ANGELES
+14:15 Arriving LAX, Los Angeles International Airport
+Tom Bradley International
+Coupon validity: not before 27Sep2025 /  not after 27Sep2025  Baggage 2Piece
+© Emirates. All rights reserved Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us Page 1 of 4`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000101-02
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Your travel information
+All times shown are local for each city
+Departing » From Dallas, United States
+Leg 3 of 4 | Dallas  (DFW) to Dubai  (DXB) | Operated by Emirates (equipment owner - Emirates)
+Flight Check-in at Departure
+EK 222 11Oct2025 11Oct2025 DALLAS
+Economy 08:15 12:15 Departing DFW, Dallas/Fort Worth International Airport
+Terminal D
+Saver
+Seat Status Arrival
+39H Confirmed 12Oct2025 DUBAI
+12:00 Arriving DXB, Dubai International Airport
+Terminal 3
+Coupon validity: not before 11Oct2025 /  not after 11Oct2025  Baggage 2Piece
+Leg 4 of 4 | Dubai  (DXB) to Kochi  (COK) | Operated by Emirates (equipment owner - Emirates)
+Flight Check-in at Departure
+EK 530 13Oct2025 13Oct2025 DUBAI
+Economy 00:20 03:20 Departing DXB, Dubai International Airport
+Terminal 3
+Saver
+Seat Status Arrival
+28H Confirmed 13Oct2025 KOCHI (COCHIN)
+08:55 Arriving COK, Kochi International Airport
+T3 New Terminal
+Coupon validity: not before 13Oct2025 /  not after 13Oct2025  Baggage 2Piece
+Fare information
+Fare Equivalent fare Taxes / Fees / Charges (TFC) Total fare (Incl. TFC) Form of payment
+INR90490 - INR1241-P2 INR673-IN INR2148-F6 490MILES + INR146667 MILES CREDIT CARD
+INR240-ZR INR4014-US INR631-YC
+INR614-XY INR325-XA INR6488-K3
+INR39252-YQ INR491-AY INR395-
+XF
+Fare calculation
+COK EK X/DXB EK LAX520.64LWAAPIN1/EOL4 /-DFW EK X/DXB EK COK530.34QWAAPIN1/EOL4 Q COKCOK3.49NUC1054.47 XF DFWINR4.5END ROE85.811526
+Additional information
+FQEK500000001 NON-END/SAVER/REWARD UPGDS ALLOWED
+© Emirates. All rights reserved Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us Page 2 of 4`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000101-02
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.
+Baggage allowance
+Passenger type Route Baggage allowance
+ADULT EK COKLAX 2PC BAG 1 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 2 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 3 19715 INR UPTO50LB 23KG MAX59IN 150CM
+HTTPS://WWW.EMIRATES.COM/ENGLISH/BEFORE-YOU-FLY/BAGGAGE/
+Passenger type Route Baggage allowance
+ADULT EK DFWCOK 2PC BAG 1 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 2 NO FEE UPTO50LB 23KG MAX59IN 150CM
+BAG 3 19715 INR UPTO50LB 23KG MAX59IN 150CM
+HTTPS://WWW.EMIRATES.COM/ENGLISH/BEFORE-YOU-FLY/BAGGAGE/
+Passenger type Route Carry on baggage
+ADULT EK COKDXB 1PC BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+Passenger type Route Carry on baggage
+ADULT EK DXBLAX 1PC BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+Passenger type Route Carry on baggage
+ADULT EK DFWDXB 1PC BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+Passenger type Route Carry on baggage
+ADULT EK DXBCOK 1PC BAG 1 NO FEE CARRY7KG 15LB UPTO45LI 115LCM
+If you go over the baggage allowance you may be charged. If you purchase extra baggage on emirates.com, you could get a discount. Alternatively you can pay for any extra baggage
+charges at check-in. For more information please visit our baggage section.
+Hazardous materials and substance control policy
+The carriage of certain hazardous materials like aerosols, fireworks and inflammable liquids aboard the aircraft is forbidden. Personal motorised vehicles such as
+hoverboards, mini-Segways and smart or self-balancing wheels, are also forbidden on our flights as they contain large lithium batteries. For safety reasons, we can’t accept
+these as part of checked-in baggage or as hand luggage. If you do not understand this restriction, further information may be obtained from your airline.
+The United Arab Emirates (UAE) has a very strict, zero-tolerance, anti-drugs policy. All airports within the UAE conduct thorough searches using highly
+sensitive equipment. Possession of any amounts of illegal drugs by travellers entering or transiting the UAE will be subject to punishment.
+Emirates cabin baggage allowances
+Economy Class:
+One piece of carry-on baggage is permitted with maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches) and maximum weight: 7kg (15lb).
+Note: If you’re boarding in India, your carry-on baggage may not exceed 115cm or 45.3 inches (length + width + height). If your itinerary originates from Brazil, you’re
+allowed a carry-on weighing 10kg (22lb).
+Premium Economy:
+One piece of carry-on baggage is permitted with maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches) and maximum weight: 10kg (22lb).
+Note: If you're boarding in India, your carry-on baggage may not exceed 115cm or 45.3 inches (length + width + height).
+First Class and Business Class:
+Two pieces of carry-on baggage permitted: one briefcase plus either one handbag or one garment bag. The briefcase may not exceed 45 x 35 x 20cm (18 x 14 x 8 inches);
+the handbag may not exceed 55 x 38 x 22cm (22 x 15 x 8 inches); the garment bag can be no more than 20cm (8 inches) thick when folded. The weight of each piece must
+not exceed 7kg (15lb). The total combined weight of both pieces may not be more than 14kg (30lb).
+Infants in all cabin classes are permitted one checked-in bag: maximum weight 23kg (50lb) with total dimensions (length + width + height) not exceeding 115cm (45 inches)
+and one carry-on bag for inflight food and disposable items (weight not to exceed 5kg (11lb) and maximum dimensions: 55 x 38 x 22cm (22 x 15 x 8 inches).
+© Emirates. All rights reserved Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us Page 3 of 4`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+  {
+    text: `Ticket number: 176 2400000101-02
+Scan the bar code or use the ticket number above at
+the self check-in points in the airport.`,
+    barcodes: [EK_ETICKET_CONJUNCTION_STRIPE],
+  },
+];
+
+/** Etihad e-ticket receipt (Amadeus "ITR - EMD Graphical"): no barcode at
+ * all, a summary strip that prints every leg's date, flight and airports
+ * in three column-aligned rows before the per-leg blocks, and an overnight
+ * leg (AMS → AUH). The first leg is a Finnair codeshare. iOS row-ordered
+ * text; traveller, ticket and booking numbers replaced. */
+export const ETIHAD_RECEIPT_PDFKIT: DocumentPage[] = [
+  {
+    text: `Electronic ticket receipt
+Ms Jane Doe  Etihad reference 3ZQTPV
+Frequent Flyer Number 500000000001  Other airlines 3ZQTPV(AY)
+Ticket number 607 2400000001
+Thank you for your continued loyalty.  Date of issue 01 Jun 2026
+We look forward to welcoming you soon.  Issuing office Etihad Airways, United Arab Emirates
+_
+06 Jun  06 Jun  07 Jun
+AY 1305  EY 42  EY 332
+HEL  AMS  AUH  COK
+All times are local to each city
+AY 1305 • Finnair
+Helsinki  Amsterdam  Fare type  Deluxe
+Seat  -
+HEL  AMS  Cabin  7kg
+16:40  02h 35m • Nonstop  18:15  Checked  40kg (32kg per bag)
+06 Jun 2026   Airbus A321  06 Jun 2026
+Helsinki Vantaa  Schiphol Airport
+Status  CONFIRMED
+EY 42 • Etihad Airways
+Amsterdam  Abu Dhabi  Fare type  Deluxe
+AMS  AUH  Seat  21H
+Cabin  7kg
+21:55  06h 35m • Nonstop  06:30  Checked  40kg (32kg per bag)
+06 Jun 2026   Airbus A350-1000  07 Jun 2026
+Schiphol Airport  Zayed International Airport
+Terminal A  Status  CONFIRMED
+EY 332 • Etihad Airways
+Abu Dhabi  Kochi  Fare type  Deluxe
+AUH  COK  Seat  09F
+Cabin  7kg
+08:40  04h 05m • Nonstop  14:15  Checked  40kg (32kg per bag)
+07 Jun 2026   Airbus A320 (Sharklets)  07 Jun 2026
+Zayed International Airport  Cochin Intl (Kochi)
+Terminal A
+Terminal 3  Status  CONFIRMED
+For real-time travel updates and to check your Etihad Guest benefits, download the Etihad app
+This E-ticket is valid for 1 year from the date of issue
+_
+Payment details  Fare details
+Fare Calculation HEL AY X/AMS EY X/AUH EY  Fare  EUR 811.00
+COK950.82NUC950.82END ROE0.852932
+Form of payment  CC VI XXXXXXXXXXXX0000 XXXX X00000 - 1002.81 /  Taxes  EUR 6.27DQ
+EUR  EUR 12.31FI
+Endorsements NON ENDO/ REF  EUR 0.90XU
+EUR 11.94CJ
+EUR 14.19RN
+EUR 11.71F6
+EUR 1.18ZR
+Carrier fees  EUR 133.31YQ`,
+    barcodes: [],
+  },
+  {
+    text: `Electronic ticket receipt
+Total Amount  EUR1002.81
+_`,
+    barcodes: [],
+  },
+  {
+    text: `Electronic ticket receipt
+Legal and guest notices
+Baggage allowance
+Use our baggage calculator to determine your checked baggage and cabin baggage allowance. You’ll also find your checked baggage allowance on
+your travel itinerary above.
+Travel information
+You’ll find everything you need to know to prepare for your trip at etihad.com.
+Legal information
+If you booked your ticket online, you’ll need to provide proof of identity to use this electronic ticket. Transportation and other services provided by
+Etihad Airways are subject to conditions of carriage which form part of the contract of carriage between you and Etihad Airways.
+Ancillary products and services are subject to the applicable terms and conditions.
+If your journey involves a destination or a stop in a country other than the country of origin, the Warsaw Convention or the Montreal Convention as
+stated in the conditions of carriage may apply to the entire journey, including any portion entirely within the country of origin or destination. These
+conventions may limit the liability of the carrier for loss of life or bodily injury, for delays, or loss or damage to baggage. Etihad Airways has waived
+the limits of liability applicable under the Warsaw Convention (or that convention as amended at The Hague 1955 or protocols nos. 1 and 2 of 1975),
+with respect to loss of life or bodily injury attributable to an accident. However, under the Warsaw Convention (or that convention as amended at
+The Hague 1955 or protocols nos. 1 and 2 of 1975), the liability for the loss, damage or destruction of checked baggage is limited to SDR 17 per
+kilogram (approx. USD 20).
+Under the Montreal Convention of 1999, no financial limits apply in the case of loss of life or bodily injury. Etihad Airways may make advance
+payments to meet immediate economic needs of the person entitled to claim compensation, subject to applicable laws. The liability of Etihad
+Airways in respect of damage caused by delay is limited to SDR 4,150 (approx. USD 6,200) and the liability in respect of destruction, loss, damage, or
+delay of baggage is limited to SDR 1,000 (approx. USD 1,500).
+Additional protection can usually be obtained by purchasing insurance from a private company. Such insurance is not affected by any limitation of
+the carrier’s liability under an international treaty.
+For flights originating from any member state of the European Union, Etihad Airways is committed to the specific European regulations relating to
+liability in case of denied boarding, cancellation of a flight or substantial delay. For security reasons, all knives, sharp objects or cutting implements
+of any kind and any length, whether of metal or other material, knitting needles, and sporting goods, must be packed in your checked baggage.
+They cannot be carried in cabin baggage or on person. If you are carrying hypodermic needles they must be declared at check-in and you will be
+required to present proof that they are medically required. Medication should contain a professionally printed label identifying the medication or
+manufacturers name. You must not carry liquids or other substances that pose a significant risk to health, safety and property when transported by
+air, including explosives, compressed gases and/or aerosols, flammable liquids, corrosives, oxidising materials, magnets, materials easily ignited,
+poisonous, offensive or irritating substances, munitions of war and any further items which are prohibited by applicable laws, regulations or order of
+any state to be flown from, to or over. Read our privacy policy and terms and conditions.`,
+    barcodes: [],
+  },
+];
+
+/** The Etihad receipt via PDFBox; the legal-notices page cut to its header. */
+export const ETIHAD_RECEIPT_PDFBOX: DocumentPage[] = [
+  {
+    text: `Electronic ticket receipt
+Ms Jane Doe Etihad reference 3ZQTPV
+Frequent Flyer Number 500000000001 Other airlines 3ZQTPV(AY)
+Ticket number 607 2400000001
+Thank you for your continued loyalty. Date of issue 01 Jun 2026
+We look forward to welcoming you soon. Issuing office Etihad Airways, United Arab Emirates
+_
+06 Jun 06 Jun 07 Jun
+AY 1305 EY 42 EY 332
+HEL AMS AUH COK
+All times are local to each city
+AY 1305 • Finnair
+Helsinki Amsterdam Fare type Deluxe
+HEL AMS Seat -
+Cabin 7kg
+16:40 02h 35m • Nonstop 18:15 Checked 40kg (32kg per bag)
+06 Jun 2026 Airbus A321 06 Jun 2026
+Helsinki Vantaa Schiphol Airport
+Status CONFIRMED
+EY 42 • Etihad Airways
+Amsterdam Abu Dhabi Fare type Deluxe
+AMS AUH Seat 21H
+Cabin 7kg
+21:55 06h 35m • Nonstop 06:30 Checked 40kg (32kg per bag)
+06 Jun 2026 Airbus A350-1000 07 Jun 2026
+Schiphol Airport Zayed International Airport
+Terminal A Status CONFIRMED
+EY 332 • Etihad Airways
+Abu Dhabi Kochi Fare type Deluxe
+AUH COK Seat 09F
+Cabin 7kg
+08:40 04h 05m • Nonstop 14:15 Checked 40kg (32kg per bag)
+07 Jun 2026 Airbus A320 (Sharklets) 07 Jun 2026
+Zayed International Airport Cochin Intl (Kochi)
+Terminal A Terminal 3 Status CONFIRMED
+For real-time travel updates and to check your Etihad Guest benefits, download the Etihad app
+This E-ticket is valid for 1 year from the date of issue
+_
+Payment details Fare details
+Fare Calculation HEL AY X/AMS EY X/AUH EY Fare EUR 811.00
+COK950.82NUC950.82END ROE0.852932
+Form of payment CC VI XXXXXXXXXXXX0000 XXXX X00000 - 1002.81 / Taxes EUR 6.27DQ
+EUR EUR 12.31FI
+Endorsements NON ENDO/ REF EUR 0.90XU
+EUR 11.94CJ
+EUR 14.19RN
+EUR 11.71F6
+EUR 1.18ZR
+Carrier fees EUR 133.31YQ`,
+    barcodes: [],
+  },
+  {
+    text: `Electronic ticket receipt
+Total Amount EUR 1002.81
+_`,
+    barcodes: [],
+  },
+  {
+    text: `Electronic ticket receipt
+Legal and guest notices`,
+    barcodes: [],
+  },
+];

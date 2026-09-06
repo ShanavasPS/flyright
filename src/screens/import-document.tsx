@@ -37,11 +37,7 @@ import {
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
-import {
-  extractItinerary,
-  type ImportedSegment,
-  type ItineraryRefusal,
-} from '@/services/itinerary';
+import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
 import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
 import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
@@ -71,15 +67,8 @@ import {
 type Phase =
   | { kind: 'reading' }
   | { kind: 'unreadable'; message: string }
-  | {
-      kind: 'review';
-      segments: ImportedSegment[];
-      barcodes: number;
-      /** Why there is nothing to review, when there is nothing — see
-       * services/itinerary. */
-      rejected: ItineraryRefusal | null;
-    }
-  | { kind: 'saving'; segments: ImportedSegment[]; barcodes: number }
+  | { kind: 'review'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
+  | { kind: 'saving'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
   | { kind: 'added'; count: number; tracked: number };
 
 /** The provider remembers about a year back and schedules run ~11 months
@@ -186,12 +175,13 @@ export function ImportDocument() {
             throw reason;
           }),
         );
-        const { segments, boardingPassBarcodes, rejected } = extractItinerary(contents.pages, today);
+        const { segments, boardingPassBarcodes, ticketNumbers } = extractItinerary(contents.pages, today);
         if (cancelled) return;
-        setPhase({ kind: 'review', segments, barcodes: boardingPassBarcodes, rejected });
+        setPhase({ kind: 'review', segments, barcodes: boardingPassBarcodes, tickets: ticketNumbers });
         const read = {
           flights: segments.length,
           barcodes: boardingPassBarcodes,
+          etickets: ticketNumbers.length,
           pages: contents.pageCount,
           kind,
           via: via === 'upload' ? 'upload' : 'share',
@@ -450,21 +440,15 @@ export function ImportDocument() {
       {phase.kind === 'review' && segments.length === 0 && (
         <View style={styles.rowGroup}>
           <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold">
-              {phase.rejected === 'no-barcode'
-                ? `No boarding-pass barcode in ${label}`
-                : `No flights found in ${label}`}
-            </ThemedText>
-            {/* A ticket and a pass both carry a code, and the code is what
-                makes the reading exact — the printed page alone has put
-                flights on the wrong day and between the wrong airports. */}
+            <ThemedText type="smallBold">No flights found in {label}</ThemedText>
+            {/* A boarding-pass code is read when there is one; the page is
+                read either way. Nothing at all means the file names no
+                flight the reader could see. */}
             <ThemedText type="small" themeColor="textSecondary">
-              {phase.rejected === 'no-barcode'
-                ? kind === 'image'
-                  ? 'A boarding pass or e-ticket has a barcode; we read the flights out of it. Make sure the code is in the picture, sharp and uncropped — or share the airline’s e-ticket PDF.'
-                  : 'A boarding pass or e-ticket has a barcode; we read the flights out of it. A booking confirmation or an itinerary email usually doesn’t — ask the airline for the e-ticket receipt, or add the flight by number.'
-                : kind === 'image'
-                  ? 'We look for the barcode on a pass, then for flight numbers and dates in the picture. A blurred or cropped barcode reads as nothing — try the airline’s e-ticket PDF instead.'
+              {kind === 'image'
+                ? 'We look for the barcode on a pass, then for flight numbers and dates in the picture. A blurred or cropped picture reads as nothing — try the airline’s e-ticket PDF instead.'
+                : phase.tickets.length > 0
+                  ? `This is e-ticket ${phase.tickets[0]}, but its pages name no flight we could read. Try the airline’s itinerary PDF, or add the flight by number.`
                   : 'We look for flight numbers, dates and boarding-pass barcodes. Scanned images and hotel or car bookings don’t carry those — try the airline’s e-ticket or confirmation PDF.'}
             </ThemedText>
           </ThemedView>
@@ -478,7 +462,9 @@ export function ImportDocument() {
             {segments.length === 1 ? 'One flight' : `${segments.length} flights`} in {label}
             {phase.barcodes > 0
               ? ` · ${phase.barcodes === 1 ? 'one boarding pass' : `${phase.barcodes} boarding passes`} read`
-              : ''}
+              : phase.tickets.length > 0
+                ? ` · e-ticket ${phase.tickets[0]}`
+                : ''}
           </ThemedText>
           {!lookupAllowed && (
             <Pressable onPress={() => router.push('/sign-in')} hitSlop={Spacing.two}>

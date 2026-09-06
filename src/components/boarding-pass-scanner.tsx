@@ -5,8 +5,10 @@ import { Linking, Platform, Pressable, StyleSheet } from 'react-native';
 import { MicroLabel, PassCard } from '@/components/pass-card';
 import { ThemedText } from '@/components/themed-text';
 import { COBALT, WHITE_DIM } from '@/components/travel-stats-header';
+import { carrierFor } from '@/constants/carriers';
 import { Spacing } from '@/constants/theme';
 import { parseBcbp, type BoardingPass } from '@/services/bcbp';
+import { parseEticketRecord, type EticketRecord } from '@/services/eticket';
 import { noteSuccess, noteWarning } from '@/services/haptics';
 
 /**
@@ -31,7 +33,12 @@ export function BoardingPassScanner({
   onUpload?: () => void;
 }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [unrecognized, setUnrecognized] = useState(false);
+  // What the camera saw that wasn't a boarding pass: some other code, or the
+  // e-ticket record an airline receipt prints (services/eticket) — a real
+  // ticket, but one whose code names no flight.
+  const [unrecognized, setUnrecognized] = useState<
+    { kind: 'other' } | { kind: 'eticket'; record: EticketRecord } | null
+  >(null);
   // onBarcodeScanned refires every frame the code stays in view — hand over
   // exactly once, and don't re-buzz the warning for the same wrong code.
   const doneRef = useRef(false);
@@ -53,7 +60,8 @@ export function BoardingPassScanner({
     if (!pass) {
       if (lastRejectRef.current !== data) {
         lastRejectRef.current = data;
-        setUnrecognized(true);
+        const record = parseEticketRecord(data);
+        setUnrecognized(record ? { kind: 'eticket', record } : { kind: 'other' });
         noteWarning();
       }
       return;
@@ -122,9 +130,15 @@ export function BoardingPassScanner({
         onBarcodeScanned={({ data, raw }) => handleScan(raw || data)}
       />
       <ThemedText type="small" style={[styles.hintText, styles.centered]}>
-        {unrecognized
-          ? "That code isn't a ticket or boarding pass — try the one on your pass."
-          : // The long PDF417 stripe on printed passes needs to fill most of
+        {unrecognized?.kind === 'eticket'
+          ? `${eticketAirline(unrecognized.record)} e-ticket ${unrecognized.record.ticketNumber} — this code names the ticket, not the flights. ${
+              onUpload
+                ? 'Upload the receipt PDF and we read every leg off the page.'
+                : 'Add the flight by number instead.'
+            }`
+          : unrecognized
+            ? "That code isn't a ticket or boarding pass — try the one on your pass."
+            : // The long PDF417 stripe on printed passes needs to fill most of
             // the frame; the camera is pre-zoomed so that works from a
             // distance the lens can focus at — getting too close blurs it.
             'Fill the frame with the barcode — no need to get close.'}
@@ -149,6 +163,10 @@ export function BoardingPassScanner({
       </Pressable>
     </PassCard>
   );
+}
+
+function eticketAirline(record: EticketRecord): string {
+  return record.carrier ? carrierFor(record.carrier).name : 'An airline';
 }
 
 const styles = StyleSheet.create({

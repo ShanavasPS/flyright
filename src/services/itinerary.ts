@@ -7,7 +7,9 @@
  *
  *  - Barcodes. Boarding passes carry an IATA BCBP record (parseBcbp), and so
  *    do the PDF417 stripes on Amadeus e-ticket receipts — route, flight,
- *    seat, and a day-of-year, but no year.
+ *    seat, and a day-of-year, but no year. Other receipts (Emirates) print
+ *    an e-ticket record instead (parseEticketRecord): the ticket number and
+ *    nothing about the flights. Many (Etihad) print no code at all.
  *  - Text. Receipts and booking confirmations spell every leg out in prose,
  *    each in a different layout. Flight designators (QR517, "AS 774") anchor
  *    a segment; the nearest dates, times, and airports around each anchor
@@ -21,6 +23,7 @@
 import { CARRIERS, operatingBrand } from '@/constants/carriers';
 import { airportRank, hubAirports, isValidIata } from '@/services/airports';
 import { parseBcbp, resolveFlightDate } from '@/services/bcbp';
+import { parseEticketRecord } from '@/services/eticket';
 
 export interface DocumentPage {
   text: string;
@@ -55,16 +58,13 @@ export interface ImportedSegment {
   sources: SegmentSource[];
 }
 
-export type ItineraryRefusal = 'no-barcode';
-
 export interface ItineraryExtraction {
   segments: ImportedSegment[];
-  /** Why nothing was read, when nothing was: 'no-barcode' means the file
-   * carries no boarding-pass code, so it isn't a ticket we can stand
-   * behind. Null whenever the document was read. */
-  rejected: ItineraryRefusal | null;
   /** How many decoded barcodes parsed as boarding passes. */
   boardingPassBarcodes: number;
+  /** Ticket numbers ("176-2400000001") read off e-ticket record barcodes,
+   * each once. Provenance only — the record names no flight. */
+  ticketNumbers: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +120,13 @@ const NOT_A_TRAVEL_DATE =
 /** Times that are durations or totals, not a departure/arrival. */
 const NOT_A_CLOCK = /(DURATION|TRAVEL TIME|FLIGHT TIME|FLYING TIME|TOTAL|LAYOVER|CONNECTION|CHECK[- ]?IN\s+(CLOSES|OPENS|BY|DEADLINE))\W{0,12}$/i;
 
+/** A leg table whose check-in column comes before departure ("Flight
+ * Check-in at  Departure", as Emirates prints it): the first clock after
+ * the flight number says when to be at the airport, not when the plane
+ * leaves. Amadeus puts "Last check-in" after the arrival, where the parser
+ * never looks. */
+const CHECK_IN_FIRST = /check-?in(?:\s+at)?\b[^\n]*\bdeparture\b/i;
+
 const WINDOW_BACK = 320;
 const WINDOW_FORWARD = 420;
 /** Two dates this close after an anchor are departure and arrival days. */
@@ -172,10 +179,13 @@ const DATE_PATTERNS: {
   re: RegExp;
   build: (m: RegExpExecArray, today: Date) => string | null;
 }[] = [
-  // 25Jul2026 · 25 Jul 2026 · 25-Jul-26 · 4 October 2025 (optional weekday before)
+  // 25Jul2026 · 25 Jul 2026 · 25-Jul-26 · 4 October 2025 (optional weekday
+  // before). A two-digit "year" that a month name follows is the next
+  // column's day ("06 Jun 06 Jun 07 Jun" is a summary strip of three dates,
+  // not June 2006) and is left to the yearless pattern below.
   {
     re: new RegExp(
-      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|\\d{2})(?![\\d:])`,
+      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|\\d{2}(?!\\s?[A-Za-z]{3}))(?![\\d:])`,
       'g',
     ),
     build: (m) => {
@@ -236,10 +246,11 @@ const DATE_PATTERNS: {
   // way an Amadeus itinerary table prints every leg of a trip. Last in the
   // list: everything above owns the dates that do carry a year, and this
   // one's lookahead yields to them — while letting through the clock that
-  // usually follows, which is not a year (see the first pattern).
+  // usually follows, which is not a year (see the first pattern), and the
+  // next date of a strip ("06 Jun 07 Jun"), whose day is not one either.
   {
     re: new RegExp(
-      `\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\b(?![\\s,-]{0,2}(?:\\d{2}|\\d{4})(?![\\d:]))`,
+      `\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\b(?![\\s,-]{0,2}(?:\\d{4}(?![\\d:])|\\d{2}(?![\\d:]|\\s?[A-Za-z]{3})))`,
       'g',
     ),
     build: (m, today) => {
@@ -366,10 +377,29 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Airport codes in the window, most to least trustworthy: "(LAX)"; pairs
+/** "Kochi (COK) to Dubai (DXB)": a leg's route spelled out as a sentence,
+ * the way Emirates heads each leg. Nothing else on a receipt has this shape. */
+const ROUTE_SENTENCE_RE = /\(([A-Z]{3})\)\s*(?:to|-|–|—|→)\s*[^()\n]{0,48}?\(([A-Z]{3})\)/;
+
+/** The leg's route: a route sentence anywhere in the window, else whatever
+ * airports the window names, in order. */
+function findAirports(window: string): string[] {
+  const sentence = ROUTE_SENTENCE_RE.exec(window);
+  if (
+    sentence &&
+    isValidIata(sentence[1]) &&
+    isValidIata(sentence[2]) &&
+    sentence[1] !== sentence[2]
+  ) {
+    return [sentence[1], sentence[2]];
+  }
+  return airportsIn(window);
+}
+
+/** Airport codes in the text, most to least trustworthy: "(LAX)"; pairs
  * like "LAS/DFW", "LAX → SFO", "LAX SFO"; Amadeus "COKDOH:" route keys; and
  * finally hub city names in the text ("DOHA HAMAD INTERNATIONAL"). */
-function findAirports(window: string): string[] {
+function airportsIn(window: string): string[] {
   const large = (code: string) => airportRank(code) >= 1;
   const hub = (code: string) => airportRank(code) === 2;
 
@@ -446,13 +476,15 @@ function distinct<T>(items: T[]): T[] {
 }
 
 const PNR_LABEL_RE =
-  /(?:booking\s+(?:ref(?:erence)?|code|number)|confirmation\s+(?:#|no\.?|number|code)?|reservation\s+(?:code|number)|record\s+locator|PNR|locator)\s*:?\s*#?/gi;
+  /(?:booking\s+(?:ref(?:erence)?|code|number)|confirmation\s+(?:#|no\.?|number|code)?|reservation\s+(?:code|number)|record\s+locator|PNR|locator|reference)\s*:?\s*#?/gi;
 const PNR_REACH = 48;
 
 /** The booking reference: the first record-locator-shaped token after a
  * label. Sorted layouts can drop another column between the two
  * ("Confirmation #\nSan Francisco, CA JQYOKV"), hence a reach rather than
- * adjacency; a GDS prefix ("1A/ABC123") is skipped. */
+ * adjacency; a GDS prefix ("1A/ABC123") is skipped. A bare "reference" is a
+ * label too ("Etihad reference 3ZQTPV"): the token has to look like a
+ * locator, and prose never does. */
 function findPnr(text: string): string | null {
   PNR_LABEL_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
@@ -488,6 +520,10 @@ function findOperator(window: string, marketing: string | null): ImportedSegment
 }
 
 const SEAT_RE = /\bseat\s*(?:no\.?|number|assignment)?\s*:?\s*(\d{1,3}\s?[A-K])\b/i;
+/** A "Seat" column header with its value on a later row, first on its line
+ * ("Seat  Status  Arrival\n29K  Confirmed"), one row of other columns
+ * allowed between. */
+const SEAT_COLUMN_RE = /\bseat\b[^\n]*\n(?:[^\n]*\n)?[ \t]*(\d{1,3}[A-K])\b/i;
 
 function normalizeSeat(seat: string | null | undefined): string | null {
   if (!seat) return null;
@@ -513,9 +549,8 @@ function dayOfYear(iso: string): number {
 // Extraction
 // ---------------------------------------------------------------------------
 
-/** The text half of extractItinerary, on its own. Exported for the tests:
- * documents with no barcode are refused by the product (see below) but
- * their layouts still have to parse, so the reader keeps its net. */
+/** The text half of extractItinerary, on its own — what a document with no
+ * boarding-pass code is read from. Exported for the tests. */
 export function extractSegmentsFromText(text: string, today = new Date()): ImportedSegment[] {
   return segmentsFromText(text, today);
 }
@@ -530,10 +565,16 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
   const pnr = findPnr(text);
 
   const segments: ImportedSegment[] = [];
+  // Where the previous leg's reading ended: the end of the last date or
+  // clock it took. What lies between a leg's flight number and that point
+  // is the previous leg's block — its airports, its dates — and on an
+  // Etihad receipt the previous leg's "HEL  AMS" row sits closer to this
+  // leg's number than its own "AMS  AUH" does, so the window starts after.
+  let consumedEnd = 0;
   anchors.forEach((anchor, i) => {
     const prevEnd = i > 0 ? anchors[i - 1].end : 0;
     const nextStart = i + 1 < anchors.length ? anchors[i + 1].index : text.length;
-    const from = Math.max(prevEnd, anchor.index - WINDOW_BACK);
+    const from = Math.max(prevEnd, consumedEnd, anchor.index - WINDOW_BACK);
     const to = Math.min(nextStart, anchor.end + WINDOW_FORWARD);
 
     const nearby = dates.filter((d) => d.index >= from && d.end <= to);
@@ -547,17 +588,22 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     // itinerary table repeats the departure day in its validity columns
     // ("Ok 28Nov 28Nov"), and taking that as the arrival buried the
     // overnight legs on their departure day.
-    let arrivalDate = after.find((d) => d.value > departure.value)?.value ?? null;
+    const arrival = after.find((d) => d.value > departure.value) ?? null;
+    let arrivalDate = arrival?.value ?? null;
 
-    const clocks = times.filter((t) => t.index >= anchor.end && t.end <= to).map((t) => t.value);
-    const depTime = clocks[0] ?? null;
-    const arrTime = clocks[1] ?? null;
-    if (!arrivalDate) arrivalDate = depTime && arrTime && arrTime < depTime ? nextDay(departure.value) : departure.value;
-
-    const airports = findAirports(text.slice(from, to));
+    const window = text.slice(from, to);
     // Only after the anchor: the window before it belongs to the previous leg's details.
     const tail = text.slice(anchor.end, to);
-    const seatMatch = SEAT_RE.exec(tail);
+
+    let clocks = times.filter((t) => t.index >= anchor.end && t.end <= to);
+    if (CHECK_IN_FIRST.test(window)) clocks = clocks.slice(1);
+    const depTime = clocks[0]?.value ?? null;
+    const arrTime = clocks[1]?.value ?? null;
+    if (!arrivalDate) arrivalDate = depTime && arrTime && arrTime < depTime ? nextDay(departure.value) : departure.value;
+    consumedEnd = Math.max(departure.end, arrival?.end ?? 0, clocks[1]?.end ?? clocks[0]?.end ?? 0);
+
+    const airports = findAirports(window);
+    const seatMatch = SEAT_RE.exec(tail) ?? SEAT_COLUMN_RE.exec(tail);
     const operatedBy = findOperator(tail, anchor.flight.match(/^([A-Z]{2}|[A-Z]\d|\d[A-Z])/)?.[1] ?? null);
 
     segments.push({
@@ -578,11 +624,26 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
 
   // The same leg printed twice (itinerary + receipt section) is one leg.
   const seen = new Set<string>();
-  return segments.filter((s) => {
+  const once = segments.filter((s) => {
     if (seen.has(s.key)) return false;
     seen.add(s.key);
     return true;
   });
+  // A summary strip prints the flight numbers in one row under a row of
+  // dates, and proximity hands the first number the row's last date — a
+  // leg a day off, with no clock to its name. It yields to the full
+  // printing of the same flight a day either side.
+  return once.filter(
+    (s) =>
+      s.depTime ||
+      !once.some(
+        (o) =>
+          o !== s &&
+          o.flight === s.flight &&
+          !!o.depTime &&
+          Math.abs(dayOfYear(o.date!) - dayOfYear(s.date!)) <= 1,
+      ),
+  );
 }
 
 function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[] {
@@ -616,21 +677,30 @@ function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[
 
 /** Every flight the document describes, departure order.
  *
- * The barcode leads. A boarding-pass code is exact — route, flight, day —
- * where the printed page is a layout to be guessed at, and the guesses fail
- * quietly: a receipt whose legs read "28Nov 11:30" once became flights in
- * 2011, and a leg between two of London's airports. So a document with no
- * code at all is refused rather than guessed at (tickets and passes carry
- * one; a forwarded itinerary email does not), the code's own legs are taken
- * whole, and the text is left to fill what the code doesn't carry: the
- * other legs of the trip, the printed clock times, the operating airline.
+ * The barcode leads when there is one. A boarding-pass code is exact —
+ * route, flight, day — where the printed page is a layout to be guessed at,
+ * so the code's own legs are taken whole and the text fills what the code
+ * doesn't carry: the other legs of the trip, the printed clock times, the
+ * operating airline.
+ *
+ * A document without a boarding-pass code is read from the page alone. It
+ * was refused for a while, after the page's guesses failed quietly (legs
+ * read "28Nov 11:30" once became flights in 2011, and a leg between two of
+ * London's airports) — but the airlines' own e-ticket receipts are exactly
+ * the documents without one: Emirates prints an e-ticket record (the ticket
+ * number, no flights), Etihad prints no code at all, and the refusal turned
+ * them away with "not a ticket". The check on a misread page is downstream:
+ * every leg is shown for review before it is saved, and looked up live.
  *
  * One thing no barcode carries is the year — BCBP dates are a bare day of
  * the year (see bcbp.resolveFlightDate). */
 export function extractItinerary(pages: DocumentPage[], today = new Date()): ItineraryExtraction {
   const text = pages.map((p) => p.text).join('\n');
-  const barcodeLegs = segmentsFromBarcodes(pages.flatMap((p) => p.barcodes), today);
-  if (!barcodeLegs.length) return { segments: [], rejected: 'no-barcode', boardingPassBarcodes: 0 };
+  const barcodes = pages.flatMap((p) => p.barcodes);
+  const barcodeLegs = segmentsFromBarcodes(barcodes, today);
+  const ticketNumbers = distinct(
+    barcodes.map((b) => parseEticketRecord(b)?.ticketNumber).filter((n): n is string => !!n),
+  );
   const textLegs = segmentsFromText(text, today);
 
   const merged: ImportedSegment[] = [];
@@ -668,5 +738,5 @@ export function extractItinerary(pages: DocumentPage[], today = new Date()): Iti
   }
 
   merged.sort((a, b) => `${a.date ?? ''}T${a.depTime ?? ''}`.localeCompare(`${b.date ?? ''}T${b.depTime ?? ''}`));
-  return { segments: merged, rejected: null, boardingPassBarcodes: barcodeLegs.length };
+  return { segments: merged, boardingPassBarcodes: barcodeLegs.length, ticketNumbers };
 }
