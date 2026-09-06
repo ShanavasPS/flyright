@@ -4,7 +4,7 @@ import { File } from 'expo-file-system';
 import { Observe } from 'expo-observe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -362,15 +362,26 @@ export function ImportDocument() {
     });
   };
 
+  // A shared file opens this screen first, with nothing beneath it: the
+  // share sheet on iOS and the SEND intent on Android both launch the app
+  // straight here on a cold start. router.back() then has nowhere to go
+  // ("GO_BACK was not handled"), the success screen sat there for good, and
+  // the traveller's own close tap did nothing either — so land on the
+  // journeys list instead, the way the claim wizard does.
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  }, [router]);
+
   // Let the check-mark land, then hand back to the journeys list.
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (phase.kind !== 'added') return;
-    dismissTimer.current = setTimeout(() => router.back(), 1800);
+    dismissTimer.current = setTimeout(close, 1800);
     return () => {
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
     };
-  }, [phase.kind, router]);
+  }, [phase.kind, close]);
 
   const containerStyle = [styles.container, { paddingTop: Math.max(insets.top, Spacing.four) }];
 
@@ -405,7 +416,7 @@ export function ImportDocument() {
         <ThemedText type="subtitle" themeColor="heading">
           Add from document
         </ThemedText>
-        <Pressable accessibilityLabel="Close" hitSlop={Spacing.three} onPress={() => router.back()}>
+        <Pressable accessibilityLabel="Close" hitSlop={Spacing.three} onPress={close}>
           <ThemedText themeColor="textSecondary" style={styles.close}>
             ✕
           </ThemedText>
