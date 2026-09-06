@@ -15,11 +15,18 @@ appId: com.shanavasshaji.flyright
 ---
 - launchApp
 - openLink: "flyright:///journey/${JOURNEY_ID}"
+# The detail names the pair "DXB to LAX" — the codes are separate text and
+# the arrow between them is drawn, so only the accessibility label of the
+# row is matchable. The World screen further down genuinely writes the
+# arrow, which is why the assertion there is spelled differently.
 - extendedWaitUntil:
-    visible: "DXB → LAX"
+    visible: ".*DXB to LAX.*"
     timeout: 15000
-- assertVisible: "EK215 · Emirates"
+- assertVisible: "EK215.*"
 - assertVisible: "Flown"
+# The tab bar steps aside on a trip (see (tabs)/_layout IMMERSIVE) and is
+# back the moment the hand-off lands on the World tab.
+- assertNotVisible: "Tab Bar"
 # The inset map card sits directly under the stack header.
 - tapOn:
     point: "50%,27%"
@@ -28,6 +35,7 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Show all travels"
     timeout: 10000
+- assertVisible: "Tab Bar"
 - assertVisible: "DXB → LAX"
 - assertVisible: "EK215 · .*"
 - tapOn: "Show all travels"

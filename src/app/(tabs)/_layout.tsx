@@ -4,13 +4,25 @@ import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
-/** Screens the bar steps aside for. Deliberately a short list, not "anything
- * pushed": Apple's guidance is to keep a tab bar up while people move around
- * an app, and one tap to another tab is worth more than the strip of pixels
- * it costs. A full-bleed map is the exception it was written for — the map
- * runs under the bar, the screen already carries its own back button, and
- * there is nothing on it the bar helps with. */
-const IMMERSIVE = /^\/person\/[^/]+\/world$/;
+/** Screens the bar steps aside for: a person, a trip, and a map.
+ *
+ * Not "anything pushed" — Apple's guidance is to keep a tab bar up while
+ * people move around an app, and one tap to another tab is worth more than
+ * the strip it costs on, say, a settings row or the stats page. These are
+ * the screens you arrive at having chosen a subject, where the next move is
+ * back to what you were reading rather than sideways into another tab; Alta
+ * and corner hide it on somebody's profile for the same reason, and
+ * Flighty does on a flight.
+ *
+ * Anything added here should be a decision, not a drift — which is why it
+ * is a list of shapes rather than "does the route have a slash in it". */
+const IMMERSIVE = [
+  /^\/person\/[^/]+$/, // somebody in your circle
+  /^\/person\/[^/]+\/trip\/[^/]+$/, // one of their trips
+  /^\/person\/[^/]+\/world$/, // their travel, full bleed
+  /^\/trip\/[^/]+$/, // a live trip you follow
+  /^\/journey\/[^/]+$/, // one of your own
+];
 
 export default function TabsLayout() {
   const scheme = useColorScheme();
@@ -19,7 +31,7 @@ export default function TabsLayout() {
 
   return (
     <NativeTabs
-      hidden={IMMERSIVE.test(pathname)}
+      hidden={IMMERSIVE.some((route) => route.test(pathname))}
       backgroundColor={colors.background}
       // iOS 18: UITabBar's scroll-edge appearance is transparent, and with
       // the lists running edge-to-edge the journal showed through the bar

@@ -6,7 +6,10 @@ import { Stack } from 'expo-router';
 export default function JourneysStack() {
   return (
     <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      {/* The title is set even though the header is hidden: it is what names
+        the back button on every screen pushed over this one, and without it
+        VoiceOver reads that button as nothing at all. */}
+      <Stack.Screen name="index" options={{ headerShown: false, title: 'My travels' }} />
       <Stack.Screen
         name="journey/[id]"
         options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}
