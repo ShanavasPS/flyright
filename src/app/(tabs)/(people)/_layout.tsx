@@ -22,11 +22,9 @@ export default function PeopleStack() {
         name="person/[id]/trip/[journeyId]"
         options={{ title: 'Trip', headerBackButtonDisplayMode: 'minimal' }}
       />
-      {/* Title comes from the screen — it names the person. */}
-      <Stack.Screen
-        name="person/[id]/world"
-        options={{ headerBackButtonDisplayMode: 'minimal' }}
-      />
+      {/* No header: the map runs full bleed and draws its own title and
+        back button, the way the World tab does. */}
+      <Stack.Screen name="person/[id]/world" options={{ headerShown: false }} />
     </Stack>
   );
 }

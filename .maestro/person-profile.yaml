@@ -28,16 +28,18 @@ tags:
 - assertVisible: "Trips ahead"
 - assertVisible: "FLOWN"
 
-# Their travel, drawn — and the same map full screen, which lives on the
-# person and never as a mode of the viewer's own World tab.
+# Their travel, drawn — and the same map the World tab uses, full screen,
+# on the person and never as a mode of the viewer's own World tab.
 - tapOn: "${WHO}'s world"
 - extendedWaitUntil:
-    visible: ".*trips flown.*"
+    visible: ".*${WHO}'s world.*"
     timeout: 30000
-- tapOn: "${WHO}"
+- assertVisible: "countries"
+- tapOn: "Back"
 
 # A trip opens read-only: nothing on it changes the trip. Its map is the one
-# exception, and it opens their world on this leg alone.
+# exception, and it opens their world on that leg — with "All travels" there
+# to widen out to everything, exactly as the World tab does for your own.
 - extendedWaitUntil:
     visible: "UPCOMING"
     timeout: 20000
@@ -47,6 +49,17 @@ tags:
     timeout: 30000
 - assertVisible: "DEPARTS"
 - assertVisible: "ARRIVES"
+- tapOn:
+    text: ".*Map of.*"
+- extendedWaitUntil:
+    visible: ".*${FLIGHT}.*"
+    timeout: 30000
+# The label is the accessibility one; the pill reads "All travels".
+- tapOn: "Show all travels"
+- extendedWaitUntil:
+    visible: ".*${WHO}'s world.*"
+    timeout: 20000
+- tapOn: "Back"
 
 # Back unwinds trip → person → People, which is the order a notification
 # opening straight on a trip has to be able to walk out of.

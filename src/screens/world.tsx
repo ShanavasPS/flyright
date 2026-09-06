@@ -28,7 +28,7 @@ import {
   type RouteLeg,
   type RoutePlane,
 } from '@/services/geo';
-import { useJourneys } from '@/services/journeys';
+import { useJourneys, type JourneyRow } from '@/services/journeys';
 import {
   CLUTTER_OFF,
   GOOGLE_NIGHT,
@@ -75,9 +75,6 @@ const FIT_SETTLE_MS = 1200;
 export function World() {
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
-  const dark = useColorScheme() === 'dark';
-  const theme = useTheme();
-  const { sea } = mapColors(dark);
   const focused = useIsFocused();
 
   // A journey detail can hand the tab one trip to open on; the map then
@@ -88,13 +85,60 @@ export function World() {
     () => (focusId ? journeys?.find((row) => row.id === focusId) : undefined),
     [journeys, focusId],
   );
-  const rows = useMemo(
-    () => (focusedRow ? [focusedRow] : (journeys ?? [])),
-    [focusedRow, journeys],
-  );
   useEffect(() => {
     if (!focused) focusWorldOn(null);
   }, [focused]);
+
+  return (
+    <WorldCanvas
+      rows={focusedRow ? [focusedRow] : (journeys ?? [])}
+      focusedRow={focusedRow}
+      loaded={journeys != null}
+      onClearFocus={() => focusWorldOn(null)}
+      eyebrow="Everywhere you’ve been"
+      title="World"
+      emptyCard={<EmptyCard />}
+    />
+  );
+}
+
+/** The map itself, for whosever travel it is drawing.
+ *
+ * The World tab is one caller; a followed person's world (screens/person-world)
+ * is the other, and it gets the same map, the same route taps, the same
+ * "All travels" way back out of a single trip — because a person's travel
+ * deserves the map the app already has, not a flat drawing of one. Whose
+ * travel it is stays in the title, which is the only thing that differs. */
+export function WorldCanvas({
+  rows,
+  focusedRow,
+  loaded,
+  onClearFocus,
+  eyebrow,
+  title,
+  emptyCard,
+  onBack,
+}: {
+  rows: JourneyRow[];
+  /** Set when the caller arrived from one trip: the map draws that leg alone
+   * and offers "All travels" to widen back out. */
+  focusedRow?: JourneyRow;
+  /** False while the rows are still loading — an empty map mid-fetch is not
+   * the same as somebody with no travel. */
+  loaded: boolean;
+  onClearFocus: () => void;
+  /** Shown when nothing is focused; the focused labels name the flight. */
+  eyebrow: string;
+  title: string;
+  emptyCard: React.ReactNode;
+  /** A pushed screen draws its own back button, since the map runs full
+   * bleed under where a header would be. The tab has none. */
+  onBack?: () => void;
+}) {
+  const dark = useColorScheme() === 'dark';
+  const theme = useTheme();
+  const { sea } = mapColors(dark);
+  const focused = useIsFocused();
 
   // "Flown vs upcoming" cutoff, frozen per mount — a live clock would redraw
   // the map mid-session for no visible gain.
@@ -201,7 +245,7 @@ export function World() {
     setSelectedKey(focusedRow ? (data.routes[0]?.key ?? null) : null);
   }
 
-  const empty = journeys != null && data.routes.length === 0;
+  const empty = loaded && data.routes.length === 0;
 
   // One plane per route; direction comes from the journeys (see routePlane).
   const planes = useMemo(
@@ -365,6 +409,7 @@ export function World() {
           ]}
         />
         <View style={styles.header} pointerEvents="box-none">
+          {onBack && <BackButton onPress={onBack} />}
           <View style={styles.titleBlock} pointerEvents="none">
             <ThemedText
               type="smallBold"
@@ -373,7 +418,7 @@ export function World() {
               numberOfLines={1}>
               {focusedRow
                 ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture, airportZone(focusedRow.fromCode))}`
-                : 'Everywhere you’ve been'}
+                : eyebrow}
             </ThemedText>
             <ThemedText
               type="title"
@@ -381,10 +426,10 @@ export function World() {
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.7}>
-              {focusedRow ? `${focusedRow.fromCode} → ${focusedRow.toCode}` : 'World'}
+              {focusedRow ? `${focusedRow.fromCode} → ${focusedRow.toCode}` : title}
             </ThemedText>
           </View>
-          {focusedRow && <AllTravelsButton onPress={() => focusWorldOn(null)} />}
+          {focusedRow && <AllTravelsButton onPress={onClearFocus} />}
           {moved && (
             <RecenterButton
               onPress={() => {
@@ -400,7 +445,7 @@ export function World() {
         style={[styles.footer, { paddingBottom: footerInset }]}
         pointerEvents="box-none">
         {empty ? (
-          <EmptyCard />
+          emptyCard
         ) : selected ? (
           <RouteCard
             route={selected.route}
@@ -571,6 +616,26 @@ function EmptyCard() {
         </Pressable>
       </Link>
     </Card>
+  );
+}
+
+/** Back out of a pushed world. The tab has no such button; a person's does,
+ * because the map runs full bleed under where its header would be. */
+function BackButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      onPress={onPress}
+      style={[styles.recenter, { backgroundColor: theme.backgroundElement }]}>
+      <SymbolView
+        name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }}
+        size={16}
+        weight="semibold"
+        tintColor={theme.text}
+      />
+    </Pressable>
   );
 }
 
