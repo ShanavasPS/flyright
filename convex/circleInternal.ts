@@ -83,3 +83,75 @@ export const notifyRequest = internalAction({
     );
   },
 });
+
+/** Who hears that a trip was added, and what it says. Mute is honoured the
+ * same way a travel-day push honours it (liveInternal.getNotifyTargets):
+ * the member keeps seeing the trip in their People tab, they just aren't
+ * told. Null when the circle is empty or every trip has since gone. */
+export const tripsAddedPush = internalQuery({
+  args: { ownerId: v.string(), journeyIds: v.array(v.id('journeys')) },
+  handler: async (ctx, { ownerId, journeyIds }) => {
+    const circle = await circleMembers(ctx, ownerId);
+    const externalIds = circle.filter((c) => !c.muted).map((c) => c.memberId);
+    if (!externalIds.length) return null;
+
+    const now = Date.now();
+    const trips = [];
+    for (const id of journeyIds) {
+      const j = await ctx.db.get(id);
+      // Re-validated: a trip added and deleted again before this action ran
+      // is not news, and neither is one whose departure has since passed.
+      if (!j || j.userId !== ownerId || j.deletedAt) continue;
+      const dep = Date.parse(j.scheduledDeparture);
+      if (Number.isNaN(dep) || dep < now) continue;
+      trips.push({
+        journeyId: j._id,
+        number: j.number,
+        carrier: j.carrier,
+        fromCode: j.fromCode,
+        toCode: j.toCode,
+        scheduledDeparture: j.scheduledDeparture,
+      });
+    }
+    if (!trips.length) return null;
+    const profile = await profileFor(ctx, ownerId);
+    return { externalIds, ownerName: profile?.name ?? 'Your traveller', trips };
+  },
+});
+
+/** "Shanavas added a trip." The first thing a follower hears about a flight —
+ * until now the circle heard nothing between accepting an invitation and the
+ * T−24h heads-up, which for a trip booked months out is a season of silence
+ * while the trip sat visible in their People tab, unannounced.
+ *
+ * One push per sync, not per trip: signing in on a new phone replays the
+ * whole journal as inserts, and a circle should not get forty notifications
+ * because somebody changed devices. */
+export const notifyTripsAdded = internalAction({
+  args: { ownerId: v.string(), journeyIds: v.array(v.id('journeys')) },
+  handler: async (ctx, { ownerId, journeyIds }) => {
+    const p = await ctx.runQuery(internal.circleInternal.tripsAddedPush, { ownerId, journeyIds });
+    if (!p) return;
+    const [first] = p.trips;
+    const many = p.trips.length > 1;
+    const when = new Date(first.scheduledDeparture).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    });
+    await sendFollowerPush(
+      p.externalIds,
+      many
+        ? `${p.ownerName} added ${p.trips.length} trips`
+        : `${first.number || first.carrier} · ${first.fromCode} → ${first.toCode}`,
+      many
+        ? `Their next one leaves ${when}. You'll get a heads-up the day before each.`
+        : `${p.ownerName} is flying to ${first.toCode} on ${when}. You'll get a heads-up the day before.`,
+      // One trip opens on that trip; several open on the person, which is
+      // where all of them are.
+      many
+        ? `https://getflyright.com/person/${ownerId}`
+        : `https://getflyright.com/person/${ownerId}/trip/${first.journeyId}`,
+    );
+  },
+});

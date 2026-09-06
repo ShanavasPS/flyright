@@ -1,8 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { useRouter, type Href } from 'expo-router';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
-import { toInAppPath } from '@/services/circle';
+import { pushStackFor, toInAppPath } from '@/services/circle';
 import { addPushClickListener } from '@/services/notifications';
 
 /**
@@ -17,12 +17,21 @@ export function NotificationRouter() {
   const router = useRouter();
   const response = Notifications.useLastNotificationResponse();
 
+  // Pushed in order, so a trip notification leaves the person underneath it
+  // and the People tab underneath that (services/circle.pushStackFor).
+  const open = useCallback(
+    (url: string) => {
+      for (const path of pushStackFor(toInAppPath(url))) router.push(path as Href);
+    },
+    [router],
+  );
+
   useEffect(() => {
     const url = response?.notification.request.content.data?.url;
-    if (typeof url === 'string') router.push(toInAppPath(url) as Href);
-  }, [response, router]);
+    if (typeof url === 'string') open(url);
+  }, [response, open]);
 
-  useEffect(() => addPushClickListener((url) => router.push(toInAppPath(url) as Href)), [router]);
+  useEffect(() => addPushClickListener(open), [open]);
 
   return null;
 }

@@ -1,6 +1,7 @@
 import { ConvexError, v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { CIRCLE_FULL, MAX_PENDING_REQUESTS, searchKey } from './circleShared';
 import {
@@ -26,7 +27,7 @@ async function requireIdentity(ctx: MutationCtx | QueryCtx) {
   return identity;
 }
 
-async function person(ctx: QueryCtx | MutationCtx, userId: string) {
+async function personCard(ctx: QueryCtx | MutationCtx, userId: string) {
   const profile = await profileFor(ctx, userId);
   return { userId, name: profile?.name ?? 'A traveler', imageUrl: profile?.imageUrl ?? null };
 }
@@ -52,7 +53,7 @@ export const inviteByToken = query({
       .withIndex('by_token', (q) => q.eq('token', token))
       .unique();
     if (!inviteUsable(invite)) return { gone: true as const };
-    const owner = await person(ctx, invite!.ownerId);
+    const owner = await personCard(ctx, invite!.ownerId);
     const identity = await ctx.auth.getUserIdentity();
     let relation: 'self' | 'member' | 'none' = 'none';
     if (identity?.subject === invite!.ownerId) relation = 'self';
@@ -213,6 +214,169 @@ export const cancelRequest = mutation({
   },
 });
 
+/** The public-safe shape of one of somebody else's trips: the same fields a
+ * live session already exposes to a follower, plus the id to open it by.
+ * Never the natural key, the notes, the photos or anything a claim knows. */
+function publicTrip(j: Doc<'journeys'>) {
+  return {
+    journeyId: j._id,
+    carrier: j.carrier,
+    number: j.number,
+    fromCode: j.fromCode,
+    toCode: j.toCode,
+    scheduledDeparture: j.scheduledDeparture,
+    scheduledArrival: j.scheduledArrival,
+  };
+}
+
+/** How many flown trips a follower is shown. Their circle is family, not an
+ * audience, but a journal is still years long — this is a profile, not an
+ * archive. Kept short deliberately: the page ends in the follower's own two
+ * controls, and those must not sit below a year of somebody else's flights. */
+const PAST_TRIPS_SHOWN = 10;
+
+/** My active session for one of this owner's trips, if I'm following one. */
+async function liveFor(ctx: QueryCtx, me: string, ownerId: string) {
+  const follows = await ctx.db
+    .query('follows')
+    .withIndex('by_follower', (q) => q.eq('followerId', me))
+    .collect();
+  for (const f of follows) {
+    if (f.ownerId !== ownerId) continue;
+    const session = await ctx.db.get(f.sessionId);
+    if (!session || session.status !== 'active') continue;
+    return session;
+  }
+  return null;
+}
+
+/** PUBLIC (signed in) — one person in my circle, and what I may see of them.
+ *
+ * The relationship decides the content, in both directions independently:
+ * `theyShare` (I'm in their circle) is what unlocks their trips, `iShare`
+ * (they're in mine) is what makes "remove" mine to do. Someone I merely
+ * follow gets a page of their travel; someone who merely follows me gets a
+ * page with one button on it. Reciprocal pairs get both.
+ *
+ * A follower reads and does nothing else. There is no mutation here that
+ * touches a trip, because a follower has no business changing one — mute and
+ * leave (circle.setMuted / circle.leave) are the whole of what they own. */
+export const person = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const me = identity.subject;
+    if (userId === me) return { gone: true as const };
+
+    const theirs = await areSharing(ctx, userId, me);
+    const mine = await areSharing(ctx, me, userId);
+    if (!theirs && !mine) return { gone: true as const };
+
+    const who = await personCard(ctx, userId);
+    const upcoming: Doc<'journeys'>[] = [];
+    const past: Doc<'journeys'>[] = [];
+    let liveJourneyId: Id<'journeys'> | null = null;
+    let live = null;
+
+    if (theirs) {
+      const now = Date.now();
+      const session = await liveFor(ctx, me, userId);
+      if (session) {
+        const follows = await ctx.db
+          .query('follows')
+          .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+          .collect();
+        live = { token: session.shareToken, session: toPublicSession(session, who.name, follows.length) };
+      }
+      const journeys = await ctx.db
+        .query('journeys')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .collect();
+      for (const j of journeys) {
+        if (j.deletedAt) continue;
+        const dep = Date.parse(j.scheduledDeparture);
+        if (Number.isNaN(dep)) continue;
+        if (session && j.naturalKey === session.naturalKey) liveJourneyId = j._id;
+        (dep >= now ? upcoming : past).push(j);
+      }
+      // Soonest first ahead, most recent first behind — a profile reads
+      // outward from today in both directions.
+      upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
+      past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
+      const flown = past.length;
+      return {
+        ...who,
+        theyShare: true as const,
+        iShare: !!mine,
+        muted: !!theirs.muted,
+        since: theirs.createdAt,
+        followsMeSince: mine?.createdAt ?? null,
+        live,
+        liveJourneyId,
+        upcoming: upcoming.map(publicTrip),
+        past: past.slice(0, PAST_TRIPS_SHOWN).map(publicTrip),
+        flown,
+      };
+    }
+
+    return {
+      ...who,
+      theyShare: false as const,
+      iShare: true as const,
+      muted: false,
+      since: null,
+      followsMeSince: mine!.createdAt,
+      live: null,
+      liveJourneyId: null,
+      upcoming: [],
+      past: [],
+      flown: 0,
+    };
+  },
+});
+
+/** PUBLIC (signed in) — one trip of somebody whose circle I'm in, read-only.
+ * Works before a live session exists, which is the whole point: a trip three
+ * months out has no session and is still the thing a follower wants to open.
+ * When one IS live, its facts ride along so the same screen shows the
+ * timeline instead of just a schedule. */
+export const trip = query({
+  args: { ownerId: v.string(), journeyId: v.id('journeys') },
+  handler: async (ctx, { ownerId, journeyId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const me = identity.subject;
+    if (!(await areSharing(ctx, ownerId, me))) return { gone: true as const };
+
+    const journey = await ctx.db.get(journeyId);
+    // The id is the caller's to supply, so it is checked against the owner
+    // they claimed rather than trusted: a journey id alone opens nothing.
+    if (!journey || journey.userId !== ownerId || journey.deletedAt) return { gone: true as const };
+
+    const who = await personCard(ctx, ownerId);
+    const session = await liveFor(ctx, me, ownerId);
+    const liveHere = session && session.naturalKey === journey.naturalKey ? session : null;
+    return {
+      owner: who,
+      trip: publicTrip(journey),
+      token: liveHere?.shareToken ?? null,
+      session: liveHere
+        ? toPublicSession(
+            liveHere,
+            who.name,
+            (
+              await ctx.db
+                .query('follows')
+                .withIndex('by_session', (q) => q.eq('sessionId', liveHere._id))
+                .collect()
+            ).length,
+          )
+        : null,
+    };
+  },
+});
+
 async function join(ctx: MutationCtx, ownerId: string, memberId: string) {
   const existing = await ctx.db
     .query('circle')
@@ -269,7 +433,7 @@ export const accept = mutation({
         q.eq('ownerId', identity.subject).eq('memberId', ownerId),
       )
       .unique();
-    const owner = await person(ctx, ownerId);
+    const owner = await personCard(ctx, ownerId);
     return { ownerId, ownerName: owner.name, sharingBack: !!reverse };
   },
 });
@@ -340,7 +504,7 @@ export const list = query({
       .withIndex('by_member', (q) => q.eq('memberId', me))
       .collect();
     for (const row of shares) {
-      const owner = await person(ctx, row.ownerId);
+      const owner = await personCard(ctx, row.ownerId);
 
       let live = null;
       for (const f of myFollows) {
@@ -387,7 +551,7 @@ export const list = query({
 
     const followers = [];
     for (const row of await circleMembers(ctx, me)) {
-      followers.push({ ...(await person(ctx, row.memberId)), since: row.createdAt });
+      followers.push({ ...(await personCard(ctx, row.memberId)), since: row.createdAt });
     }
 
     // In-app invitations still waiting: theirs to answer, and mine to watch.
@@ -396,14 +560,14 @@ export const list = query({
       .query('circleRequests')
       .withIndex('by_to_status', (q) => q.eq('toUserId', me).eq('status', 'pending'))
       .collect()) {
-      incoming.push({ id: r._id, since: r.createdAt, ...(await person(ctx, r.fromUserId)) });
+      incoming.push({ id: r._id, since: r.createdAt, ...(await personCard(ctx, r.fromUserId)) });
     }
     const outgoing = [];
     for (const r of await ctx.db
       .query('circleRequests')
       .withIndex('by_from_status', (q) => q.eq('fromUserId', me).eq('status', 'pending'))
       .collect()) {
-      outgoing.push({ id: r._id, since: r.createdAt, ...(await person(ctx, r.toUserId)) });
+      outgoing.push({ id: r._id, since: r.createdAt, ...(await personCard(ctx, r.toUserId)) });
     }
 
     following.sort((a, b) => (a.live ? 0 : 1) - (b.live ? 0 : 1) || a.name.localeCompare(b.name));

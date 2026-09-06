@@ -3,6 +3,18 @@
 
 export const INVITE_URL = (token: string) => `https://getflyright.com/i/${token}`;
 
+/** The screens a tapped notification should leave behind it.
+ *
+ * A push about one trip opens on that trip — but a trip belongs to a person,
+ * and backing out of it should land on them, then on People, the way it
+ * would if you had walked in. So the deep path is pushed as the stack it
+ * implies rather than as one orphan screen with nowhere to go but the tab
+ * root. Everything else is a single screen and says so. */
+export function pushStackFor(path: string): string[] {
+  const trip = /^(\/person\/[^/]+)\/trip\/[^/?#]+/.exec(path);
+  return trip ? [trip[1], path] : [path];
+}
+
 /** The invite token inside whatever the traveller pasted: the shared
  * https://getflyright.com/i/<token>, the app's own flyright://i/<token>, or
  * the Detour redirect that carries the same path one segment further in.

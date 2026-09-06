@@ -332,30 +332,12 @@ function CircleHero({
 function FollowingRow({ person }: { person: Following }) {
   const theme = useTheme();
   const router = useRouter();
-  const setMuted = useMutation(api.circle.setMuted);
-  const leave = useMutation(api.circle.leave);
 
+  // Tapping a name asks "where are they going?", which an action sheet could
+  // never answer — and it put "stop following" one tap from a row anyone
+  // might press by accident. Both decisions live on the page now.
   const actions = () =>
-    Alert.alert(person.name, undefined, [
-      {
-        text: person.muted ? 'Unmute updates' : 'Mute updates',
-        onPress: () => void setMuted({ ownerId: person.userId, muted: !person.muted }),
-      },
-      {
-        text: 'Stop following',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert(`Stop following ${person.name}?`, 'You can be invited again later.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Stop following',
-              style: 'destructive',
-              onPress: () => void leave({ ownerId: person.userId }),
-            },
-          ]),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    router.push({ pathname: '/person/[id]', params: { id: person.userId } });
 
   const live = person.live;
   if (live) {
@@ -368,12 +350,7 @@ function FollowingRow({ person }: { person: Following }) {
     return (
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          live.token
-            ? router.push({ pathname: '/trip/[token]', params: { token: live.token } })
-            : actions()
-        }
-        onLongPress={actions}
+        onPress={actions}
         style={({ pressed }) => pressed && styles.pressed}>
         <PassCard style={styles.livePass}>
           <View style={styles.row}>
@@ -468,34 +445,12 @@ function LivePill() {
 /** Someone following my trips — the Find My "who can see me" list. */
 function FollowerRow({ person }: { person: Follower }) {
   const theme = useTheme();
-  const remove = useMutation(api.circle.remove);
-
-  const actions = () =>
-    Alert.alert(person.name, `Following your trips since ${formatDayLabel(person.since)}.`, [
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert(
-            `Remove ${person.name}?`,
-            'They stop seeing your trips and getting updates. You can invite them again later.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Remove',
-                style: 'destructive',
-                onPress: () => void remove({ memberId: person.userId }),
-              },
-            ],
-          ),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  const router = useRouter();
 
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={actions}
+      onPress={() => router.push({ pathname: '/person/[id]', params: { id: person.userId } })}
       style={({ pressed }) => pressed && styles.pressed}>
       <SheenCard style={styles.rowCard}>
         <Avatar name={person.name} imageUrl={person.imageUrl} size={44} />

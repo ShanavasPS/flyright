@@ -6,7 +6,6 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import type { PublicSession } from '../../convex/liveShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { AppHandoff } from '@/components/app-handoff';
@@ -16,52 +15,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabelWithYear } from '@/services/dates';
-import {
-  EMPTY_FACTS,
-  type FlightFacts,
-  type TravelDayState,
-  type TravelJourney,
-  type TravelStage,
-} from '@/services/travel-day';
-
-/** Adapt the whitelisted Convex session into the shapes the shared timeline
- * renders — one source of truth for stage visuals on every surface. */
-function adapt(s: PublicSession): {
-  journey: TravelJourney;
-  state: TravelDayState;
-  facts: FlightFacts;
-} {
-  return {
-    journey: {
-      id: '',
-      mode: 'flight',
-      source: 'lookup',
-      number: s.number,
-      carrier: s.carrier,
-      fromCode: s.fromCode,
-      toCode: s.toCode,
-      scheduledDeparture: s.scheduledDeparture,
-      scheduledArrival: s.scheduledArrival,
-    },
-    state: {
-      stage: (s.currentStage as TravelStage | null) ?? null,
-      stamps: s.stageTimes as TravelDayState['stamps'],
-    },
-    facts: {
-      ...EMPTY_FACTS,
-      delayMinutes: s.delayMinutes,
-      gate: s.gate,
-      terminal: s.terminal,
-      baggageBelt: s.baggageBelt,
-      estimatedDeparture: s.estimatedDeparture,
-      actualDeparture: s.actualDeparture,
-      estimatedArrival: s.estimatedArrival,
-      actualArrival: s.actualArrival,
-    },
-  };
-}
+import { adaptPublicSession } from '@/services/public-session';
 
 /** The public "follow this trip" page behind getflyright.com/t/<token> —
  * reactive on web for anyone, and the in-app follower view with a Follow
@@ -106,7 +63,7 @@ export function FollowTrip({ token }: { token: string }) {
     );
   } else {
     const session = result;
-    const { journey, state, facts } = adapt(session);
+    const { journey, state, facts } = adaptPublicSession(session);
     const who = session.travelerName ?? 'Your traveler';
     body = (
       <>
@@ -121,7 +78,7 @@ export function FollowTrip({ token }: { token: string }) {
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {session.number || session.carrier} ·{' '}
-              {formatDayLabelWithYear(session.scheduledDeparture)}
+              {formatDayLabelWithYear(session.scheduledDeparture, airportZone(session.fromCode))}
             </ThemedText>
           </View>
         </View>

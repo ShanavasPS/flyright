@@ -1,4 +1,4 @@
-import { INVITE_URL, toInAppPath, watcherNames } from './circle';
+import { INVITE_URL, toInAppPath, watcherNames, pushStackFor } from './circle';
 
 describe('watcherNames', () => {
   it('names one, two, three, and many watchers by first name', () => {
@@ -27,5 +27,20 @@ describe('toInAppPath', () => {
 
   it('round-trips an invite url', () => {
     expect(toInAppPath(INVITE_URL('tok'))).toBe('/i/tok');
+  });
+});
+
+describe('pushStackFor', () => {
+  it('leaves the person under a trip notification', () => {
+    expect(pushStackFor('/person/user_abc/trip/j57bnbb')).toEqual([
+      '/person/user_abc',
+      '/person/user_abc/trip/j57bnbb',
+    ]);
+  });
+
+  it('pushes everything else on its own', () => {
+    expect(pushStackFor('/person/user_abc')).toEqual(['/person/user_abc']);
+    expect(pushStackFor('/people')).toEqual(['/people']);
+    expect(pushStackFor('/t/tok_9X')).toEqual(['/t/tok_9X']);
   });
 });

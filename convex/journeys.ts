@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import type { Id } from './_generated/dataModel';
 import { armHeadsUp } from './liveHelpers';
 
 /** Row shape the client pushes — deliberately has NO userId field: the server
@@ -40,6 +41,12 @@ export const push = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
+    // Trips that didn't exist a moment ago, for the circle's "added a trip"
+    // push. Collected across the whole call and sent once: the natural key
+    // makes an insert exactly-once per trip, but a new device replays the
+    // entire journal as inserts, and that must not become forty pushes.
+    const added: Id<'journeys'>[] = [];
+
     for (const row of rows) {
       const existing = await ctx.db
         .query('journeys')
@@ -53,6 +60,7 @@ export const push = mutation({
       if (!existing) {
         journeyId = await ctx.db.insert('journeys', { ...row, userId: identity.subject });
         scheduleChanged = true;
+        if (!row.deletedAt) added.push(journeyId);
       } else if (row.updatedAt > existing.updatedAt) {
         await ctx.db.patch(existing._id, row);
         scheduleChanged =
@@ -98,6 +106,15 @@ export const push = mutation({
           });
         }
       }
+    }
+
+    // Scheduled rather than awaited: the sync must not wait on OneSignal,
+    // and the action re-validates every trip anyway.
+    if (added.length) {
+      await ctx.scheduler.runAfter(0, internal.circleInternal.notifyTripsAdded, {
+        ownerId: identity.subject,
+        journeyIds: added,
+      });
     }
   },
 });

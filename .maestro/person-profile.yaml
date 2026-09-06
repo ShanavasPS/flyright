@@ -1,0 +1,70 @@
+# A followed person's page: who they are, where they're going, where they've
+# been — and the two decisions a follower actually owns. Replaces the action
+# sheet a row used to open, which could answer neither "where are they going"
+# nor "how do I see that trip".
+#
+# Prereqs: signed in, following somebody with at least one upcoming and one
+# flown trip. Seed the other side through the real sync path so the
+# "added a trip" push is exercised too:
+#   npx convex run journeys:push '{"rows":[…]}' --identity '{"subject":"user_dev_sam"}'
+# Run: maestro --device <udid> test .maestro/person-profile.yaml -e WHO=Sam -e FLIGHT=BA777
+appId: com.shanavasshaji.flyright
+tags:
+  - people
+---
+- launchApp
+- openLink: flyright://people
+# The row carries the person AND their next flight, so match loosely.
+- extendedWaitUntil:
+    visible: ".*${WHO}.*"
+    timeout: 40000
+- tapOn: ".*${WHO}.*"
+
+# The profile: summary, then travel in both directions of time.
+- extendedWaitUntil:
+    visible: "UPCOMING"
+    timeout: 30000
+- assertVisible: ".*Sharing their trips with you since.*"
+- assertVisible: "Trips ahead"
+- assertVisible: "FLOWN"
+
+# A trip opens read-only. Nothing on it is pressable — a follower reads.
+- tapOn: ".*${FLIGHT}.*"
+- extendedWaitUntil:
+    visible: ".*Only ${WHO} can change this trip.*"
+    timeout: 30000
+- assertVisible: "DEPARTS"
+- assertVisible: "ARRIVES"
+
+# Back unwinds trip → person → People, which is the order a notification
+# opening straight on a trip has to be able to walk out of.
+# `back` is the swipe gesture on iOS and does not always take; the header
+# button is the reliable one.
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: "UPCOMING"
+    timeout: 20000
+# The person screen's back button is named for the list it returns to, so
+# it collides with the tab of the same name — the header one comes first.
+- tapOn:
+    text: "People"
+    index: 0
+- extendedWaitUntil:
+    visible: "SHARING WITH"
+    timeout: 20000
+
+# The only two things a follower may do, at the bottom where they belong.
+- tapOn: ".*${WHO}.*"
+- extendedWaitUntil:
+    visible: "UPCOMING"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: ".*Mute updates.*"
+    direction: DOWN
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: ".*Stop following.*"
+    direction: DOWN
+    timeout: 20000
