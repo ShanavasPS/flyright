@@ -9,10 +9,19 @@ import { buildWorldMap, fitViewBox, type RouteSource } from '@/services/geo';
  * and the native inset's fallback for routes too wide for a map SDK's
  * zoom-out floor (a polar long haul spans 170° of longitude; MapKit shows
  * ~89° at most). Fills its parent. */
-export function RouteAtlas({ journey, height }: { journey: RouteSource; height: number }) {
+export function RouteAtlas({
+  journeys,
+  height,
+}: {
+  /** One leg, or somebody's whole travel — the atlas fits whatever it is
+   * given, which is why it and not the map SDK draws a person's world: a
+   * lifetime of routes spans more longitude than the SDK will zoom out to. */
+  journeys: RouteSource[];
+  height: number;
+}) {
   const { sea } = mapColors(useColorScheme() === 'dark');
   const [now] = useState(() => new Date());
-  const data = useMemo(() => buildWorldMap([journey], now), [journey, now]);
+  const data = useMemo(() => buildWorldMap(journeys, now), [journeys, now]);
   const [width, setWidth] = useState(0);
   // Extra padding: the arc's polar apex must clear the top edge with room to
   // spare, and the endpoint labels need space to the right of their dots.

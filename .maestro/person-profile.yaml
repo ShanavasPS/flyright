@@ -28,7 +28,19 @@ tags:
 - assertVisible: "Trips ahead"
 - assertVisible: "FLOWN"
 
-# A trip opens read-only. Nothing on it is pressable — a follower reads.
+# Their travel, drawn — and the same map full screen, which lives on the
+# person and never as a mode of the viewer's own World tab.
+- tapOn: "${WHO}'s world"
+- extendedWaitUntil:
+    visible: ".*trips flown.*"
+    timeout: 30000
+- tapOn: "${WHO}"
+
+# A trip opens read-only: nothing on it changes the trip. Its map is the one
+# exception, and it opens their world on this leg alone.
+- extendedWaitUntil:
+    visible: "UPCOMING"
+    timeout: 20000
 - tapOn: ".*${FLIGHT}.*"
 - extendedWaitUntil:
     visible: ".*Only ${WHO} can change this trip.*"

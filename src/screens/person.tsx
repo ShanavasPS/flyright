@@ -8,16 +8,36 @@ import { api } from '../../convex/_generated/api';
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
+import { RouteAtlas } from '@/components/route-atlas';
+import { mapColors } from '@/components/world-map';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
+import type { RouteSource } from '@/services/geo';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
 import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
 import { relativeWhen } from '@/services/trip-when';
+
+/** Tall enough to read a long-haul arc, short enough that the trips below
+ * still start on the first screen. */
+const PERSON_MAP_HEIGHT = 170;
+
+/** Every trip they share, in the shape the map draws. */
+function routesOf(p: { upcoming: Trip[]; past: Trip[] }): RouteSource[] {
+  return [...p.upcoming, ...p.past].map((t) => ({
+    id: t.journeyId,
+    fromCode: t.fromCode,
+    toCode: t.toCode,
+    number: t.number,
+    carrier: t.carrier,
+    scheduledDeparture: t.scheduledDeparture,
+  }));
+}
 
 type Trip = {
   journeyId: string;
@@ -50,6 +70,9 @@ export function Person({ userId }: { userId: string }) {
   const leave = useMutation(api.circle.leave);
   const remove = useMutation(api.circle.remove);
 
+  const { sea } = mapColors(useColorScheme() === 'dark');
+  const openWorld = () =>
+    router.push({ pathname: '/person/[id]/world', params: { id: userId } });
   const openTrip = (journeyId: string) =>
     router.push({
       pathname: '/person/[id]/trip/[journeyId]',
@@ -110,6 +133,21 @@ export function Person({ userId }: { userId: string }) {
             {p.theyShare && p.iShare ? ' · you share yours back' : ''}
           </ThemedText>
         </View>
+
+        {/* Their travel, before the list of it. Opens the same map full
+            screen — on the person, never as a mode of the viewer's own World
+            tab (see screens/person-world). */}
+        {p.theyShare && routesOf(p).length > 0 && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${p.name}'s world`}
+            onPress={openWorld}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <View style={[styles.map, { backgroundColor: sea }]}>
+              <RouteAtlas journeys={routesOf(p)} height={PERSON_MAP_HEIGHT} />
+            </View>
+          </Pressable>
+        )}
 
         {p.theyShare && (
           <View style={styles.stats}>
@@ -343,6 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     paddingTop: Spacing.three,
   },
+  map: { height: PERSON_MAP_HEIGHT, borderRadius: Spacing.four, overflow: 'hidden' },
   liveCard: { gap: Spacing.half, padding: Spacing.three },
   liveHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   dot: { width: 8, height: 8, borderRadius: 4 },

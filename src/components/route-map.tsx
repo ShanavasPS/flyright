@@ -126,7 +126,7 @@ export function RouteMap({
           ))}
         </MapView>
       ) : (
-        <RouteAtlas journey={journey} height={ROUTE_MAP_HEIGHT} />
+        <RouteAtlas journeys={[journey]} height={ROUTE_MAP_HEIGHT} />
       )}
       {/* Catches the tap for the Pressable on both platforms — Google Maps
           would otherwise swallow it even with gestures off. Still wanted

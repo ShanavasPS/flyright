@@ -31,7 +31,7 @@ export function RouteMap({
       onPress={onPress}
       disabled={!onPress}
       style={[styles.card, { borderColor: theme.hairline }]}>
-      <RouteAtlas journey={journey} height={ROUTE_MAP_HEIGHT} />
+      <RouteAtlas journeys={[journey]} height={ROUTE_MAP_HEIGHT} />
       <View style={[styles.expand, { backgroundColor: theme.backgroundElement }]}>
         <ThemedText type="smallBold" style={{ color: theme.tint }}>
           World

@@ -1,5 +1,5 @@
 import { useQuery } from 'convex/react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,6 +33,7 @@ import { relativeWhen } from '@/services/trip-when';
  * decisions about a person belong.
  */
 export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyId: string }) {
+  const router = useRouter();
   const result = useQuery(api.circle.trip, {
     ownerId,
     journeyId: journeyId as Id<'journeys'>,
@@ -55,10 +56,16 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
     const when = relativeWhen(trip.scheduledDeparture);
     body = (
       <>
-        {/* The same inset the traveller sees on their own trip. No tap: the
-            World tab draws the viewer's own journal and has nothing to open
-            somebody else's leg on. */}
+        {/* The same inset the traveller sees on their own trip. It opens
+            their map, not the viewer's World tab — which draws the viewer's
+            own journal and would quietly show the wrong travel. */}
         <RouteMap
+          onPress={() =>
+            router.push({
+              pathname: '/person/[id]/world',
+              params: { id: ownerId, focus: trip.journeyId },
+            })
+          }
           journey={{
             id: trip.journeyId,
             fromCode: trip.fromCode,

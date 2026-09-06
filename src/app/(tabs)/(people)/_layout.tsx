@@ -22,6 +22,11 @@ export default function PeopleStack() {
         name="person/[id]/trip/[journeyId]"
         options={{ title: 'Trip', headerBackButtonDisplayMode: 'minimal' }}
       />
+      {/* Title comes from the screen — it names the person. */}
+      <Stack.Screen
+        name="person/[id]/world"
+        options={{ headerBackButtonDisplayMode: 'minimal' }}
+      />
     </Stack>
   );
 }
