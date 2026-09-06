@@ -11,8 +11,7 @@ import { api } from '../../convex/_generated/api';
 import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
-import { PrimaryButton } from '@/components/primary-button';
-import { SheenCard } from '@/components/sheen-card';
+import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -95,27 +94,70 @@ export function AddPerson() {
     }
   };
 
-  let found: React.ReactNode = null;
-  if (term.length >= 2) {
-    if (results === undefined) {
-      found = <ActivityIndicator style={styles.spinner} />;
-    } else if (results.length === 0) {
-      found = (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
-          Nobody on FlyRight matches “{term}”. Search their exact first name or the email they
-          signed in with — or send them a link below.
-        </ThemedText>
-      );
-    } else {
-      found = results.slice(0, MAX_ROWS).map((person) => (
-        <PersonRow
-          key={person.userId}
-          person={person}
-          busy={busy === person.userId}
-          onInvite={() => void onInvite(person)}
+  const linkBusy = busy === 'link';
+  const sendLink = () => void onShareLink();
+
+  // The link is an answer to the search, not a footer under it. Pinned to the
+  // bottom it spent its life behind the keyboard this sheet opens with — and
+  // it belongs beside the people anyway: "not on FlyRight" is a result about
+  // the person searched for, told the way a hit is told.
+  let found: React.ReactNode;
+  if (term.length < 2) {
+    found = (
+      <>
+        <LinkRow
+          title="Not on FlyRight yet?"
+          subtitle="Send a link — it opens the invitation once they install."
+          busy={linkBusy}
+          onPress={sendLink}
         />
-      ));
-    }
+        <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
+          Already on FlyRight? Search their whole first name, or the email address they signed in
+          with.
+        </ThemedText>
+      </>
+    );
+  } else if (results === undefined) {
+    found = <ActivityIndicator style={styles.spinner} />;
+  } else if (results.length === 0) {
+    found = (
+      <>
+        {/* The name goes in the subtitle, not the title: an address is long
+            enough to truncate a title down to the quotation marks. */}
+        <LinkRow
+          title="Not on FlyRight"
+          subtitle={`Nobody matches “${term}”. Send them a link instead.`}
+          busy={linkBusy}
+          onPress={sendLink}
+          accessibilityLabel={`Send ${term} an invite link`}
+        />
+        {/* Second, and quietly: the search is whole-word, so a miss is as
+            often a half-typed name as a person who hasn't installed it. */}
+        <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
+          Already have it? Search their whole first name, or the email address they signed in
+          with.
+        </ThemedText>
+      </>
+    );
+  } else {
+    found = (
+      <>
+        {results.slice(0, MAX_ROWS).map((person) => (
+          <PersonRow
+            key={person.userId}
+            person={person}
+            busy={busy === person.userId}
+            onInvite={() => void onInvite(person)}
+          />
+        ))}
+        <LinkRow
+          title="Someone else?"
+          subtitle="Send a link to anyone who isn't on FlyRight yet."
+          busy={linkBusy}
+          onPress={sendLink}
+        />
+      </>
+    );
   }
 
   return (
@@ -152,18 +194,47 @@ export function AddPerson() {
           </ThemedText>
         )}
       </View>
-      <View style={styles.footer}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.footerCopy}>
-          Not on FlyRight yet? Send a link — it works for 7 days and opens the invitation once
-          they install the app.
-        </ThemedText>
-        <PrimaryButton
-          label="Share an invite link"
-          disabled={busy != null}
-          onPress={() => void onShareLink()}
-        />
-      </View>
     </ThemedView>
+  );
+}
+
+/** The link, told as a search result: the same card, badge and chip a person
+ * gets, because to the traveller it answers the same question. */
+function LinkRow({
+  title,
+  subtitle,
+  busy,
+  onPress,
+  accessibilityLabel = 'Send an invite link',
+}: {
+  title: string;
+  subtitle: string;
+  busy: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <SheenCard style={styles.rowCard}>
+      <IconBadge
+        symbol={{ ios: 'paperplane.fill', android: 'send', web: 'send' }}
+        size={44}
+      />
+      <View style={styles.rowBody}>
+        <ThemedText themeColor="heading" numberOfLines={1}>
+          {title}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={3}>
+          {subtitle}
+        </ThemedText>
+      </View>
+      <ActionChip
+        label="Send"
+        accessibilityLabel={accessibilityLabel}
+        busy={busy}
+        onPress={onPress}
+        testID="share-invite-link"
+      />
+    </SheenCard>
   );
 }
 
@@ -177,7 +248,6 @@ function PersonRow({
   busy: boolean;
   onInvite: () => void;
 }) {
-  const theme = useTheme();
   const status =
     person.relation === 'sharing'
       ? 'Already follows your trips'
@@ -198,26 +268,52 @@ function PersonRow({
         </ThemedText>
       </View>
       {person.relation === 'none' && (
-        <Pressable
-          accessibilityRole="button"
+        <ActionChip
+          label="Invite"
           accessibilityLabel={`Invite ${person.name} to follow your trips`}
-          disabled={busy}
+          busy={busy}
           onPress={onInvite}
-          style={({ pressed }) => [
-            styles.inviteChip,
-            { backgroundColor: theme.tint },
-            pressed && styles.pressed,
-          ]}>
-          {busy ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <ThemedText type="smallBold" style={styles.inviteChipLabel}>
-              Invite
-            </ThemedText>
-          )}
-        </Pressable>
+        />
       )}
     </SheenCard>
+  );
+}
+
+/** The one action a row carries, on the right of it. */
+function ActionChip({
+  label,
+  accessibilityLabel,
+  busy,
+  onPress,
+  testID,
+}: {
+  label: string;
+  accessibilityLabel: string;
+  busy: boolean;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
+      disabled={busy}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.inviteChip,
+        { backgroundColor: theme.tint },
+        pressed && styles.pressed,
+      ]}>
+      {busy ? (
+        <ActivityIndicator color="#ffffff" />
+      ) : (
+        <ThemedText type="smallBold" style={styles.inviteChipLabel}>
+          {label}
+        </ThemedText>
+      )}
+    </Pressable>
   );
 }
 
@@ -277,12 +373,5 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
-  },
-  footer: {
-    gap: Spacing.two,
-    paddingTop: Spacing.two,
-  },
-  footerCopy: {
-    textAlign: 'center',
   },
 });
