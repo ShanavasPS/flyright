@@ -14,7 +14,8 @@
     },
     "preview": {
       "extends": "base",
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "production"
     },
     "production": {
       "extends": "base",

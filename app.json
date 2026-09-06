@@ -2,7 +2,7 @@
   "expo": {
     "name": "FlyRight",
     "slug": "flyright",
-    "version": "1.0.21",
+    "version": "1.0.22",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "flyright",
@@ -41,7 +41,7 @@
           }
         ]
       },
-      "buildNumber": "32"
+      "buildNumber": "33"
     },
     "android": {
       "package": "com.shanavasshaji.flyright",
@@ -88,7 +88,7 @@
           ]
         }
       ],
-      "versionCode": 33
+      "versionCode": 34
     },
     "web": {
       "output": "server",
