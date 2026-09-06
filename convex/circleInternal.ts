@@ -84,6 +84,17 @@ export const notifyRequest = internalAction({
   },
 });
 
+/** The person page (/person/<id>) and the follower trip screen under it ship
+ * in the build after 1.0.22. The server, though, is deployed the moment it is
+ * written — so between now and that build reaching phones, a push carrying
+ * those paths would land every existing installation on a route it does not
+ * have. Until then it opens the People tab, which every build since 1.0.20
+ * does have, and the trip is one tap further in.
+ *
+ * Flip this to true once the build carrying screens/person.tsx is live. It is
+ * the only thing that needs changing. */
+const TRIP_DEEP_LINKS_LANDED = false;
+
 /** Who hears that a trip was added, and what it says. Mute is honoured the
  * same way a travel-day push honours it (liveInternal.getNotifyTargets):
  * the member keeps seeing the trip in their People tab, they just aren't
@@ -148,10 +159,13 @@ export const notifyTripsAdded = internalAction({
         ? `Their next one leaves ${when}. You'll get a heads-up the day before each.`
         : `${p.ownerName} is flying to ${first.toCode} on ${when}. You'll get a heads-up the day before.`,
       // One trip opens on that trip; several open on the person, which is
-      // where all of them are.
-      many
-        ? `https://getflyright.com/person/${ownerId}`
-        : `https://getflyright.com/person/${ownerId}/trip/${first.journeyId}`,
+      // where all of them are — but only once a build that HAS those screens
+      // is the one in people's hands. See TRIP_DEEP_LINKS_LANDED.
+      TRIP_DEEP_LINKS_LANDED
+        ? many
+          ? `https://getflyright.com/person/${ownerId}`
+          : `https://getflyright.com/person/${ownerId}/trip/${first.journeyId}`
+        : 'https://getflyright.com/people',
     );
   },
 });
