@@ -12,12 +12,19 @@ import { buildWorldMap, fitViewBox, type RouteSource } from '@/services/geo';
 export function RouteAtlas({
   journeys,
   height,
+  pad = 0.35,
 }: {
   /** One leg, or somebody's whole travel — the atlas fits whatever it is
    * given, which is why it and not the map SDK draws a person's world: a
    * lifetime of routes spans more longitude than the SDK will zoom out to. */
   journeys: RouteSource[];
   height: number;
+  /** How much slack to leave around the routes, as a fraction of their span.
+   * The default suits a small inset, where the endpoint labels need somewhere
+   * to sit. A screen-sized map wants less: at 0.35 a single transatlantic leg
+   * ends up on a view wide enough to include Africa, which reads as a world
+   * map with a line on it rather than as that flight. */
+  pad?: number;
 }) {
   const { sea } = mapColors(useColorScheme() === 'dark');
   const [now] = useState(() => new Date());
@@ -26,8 +33,8 @@ export function RouteAtlas({
   // Extra padding: the arc's polar apex must clear the top edge with room to
   // spare, and the endpoint labels need space to the right of their dots.
   const box = useMemo(
-    () => fitViewBox(data.fitPoints, width ? width / height : 0, 0.35),
-    [data, width, height],
+    () => fitViewBox(data.fitPoints, width ? width / height : 0, pad),
+    [data, width, height, pad],
   );
   return (
     <View style={[styles.fill, { backgroundColor: sea }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>

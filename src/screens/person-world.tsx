@@ -36,7 +36,7 @@ export function PersonWorld({ userId, focusJourneyId }: { userId: string; focusJ
   // Measured rather than a fraction of the window: the atlas needs a real
   // height to fit into, and the map should own whatever the header and the
   // caption leave rather than a guess at it.
-  const [mapHeight, setMapHeight] = useState(0);
+  const [box, setBox] = useState({ width: 0, height: 0 });
 
   const person = data && !('gone' in data) ? data : null;
   const routes: RouteSource[] = useMemo(() => {
@@ -79,10 +79,30 @@ export function PersonWorld({ userId, focusJourneyId }: { userId: string; focusJ
     const ahead = person.upcoming.length;
     body = (
       <>
-        <View
-          style={[styles.map, { backgroundColor: sea }]}
-          onLayout={(e) => setMapHeight(Math.round(e.nativeEvent.layout.height))}>
-          {mapHeight > 0 && <RouteAtlas journeys={routes} height={mapHeight} />}
+        {/* Capped to a landscape-ish shape rather than filling a portrait
+            screen. Routes run east-west, and the atlas fits the wider axis:
+            in a tall box that means zooming out until a single transatlantic
+            leg sits on a whole-world view with Africa in frame. Held near
+            4:3 it fills with the travel instead. */}
+        <View style={styles.mapArea} onLayout={(e) => setBox({
+          width: Math.round(e.nativeEvent.layout.width),
+          height: Math.round(e.nativeEvent.layout.height),
+        })}>
+          {box.width > 0 && (
+            <View
+              style={[
+                styles.map,
+                { height: Math.min(box.height, Math.round(box.width * 0.78)), backgroundColor: sea },
+              ]}>
+              <RouteAtlas
+                journeys={routes}
+                height={Math.min(box.height, Math.round(box.width * 0.78))}
+                // One leg wants to look like that leg; a whole travel needs
+                // a little more room around it to read as a world.
+                pad={focusJourneyId ? 0.16 : 0.28}
+              />
+            </View>
+          )}
         </View>
         <ThemedText type="small" themeColor="textSecondary" style={styles.caption}>
           {focusJourneyId
@@ -109,6 +129,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, padding: Spacing.four, gap: Spacing.three },
   spinner: { marginTop: Spacing.six },
-  map: { flex: 1, borderRadius: Spacing.four, overflow: 'hidden' },
+  mapArea: { flex: 1, justifyContent: 'center' },
+  map: { borderRadius: Spacing.four, overflow: 'hidden' },
   caption: { textAlign: 'center', paddingHorizontal: Spacing.two },
 });
