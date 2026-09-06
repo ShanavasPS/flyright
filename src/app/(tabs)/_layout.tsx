@@ -1,14 +1,25 @@
+import { usePathname } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
+/** Screens the bar steps aside for. Deliberately a short list, not "anything
+ * pushed": Apple's guidance is to keep a tab bar up while people move around
+ * an app, and one tap to another tab is worth more than the strip of pixels
+ * it costs. A full-bleed map is the exception it was written for — the map
+ * runs under the bar, the screen already carries its own back button, and
+ * there is nothing on it the bar helps with. */
+const IMMERSIVE = /^\/person\/[^/]+\/world$/;
+
 export default function TabsLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const pathname = usePathname();
 
   return (
     <NativeTabs
+      hidden={IMMERSIVE.test(pathname)}
       backgroundColor={colors.background}
       // iOS 18: UITabBar's scroll-edge appearance is transparent, and with
       // the lists running edge-to-edge the journal showed through the bar

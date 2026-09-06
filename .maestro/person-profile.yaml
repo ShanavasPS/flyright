@@ -94,3 +94,24 @@ tags:
       text: ".*Stop following.*"
     direction: DOWN
     timeout: 20000
+
+# The bar steps aside for the full-bleed map and comes straight back. It is
+# the only screen it hides for — Apple's guidance is to keep a tab bar up
+# while people move around an app, and a stuck-hidden bar is the failure
+# this asserts against.
+# The controls left us at the foot of the page; the map card is at its head.
+- scrollUntilVisible:
+    element:
+      text: "${WHO}'s world"
+    direction: UP
+    timeout: 20000
+- tapOn: "${WHO}'s world"
+- extendedWaitUntil:
+    visible: ".*${WHO}'s world.*"
+    timeout: 30000
+- assertNotVisible: "Tab Bar"
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: "UPCOMING"
+    timeout: 20000
+- assertVisible: "Tab Bar"
