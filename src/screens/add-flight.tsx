@@ -1079,9 +1079,11 @@ function StatusLine({
         </ThemedText>
       );
     }
+    // No delay at all means the provider never reported the arrival (see
+    // flightNormalize): it flew, and "on time" would be a claim too far.
     return (
       <ThemedText type="small" style={{ color: '#2FD68C' }}>
-        Arrived on time
+        {delayMinutes == null ? 'Arrived' : 'Arrived on time'}
       </ThemedText>
     );
   }

@@ -558,7 +558,10 @@ function SegmentCard({
     if (plan.kind === 'lookup') {
       const f = plan.flight;
       if (f.landed) {
-        return f.delayMinutes != null && f.delayMinutes > 0
+        // A null delay on a landed flight means the provider never reported
+        // the arrival (see flightNormalize): it flew, and that is all we know.
+        if (f.delayMinutes == null) return { text: 'Arrived', color: '#2FD68C' };
+        return f.delayMinutes > 0
           ? { text: `Arrived ${f.delayMinutes} min late — a verdict is waiting`, color: PASS_AMBER }
           : { text: 'Arrived on time', color: '#2FD68C' };
       }

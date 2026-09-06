@@ -78,6 +78,16 @@ const OPERATING = [
  * alerts start at 30 min, so a 15-min floor loses no signal. */
 const PREDICTED_SLIP_MIN = 15;
 
+/** Statuses that mean the aircraft is in the air. */
+const AIRBORNE = ['Departed', 'EnRoute', 'Approaching'];
+
+/** How long past its last expected arrival an airborne record is taken as
+ * landed anyway. Some arrival feeds never close a flight out — Kochi left
+ * an Etihad leg at "Departed" for three months — and without this the
+ * flight reads as still to come, which it plainly isn't. A day covers any
+ * real diversion or holding pattern. */
+const OVERDUE_AFTER_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Normalize one provider leg.
  *
@@ -91,13 +101,21 @@ export function normalizeLeg(
   flight: string,
   date: string,
   inbound: Record<string, unknown> | null = null,
+  now: number = Date.now(),
 ): NormalizedFlight {
   const dep = leg.departure ?? {};
   const arr = leg.arrival ?? {};
 
-  const landed = leg.status === 'Arrived' || !!arr.actualTime?.utc || !!arr.runwayTime?.utc;
+  // Landed as reported, or landed because it must have: an airborne record
+  // a day past its last expected arrival. The second kind has no arrival
+  // time to read, so it carries no delay and earns no verdict.
+  const reported = leg.status === 'Arrived' || !!arr.actualTime?.utc || !!arr.runwayTime?.utc;
+  const dueAt = arr.revisedTime?.utc ?? arr.predictedTime?.utc ?? arr.scheduledTime?.utc;
+  const overdue =
+    !reported && AIRBORNE.includes(leg.status) && !!dueAt && now - Date.parse(dueAt) > OVERDUE_AFTER_MS;
+  const landed = reported || overdue;
   const actualArrival =
-    arr.actualTime?.utc ?? arr.runwayTime?.utc ?? (landed ? arr.revisedTime?.utc : null);
+    arr.actualTime?.utc ?? arr.runwayTime?.utc ?? (reported ? arr.revisedTime?.utc : null);
 
   const scheduled = arr.scheduledTime?.utc;
   const arrivalBasis = landed
