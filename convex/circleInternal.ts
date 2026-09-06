@@ -84,16 +84,20 @@ export const notifyRequest = internalAction({
   },
 });
 
-/** The person page (/person/<id>) and the follower trip screen under it ship
- * in the build after 1.0.22. The server, though, is deployed the moment it is
- * written — so between now and that build reaching phones, a push carrying
- * those paths would land every existing installation on a route it does not
- * have. Until then it opens the People tab, which every build since 1.0.20
- * does have, and the trip is one tap further in.
+/** Whether a trip push may name the screen it is actually about.
  *
- * Flip this to true once the build carrying screens/person.tsx is live. It is
- * the only thing that needs changing. */
-const TRIP_DEEP_LINKS_LANDED = false;
+ * The person page and the follower trip screen under it arrived in 1.0.23,
+ * while this server is deployed the moment it is written — so for a while a
+ * push carrying those paths would have landed older installations on a route
+ * they did not have, which for a notification is the whole of its purpose
+ * missing. It opened the People tab instead.
+ *
+ * True since 1.0.23 shipped. The app is weeks old and its circles are two
+ * people; the cost of an older build meeting one of these is now one tap on
+ * app/+not-found, which says what happened and offers the update. Set this
+ * back to false if a future push ever names a screen before its build is
+ * out — that is the whole reason it is a constant and not a deleted line. */
+const TRIP_DEEP_LINKS_LANDED = true;
 
 /** Who hears that a trip was added, and what it says. Mute is honoured the
  * same way a travel-day push honours it (liveInternal.getNotifyTargets):
