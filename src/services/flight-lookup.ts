@@ -25,6 +25,9 @@ export interface FlightStatus {
   to: { code: string | null; country: string | null };
   scheduledDeparture: string | null;
   scheduledArrival: string | null;
+  /** When the provider last revised this record — absent from responses
+   * served before the API route learned it. See services/schedule-change. */
+  scheduleUpdatedAt?: string | null;
   /** Travel-day facts — absent from responses served before the API route
    * learned them, so every field is optional as well as nullable. */
   gate?: string | null;

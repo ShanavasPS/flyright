@@ -14,9 +14,11 @@ import {
   outranks,
   OWNED_ID,
   planReminders,
+  scheduleChangeNotification,
   type DelayTier,
   type ReminderClaim,
 } from '@/services/notification-plan';
+import type { ScheduleChange } from '@/services/schedule-change';
 
 /**
  * Keeps the locally scheduled notifications in lockstep with the journal:
@@ -176,6 +178,31 @@ export async function maybeNotifyDelay(journey: Journey, delayMinutes: number): 
 
   if (!(await getPushEnabled())) return;
   const content = delayNotification(journey, delayMinutes, tier as Exclude<DelayTier, 'none'>);
+  await Notifications.scheduleNotificationAsync({
+    identifier: content.id,
+    content: { title: content.title, body: content.body, data: { url: content.url } },
+    trigger: null,
+  });
+}
+
+const scheduleKey = (journeyId: string) => `schedule-moved-${journeyId}`;
+
+/**
+ * One alert per distinct new departure time. An airline that keeps nudging a
+ * flight must not buzz the traveler for every nudge, but a second, different
+ * move is worth hearing about — so the last time announced is what's stored,
+ * not a "told them" flag.
+ */
+export async function maybeNotifyScheduleChange(
+  journey: Journey,
+  change: ScheduleChange,
+  departureClock: string,
+): Promise<void> {
+  if (Storage.getItemSync(scheduleKey(journey.id)) === change.departure) return;
+  Storage.setItemSync(scheduleKey(journey.id), change.departure);
+
+  if (!(await getPushEnabled())) return;
+  const content = scheduleChangeNotification(journey, change, departureClock);
   await Notifications.scheduleNotificationAsync({
     identifier: content.id,
     content: { title: content.title, body: content.body, data: { url: content.url } },

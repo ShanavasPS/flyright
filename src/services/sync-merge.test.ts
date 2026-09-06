@@ -17,6 +17,8 @@ function row(overrides: Partial<JourneyRow>): JourneyRow {
     distanceKm: 1539,
     scheduledDeparture: '2026-08-20T08:00:00Z',
     scheduledArrival: '2026-08-20T10:35:00Z',
+    ticketedDeparture: null,
+    ticketedArrival: null,
     ticketPriceAmount: null,
     ticketPriceCurrency: null,
     notes: null,

@@ -57,6 +57,13 @@
       "when": 1788505288294,
       "tag": "0007_wide_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788665411833,
+      "tag": "0008_heavy_wonder_man",
+      "breakpoints": true
     }
   ]
 }

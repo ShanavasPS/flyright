@@ -16,6 +16,12 @@ export const journeys = sqliteTable('journeys', {
   distanceKm: real('distance_km').notNull(),
   scheduledDeparture: text('scheduled_departure').notNull(),
   scheduledArrival: text('scheduled_arrival').notNull(),
+  /** What the ticket said before the airline moved the flight — set only
+   *  once a schedule change has been adopted, so the card can show what it
+   *  changed from. Null while the trip still departs when it was booked to.
+   *  See services/schedule-change.ts. */
+  ticketedDeparture: text('ticketed_departure'),
+  ticketedArrival: text('ticketed_arrival'),
   ticketPriceAmount: real('ticket_price_amount'),
   ticketPriceCurrency: text('ticket_price_currency'),
   /** The traveler's own words about the trip — the journal's free-text

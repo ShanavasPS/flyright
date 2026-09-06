@@ -61,6 +61,8 @@ import {
   type JourneyRow,
 } from '@/services/journeys';
 import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
+import { shiftLabel } from '@/services/schedule-change';
+import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
 import { travelWindow, type TravelStage } from '@/services/travel-day';
 import { tripFacts } from '@/services/trip-facts';
 import { focusWorldOn } from '@/services/world-focus';
@@ -98,6 +100,19 @@ function routeSentence(journey: Journey): string {
  * isn't in the dataset (manual train/bus entries). */
 function cityLabel(place: Journey['from']): string {
   return getAirport(place.code)?.city ?? place.code;
+}
+
+/** The clocks the route hero shows, and — once an airline has moved the
+ * flight — the ones the ticket was booked at. */
+interface Schedule {
+  departure: string;
+  arrival: string | null;
+  departureWas: string | null;
+  arrivalWas: string | null;
+  /** "55 min later", once the airline has moved the flight. A struck-through
+   * clock shows THAT something changed; only words say by how much, and in
+   * which direction — which is the part a traveller has to act on. */
+  moved: string | null;
 }
 
 /** Block duration, "16h 35m" — null for manual entries whose bare wall-clock
@@ -167,15 +182,14 @@ export function JourneyDetail({
   const inboundUnlocked = upcoming && !proLocked;
 
   // Live disruption data for tracked journeys; the demo uses a canned 195-min delay.
+  // The flight's own local date at its origin — the key the provider expects.
+  // Slicing the stored instant asks about the wrong day for a departure that
+  // straddles UTC midnight (see dates.flightDay).
+  const lookupDay = row ? lookupDayFor(row) : undefined;
   const status = useQuery({
-    queryKey: [
-      'flight-status',
-      journey?.number,
-      journey?.scheduledDeparture.slice(0, 10),
-      inboundUnlocked,
-    ],
+    queryKey: ['flight-status', journey?.number, lookupDay, inboundUnlocked],
     queryFn: () =>
-      lookupFlight(journey!.number, journey!.scheduledDeparture.slice(0, 10), {
+      lookupFlight(journey!.number, lookupDay!, {
         // Pre-departure only: past that, the rotation can't predict anything
         // and the server would skip the extra provider call anyway.
         inbound: inboundUnlocked,
@@ -193,6 +207,14 @@ export function JourneyDetail({
     if (isDemo || !rowId || observedDelay == null) return;
     recordDelay(rowId, observedDelay).catch(() => {});
   }, [isDemo, rowId, observedDelay]);
+
+  // Opening a trip is also when a schedule change gets noticed: the lookup
+  // above already carries what the airline currently publishes.
+  const lookedUp = status.data;
+  useEffect(() => {
+    if (isDemo || !row || !lookedUp) return;
+    applyScheduleChange(row, lookedUp).catch(() => {});
+  }, [isDemo, row, lookedUp]);
 
   // Persist the full fact set (gate, boarding, actual times) for the live
   // surfaces, then let the reconciler update the ongoing notification.
@@ -216,7 +238,7 @@ export function JourneyDetail({
   // below it. Until the row loads, the route hint keeps the title from
   // popping in mid-transition.
   const routeTitle = journey
-    ? travelDayTitle(journey.scheduledDeparture, new Date(now))
+    ? travelDayTitle(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code))
     : routeHint
       ? `${routeHint.from} → ${routeHint.to}`
       : '';
@@ -264,19 +286,40 @@ export function JourneyDetail({
 
   // Journal entries without user-entered times store the placeholder noon
   // pair — no schedule worth showing. A lone entered time reads as a departure.
-  // Each end in its own airport's time. "Departs 12:25" has to mean 12:25 on
-  // the departure board, not 12:25 re-timed to wherever the phone happens to
-  // be — which is what showed a Stockholm departure as 16:55 in India.
+  // Each end reads in its own airport's clock — the pair a boarding pass
+  // prints, and the only pair that stays true wherever the trip is read from.
   const departureZone = airportZone(journey.from.code);
   const arrivalZone = airportZone(journey.to.code);
-  const schedule: { departure: string; arrival: string | null } | null =
+  // Set only once the airline has moved the flight (services/schedule-change):
+  // the times the ticket was booked at, so the card can show what changed
+  // rather than quietly swapping the number the traveler wrote down.
+  const departureWas = row?.ticketedDeparture
+    ? formatTime(row.ticketedDeparture, departureZone)
+    : null;
+  const arrivalWas = row?.ticketedArrival ? formatTime(row.ticketedArrival, arrivalZone) : null;
+  const movedMinutes = row?.ticketedDeparture
+    ? Math.round(
+        (Date.parse(journey.scheduledDeparture) - Date.parse(row.ticketedDeparture)) / 60_000,
+      )
+    : null;
+  const moved = movedMinutes ? shiftLabel(movedMinutes) : null;
+  const schedule: Schedule | null =
     journey.scheduledDeparture === journey.scheduledArrival
       ? journey.scheduledDeparture.endsWith('T12:00:00')
         ? null
-        : { departure: formatTime(journey.scheduledDeparture, departureZone), arrival: null }
+        : {
+            departure: formatTime(journey.scheduledDeparture, departureZone),
+            arrival: null,
+            departureWas,
+            arrivalWas: null,
+            moved,
+          }
       : {
           departure: formatTime(journey.scheduledDeparture, departureZone),
           arrival: formatTime(journey.scheduledArrival, arrivalZone),
+          departureWas,
+          arrivalWas,
+          moved,
         };
 
   // Share + circle pills for the trip cards' headers, while there's something
@@ -760,7 +803,7 @@ function RouteHero({
 }: {
   journey: Journey;
   now: number;
-  schedule: { departure: string; arrival: string | null } | null;
+  schedule: Schedule | null;
   action?: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -792,6 +835,18 @@ function RouteHero({
         {action}
       </View>
 
+      {schedule?.moved && schedule.departureWas && (
+        <View style={[styles.movedNotice, { backgroundColor: `${theme.tint}14` }]}>
+          <ThemedText type="smallBold" style={{ color: theme.tint }}>
+            {journey.carrier} moved this flight
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            It now departs {schedule.departure} — {schedule.moved} than the {schedule.departureWas}{' '}
+            on your ticket.
+          </ThemedText>
+        </View>
+      )}
+
       <View accessible accessibilityLabel={`${journey.from.code} to ${journey.to.code}`} style={styles.codesRow}>
         <View style={styles.endpoint}>
           <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
@@ -801,6 +856,7 @@ function RouteHero({
             {cityLabel(journey.from)}
           </ThemedText>
           {schedule && <ThemedText style={styles.time}>{schedule.departure}</ThemedText>}
+          {schedule?.departureWas && <MovedFrom clock={schedule.departureWas} />}
         </View>
         <View style={styles.contrail}>
           {/* A blank keeps the line centred on the codes when the lookup
@@ -840,9 +896,26 @@ function RouteHero({
           {schedule && (
             <ThemedText style={styles.time}>{schedule.arrival ?? ' '}</ThemedText>
           )}
+          {schedule?.arrivalWas && <MovedFrom clock={schedule.arrivalWas} />}
         </View>
       </View>
     </View>
+  );
+}
+
+/** What the ticket said before the airline moved the flight. Struck through
+ * and quiet: the new time is the one that matters now, but a traveler who
+ * wrote 11:30 in their calendar needs to see that we know it said 11:30. */
+function MovedFrom({ clock }: { clock: string }) {
+  return (
+    <ThemedText
+      type="small"
+      themeColor="textSecondary"
+      style={styles.timeWas}
+      numberOfLines={1}
+      accessibilityLabel={`Moved from ${clock}`}>
+      {clock}
+    </ThemedText>
   );
 }
 
@@ -1189,6 +1262,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: 600,
     marginTop: Spacing.one,
+  },
+  timeWas: {
+    textDecorationLine: 'line-through',
+  },
+  movedNotice: {
+    gap: Spacing.half,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    marginTop: Spacing.three,
   },
   // Label + line + label total 54pt; the -4 margin centres the plane on the
   // 46pt code line rather than on the whole endpoint column.

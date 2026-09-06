@@ -70,6 +70,7 @@ function mockLeg(flight: string, date: string) {
         },
     scheduledDeparture: `${date}T08:00Z`,
     scheduledArrival: `${date}T10:35Z`,
+    scheduleUpdatedAt: new Date().toISOString(),
     // Travel-day facts, so the live timeline is exercisable offline.
     gate: '24',
     terminal: '2',

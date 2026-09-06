@@ -9,6 +9,7 @@ import { airportZone } from '@/services/airports';
 import { formatDayLabel, formatTime } from '@/services/dates';
 import type { InboundOutlook } from '@/services/inbound';
 import type { JourneyRow } from '@/services/journeys';
+import { shiftLabel, type ScheduleChange } from '@/services/schedule-change';
 import { cityOf } from '@/services/timeline';
 
 export interface PlannedReminder {
@@ -49,7 +50,7 @@ const DAY_MS = 24 * HOUR_MS;
 /** Every scheduled identifier the lifecycle owns. Reconcile only ever cancels
  * within this namespace, so it can never touch OneSignal's remote pushes or
  * anything another module schedules. */
-export const OWNED_ID = /^(trip|claim-week|claim-due|delay|travel-day)-/;
+export const OWNED_ID = /^(trip|claim-week|claim-due|delay|schedule|travel-day)-/;
 
 const flightLabel = (j: ReminderJourney) => j.number || j.carrier;
 
@@ -198,6 +199,24 @@ export function inboundLegLabel(outlook: InboundOutlook): string {
 
 /** The proactive heads-up: the departure board still says on time, but the
  * aircraft flying this leg is late enough that the schedule can't hold. */
+/** The airline moved the flight. Distinct from a delay: a delay is the
+ * schedule slipping on the day, this is the schedule itself being rewritten,
+ * usually far enough ahead that the traveler can still do something about
+ * it — which is exactly why it needs saying out loud. */
+export function scheduleChangeNotification(
+  journey: Journey,
+  change: ScheduleChange,
+  departureClock: string,
+): { id: string; title: string; body: string; url: string } {
+  const label = journey.number || journey.carrier;
+  const moved = shiftLabel(change.departureShiftMinutes);
+  return {
+    id: `schedule-${journey.id}`,
+    url: `/journey/${journey.id}`,
+    title: `${journey.carrier} moved ${label}`,
+    body: `It now departs ${departureClock} — ${moved} than your ticket says. Check anything you booked around it.`,
+  };
+}
 
 export function inboundNotification(
   journey: Journey,

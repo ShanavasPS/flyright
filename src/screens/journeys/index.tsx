@@ -404,21 +404,50 @@ function AddFlightButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** The card's schedule line, with the ticket's clock struck through in place
+ * when the airline has moved the flight. Departure only: two struck clocks on
+ * one list row is unreadable, and the trip screen carries both ends. */
+function ScheduleLine({ row }: { row: JourneyRow }) {
+  const { lead, rest } = scheduleParts(row);
+  const was = row.ticketedDeparture
+    ? formatTime(row.ticketedDeparture, airportZone(row.fromCode))
+    : null;
+  return (
+    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+      {lead}
+      {was && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.movedFrom}>
+          {was}{' '}
+        </ThemedText>
+      )}
+      {rest}
+    </ThemedText>
+  );
+}
+
 /** The codes-and-times detail line, Flighty-style: "HEL 10:15 → LHR 14:20".
  * Journal entries only carry times the user typed: identical noon timestamps
  * are the "no times" placeholder (show distance), identical non-noon ones mean
- * a single entered time — never render a fabricated departure → arrival pair. */
-function scheduleLabel(row: JourneyRow): string {
+ * a single entered time — never render a fabricated departure → arrival pair.
+ *
+ * Split at the departure clock so a moved flight can strike the old one
+ * through in place — "HEL 5:05 PM 6:00 PM" reads as a correction, where the
+ * same two clocks either side of the code read as nonsense. */
+function scheduleParts(row: JourneyRow): { lead: string; rest: string } {
   const { scheduledDeparture: dep, scheduledArrival: arr } = row;
   const km = `${Math.round(row.distanceKm).toLocaleString()} km`;
   // Each clock belongs to the code beside it, so the line reads the way a
   // boarding pass does no matter which zone the phone is in.
+  const depTime = formatTime(dep, airportZone(row.fromCode));
   if (row.source === 'manual' && dep === arr) {
     return dep.endsWith('T12:00:00')
-      ? `${row.fromCode} → ${row.toCode} · ${km}`
-      : `${row.fromCode} ${formatTime(dep, airportZone(row.fromCode))} → ${row.toCode} · ${km}`;
+      ? { lead: '', rest: `${row.fromCode} → ${row.toCode} · ${km}` }
+      : { lead: `${row.fromCode} `, rest: `${depTime} → ${row.toCode} · ${km}` };
   }
-  return `${row.fromCode} ${formatTime(dep, airportZone(row.fromCode))} → ${row.toCode} ${formatTime(arr, airportZone(row.toCode))}`;
+  return {
+    lead: `${row.fromCode} `,
+    rest: `${depTime} → ${row.toCode} ${formatTime(arr, airportZone(row.toCode))}`,
+  };
 }
 
 /** The first non-empty line of a note, for the list row's one-line peek. */
@@ -539,9 +568,7 @@ function JourneyItem({
               numberOfLines={1}>
               {cityOf(row.fromCode)} to {cityOf(row.toCode)}
             </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {scheduleLabel(row)}
-            </ThemedText>
+            <ScheduleLine row={row} />
             {/* The journal peeks through: the note's first line, so the list
                 reads as a diary and not just a timetable. */}
             {row.notes && (
@@ -685,6 +712,9 @@ const styles = StyleSheet.create({
   },
   metaCarrier: {
     flex: 1,
+  },
+  movedFrom: {
+    textDecorationLine: 'line-through',
   },
   route: {
     fontSize: 16,

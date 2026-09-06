@@ -45,6 +45,9 @@ export interface NormalizedFlight {
   to: { code: string | null; country: string | null };
   scheduledDeparture: string | null;
   scheduledArrival: string | null;
+  /** When the provider last revised this record. A schedule that predates
+   * the ticket in hand is older news than the ticket, whatever it says. */
+  scheduleUpdatedAt: string | null;
   gate: string | null;
   terminal: string | null;
   checkInDesk: string | null;
@@ -124,6 +127,7 @@ export function normalizeLeg(
     to: { code: arr.airport?.iata ?? null, country: arr.airport?.countryCode ?? null },
     scheduledDeparture: toIso(dep.scheduledTime?.utc),
     scheduledArrival: toIso(arr.scheduledTime?.utc),
+    scheduleUpdatedAt: toIso(leg.lastUpdatedUtc),
     gate: dep.gate ?? null,
     terminal: dep.terminal ?? null,
     checkInDesk: dep.checkInDesk ?? null,

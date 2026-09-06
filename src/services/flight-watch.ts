@@ -10,6 +10,7 @@ import { inboundNewsworthy, inboundOutlook } from '@/services/inbound';
 import { toDomainJourney } from '@/services/journeys';
 import { maybeNotifyDelay, maybeNotifyInbound } from '@/services/notification-lifecycle';
 import { proLocked } from '@/services/purchases';
+import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
 import { noteFlightFacts, reconcileTravelDay } from '@/services/travel-day-lifecycle';
 
 /**
@@ -79,10 +80,13 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
       // Pre-departure, also resolve the inbound rotation — where the plane
       // is right now often predicts a delay before the airline announces it.
       const upcoming = Date.parse(row.scheduledDeparture) > now.getTime();
-      const status = await lookupFlight(row.number, row.scheduledDeparture.slice(0, 10), {
+      const status = await lookupFlight(row.number, lookupDayFor(row), {
         inbound: upcoming && inboundUnlocked,
       });
       await noteFlightFacts(row.id, status);
+      // The airline may have moved the flight since the ticket was read. This
+      // costs no extra call — the answer is already in hand.
+      await applyScheduleChange(row, status, now);
       const outlook = upcoming ? inboundOutlook(status) : null;
       if (outlook && inboundNewsworthy(outlook)) {
         await maybeNotifyInbound(toDomainJourney(row), outlook);
