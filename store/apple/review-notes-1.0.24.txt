@@ -1,0 +1,25 @@
+FlyRight 1.0.24 — a feature release on top of 1.0.21, the last build reviewed. It carries the work from 1.0.22 and 1.0.23, which were built but never submitted.
+
+NEW SINCE 1.0.21:
+
+1) People — a followed traveller now has a page of their own. Tapping someone in the People tab opens their trips: each shared trip has its own live travel-day screen with the route drawn on a map, and a map of their world shows everywhere they are flying next. Nothing here is new data — it is the trip state the traveller was already sharing, shown the way the traveller sees their own. Following is still by invitation only, and either side can remove the other at any time (long-press a row).
+
+2) The circle also hears when a trip is booked, not only on travel day: adding a flight tells the people following you that a trip exists, so the day-before heads-up is no longer the first they know of it.
+
+3) Times read in the clock the airport keeps. A departure shows in the origin's local time and an arrival in the destination's, each labelled, rather than everything in the phone's timezone.
+
+4) When an airline moves a flight away from what the ticket said, the trip says so — the new time next to the ticketed one — instead of quietly changing underneath the traveller.
+
+5) Fixed: an update about a flight that has already landed no longer reaches the people following you. A device could re-upload the timeline of a past trip (after a reinstall, or when a status refresh filled in its actual departure and arrival), and that arrived at followers as fresh news about a flight from days earlier.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- A followed person's page: signed in as the demo account, open the People tab and tap a person you follow. Their shared trips are listed; tapping one opens that trip's travel day and map, and the map button on the person shows their upcoming routes. With nobody followed yet, "Invite someone" -> type App -> Invite sends an invitation to the second test account, reviewer+clerk_test@getflyright.com, which signs in with the email-code flow (a test address: no mail is sent and the code is always 424242) and shows it under "Invitations" with Follow and Ignore.
+- Airport-local times and schedule changes: My travels -> any flight. Departure and arrival each carry their airport's own time; a flight the airline has moved shows the new time against the ticketed one.
+- Ticket import: My travels -> + -> "Upload a ticket PDF or screenshot", or share an airline PDF into FlyRight from Files or Mail. Any e-ticket or boarding pass carrying a barcode imports; a document without one is declined by design.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.21: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos, and push for flight status, claim deadlines and the trip updates above. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
