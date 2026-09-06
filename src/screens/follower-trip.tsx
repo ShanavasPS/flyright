@@ -15,7 +15,7 @@ import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { airportZone, getAirport } from '@/services/airports';
-import { formatTime, travelDayTitle } from '@/services/dates';
+import { formatTime, tripDateTitle } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
 import { adaptPublicSession } from '@/services/public-session';
 
@@ -45,7 +45,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
   // does — the route is in big type right below it either way.
   const shown = result && !('gone' in result) ? result.trip : null;
   const title = shown
-    ? travelDayTitle(shown.scheduledDeparture, now, airportZone(shown.fromCode))
+    ? tripDateTitle(shown.scheduledDeparture, now, airportZone(shown.fromCode))
     : 'Trip';
 
   let body: React.ReactNode;

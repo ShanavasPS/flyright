@@ -5,7 +5,7 @@ import {
   formatDayLabelWithYear,
   formatTime,
   localDateString,
-  travelDayTitle,
+  tripDateTitle,
   zonedTimestamp,
 } from './dates';
 
@@ -38,32 +38,28 @@ describe('localDateString', () => {
   });
 });
 
-describe('travelDayTitle', () => {
+describe('tripDateTitle', () => {
   // Local noon so calendar-day math is zone-independent in the assertions.
   const now = new Date(2026, 7, 4, 12, 0, 0);
   const at = (y: number, m: number, d: number, h = 9) => new Date(y, m, d, h).toISOString();
 
-  it('names the nearest days', () => {
-    expect(travelDayTitle(at(2026, 7, 4, 23), now)).toBe('Today');
-    expect(travelDayTitle(at(2026, 7, 5, 1), now)).toBe('Tomorrow');
-    expect(travelDayTitle(at(2026, 7, 3), now)).toBe('Yesterday');
+  it('names the day, however near it is', () => {
+    // Never "Today" or "In 2 days": the hero's chip a line below says that,
+    // and the pair used to agree word for word all week.
+    expect(tripDateTitle(at(2026, 7, 4, 23), now)).toBe(formatDay(at(2026, 7, 4, 23)));
+    expect(tripDateTitle(at(2026, 7, 5, 1), now)).toBe(formatDay(at(2026, 7, 5, 1)));
+    expect(tripDateTitle(at(2026, 7, 6), now)).toBe(formatDay(at(2026, 7, 6)));
+    expect(tripDateTitle(at(2026, 7, 2), now)).toBe(formatDay(at(2026, 7, 2)));
   });
 
-  it('counts days within a week either way', () => {
-    expect(travelDayTitle(at(2026, 7, 6), now)).toBe('In 2 days');
-    expect(travelDayTitle(at(2026, 7, 11), now)).toBe('In 7 days');
-    expect(travelDayTitle(at(2026, 7, 2), now)).toBe('2 days ago');
-    expect(travelDayTitle(at(2026, 6, 28), now)).toBe('7 days ago');
-  });
-
-  it('falls back to the date beyond a week, with the year when it differs', () => {
-    expect(travelDayTitle(at(2026, 7, 12), now)).toBe(formatDay(at(2026, 7, 12)));
-    expect(travelDayTitle(at(2027, 0, 3), now)).toMatch(/2027/);
-    expect(travelDayTitle(at(2025, 7, 4), now)).toMatch(/2025/);
+  it('carries the year only when it differs from this one', () => {
+    expect(tripDateTitle(at(2026, 7, 12), now)).toBe(formatDay(at(2026, 7, 12)));
+    expect(tripDateTitle(at(2027, 0, 3), now)).toMatch(/2027/);
+    expect(tripDateTitle(at(2025, 7, 4), now)).toMatch(/2025/);
   });
 
   it('is empty for unparsable input', () => {
-    expect(travelDayTitle('not-a-date', now)).toBe('');
+    expect(tripDateTitle('not-a-date', now)).toBe('');
   });
 });
 
@@ -137,15 +133,13 @@ describe('formatDayLabel — the day belongs to the airport too', () => {
   });
 });
 
-describe('travelDayTitle — "Today" means the day it is where the flight leaves', () => {
-  it('counts the calendar days at the departure airport', () => {
-    // 21:00 on 4 August in Auckland, while UTC is still on the 4th at 09:00:
-    // both agree it is the flight's day, and so must the title.
-    const now = new Date('2026-08-04T09:00:00Z');
-    expect(travelDayTitle('2026-08-04T09:00:00Z', now, 'Pacific/Auckland')).toBe('Today');
+describe('tripDateTitle — the day it is where the flight leaves', () => {
+  it('dates the trip by the calendar at the airport it leaves from', () => {
     // 23:00 on the 4th in Auckland is 11:00 on the 4th UTC — but a departure
-    // at 12:00 UTC is already the 5th there, and reads as tomorrow's flight.
-    expect(travelDayTitle('2026-08-04T12:00:00Z', now, 'Pacific/Auckland')).toBe('Tomorrow');
+    // at 12:00 UTC is already the 5th there, and must be titled the 5th.
+    const now = new Date('2026-08-04T09:00:00Z');
+    expect(tripDateTitle('2026-08-04T09:00:00Z', now, 'Pacific/Auckland')).toMatch(/\b4\b/);
+    expect(tripDateTitle('2026-08-04T12:00:00Z', now, 'Pacific/Auckland')).toMatch(/\b5\b/);
   });
 });
 

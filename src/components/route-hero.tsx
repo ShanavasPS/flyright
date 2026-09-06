@@ -100,8 +100,9 @@ export function RouteHero({
   const flown = Date.parse(journey.scheduledDeparture) <= now;
   const chip = dateChipLabel(journey.scheduledDeparture, new Date(now));
   const duration = durationLabel(journey.scheduledDeparture, journey.scheduledArrival);
-  // The date lives in the screen header (travelDayTitle); the contrail
-  // column carries only what belongs to the segment itself.
+  // The date lives in the screen header (tripDateTitle) and how far off it
+  // is in the chip above; the contrail column carries only what belongs to
+  // the segment itself.
   const distance = journey.distanceKm
     ? `${Math.round(journey.distanceKm).toLocaleString()} km`
     : ' ';

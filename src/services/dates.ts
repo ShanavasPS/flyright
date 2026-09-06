@@ -218,24 +218,21 @@ function calendarDayDiff(iso: string, now: Date, zone?: string | null): number {
   return Math.round((startOf(target) - startOf(now)) / 86_400_000);
 }
 
-/** The journey screen's title: how far off the trip is while that's the
- * more useful reading (a week either way), the date itself beyond that —
- * with the year once the trip isn't in this one. `zone` is the departure
- * airport's: "Today" should mean the day the flight leaves, where it leaves
- * from, not wherever the phone last synced its clock. */
-export function travelDayTitle(departureIso: string, now: Date, zone?: string | null): string {
+/** The trip screen's title: the day the flight leaves, in the departure
+ * airport's own calendar — "Today" should mean the day it is where the
+ * flight leaves from, not wherever the phone last synced its clock — with
+ * the year once the trip isn't in this one.
+ *
+ * The date and nothing else. How far off the trip is — "In 3 days",
+ * "Boarding soon", "Flown" — belongs to the route hero's chip a line below,
+ * and while the title said it too the pair agreed word for word for the
+ * whole week around a departure: "In 3 days" under "In 3 days". */
+export function tripDateTitle(departureIso: string, now: Date, zone?: string | null): string {
   if (Number.isNaN(Date.parse(departureIso))) return '';
-  const diff = calendarDayDiff(departureIso, now, zone);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  if (diff === -1) return 'Yesterday';
-  if (diff > 1 && diff <= 7) return `In ${diff} days`;
-  if (diff < -1 && diff >= -7) return `${-diff} days ago`;
   const departureYear = ZONED.test(departureIso) && zone
     ? +zonedDay(new Date(departureIso), zone).slice(0, 4)
     : new Date(departureIso).getFullYear();
-  const sameYear = departureYear === now.getFullYear();
-  return sameYear
+  return departureYear === now.getFullYear()
     ? formatDayLabel(departureIso, zone)
     : formatDayLabelWithYear(departureIso, zone);
 }

@@ -43,7 +43,7 @@ import {
   editedLabel,
   formatDayLabelWithYear,
   formatTime,
-  travelDayTitle,
+  tripDateTitle,
 } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
@@ -187,7 +187,7 @@ export function JourneyDetail({
   // below it. Until the row loads, the route hint keeps the title from
   // popping in mid-transition.
   const routeTitle = journey
-    ? travelDayTitle(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code))
+    ? tripDateTitle(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code))
     : routeHint
       ? `${routeHint.from} → ${routeHint.to}`
       : '';
