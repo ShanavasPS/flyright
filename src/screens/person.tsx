@@ -5,23 +5,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
 
-import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
 import { RouteAtlas } from '@/components/route-atlas';
 import { mapColors } from '@/components/world-map';
 import { SheenCard } from '@/components/sheen-card';
+import { TripRow } from '@/components/trip-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { airportZone } from '@/services/airports';
 import type { RouteSource } from '@/services/geo';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
 import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
-import { relativeWhen } from '@/services/trip-when';
 
 /** Tall enough to read a long-haul arc, short enough that the trips below
  * still start on the first screen. */
@@ -71,6 +69,9 @@ export function Person({ userId }: { userId: string }) {
   const remove = useMutation(api.circle.remove);
 
   const { sea } = mapColors(useColorScheme() === 'dark');
+  // Read once per render, like the journal's own list: the countdowns on a
+  // profile don't need to tick while it's open.
+  const now = new Date();
   const openWorld = () =>
     router.push({ pathname: '/person/[id]/world', params: { id: userId } });
   const openTrip = (journeyId: string) =>
@@ -190,7 +191,12 @@ export function Person({ userId }: { userId: string }) {
             <Section label="Upcoming" />
             {p.upcoming.length ? (
               p.upcoming.map((t) => (
-                <TripRow key={t.journeyId} trip={t} onPress={() => openTrip(t.journeyId)} />
+                <TripCard
+                  key={t.journeyId}
+                  trip={t}
+                  now={now}
+                  onPress={() => openTrip(t.journeyId)}
+                />
               ))
             ) : (
               <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
@@ -202,7 +208,12 @@ export function Person({ userId }: { userId: string }) {
               <>
                 <Section label="Flown" />
                 {p.past.map((t) => (
-                  <TripRow key={t.journeyId} trip={t} onPress={() => openTrip(t.journeyId)} past />
+                  <TripCard
+                    key={t.journeyId}
+                    trip={t}
+                    now={now}
+                    onPress={() => openTrip(t.journeyId)}
+                  />
                 ))}
                 {p.flown > p.past.length && (
                   <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
@@ -287,33 +298,17 @@ function Section({ label }: { label: string }) {
   );
 }
 
-/** One trip, the same row shape in both directions of time — a flown trip is
- * the same fact as a booked one, just behind you. */
-function TripRow({ trip, onPress, past }: { trip: Trip; onPress: () => void; past?: boolean }) {
-  const when = relativeWhen(trip.scheduledDeparture);
+/** One of their trips, in the row the journal draws your own with — a flown
+ * trip is the same fact as a booked one, just behind you, and somebody
+ * else's is the same fact as yours. */
+function TripCard({ trip, onPress, now }: { trip: Trip; onPress: () => void; now: Date }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${trip.number || trip.carrier}, ${trip.fromCode} to ${trip.toCode}`}
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}>
-      <SheenCard style={[styles.rowCard, past && styles.pastRow]}>
-        <AirlineLogo number={trip.number} carrier={trip.carrier} size={40} />
-        <View style={styles.rowBody}>
-          <ThemedText themeColor="heading" numberOfLines={1}>
-            {trip.fromCode} → {trip.toCode}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {trip.number || trip.carrier} ·{' '}
-            {formatDayLabel(trip.scheduledDeparture, airportZone(trip.fromCode))}
-          </ThemedText>
-        </View>
-        {when && (
-          <ThemedText type="small" themeColor="textSecondary">
-            {when}
-          </ThemedText>
-        )}
-      </SheenCard>
+      <TripRow trip={trip} now={now} />
     </Pressable>
   );
 }
@@ -361,6 +356,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   spinner: { marginTop: Spacing.six },
+  rowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+  },
+  rowBody: { flex: 1, gap: Spacing.half },
   hero: {
     alignItems: 'center',
     gap: Spacing.two,
@@ -385,13 +387,5 @@ const styles = StyleSheet.create({
   liveCard: { gap: Spacing.half, padding: Spacing.three },
   liveHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  rowCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  rowBody: { flex: 1, gap: Spacing.half },
-  pastRow: { opacity: 0.75 },
   pressed: { opacity: 0.6 },
 });

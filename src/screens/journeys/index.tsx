@@ -15,9 +15,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AirlineLogo } from '@/components/airline-logo';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
-import { SheenCard } from '@/components/sheen-card';
+import { TripRow, timerLabel } from '@/components/trip-row';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -36,10 +35,9 @@ import { JourneyDetail } from '@/screens/journey-detail';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
-import { airportZone } from '@/services/airports';
 import { requestTrackingConsent } from '@/services/analytics';
 import { useClaims, type ClaimRow } from '@/services/claims';
-import { countdown, formatDayLabel, formatTime } from '@/services/dates';
+import { countdown } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
 import { canPromptForPush } from '@/services/notifications';
@@ -49,11 +47,9 @@ import {
   onboardingSeen,
   pushRemindDue,
 } from '@/services/onboarding';
-import { cityOf, groupJourneys, travelStats } from '@/services/timeline';
+import { groupJourneys, travelStats } from '@/services/timeline';
 
 import { useFoldState } from '../../../modules/flyright-fold';
-
-const YEAR_MS = 365 * 86_400_000;
 
 /** Ghost trip card in the empty hero: the real row's height (40pt logo +
  * card padding) and how far each card behind it peeks out. */
@@ -404,57 +400,6 @@ function AddFlightButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** The card's schedule line, with the ticket's clock struck through in place
- * when the airline has moved the flight. Departure only: two struck clocks on
- * one list row is unreadable, and the trip screen carries both ends. */
-function ScheduleLine({ row }: { row: JourneyRow }) {
-  const { lead, rest } = scheduleParts(row);
-  const was = row.ticketedDeparture
-    ? formatTime(row.ticketedDeparture, airportZone(row.fromCode))
-    : null;
-  return (
-    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-      {lead}
-      {was && (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.movedFrom}>
-          {was}{' '}
-        </ThemedText>
-      )}
-      {rest}
-    </ThemedText>
-  );
-}
-
-/** The codes-and-times detail line, Flighty-style: "HEL 10:15 → LHR 14:20".
- * Journal entries only carry times the user typed: identical noon timestamps
- * are the "no times" placeholder (show distance), identical non-noon ones mean
- * a single entered time — never render a fabricated departure → arrival pair.
- *
- * Split at the departure clock so a moved flight can strike the old one
- * through in place — "HEL 5:05 PM 6:00 PM" reads as a correction, where the
- * same two clocks either side of the code read as nonsense. */
-function scheduleParts(row: JourneyRow): { lead: string; rest: string } {
-  const { scheduledDeparture: dep, scheduledArrival: arr } = row;
-  const km = `${Math.round(row.distanceKm).toLocaleString()} km`;
-  // Each clock belongs to the code beside it, so the line reads the way a
-  // boarding pass does no matter which zone the phone is in.
-  const depTime = formatTime(dep, airportZone(row.fromCode));
-  if (row.source === 'manual' && dep === arr) {
-    return dep.endsWith('T12:00:00')
-      ? { lead: '', rest: `${row.fromCode} → ${row.toCode} · ${km}` }
-      : { lead: `${row.fromCode} `, rest: `${depTime} → ${row.toCode} · ${km}` };
-  }
-  return {
-    lead: `${row.fromCode} `,
-    rest: `${depTime} → ${row.toCode} ${formatTime(arr, airportZone(row.toCode))}`,
-  };
-}
-
-/** The first non-empty line of a note, for the list row's one-line peek. */
-function firstLine(notes: string): string {
-  return notes.split('\n').find((line) => line.trim())?.trim() ?? '';
-}
-
 /** Money-moment marker on a journey row: a compact pill in the meta line's
  * right slot — amount in payout green on the page background, so it pops off
  * the card surface in both light (porcelain on white) and dark (deep navy on
@@ -491,14 +436,6 @@ function MoneyBadge({ claim, owed, now }: { claim?: ClaimRow; owed?: Money; now:
   );
 }
 
-/** "in 3h" / "26h ago" / "in 5d" / "now" — compact enough to live on the
- * row's right edge without squeezing the flight details. */
-function timerLabel(timer: { value: number; unit: string }): string {
-  if (timer.unit === 'now') return 'now';
-  const short = timer.unit.startsWith('hours') ? 'h' : 'd';
-  return timer.unit.endsWith('ago') ? `${timer.value}${short} ago` : `in ${timer.value}${short}`;
-}
-
 function JourneyItem({
   row,
   now,
@@ -515,74 +452,17 @@ function JourneyItem({
   onSelect?: () => void;
   selected?: boolean;
 }) {
-  const theme = useTheme();
-  // Recent and upcoming trips get the live countdown; older ones read like a
-  // journal entry — the calendar rail plus the year section header say enough.
-  const isOld = now.getTime() - Date.parse(row.scheduledDeparture) > YEAR_MS;
-  const timer = countdown(row.scheduledDeparture, now);
-  const upcoming = Date.parse(row.scheduledDeparture) >= now.getTime();
   const card = (
-      <Pressable
-        onPress={onSelect}
-        style={({ pressed }) => pressed && styles.rowPressed}>
-        <SheenCard
-          style={[
-            styles.rowCard,
-            selected && { borderWidth: 1, borderColor: theme.tint },
-          ]}>
-          <AirlineLogo number={row.number} carrier={row.carrier} />
-          <View style={styles.rowBody}>
-            {/* Countdown sits on the meta line's right (Flighty's date slot) so
-                the title and schedule lines get the full card width below.
-                Date leads so a long carrier name truncates, never the date;
-                the year lives in the section headers. */}
-            <View style={styles.metaRow}>
-              <ThemedText
-                type="small"
-                themeColor="textSecondary"
-                numberOfLines={1}
-                style={styles.metaCarrier}>
-                {/* The logo already names the airline, so the flight number
-                    alone follows the date (Flighty's pattern); carrier is the
-                    fallback for number-less journal entries. */}
-                {formatDayLabel(row.scheduledDeparture, airportZone(row.fromCode))} ·{' '}
-                {row.number || row.carrier}
-              </ThemedText>
-              {/* One right slot: the money moment outranks the countdown. */}
-              {claim || owed ? (
-                <MoneyBadge claim={claim} owed={owed} now={now} />
-              ) : (
-                !isOld && (
-                  <ThemedText
-                    type={upcoming ? 'smallBold' : 'small'}
-                    themeColor={upcoming ? 'heading' : 'textSecondary'}>
-                    {timerLabel(timer)}
-                  </ThemedText>
-                )
-              )}
-            </View>
-            <ThemedText
-              type="smallBold"
-              themeColor="heading"
-              style={styles.route}
-              numberOfLines={1}>
-              {cityOf(row.fromCode)} to {cityOf(row.toCode)}
-            </ThemedText>
-            <ScheduleLine row={row} />
-            {/* The journal peeks through: the note's first line, so the list
-                reads as a diary and not just a timetable. */}
-            {row.notes && (
-              <ThemedText
-                type="small"
-                themeColor="textSecondary"
-                numberOfLines={1}
-                style={styles.noteLine}>
-                “{firstLine(row.notes)}”
-              </ThemedText>
-            )}
-          </View>
-        </SheenCard>
-      </Pressable>
+    <Pressable onPress={onSelect} style={({ pressed }) => pressed && styles.rowPressed}>
+      <TripRow
+        trip={row}
+        now={now}
+        selected={selected}
+        // One right slot on the meta line: the money moment outranks the
+        // countdown the row would otherwise put there.
+        badge={claim || owed ? <MoneyBadge claim={claim} owed={owed} now={now} /> : undefined}
+      />
+    </Pressable>
   );
   if (onSelect) return card;
   return (
@@ -694,34 +574,6 @@ const styles = StyleSheet.create({
   },
   rowPressed: {
     opacity: 0.9,
-  },
-  rowCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  rowBody: {
-    flex: 1,
-    gap: Spacing.half,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  metaCarrier: {
-    flex: 1,
-  },
-  movedFrom: {
-    textDecorationLine: 'line-through',
-  },
-  route: {
-    fontSize: 16,
-  },
-  noteLine: {
-    fontStyle: 'italic',
-    marginTop: Spacing.half,
   },
   claimBadge: {
     flexDirection: 'row',
