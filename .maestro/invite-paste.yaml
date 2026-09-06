@@ -1,0 +1,43 @@
+# The invite link the app never received. An iOS install matched by
+# fingerprint misses often enough that the invitee lands on an empty journal
+# with no trace of who invited them (it missed in production on 2026-09-06),
+# so the People tab asks for the link they still have in their messages.
+#
+# Prereqs: a redeemable invite whose owner is somebody else, and the link on
+# the clipboard —
+#   npx convex run circle:createInvite '{}' --identity '{"subject":"user_dev_sam"}'
+#   xcrun simctl pbcopy <udid> <<< "https://getflyright.com/i/<token>"
+# Run: maestro --device <udid> test .maestro/invite-paste.yaml -e OWNER=Sam
+# Single-use like invite-follow: redeeming spends one of the invite's ten.
+appId: com.shanavasshaji.flyright
+tags:
+  - people
+---
+- launchApp
+- openLink: flyright://people
+- extendedWaitUntil:
+    visible: ".*invite link.*"
+    timeout: 30000
+- tapOn:
+    id: "redeem-invite-link"
+# iOS 16+ confirms every programmatic clipboard read. Anchored: "Don't
+# Allow Paste" contains the other button's whole label, and an unanchored
+# regex picks it — which reads as the paste silently doing nothing.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "^Allow Paste$"
+          timeout: 20000
+      - tapOn:
+          text: "^Allow Paste$"
+- extendedWaitUntil:
+    visible: "${OWNER} invited you to follow their trips"
+    timeout: 30000
+# And the invitation redeems from here like any other: already signed in, so
+# it is one tap rather than the sign-in detour invite-follow.yaml covers.
+- tapOn: "Follow ${OWNER}'s trips"
+- extendedWaitUntil:
+    visible: ".*You're following ${OWNER}.*"
+    timeout: 30000

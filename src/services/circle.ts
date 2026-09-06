@@ -3,6 +3,15 @@
 
 export const INVITE_URL = (token: string) => `https://getflyright.com/i/${token}`;
 
+/** The invite token inside whatever the traveller pasted: the shared
+ * https://getflyright.com/i/<token>, the app's own flyright://i/<token>, or
+ * the Detour redirect that carries the same path one segment further in.
+ * Strict on purpose — a looser match would send someone to a dead invite
+ * page on the strength of an unrelated clipboard. */
+export function inviteTokenFrom(text: string): string | null {
+  return /\/i\/([A-Za-z0-9_-]{8,64})(?:[?#\s]|$)/.exec((text ?? '').trim())?.[1] ?? null;
+}
+
 /** "Anna, Sam & 2 more" — who follows a trip, first names only, for the
  * journey detail's watchers card. Profiles without a name read as "Someone". */
 export function watcherNames(watchers: { name: string | null }[]): string {

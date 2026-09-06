@@ -9,16 +9,15 @@ import { api } from '../../convex/_generated/api';
 import type { PublicSession } from '../../convex/liveShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
+import { AppHandoff } from '@/components/app-handoff';
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { DETOUR_LINK_BASE } from '@/constants/config';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabelWithYear } from '@/services/dates';
-import { appLink, storeLink } from '@/services/deferred-links';
 import {
   EMPTY_FACTS,
   type FlightFacts,
@@ -109,9 +108,6 @@ export function FollowTrip({ token }: { token: string }) {
     const session = result;
     const { journey, state, facts } = adapt(session);
     const who = session.travelerName ?? 'Your traveler';
-    // Through Detour on a phone, so the install lands back on this trip.
-    const store = (platform: 'ios' | 'android') =>
-      storeLink(platform, `/t/${token}`, { base: DETOUR_LINK_BASE, userAgent: navigator.userAgent });
     body = (
       <>
         <View style={styles.titleRow}>
@@ -170,25 +166,12 @@ export function FollowTrip({ token }: { token: string }) {
             <PrimaryButton label="Follow this trip" disabled={busy} onPress={onFollow} />
           )
         ) : Platform.OS === 'web' ? (
-          <Card>
-            <ThemedText type="subtitle">Follow along in FlyRight</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Get a push the moment {who} is through security, on board, and landed.
-            </ThemedText>
-            <View style={styles.storeRow}>
-              <Pressable onPress={() => window.open(store('ios'), '_blank')}>
-                <ThemedText type="linkPrimary">App Store</ThemedText>
-              </Pressable>
-              <Pressable onPress={() => window.open(store('android'), '_blank')}>
-                <ThemedText type="linkPrimary">Google Play</ThemedText>
-              </Pressable>
-            </View>
-            {/* Already installed: hand the trip to the app rather than
-                offering the stores again (see join-circle). */}
-            <Pressable onPress={() => window.location.assign(appLink(`/t/${token}`) ?? '')}>
-              <ThemedText type="link">Already have FlyRight? Open this trip</ThemedText>
-            </Pressable>
-          </Card>
+          <AppHandoff
+            path={`/t/${token}`}
+            title="Follow along in FlyRight"
+            blurb={`Get a push the moment ${who} is through security, on board, and landed.`}
+            openLabel="Open this trip"
+          />
         ) : (
           <PrimaryButton
             label="Sign in to follow"
@@ -252,9 +235,5 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-  },
-  storeRow: {
-    flexDirection: 'row',
-    gap: Spacing.four,
   },
 });

@@ -1,6 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
 import { ConvexError } from 'convex/values';
+import * as Clipboard from 'expo-clipboard';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -36,6 +37,7 @@ import {
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
+import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
 import { useProLocked } from '@/services/purchases';
 import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
@@ -105,6 +107,7 @@ export function People() {
           action="Sign in to invite"
           onAction={invite}
         />
+        <RedeemInviteLink />
       </>
     );
   } else if (data == null) {
@@ -124,6 +127,7 @@ export function People() {
           action="Invite someone"
           onAction={invite}
         />
+        <RedeemInviteLink />
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           Invite links expire after 7 days. Anyone you invite can share their trips back.
         </ThemedText>
@@ -157,6 +161,9 @@ export function People() {
           <PendingRow key={r.id} request={r} />
         ))}
         <InviteRow locked={data.full && proLocked} onInvite={invite} />
+        {/* Reachable from a full circle too: the next invitation can come
+            from someone else entirely. */}
+        <RedeemInviteLink />
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           People you share with see your upcoming flights and get updates on travel day. Remove
           anyone at any time.
@@ -191,6 +198,42 @@ export function People() {
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+/** The other end of an invite link, for the traveller the link never reached.
+ *
+ * An invitee who installs from a share link is supposed to land on the
+ * invitation: on Android the Play install referrer carries the click id, so
+ * that is exact, but on iOS it rests on Detour matching a fingerprint inside
+ * fifteen minutes, and when that misses the app opens on an empty journal
+ * with no trace of who invited them. It missed on 2026-09-06, and the
+ * telemetry shows what that costs: a first launch that went through
+ * onboarding and then walked the People tab looking for the invitation,
+ * which was never going to be there.
+ *
+ * The link itself is still in their messages, so this asks for it. One tap,
+ * the clipboard, and the same invite page every other door opens on. */
+function RedeemInviteLink() {
+  const router = useRouter();
+
+  const onPress = async () => {
+    const token = inviteTokenFrom(await Clipboard.getStringAsync().catch(() => ''));
+    trackEvent('invite_link_pasted', { found: !!token });
+    if (!token) {
+      Alert.alert(
+        'Copy the invite link first',
+        'Open the message it arrived in, copy the getflyright.com link, then tap this again.',
+      );
+      return;
+    }
+    router.push(`/i/${token}`);
+  };
+
+  return (
+    <Pressable onPress={() => void onPress()} style={styles.redeemRow} testID="redeem-invite-link">
+      <ThemedText type="link">Someone sent you an invite link? Paste it</ThemedText>
+    </Pressable>
   );
 }
 
@@ -816,6 +859,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: Spacing.two,
     marginTop: Spacing.one,
+  },
+  redeemRow: {
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
   },
   answerRow: {
     alignItems: 'center',

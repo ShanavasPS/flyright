@@ -10,22 +10,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../convex/_generated/api';
 import { CIRCLE_FULL } from '../../convex/circleShared';
 
+import { AppHandoff } from '@/components/app-handoff';
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { DETOUR_LINK_BASE } from '@/constants/config';
-import { STORE_URLS } from '@/constants/store-links';
 import { trackEvent } from '@/services/analytics';
-import { INVITE_URL } from '@/services/circle';
-import { appLink, storeLink } from '@/services/deferred-links';
 import { requestPushPermission } from '@/services/notifications';
 import { clearPendingFollow, markPendingFollow, pendingFollowFor } from '@/services/pending-follow';
 import { useProLocked } from '@/services/purchases';
-
-const APP_STORE_ID = STORE_URLS.ios.match(/id(\d+)/)?.[1] ?? '';
 
 /** The invite page behind getflyright.com/i/<token>: "Sam invited you to
  * follow their trips". Accepting joins Sam's circle; the follow-up offers to
@@ -133,17 +128,6 @@ export function JoinCircle({ token }: { token: string }) {
     }
   };
 
-  // iOS Smart App Banner: Safari shows a native "GET"/"OPEN" bar with the
-  // App Store id; the argument brings the invite along when the app opens.
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-    const meta = document.createElement('meta');
-    meta.name = 'apple-itunes-app';
-    meta.content = `app-id=${APP_STORE_ID}, app-argument=${INVITE_URL(token)}`;
-    document.head.appendChild(meta);
-    return () => meta.remove();
-  }, [token]);
-
   let body: React.ReactNode;
   if (invite === undefined) {
     body = <ActivityIndicator style={styles.spinner} />;
@@ -160,31 +144,13 @@ export function JoinCircle({ token }: { token: string }) {
     const name = invite.ownerName;
     let action: React.ReactNode;
     if (Platform.OS === 'web') {
-      // Through Detour on a phone, so the install lands back on this invite.
-      const store = (platform: 'ios' | 'android') =>
-        storeLink(platform, `/i/${token}`, { base: DETOUR_LINK_BASE, userAgent: navigator.userAgent });
       action = (
-        <Card>
-          <ThemedText type="subtitle">Follow along in FlyRight</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Get the app and it opens on this invite. Free on both stores; the invite stays
-            valid for 7 days.
-          </ThemedText>
-          <View style={styles.storeRow}>
-            <Pressable onPress={() => window.open(store('ios'), '_blank')}>
-              <ThemedText type="linkPrimary">App Store</ThemedText>
-            </Pressable>
-            <Pressable onPress={() => window.open(store('android'), '_blank')}>
-              <ThemedText type="linkPrimary">Google Play</ThemedText>
-            </Pressable>
-          </View>
-          {/* Tapping the link again after installing used to land right back
-              here, on two store buttons — the app is on the phone, so offer
-              it. Its own scheme, because the https link is this page. */}
-          <Pressable onPress={() => window.location.assign(appLink(`/i/${token}`) ?? '')}>
-            <ThemedText type="link">Already have FlyRight? Open the invite</ThemedText>
-          </Pressable>
-        </Card>
+        <AppHandoff
+          path={`/i/${token}`}
+          title="Follow along in FlyRight"
+          blurb={`Get the app and it opens on this invitation. Free on both stores; ${name}'s invite stays valid for 7 days.`}
+          openLabel="Open the invitation"
+        />
       );
     } else if (!isSignedIn) {
       action = (
@@ -342,10 +308,6 @@ const styles = StyleSheet.create({
   },
   bulletText: {
     flex: 1,
-  },
-  storeRow: {
-    flexDirection: 'row',
-    gap: Spacing.four,
   },
   following: {
     alignItems: 'center',
