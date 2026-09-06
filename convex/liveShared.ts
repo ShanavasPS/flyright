@@ -37,6 +37,55 @@ export const STAGE_PUSH_COPY: Record<string, (name: string, to: string) => strin
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 
+/** A session lives until 48 h past scheduled arrival; after that the trip is
+ * history rather than a travel day. Both the expiry stamp and the "is this
+ * still worth a session" check read this, so they can't drift apart. */
+export const SESSION_TTL_MS = 48 * HOUR_MS;
+
+export function sessionExpiryFor(scheduledArrival: string, now: number): number {
+  const arrival = Date.parse(scheduledArrival);
+  return (Number.isNaN(arrival) ? now : arrival) + SESSION_TTL_MS;
+}
+
+/** True once a trip is far enough past to be history — nothing left to open a
+ * live session for, and nothing a circle wants pushed about it. */
+export const tripIsOver = (scheduledArrival: string, now: number): boolean =>
+  sessionExpiryFor(scheduledArrival, now) <= now;
+
+/** How long after a stage was stamped a push about it is still news. */
+export const STAGE_PUSH_FRESH_MS = 60 * MINUTE_MS;
+
+/** Last gate before a follower push goes out. Two things get stopped here:
+ *
+ *  - an expired session — a trip that flew days ago can still reach the
+ *    server (a device uploads its stage state after a reinstall, or a status
+ *    refresh folds actual departure/arrival into an old trip's timeline);
+ *  - a stage stamped long ago, which is timeline backfill, not an event.
+ *
+ * A removed trip is exempt: followers should always learn the trip is gone. */
+export function shouldNotifyFollowers(
+  args: {
+    kind: string;
+    currentStage: string | null;
+    stageTimes: Record<string, string>;
+    expiresAt: string;
+  },
+  now: number,
+): boolean {
+  if (args.kind === 'removed') return true;
+
+  const expires = Date.parse(args.expiresAt);
+  if (!Number.isNaN(expires) && expires <= now) return false;
+
+  if (args.kind === 'stage') {
+    const stamp = args.currentStage ? args.stageTimes[args.currentStage] : null;
+    const at = stamp ? Date.parse(stamp) : NaN;
+    // No usable stamp: the stage was reached now by definition — let it through.
+    if (!Number.isNaN(at) && now - at > STAGE_PUSH_FRESH_MS) return false;
+  }
+  return true;
+}
+
 /** 22-char base62 token — the only public handle for a session. */
 export function makeToken(): string {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

@@ -3,7 +3,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import { FREE_CIRCLE_SIZE } from './circleShared';
 import { isPro } from './entitlements';
-import { makeToken, nextPollDelayMs } from './liveShared';
+import { makeToken, nextPollDelayMs, sessionExpiryFor } from './liveShared';
 import { poolStretchFactor } from './provider';
 
 /** ctx-bound helpers shared by the public live API, the circle API and the
@@ -92,17 +92,19 @@ export async function materializeCircleFollows(ctx: MutationCtx, session: Doc<'l
 
 /** Create the live session for a journey: flight snapshot from the mirror,
  * a fresh share token, the circle folded in as followers, and the poll chain
- * armed for tracked flights. Callers check there is no active session first. */
+ * armed for tracked flights. Callers check there is no active session first.
+ *
+ * Stamps handed in at creation are backfill, not news: the device may be
+ * uploading a trip that already flew (a reinstall, or a status refresh that
+ * folds actual departure/arrival into an old trip's timeline). They seed
+ * notifiedStages so nobody's circle hears "landed in FRA" about last week. */
 export async function createSession(
   ctx: MutationCtx,
   journey: Doc<'journeys'>,
   init: { stage: string | null; stamps: Record<string, string>; activityId: string | null },
 ) {
   const now = new Date().toISOString();
-  const arrival = Date.parse(journey.scheduledArrival);
-  const expiresAt = new Date(
-    (Number.isNaN(arrival) ? Date.now() : arrival) + 48 * HOUR_MS,
-  ).toISOString();
+  const expiresAt = new Date(sessionExpiryFor(journey.scheduledArrival, Date.now())).toISOString();
 
   const sessionId = await ctx.db.insert('liveSessions', {
     userId: journey.userId,
@@ -129,7 +131,7 @@ export async function createSession(
     activityId: init.activityId,
     shareToken: makeToken(),
     expiresAt,
-    notifiedStages: {},
+    notifiedStages: Object.fromEntries(Object.keys(init.stamps).map((k) => [k, true])),
     notifiedDelayBucket: null,
     notifiedGate: null,
     pendingNotify: false,

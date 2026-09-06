@@ -12,6 +12,7 @@ import {
   buildContentState,
   nextPollDelayMs,
   stageIndex,
+  shouldNotifyFollowers,
   STAGE_PUSH_COPY,
   toPublicSession,
 } from './liveShared';
@@ -55,6 +56,7 @@ export const getNotifyTargets = internalQuery({
       session: toPublicSession(session, profile?.name ?? null, follows.length),
       token: session.shareToken,
       activityId: session.activityId,
+      expiresAt: session.expiresAt,
     };
   },
 });
@@ -203,6 +205,20 @@ export const notifyFollowers = internalAction({
     // A removed trip has no token left (journeys.push nulled it with the
     // session) and nothing to open — send that one to People instead.
     if (kind !== 'removed' && !targets.token) return;
+    // Stale trips never reach a circle — see shouldNotifyFollowers.
+    if (
+      !shouldNotifyFollowers(
+        {
+          kind,
+          currentStage: targets.session.currentStage,
+          stageTimes: targets.session.stageTimes,
+          expiresAt: targets.expiresAt,
+        },
+        Date.now(),
+      )
+    ) {
+      return;
+    }
 
     const s = targets.session;
     const name = targets.travelerName;

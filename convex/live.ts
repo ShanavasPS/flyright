@@ -12,7 +12,7 @@ import {
   journeyForKey,
   travelerName,
 } from './liveHelpers';
-import { stageIndex, NOTIFY_STAGES, toPublicSession } from './liveShared';
+import { stageIndex, NOTIFY_STAGES, toPublicSession, tripIsOver } from './liveShared';
 
 /** Travel-day live sessions: the traveler's device is the only writer of
  * stage state; followers and the public token page read reactively. All
@@ -73,6 +73,11 @@ export const setStage = mutation({
       if (!members.length) return { shared: false };
       const journey = await journeyForKey(ctx, identity.subject, naturalKey);
       if (!journey) return { shared: false };
+      // A trip that already flew has no travel day left to share. Its stamps
+      // can still arrive long after the fact — a reinstall re-uploading, or a
+      // status refresh backfilling actual departure/arrival — and a session
+      // opened for one would be born expired.
+      if (tripIsOver(journey.scheduledArrival, Date.now())) return { shared: false };
       session = await createSession(ctx, journey, { stage: null, stamps: {}, activityId });
     }
 

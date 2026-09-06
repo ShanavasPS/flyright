@@ -4,9 +4,10 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useRef } from 'react';
 
 import { api } from '../../convex/_generated/api';
+import { tripIsOver } from '../../convex/liveShared';
 
 import { db } from '@/db/client';
-import { travelDay } from '@/db/schema';
+import { journeys, travelDay } from '@/db/schema';
 import { getActivityId } from '@/services/live-activity';
 import { isDirty, markTravelDaySynced, rowToState } from '@/services/travel-day-store';
 
@@ -21,12 +22,24 @@ export function TravelDaySync() {
   const { isAuthenticated } = useConvexAuth();
   const setStage = useMutation(api.live.setStage);
   const { data: rows } = useLiveQuery(db.select().from(travelDay));
+  const { data: trips } = useLiveQuery(
+    db.select({ id: journeys.id, scheduledArrival: journeys.scheduledArrival }).from(journeys),
+  );
   const busy = useRef(false);
 
   useEffect(() => {
-    if (!userId || !isAuthenticated || !rows) return;
+    if (!userId || !isAuthenticated || !rows || !trips) return;
     if (busy.current) return;
-    const dirty = rows.filter(isDirty);
+    // Trips that already flew are history: a status refresh can still backfill
+    // their timeline (mergeFlightStages) and re-dirty the row weeks later, and
+    // uploading that is neither news to a circle nor a session worth opening.
+    const now = Date.now();
+    const arrivals = new Map(trips.map((t) => [t.id, t.scheduledArrival]));
+    const dirty = rows.filter((row) => {
+      if (!isDirty(row)) return false;
+      const arrival = arrivals.get(row.journeyId);
+      return !arrival || !tripIsOver(arrival, now);
+    });
     if (!dirty.length) return;
 
     busy.current = true;
@@ -48,7 +61,7 @@ export function TravelDaySync() {
         busy.current = false;
       }
     })();
-  }, [userId, isAuthenticated, rows, setStage]);
+  }, [userId, isAuthenticated, rows, trips, setStage]);
 
   return null;
 }
