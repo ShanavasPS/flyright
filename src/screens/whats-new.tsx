@@ -52,7 +52,12 @@ export function WhatsNew() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.five }]}
+        // iOS's card modal starts below the status bar on its own (top inset
+        // reads 0 there); Android's modal is full-screen and needs the inset.
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + Spacing.three, paddingBottom: insets.bottom + Spacing.five },
+        ]}
         showsVerticalScrollIndicator={false}>
         <View style={styles.bar}>
           <ThemedText type="subtitle" themeColor="heading">
@@ -156,7 +161,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.four,
-    paddingTop: Spacing.three,
     gap: Spacing.three,
   },
   bar: {
