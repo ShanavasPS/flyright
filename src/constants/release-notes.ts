@@ -15,7 +15,7 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: '1.0.26',
+    version: '1.0.27',
     date: '2026-09-07',
     notes: [
       'World map filters: see a year, a month, or any date range of your travels — the stats follow.',
