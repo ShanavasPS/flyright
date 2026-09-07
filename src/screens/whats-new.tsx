@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -35,6 +35,12 @@ export function WhatsNew() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  // iOS's card modal starts below the status bar on its own (its top inset
+  // reads 0). Android's modal is full-screen, edge-to-edge, AND reports a
+  // zero top inset from inside the modal — the status bar height is the
+  // reliable figure there, or the close button sits under the clock.
+  const topInset =
+    Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : insets.top;
   const { update, storeUrl } = useAppVersion();
   const storeName = Platform.OS === 'android' ? 'Google Play' : 'the App Store';
 
@@ -52,11 +58,9 @@ export function WhatsNew() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView
-        // iOS's card modal starts below the status bar on its own (top inset
-        // reads 0 there); Android's modal is full-screen and needs the inset.
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + Spacing.three, paddingBottom: insets.bottom + Spacing.five },
+          { paddingTop: topInset + Spacing.three, paddingBottom: insets.bottom + Spacing.five },
         ]}
         showsVerticalScrollIndicator={false}>
         <View style={styles.bar}>
