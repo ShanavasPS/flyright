@@ -129,8 +129,10 @@ function ShareAtlas({
   pad: number;
 }) {
   const data = useMemo(() => buildWorldMap(rows, now), [rows, now]);
+  // Zoom floor: the 1:110m coastline turns to blocks past about a ninth of
+  // the world across, and a short hop is still a clear line at that scale.
   const box = useMemo(
-    () => fitViewBox(data.fitPoints, width / height, pad, WORLD.width / 12),
+    () => fitViewBox(data.fitPoints, width / height, pad, WORLD.width / 9),
     [data, width, height, pad],
   );
   const u = box.width / width; // map units per point

@@ -66,6 +66,8 @@ import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-li
 import { travelWindow, type TravelStage } from '@/services/travel-day';
 import { tripFacts } from '@/services/trip-facts';
 import { focusWorldOn } from '@/services/world-focus';
+import { ALL_TIME } from '@/services/world-period';
+import { openWorldShare } from '@/services/world-share';
 import {
   getFlightFacts,
   noteFlightFacts,
@@ -283,6 +285,18 @@ export function JourneyDetail({
   // hide from, so the menu doesn't offer it.
   const privacyOn = !!CONVEX_URL;
 
+  // Share = the poster the World tab makes for one flight (screens/share-world),
+  // for a real row on a platform that can rasterise it. The demo has no row,
+  // and web has no view-shot, so they keep the one-line text share.
+  const shareThisTrip = () => {
+    if (row && !isDemo && Platform.OS !== 'web') {
+      openWorldShare({ rows: [row], period: ALL_TIME, kind: 'route' });
+      router.push('/share-world');
+    } else if (journey) {
+      shareTrip(journey);
+    }
+  };
+
   // What the inset map draws: the DB row, or the demo journey shaped like one.
   const mapSource = row ?? {
     id: journey.id,
@@ -330,7 +344,7 @@ export function JourneyDetail({
                 <HeaderIcon
                   label="Share this trip"
                   name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }}
-                  onPress={() => shareTrip(journey)}
+                  onPress={shareThisTrip}
                 />
                 {!isDemo && row && (
                   <HeaderIcon
@@ -448,7 +462,7 @@ export function JourneyDetail({
                   <HeaderIcon
                     label="Share this trip"
                     name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }}
-                    onPress={() => shareTrip(journey)}
+                    onPress={shareThisTrip}
                   />
                   {!isDemo && row && (
                     <HeaderIcon

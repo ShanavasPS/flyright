@@ -1,0 +1,30 @@
+# Trip share: the journey detail's "Share this trip" header icon opens the
+# same poster screen the World tab uses, for that one flight — "I FLEW",
+# the pair as the title, the leg fitted on the atlas, km / time in the air /
+# countries. Pass the row id of a flight in the journal:
+#   maestro --device <device> -e JOURNEY_ID=EK215-DXB-LAX-2025-09-27 test .maestro/trip-share.yaml
+#
+# Gotchas: the demo trip and web keep the one-line text share (no DB row /
+# no view-shot), so point JOURNEY_ID at a real row. Header icons are matched
+# by accessibility label.
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright:///journey/${JOURNEY_ID}"
+- extendedWaitUntil:
+    visible: "Share this trip"
+    timeout: 15000
+- tapOn: "Share this trip"
+- extendedWaitUntil:
+    visible: "Share image"
+    timeout: 15000
+- assertVisible: "FLYRIGHT"
+# Single flight: the eyebrow is the traveller's own verb, not "WHERE …".
+- assertVisible: ".*(FLEW|FLYING)"
+- assertVisible: "in the air"
+- tapOn: "Close"
+- assertVisible: "Share this trip"
