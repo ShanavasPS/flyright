@@ -74,6 +74,12 @@ export function scheduleChange(
   // gets to rewrite them.
   if (row.source !== 'lookup') return null;
   if (!status.scheduledDeparture || !status.scheduledArrival) return null;
+  // A flight that has already departed cannot be re-timed. The provider's
+  // record for a flown leg is history — actual times, a later revision of the
+  // schedule row — not a change anyone can act on, and "Etihad moved EY335"
+  // about a flight from June is noise. The ticket's times stand.
+  const departureMs = Date.parse(row.scheduledDeparture);
+  if (Number.isNaN(departureMs) || departureMs <= now.getTime()) return null;
 
   const departureShiftMinutes = shiftMinutes(row.scheduledDeparture, status.scheduledDeparture);
   const arrivalShiftMinutes = shiftMinutes(row.scheduledArrival, status.scheduledArrival);
@@ -103,8 +109,9 @@ function newerThanTheTicket(
   now: Date,
 ): boolean {
   const departure = Date.parse(row.scheduledDeparture);
+  const untilDeparture = departure - now.getTime();
   const operational =
-    !Number.isNaN(departure) && departure - now.getTime() <= OPERATIONAL_WINDOW_MS;
+    !Number.isNaN(departure) && untilDeparture > 0 && untilDeparture <= OPERATIONAL_WINDOW_MS;
   if (!scheduleUpdatedAt) return operational;
 
   const revised = Date.parse(scheduleUpdatedAt);

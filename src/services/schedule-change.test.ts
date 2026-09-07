@@ -34,6 +34,29 @@ describe('scheduleChange', () => {
     expect(scheduleChange(ticket(), provider(), NOW)).toBeNull();
   });
 
+  it('leaves a flight that has already departed alone, however the record differs', () => {
+    // The EY335 case: a June leg opened in September. The provider's record
+    // for a flown flight is history (actuals, later revisions), not a re-time
+    // anyone can act on — and it used to pass as "operational" because the
+    // departure was within 36 hours of now, on the wrong side.
+    const flown = ticket({
+      scheduledDeparture: '2026-06-07T04:40:00.000Z',
+      scheduledArrival: '2026-06-07T09:05:00.000Z',
+      createdAt: '2026-09-07T10:00:00.000Z',
+    });
+    const record = provider({
+      scheduledDeparture: '2026-06-07T05:10Z',
+      scheduledArrival: '2026-06-07T09:35Z',
+      scheduleUpdatedAt: '2026-09-07T11:00Z',
+    });
+    expect(scheduleChange(flown, record, NOW)).toBeNull();
+    expect(scheduleChange(flown, { ...record, scheduleUpdatedAt: null }, NOW)).toBeNull();
+    // A minute before departure it still counts.
+    expect(
+      scheduleChange(flown, record, new Date('2026-06-07T04:39:00.000Z')),
+    ).not.toBeNull();
+  });
+
   it('adopts a schedule the airline published after the ticket', () => {
     const change = scheduleChange(
       ticket(),
