@@ -5,7 +5,7 @@ import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getAirport } from '@/services/airports';
+import { airportZone, getAirport } from '@/services/airports';
 import { countdown } from '@/services/dates';
 import { blockMinutes } from '@/services/timeline';
 
@@ -44,10 +44,15 @@ export function cityLabel(place: { code: string }): string {
   return getAirport(place.code)?.city ?? place.code;
 }
 
-/** Block duration, "16h 35m" — null for manual entries whose bare wall-clock
- * times can't be differenced (see blockMinutes). */
-function durationLabel(departure: string, arrival: string): string | null {
-  const minutes = blockMinutes(departure, arrival);
+/** Block duration, "16h 35m" — null for entries whose times can't be
+ * differenced even with the airports' zones to pin them (see blockMinutes). */
+function durationLabel(journey: HeroJourney): string | null {
+  const minutes = blockMinutes(
+    journey.scheduledDeparture,
+    journey.scheduledArrival,
+    airportZone(journey.from.code),
+    airportZone(journey.to.code),
+  );
   if (minutes === null) return null;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -99,7 +104,7 @@ export function RouteHero({
   const theme = useTheme();
   const flown = Date.parse(journey.scheduledDeparture) <= now;
   const chip = dateChipLabel(journey.scheduledDeparture, new Date(now));
-  const duration = durationLabel(journey.scheduledDeparture, journey.scheduledArrival);
+  const duration = durationLabel(journey);
   // The date lives in the screen header (tripDateTitle) and how far off it
   // is in the chip above; the contrail column carries only what belongs to
   // the segment itself.

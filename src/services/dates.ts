@@ -172,6 +172,17 @@ export function zonedTimestamp(
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
+/** A stored timestamp as an instant: zoned strings pass through, a bare wall
+ * clock is pinned to the airport's zone (the way zonedTimestamp does for a
+ * printed ticket). Null when that isn't possible — no zone, or a string that
+ * isn't a wall clock — so callers doing instant arithmetic can decline
+ * rather than difference two clocks from different countries. */
+export function pinToZone(iso: string, zone: string | null | undefined): string | null {
+  if (ZONED.test(iso)) return iso;
+  const wall = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(iso);
+  return wall ? zonedTimestamp(wall[1], wall[2], zone) : null;
+}
+
 /** The day a flight leaves, as the departure board says it: 'YYYY-MM-DD' in
  * the origin airport's zone.
  *

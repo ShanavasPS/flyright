@@ -1,6 +1,7 @@
 /** Pure grouping/stats helpers for the My travels timeline — UI-free, testable. */
 
-import { getAirport } from '@/services/airports';
+import { airportZone, getAirport } from '@/services/airports';
+import { pinToZone } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
 
 export interface TimelineSection {
@@ -51,13 +52,21 @@ export interface TravelStats {
 /** A typical long-haul cruise, for trips whose times can't be trusted. */
 const CRUISE_KMH = 750;
 
-/** Block time in minutes when both timestamps carry a UTC offset (lookup rows
- * do; manual entries store bare wall-clock times whose difference is
- * meaningless across time zones). Null otherwise, and for implausible spans. */
-export function blockMinutes(departure: string, arrival: string): number | null {
-  const zoned = /(Z|[+-]\d\d:\d\d)$/;
-  if (!zoned.test(departure) || !zoned.test(arrival)) return null;
-  const minutes = Math.round((Date.parse(arrival) - Date.parse(departure)) / 60_000);
+/** Block time in minutes. Lookup rows carry a UTC offset and difference
+ * directly; a manual or imported entry stores bare wall-clock times, whose
+ * difference is meaningless across time zones — unless the caller passes the
+ * airports' zones, which pin each clock to its own country first. Null when
+ * that can't be done, and for implausible spans. */
+export function blockMinutes(
+  departure: string,
+  arrival: string,
+  fromZone?: string | null,
+  toZone?: string | null,
+): number | null {
+  const dep = pinToZone(departure, fromZone);
+  const arr = pinToZone(arrival, toZone);
+  if (!dep || !arr) return null;
+  const minutes = Math.round((Date.parse(arr) - Date.parse(dep)) / 60_000);
   if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 36 * 60) return null;
   return minutes;
 }
@@ -71,7 +80,12 @@ export function travelStats(rows: JourneyRow[]): TravelStats {
     totalKm += row.distanceKm;
     if (row.fromCountry) countries.add(row.fromCountry);
     if (row.toCountry) countries.add(row.toCountry);
-    const block = blockMinutes(row.scheduledDeparture, row.scheduledArrival);
+    const block = blockMinutes(
+      row.scheduledDeparture,
+      row.scheduledArrival,
+      airportZone(row.fromCode),
+      airportZone(row.toCode),
+    );
     if (block === null) {
       minutesAloft += (row.distanceKm / CRUISE_KMH) * 60;
       hoursEstimated = true;

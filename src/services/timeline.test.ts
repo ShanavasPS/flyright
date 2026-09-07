@@ -248,6 +248,12 @@ describe('blockMinutes', () => {
     expect(blockMinutes('2026-08-20T08:00:00Z', '2026-08-20T10:35:00Z')).toBe(155);
     expect(blockMinutes('2026-08-20T08:00:00+03:00', '2026-08-20T10:35:00+01:00')).toBe(275);
     expect(blockMinutes('2026-08-20T08:00:00', '2026-08-20T10:35:00')).toBeNull();
+    // Bare wall clocks pin to their airports' zones: DOH 19:40 (+03) → COK
+    // 02:45 (+05:30) next day is 4h 35m in the air, not 7h 05m.
+    expect(
+      blockMinutes('2026-08-02T19:40:00', '2026-08-03T02:45:00', 'Asia/Qatar', 'Asia/Kolkata'),
+    ).toBe(275);
+    expect(blockMinutes('2026-08-02T19:40:00', '2026-08-03T02:45:00', 'Asia/Qatar', null)).toBeNull();
     expect(blockMinutes('2026-08-20T10:35:00Z', '2026-08-20T08:00:00Z')).toBeNull();
     expect(blockMinutes('2026-08-20T08:00:00Z', '2026-08-22T08:00:00Z')).toBeNull();
   });

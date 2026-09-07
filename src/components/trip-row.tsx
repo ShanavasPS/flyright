@@ -233,10 +233,15 @@ function clocks(trip: RowTrip): { dep: string | null; arr: string | null } {
   };
 }
 
-/** "4h 5m" — null for entries whose bare wall-clock times can't be
- * differenced (see blockMinutes). */
+/** "4h 5m" — null for entries whose times can't be differenced even with
+ * the airports' zones to pin them (see blockMinutes). */
 function durationLabel(trip: RowTrip): string | null {
-  const minutes = blockMinutes(trip.scheduledDeparture, trip.scheduledArrival);
+  const minutes = blockMinutes(
+    trip.scheduledDeparture,
+    trip.scheduledArrival,
+    airportZone(trip.fromCode),
+    airportZone(trip.toCode),
+  );
   if (minutes === null) return null;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
