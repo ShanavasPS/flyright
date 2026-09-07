@@ -33,6 +33,10 @@ export default defineSchema({
     rating: v.optional(v.union(v.number(), v.null())),
     bookingReference: v.optional(v.union(v.string(), v.null())),
     seat: v.optional(v.union(v.string(), v.null())),
+    /** Hidden from the owner's circle: no People-tab listing, no push, no
+     * auto-follow of its live session. An explicitly shared link still works.
+     * Optional: rows from clients older than trip privacy are visible. */
+    hiddenFromCircle: v.optional(v.boolean()),
     source: v.string(),
     createdAt: v.string(),
     updatedAt: v.string(),

@@ -44,6 +44,7 @@ function row(overrides: Partial<JourneyRow>): JourneyRow {
     rating: null,
     bookingReference: null,
     seat: null,
+    hiddenFromCircle: false,
     source: 'lookup',
     createdAt: '2026-07-01T00:00:00Z',
     updatedAt: '',

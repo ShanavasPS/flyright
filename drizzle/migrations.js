@@ -10,6 +10,7 @@ import m0005 from './0005_pale_captain_stacy.sql';
 import m0006 from './0006_quick_expediter.sql';
 import m0007 from './0007_wide_magdalene.sql';
 import m0008 from './0008_heavy_wonder_man.sql';
+import m0009 from './0009_abnormal_korg.sql';
 
   export default {
     journal,
@@ -22,7 +23,8 @@ m0004,
 m0005,
 m0006,
 m0007,
-m0008
+m0008,
+m0009
     }
   }
   

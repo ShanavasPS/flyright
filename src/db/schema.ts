@@ -37,6 +37,11 @@ export const journeys = sqliteTable('journeys', {
    *  off a scanned boarding pass. Null when unknown. */
   bookingReference: text('booking_reference'),
   seat: text('seat'),
+  /** Hidden from the traveler's circle: members never see this trip in
+   *  People, get no push about it, and aren't folded into its live session.
+   *  A link the traveler shares explicitly still works — the token is the
+   *  invitation. Default false: circles see every trip unless told not to. */
+  hiddenFromCircle: integer('hidden_from_circle', { mode: 'boolean' }).notNull().default(false),
   /** 'lookup' rows track a live flight via the status API; 'manual' rows are
    *  journal entries (historical or number-less) that must never be polled. */
   source: text('source', { enum: ['lookup', 'manual'] }).notNull().default('lookup'),

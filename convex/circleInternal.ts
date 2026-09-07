@@ -22,7 +22,7 @@ export const headsUp = internalMutation({
     const journey = await ctx.db.get(journeyId);
     if (!journey) return;
     await ctx.db.patch(journeyId, { headsUpScheduledId: null });
-    if (journey.deletedAt || journey.headsUpSentAt) return;
+    if (journey.deletedAt || journey.hiddenFromCircle || journey.headsUpSentAt) return;
 
     const now = Date.now();
     const dep = Date.parse(journey.scheduledDeparture);
@@ -116,7 +116,7 @@ export const tripsAddedPush = internalQuery({
       const j = await ctx.db.get(id);
       // Re-validated: a trip added and deleted again before this action ran
       // is not news, and neither is one whose departure has since passed.
-      if (!j || j.userId !== ownerId || j.deletedAt) continue;
+      if (!j || j.userId !== ownerId || j.deletedAt || j.hiddenFromCircle) continue;
       const dep = Date.parse(j.scheduledDeparture);
       if (Number.isNaN(dep) || dep < now) continue;
       trips.push({

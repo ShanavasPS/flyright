@@ -1,0 +1,1 @@
+ALTER TABLE `journeys` ADD `hidden_from_circle` integer DEFAULT false NOT NULL;

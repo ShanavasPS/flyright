@@ -34,6 +34,8 @@ export interface RemoteJourney {
   rating?: number | null;
   bookingReference?: string | null;
   seat?: string | null;
+  /** Omitted by clients older than trip privacy; absent means visible. */
+  hiddenFromCircle?: boolean;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -72,6 +74,7 @@ export function toRemoteJourney(row: JourneyRow): RemoteJourney {
     rating: row.rating,
     bookingReference: row.bookingReference,
     seat: row.seat,
+    hiddenFromCircle: row.hiddenFromCircle,
     source: row.source,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

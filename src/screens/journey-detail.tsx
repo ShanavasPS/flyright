@@ -53,6 +53,7 @@ import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
 import { noteSuccess } from '@/services/haptics';
 import {
   deleteJourney,
+  setJourneyHiddenFromCircle,
   toDomainJourney,
   updateJourney,
   useJourney,
@@ -276,8 +277,11 @@ export function JourneyDetail({
   // Convex provider.
   const shareActions =
     CONVEX_URL && !isDemo && row && (travelActive || tripAge <= 0) ? (
-      <TripShareActions journeyId={row.id} />
+      <TripShareActions journeyId={row.id} hidden={row.hiddenFromCircle} />
     ) : undefined;
+  // Trip privacy is a circle feature: without Convex there is no circle to
+  // hide from, so the menu doesn't offer it.
+  const privacyOn = !!CONVEX_URL;
 
   // What the inset map draws: the DB row, or the demo journey shaped like one.
   const mapSource = row ?? {
@@ -332,7 +336,9 @@ export function JourneyDetail({
                   <HeaderIcon
                     label="Trip options"
                     name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
-                    onPress={() => showTripMenu(row.id, row.source === 'manual', router)}
+                    onPress={() =>
+                      showTripMenu(row.id, row.source === 'manual', privacyOn ? row.hiddenFromCircle : null, router)
+                    }
                   />
                 )}
               </View>
@@ -448,7 +454,9 @@ export function JourneyDetail({
                     <HeaderIcon
                       label="Trip options"
                       name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
-                      onPress={() => showTripMenu(row.id, row.source === 'manual', router)}
+                      onPress={() =>
+                      showTripMenu(row.id, row.source === 'manual', privacyOn ? row.hiddenFromCircle : null, router)
+                    }
                     />
                   )}
                 </View>
@@ -590,9 +598,11 @@ function TripLogCard({
 /** "Seat 32K", "Booking ABC123" — the details the traveler typed or a
  * boarding-pass scan supplied. */
 function tripDetailChips(row: JourneyRow): string[] {
-  return [row.seat && `Seat ${row.seat}`, row.bookingReference && `Booking ${row.bookingReference}`].filter(
-    (chip): chip is string => !!chip,
-  );
+  return [
+    row.seat && `Seat ${row.seat}`,
+    row.bookingReference && `Booking ${row.bookingReference}`,
+    row.hiddenFromCircle && 'Hidden from your circle',
+  ].filter((chip): chip is string => !!chip);
 }
 
 /** Everything the traveler adds to a trip themselves: seat and booking
@@ -752,32 +762,53 @@ function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>) 
   ]);
 }
 
-/** Native "···" menu: Edit (journal entries only), then destructive Remove. */
-function showTripMenu(journeyId: string, editable: boolean, router: ReturnType<typeof useRouter>) {
-  const edit = () => router.push({ pathname: '/add-flight', params: { editId: journeyId } });
-  const remove = () => confirmRemove(journeyId, router);
+/** Native "···" menu: Edit (journal entries only), the circle privacy toggle
+ * (null when there's no circle feature to hide from), then destructive
+ * Remove. Hiding needs no confirmation — the trip card says so at once, and
+ * the same menu shows it again. */
+function showTripMenu(
+  journeyId: string,
+  editable: boolean,
+  hidden: boolean | null,
+  router: ReturnType<typeof useRouter>,
+) {
+  const items: { text: string; onPress: () => void; destructive?: boolean }[] = [];
+  if (editable) {
+    items.push({
+      text: 'Edit trip details',
+      onPress: () => router.push({ pathname: '/add-flight', params: { editId: journeyId } }),
+    });
+  }
+  if (hidden !== null) {
+    items.push({
+      text: hidden ? 'Show to your circle' : 'Hide from your circle',
+      onPress: () => void setJourneyHiddenFromCircle(journeyId, !hidden),
+    });
+  }
+  items.push({
+    text: 'Remove from My travels',
+    onPress: () => confirmRemove(journeyId, router),
+    destructive: true,
+  });
 
   if (Platform.OS === 'ios') {
-    const options = editable
-      ? ['Edit trip details', 'Remove from My travels', 'Cancel']
-      : ['Remove from My travels', 'Cancel'];
     ActionSheetIOS.showActionSheetWithOptions(
       {
-        options,
-        destructiveButtonIndex: editable ? 1 : 0,
-        cancelButtonIndex: options.length - 1,
+        options: [...items.map((i) => i.text), 'Cancel'],
+        destructiveButtonIndex: items.findIndex((i) => i.destructive),
+        cancelButtonIndex: items.length,
       },
-      (index) => {
-        if (editable && index === 0) edit();
-        else if (index === (editable ? 1 : 0)) remove();
-      },
+      (index) => items[index]?.onPress(),
     );
     return;
   }
 
   Alert.alert('Trip options', undefined, [
-    ...(editable ? [{ text: 'Edit trip details', onPress: edit }] : []),
-    { text: 'Remove from My travels', style: 'destructive' as const, onPress: remove },
+    ...items.map((i) => ({
+      text: i.text,
+      onPress: i.onPress,
+      ...(i.destructive ? { style: 'destructive' as const } : {}),
+    })),
     { text: 'Cancel', style: 'cancel' as const },
   ]);
 }

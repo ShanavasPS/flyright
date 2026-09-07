@@ -294,7 +294,8 @@ export const person = query({
         .withIndex('by_user', (q) => q.eq('userId', userId))
         .collect();
       for (const j of journeys) {
-        if (j.deletedAt) continue;
+        // Hidden trips are the owner's alone — not listed, not counted.
+        if (j.deletedAt || j.hiddenFromCircle) continue;
         const dep = Date.parse(j.scheduledDeparture);
         if (Number.isNaN(dep)) continue;
         if (session && j.naturalKey === session.naturalKey) liveJourneyId = j._id;
@@ -352,7 +353,9 @@ export const trip = query({
     const journey = await ctx.db.get(journeyId);
     // The id is the caller's to supply, so it is checked against the owner
     // they claimed rather than trusted: a journey id alone opens nothing.
-    if (!journey || journey.userId !== ownerId || journey.deletedAt) return { gone: true as const };
+    if (!journey || journey.userId !== ownerId || journey.deletedAt || journey.hiddenFromCircle) {
+      return { gone: true as const };
+    }
 
     const who = await personCard(ctx, ownerId);
     const session = await liveFor(ctx, me, ownerId);
@@ -531,7 +534,7 @@ export const list = query({
           .withIndex('by_user', (q) => q.eq('userId', row.ownerId))
           .collect();
         for (const j of journeys) {
-          if (j.deletedAt) continue;
+          if (j.deletedAt || j.hiddenFromCircle) continue;
           const dep = Date.parse(j.scheduledDeparture);
           if (Number.isNaN(dep) || dep < now) continue;
           if (!next || dep < Date.parse(next.scheduledDeparture)) {

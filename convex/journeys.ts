@@ -3,7 +3,7 @@ import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
-import { armHeadsUp } from './liveHelpers';
+import { armHeadsUp, hideSessionsFromCircle, materializeCircleFollows } from './liveHelpers';
 
 /** Row shape the client pushes — deliberately has NO userId field: the server
  * stamps identity.subject, so a client can never write another user's rows. */
@@ -27,6 +27,7 @@ const journeyRow = v.object({
   rating: v.optional(v.union(v.number(), v.null())),
   bookingReference: v.optional(v.union(v.string(), v.null())),
   seat: v.optional(v.union(v.string(), v.null())),
+  hiddenFromCircle: v.optional(v.boolean()),
   source: v.string(),
   createdAt: v.string(),
   updatedAt: v.string(),
@@ -60,12 +61,35 @@ export const push = mutation({
       if (!existing) {
         journeyId = await ctx.db.insert('journeys', { ...row, userId: identity.subject });
         scheduleChanged = true;
-        if (!row.deletedAt) added.push(journeyId);
+        if (!row.deletedAt && !row.hiddenFromCircle) added.push(journeyId);
       } else if (row.updatedAt > existing.updatedAt) {
         await ctx.db.patch(existing._id, row);
+        const wasHidden = !!existing.hiddenFromCircle;
+        const nowHidden = !!row.hiddenFromCircle;
+        // Privacy flips count as schedule changes: armHeadsUp re-evaluates
+        // whether the circle should hear about this trip the day before.
         scheduleChanged =
           row.scheduledDeparture !== existing.scheduledDeparture ||
-          !!row.deletedAt !== !!existing.deletedAt;
+          !!row.deletedAt !== !!existing.deletedAt ||
+          wasHidden !== nowHidden;
+        if (nowHidden && !wasHidden) {
+          // Members already folded into its live session stop following it.
+          // Whoever holds an explicitly shared link keeps it.
+          await hideSessionsFromCircle(ctx, identity.subject, row.naturalKey);
+        } else if (wasHidden && !nowHidden && !row.deletedAt) {
+          // Shown again: to the circle this is a new trip — they see it,
+          // they hear about it, and any open session takes them aboard.
+          const sessions = await ctx.db
+            .query('liveSessions')
+            .withIndex('by_user_key', (q) =>
+              q.eq('userId', identity.subject).eq('naturalKey', row.naturalKey),
+            )
+            .collect();
+          for (const session of sessions) {
+            if (session.status === 'active') await materializeCircleFollows(ctx, session);
+          }
+          added.push(existing._id);
+        }
       }
       // New trip, moved departure, or deletion → the circle's T−24h
       // heads-up follows (see liveHelpers.armHeadsUp).

@@ -73,6 +73,9 @@ export const setStage = mutation({
       if (!members.length) return { shared: false };
       const journey = await journeyForKey(ctx, identity.subject, naturalKey);
       if (!journey) return { shared: false };
+      // Hidden from the circle: no standing audience after all. Only an
+      // explicit Share (live.start) opens a session for this trip.
+      if (journey.hiddenFromCircle) return { shared: false };
       // A trip that already flew has no travel day left to share. Its stamps
       // can still arrive long after the fact — a reinstall re-uploading, or a
       // status refresh backfilling actual departure/arrival — and a session

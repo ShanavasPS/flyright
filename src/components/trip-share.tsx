@@ -4,7 +4,7 @@ import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Pressable, Share, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { api } from '../../convex/_generated/api';
 
@@ -14,6 +14,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { watcherNames } from '@/services/circle';
+import { setJourneyHiddenFromCircle } from '@/services/journeys';
 import { getActivityId } from '@/services/live-activity';
 import { useTravelDay } from '@/services/travel-day-store';
 
@@ -30,8 +31,10 @@ const FACE = 24;
  * showing the faces of whoever follows this trip — circle members before
  * departure (they auto-follow every trip), the live session's followers once
  * it's open — or a group glyph when nobody does yet. Tapping the faces opens
- * People. Render only under CloudSync (Convex configured). */
-export function TripShareActions({ journeyId }: { journeyId: string }) {
+ * People. A trip hidden from the circle (`hidden`) wears a crossed eye
+ * instead: the circle isn't watching, whatever the link-holders do. Render
+ * only under CloudSync (Convex configured). */
+export function TripShareActions({ journeyId, hidden = false }: { journeyId: string; hidden?: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -41,9 +44,11 @@ export function TripShareActions({ journeyId }: { journeyId: string }) {
   const start = useMutation(api.live.start);
   const [busy, setBusy] = useState(false);
 
-  // Circle first (it carries photos), then session-only followers.
+  // Circle first (it carries photos), then session-only followers. A hidden
+  // trip's circle isn't following it — the server dropped them — so only
+  // the people who came through a link count.
   const byId = new Map<string, Watcher>();
-  for (const p of circle?.followers ?? []) {
+  for (const p of hidden ? [] : (circle?.followers ?? [])) {
     byId.set(p.userId, { userId: p.userId, name: p.name ?? 'Someone', imageUrl: p.imageUrl });
   }
   for (const f of session?.followers ?? []) {
@@ -78,9 +83,24 @@ export function TripShareActions({ journeyId }: { journeyId: string }) {
     }
   };
 
-  const circleLabel = watchers.length
-    ? `Your circle — ${watcherNames(watchers)} following this trip`
-    : 'Your circle — nobody follows this trip yet';
+  const circleLabel = hidden
+    ? 'Hidden from your circle'
+    : watchers.length
+      ? `Your circle — ${watcherNames(watchers)} following this trip`
+      : 'Your circle — nobody follows this trip yet';
+
+  const explainHidden = () => {
+    Alert.alert(
+      'Hidden from your circle',
+      `People in your circle won't see this trip or hear about it.${
+        watchers.length ? ` ${watcherNames(watchers)} still follow${watchers.length === 1 ? 's' : ''} it through the link you shared.` : ''
+      } Anyone you send the trip link to can follow along.`,
+      [
+        { text: 'Show to your circle', onPress: () => void setJourneyHiddenFromCircle(journeyId, false) },
+        { text: 'OK', style: 'cancel' },
+      ],
+    );
+  };
 
   return (
     <View style={styles.row}>
@@ -116,9 +136,20 @@ export function TripShareActions({ journeyId }: { journeyId: string }) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={circleLabel}
-        onPress={() => router.navigate('/people')}
+        onPress={hidden ? explainHidden : () => router.navigate('/people')}
         hitSlop={Spacing.one}>
-        {watchers.length ? (
+        {hidden ? (
+          // Private: a crossed eye on the quiet field colour — the circle
+          // sees nothing here, so no faces even if link-holders follow.
+          <View style={[styles.disc, { backgroundColor: theme.field }]}>
+            <SymbolView
+              name={{ ios: 'eye.slash.fill', android: 'visibility_off', web: 'visibility_off' }}
+              size={15}
+              weight="semibold"
+              tintColor={theme.textSecondary}
+            />
+          </View>
+        ) : watchers.length ? (
           // Faces of the people following, stacked; the ring is the card
           // colour so overlaps read as a stack.
           <View style={[styles.pill, styles.faces, { backgroundColor: `${theme.tint}1A` }]}>

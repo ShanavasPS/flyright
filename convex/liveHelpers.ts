@@ -67,8 +67,12 @@ export async function schedulePoll(ctx: MutationCtx, session: Doc<'liveSessions'
 
 /** Every circle member becomes a follower of this session (idempotent).
  * Circle-level mute is honored at send time (getNotifyTargets), so the
- * follows row itself stays unmuted and the member can still open the trip. */
+ * follows row itself stays unmuted and the member can still open the trip.
+ * A trip hidden from the circle folds nobody in — its session serves only
+ * the links the traveler hands out. */
 export async function materializeCircleFollows(ctx: MutationCtx, session: Doc<'liveSessions'>) {
+  const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
+  if (journey?.hiddenFromCircle) return;
   const members = await circleMembers(ctx, session.userId);
   if (!members.length) return;
   const now = new Date().toISOString();
@@ -87,6 +91,28 @@ export async function materializeCircleFollows(ctx: MutationCtx, session: Doc<'l
       muted: false,
       createdAt: now,
     });
+  }
+}
+
+/** The trip just went private: circle members following any of its active
+ * sessions are dropped, so the People tab and the next push forget it.
+ * Followers outside the circle came through an explicit link and stay. */
+export async function hideSessionsFromCircle(ctx: MutationCtx, userId: string, naturalKey: string) {
+  const sessions = await ctx.db
+    .query('liveSessions')
+    .withIndex('by_user_key', (q) => q.eq('userId', userId).eq('naturalKey', naturalKey))
+    .collect();
+  const active = sessions.filter((s) => s.status === 'active');
+  if (!active.length) return;
+  const members = new Set((await circleMembers(ctx, userId)).map((m) => m.memberId));
+  for (const session of active) {
+    const follows = await ctx.db
+      .query('follows')
+      .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+      .collect();
+    for (const f of follows) {
+      if (members.has(f.followerId)) await ctx.db.delete(f._id);
+    }
   }
 }
 
@@ -186,6 +212,7 @@ export async function armHeadsUp(ctx: MutationCtx, journey: Doc<'journeys'>) {
   const now = Date.now();
   if (
     !journey.deletedAt &&
+    !journey.hiddenFromCircle &&
     !journey.headsUpSentAt &&
     !Number.isNaN(dep) &&
     dep > now &&

@@ -112,6 +112,18 @@ export async function saveJourneyNotes(id: string, text: string) {
     .where(eq(journeys.id, id));
 }
 
+/** Hide a trip from (or show it to) the traveler's circle. Enforced on the
+ * server once the row syncs — see convex/journeys.ts push, which also drops
+ * circle members already following its live session and cancels the T−24h
+ * heads-up. Only updatedAt moves besides the flag, so the change follows the
+ * trip to the account's other devices like any other edit. */
+export async function setJourneyHiddenFromCircle(id: string, hidden: boolean) {
+  await db
+    .update(journeys)
+    .set({ hiddenFromCircle: hidden, updatedAt: new Date().toISOString() })
+    .where(eq(journeys.id, id));
+}
+
 /** Soft delete — the tombstone lets a future cloud sync propagate removals. */
 export async function deleteJourney(id: string) {
   const now = new Date().toISOString();
