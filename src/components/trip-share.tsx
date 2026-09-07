@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { watcherNames } from '@/services/circle';
 import { setJourneyHiddenFromCircle } from '@/services/journeys';
+import { shareInvite } from '@/services/circle-share';
 import { getActivityId } from '@/services/live-activity';
 import { useTravelDay } from '@/services/travel-day-store';
 
@@ -31,9 +32,10 @@ const FACE = 24;
  * showing the faces of whoever follows this trip — circle members before
  * departure (they auto-follow every trip), the live session's followers once
  * it's open — or a group glyph when nobody does yet. Tapping the faces opens
- * People. A trip hidden from the circle (`hidden`) wears a crossed eye
- * instead: the circle isn't watching, whatever the link-holders do. Render
- * only under CloudSync (Convex configured). */
+ * People. A trip kept to the close circle (`hidden`) shows the close members
+ * only — or a crossed eye when there are none — and its share button hands
+ * out the traveler's circle invite, not the trip. Render only under CloudSync
+ * (Convex configured). */
 export function TripShareActions({ journeyId, hidden = false }: { journeyId: string; hidden?: boolean }) {
   const theme = useTheme();
   const router = useRouter();
@@ -42,13 +44,15 @@ export function TripShareActions({ journeyId, hidden = false }: { journeyId: str
   const session = useQuery(api.live.mine, isSignedIn ? { naturalKey: journeyId } : 'skip');
   const circle = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
   const start = useMutation(api.live.start);
+  const createInvite = useMutation(api.circle.createInvite);
   const [busy, setBusy] = useState(false);
 
-  // Circle first (it carries photos), then session-only followers. A hidden
-  // trip's circle isn't following it — the server dropped them — so only
-  // the people who came through a link count.
+  // Circle first (it carries photos), then session-only followers. A
+  // close-circle trip is followed by the close members only — the server
+  // dropped everyone else.
   const byId = new Map<string, Watcher>();
-  for (const p of hidden ? [] : (circle?.followers ?? [])) {
+  for (const p of circle?.followers ?? []) {
+    if (hidden && !p.close) continue;
     byId.set(p.userId, { userId: p.userId, name: p.name ?? 'Someone', imageUrl: p.imageUrl });
   }
   for (const f of session?.followers ?? []) {
@@ -66,6 +70,14 @@ export function TripShareActions({ journeyId, hidden = false }: { journeyId: str
     }
     setBusy(true);
     try {
+      if (hidden) {
+        // The trip stays with the close circle; the link invites the person
+        // to follow the traveler (their other trips) instead.
+        const invite = await createInvite({});
+        trackEvent('trip_shared', { hidden: true });
+        await shareInvite(invite.token);
+        return;
+      }
       const { token } = await start({
         naturalKey: journeyId,
         stage: state.stage,
@@ -84,19 +96,26 @@ export function TripShareActions({ journeyId, hidden = false }: { journeyId: str
   };
 
   const circleLabel = hidden
-    ? 'Hidden from your circle'
+    ? watchers.length
+      ? `Close circle only — ${watcherNames(watchers)} following this trip`
+      : 'Close circle only — nobody in your close circle yet'
     : watchers.length
       ? `Your circle — ${watcherNames(watchers)} following this trip`
       : 'Your circle — nobody follows this trip yet';
 
   const explainHidden = () => {
     Alert.alert(
-      'Hidden from your circle',
-      `People in your circle won't see this trip or hear about it.${
-        watchers.length ? ` ${watcherNames(watchers)} still follow${watchers.length === 1 ? 's' : ''} it through the link you shared.` : ''
-      } Anyone you send the trip link to can follow along.`,
+      'Close circle only',
+      `${
+        watchers.length
+          ? `${watcherNames(watchers)} ${watchers.length === 1 ? 'sees' : 'see'} this trip.`
+          : 'Nobody is in your close circle yet — add people from their page in People.'
+      } The rest of your circle still counts it in your totals but can't open or follow it, and a shared link invites people to follow you, not this trip.`,
       [
-        { text: 'Show to your circle', onPress: () => void setJourneyHiddenFromCircle(journeyId, false) },
+        {
+          text: 'Show to your whole circle',
+          onPress: () => void setJourneyHiddenFromCircle(journeyId, false),
+        },
         { text: 'OK', style: 'cancel' },
       ],
     );
@@ -138,9 +157,9 @@ export function TripShareActions({ journeyId, hidden = false }: { journeyId: str
         accessibilityLabel={circleLabel}
         onPress={hidden ? explainHidden : () => router.navigate('/people')}
         hitSlop={Spacing.one}>
-        {hidden ? (
-          // Private: a crossed eye on the quiet field colour — the circle
-          // sees nothing here, so no faces even if link-holders follow.
+        {hidden && !watchers.length ? (
+          // Close circle only, and nobody in it: a crossed eye on the quiet
+          // field colour.
           <View style={[styles.disc, { backgroundColor: theme.field }]}>
             <SymbolView
               name={{ ios: 'eye.slash.fill', android: 'visibility_off', web: 'visibility_off' }}

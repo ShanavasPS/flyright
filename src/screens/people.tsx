@@ -461,7 +461,7 @@ function FollowerRow({ person }: { person: Follower }) {
             {person.name}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            Following since {formatDayLabel(person.since)}
+            {person.close ? 'Close circle · ' : ''}Following since {formatDayLabel(person.since)}
           </ThemedText>
         </View>
         <SymbolView

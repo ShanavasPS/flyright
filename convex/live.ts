@@ -4,11 +4,12 @@ import { internal } from './_generated/api';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import {
   activeSessionForKey,
+  audienceFor,
   circleFull,
-  circleMembers,
   createSession,
   ensureCircleInvite,
   followerCount,
+  isCloseMember,
   journeyForKey,
   travelerName,
 } from './liveHelpers';
@@ -67,15 +68,12 @@ export const setStage = mutation({
     let session = await activeSessionForKey(ctx, identity.subject, naturalKey);
     if (!session) {
       // A circle is a standing audience: the first stage tap on a trip
-      // nobody explicitly shared still has to reach them. Without one,
-      // the trip simply isn't shared.
-      const members = await circleMembers(ctx, identity.subject);
-      if (!members.length) return { shared: false };
+      // nobody explicitly shared still has to reach them. Without one —
+      // or, for a close-circle trip, without a close member — the trip
+      // simply isn't shared.
       const journey = await journeyForKey(ctx, identity.subject, naturalKey);
       if (!journey) return { shared: false };
-      // Hidden from the circle: no standing audience after all. Only an
-      // explicit Share (live.start) opens a session for this trip.
-      if (journey.hiddenFromCircle) return { shared: false };
+      if (!(await audienceFor(ctx, journey)).length) return { shared: false };
       // A trip that already flew has no travel day left to share. Its stamps
       // can still arrive long after the fact — a reinstall re-uploading, or a
       // status refresh backfilling actual departure/arrival — and a session
@@ -173,6 +171,28 @@ export const follow = mutation({
     if (!session || session.status !== 'active') throw new Error('Link expired');
     if (session.userId === identity.subject) throw new Error('Own session');
 
+    // A close-circle trip's link doesn't follow the trip: it offers to
+    // follow the traveler instead (their circle invite), and only close
+    // members — already aboard — get the trip itself.
+    const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
+    const hidden = !!journey?.hiddenFromCircle;
+    if (hidden && !(await isCloseMember(ctx, session.userId, identity.subject))) {
+      const inCircle = await ctx.db
+        .query('circle')
+        .withIndex('by_owner_member', (q) =>
+          q.eq('ownerId', session.userId).eq('memberId', identity.subject),
+        )
+        .unique();
+      return {
+        sessionId: null,
+        hidden: true as const,
+        circleInviteToken:
+          inCircle || (await circleFull(ctx, session.userId))
+            ? null
+            : (await ensureCircleInvite(ctx, session.userId)).token,
+      };
+    }
+
     const existing = await ctx.db
       .query('follows')
       .withIndex('by_session_follower', (q) =>
@@ -202,7 +222,7 @@ export const follow = mutation({
       inCircle || (await circleFull(ctx, session.userId))
         ? null
         : (await ensureCircleInvite(ctx, session.userId)).token;
-    return { sessionId: session._id, circleInviteToken };
+    return { sessionId: session._id, hidden: false as const, circleInviteToken };
   },
 });
 
@@ -232,9 +252,35 @@ export const byToken = query({
       .withIndex('by_token', (q) => q.eq('shareToken', token))
       .unique();
     if (!session || session.status !== 'active') return { gone: true as const };
+    const identity = await ctx.auth.getUserIdentity();
+    // A close-circle trip shows outsiders the traveler, never the flight:
+    // the page becomes an invitation to follow them (see live.follow).
+    const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
+    if (
+      journey?.hiddenFromCircle &&
+      !(
+        identity &&
+        (identity.subject === session.userId ||
+          (await isCloseMember(ctx, session.userId, identity.subject)))
+      )
+    ) {
+      let viewerInCircle = false;
+      if (identity) {
+        viewerInCircle = !!(await ctx.db
+          .query('circle')
+          .withIndex('by_owner_member', (q) =>
+            q.eq('ownerId', session.userId).eq('memberId', identity.subject),
+          )
+          .unique());
+      }
+      return {
+        hidden: true as const,
+        travelerName: await travelerName(ctx, session.userId),
+        viewerInCircle,
+      };
+    }
     // Signed-in viewers learn whether they already follow (circle members
     // arrive following) so the page doesn't offer a redundant button.
-    const identity = await ctx.auth.getUserIdentity();
     let viewerFollows = false;
     if (identity) {
       const row = await ctx.db

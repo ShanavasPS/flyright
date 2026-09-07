@@ -5,6 +5,7 @@ import { internalAction, internalMutation, internalQuery } from './_generated/se
 import {
   activeSessionForKey,
   armHeadsUp,
+  audienceFor,
   circleMembers,
   createSession,
   materializeCircleFollows,
@@ -22,7 +23,7 @@ export const headsUp = internalMutation({
     const journey = await ctx.db.get(journeyId);
     if (!journey) return;
     await ctx.db.patch(journeyId, { headsUpScheduledId: null });
-    if (journey.deletedAt || journey.hiddenFromCircle || journey.headsUpSentAt) return;
+    if (journey.deletedAt || journey.headsUpSentAt) return;
 
     const now = Date.now();
     const dep = Date.parse(journey.scheduledDeparture);
@@ -32,7 +33,7 @@ export const headsUp = internalMutation({
       await armHeadsUp(ctx, { ...journey, headsUpScheduledId: null });
       return;
     }
-    if (!(await circleMembers(ctx, journey.userId)).length) return;
+    if (!(await audienceFor(ctx, journey)).length) return;
 
     let session = await activeSessionForKey(ctx, journey.userId, journey.naturalKey);
     if (session) await materializeCircleFollows(ctx, session);
@@ -102,13 +103,14 @@ const TRIP_DEEP_LINKS_LANDED = true;
 /** Who hears that a trip was added, and what it says. Mute is honoured the
  * same way a travel-day push honours it (liveInternal.getNotifyTargets):
  * the member keeps seeing the trip in their People tab, they just aren't
- * told. Null when the circle is empty or every trip has since gone. */
+ * told. Close-circle trips reach close members only, so the audience splits
+ * in two batches: close members hear about every trip, the rest about the
+ * visible ones. Null when nobody is left to tell. */
 export const tripsAddedPush = internalQuery({
   args: { ownerId: v.string(), journeyIds: v.array(v.id('journeys')) },
   handler: async (ctx, { ownerId, journeyIds }) => {
-    const circle = await circleMembers(ctx, ownerId);
-    const externalIds = circle.filter((c) => !c.muted).map((c) => c.memberId);
-    if (!externalIds.length) return null;
+    const circle = (await circleMembers(ctx, ownerId)).filter((c) => !c.muted);
+    if (!circle.length) return null;
 
     const now = Date.now();
     const trips = [];
@@ -116,7 +118,7 @@ export const tripsAddedPush = internalQuery({
       const j = await ctx.db.get(id);
       // Re-validated: a trip added and deleted again before this action ran
       // is not news, and neither is one whose departure has since passed.
-      if (!j || j.userId !== ownerId || j.deletedAt || j.hiddenFromCircle) continue;
+      if (!j || j.userId !== ownerId || j.deletedAt) continue;
       const dep = Date.parse(j.scheduledDeparture);
       if (Number.isNaN(dep) || dep < now) continue;
       trips.push({
@@ -126,11 +128,19 @@ export const tripsAddedPush = internalQuery({
         fromCode: j.fromCode,
         toCode: j.toCode,
         scheduledDeparture: j.scheduledDeparture,
+        hidden: !!j.hiddenFromCircle,
       });
     }
-    if (!trips.length) return null;
+    const batches = [
+      { externalIds: circle.filter((c) => c.close).map((c) => c.memberId), trips },
+      {
+        externalIds: circle.filter((c) => !c.close).map((c) => c.memberId),
+        trips: trips.filter((t) => !t.hidden),
+      },
+    ].filter((b) => b.externalIds.length && b.trips.length);
+    if (!batches.length) return null;
     const profile = await profileFor(ctx, ownerId);
-    return { externalIds, ownerName: profile?.name ?? 'Your traveller', trips };
+    return { ownerName: profile?.name ?? 'Your traveller', batches };
   },
 });
 
@@ -147,29 +157,31 @@ export const notifyTripsAdded = internalAction({
   handler: async (ctx, { ownerId, journeyIds }) => {
     const p = await ctx.runQuery(internal.circleInternal.tripsAddedPush, { ownerId, journeyIds });
     if (!p) return;
-    const [first] = p.trips;
-    const many = p.trips.length > 1;
-    const when = new Date(first.scheduledDeparture).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      timeZone: 'UTC',
-    });
-    await sendFollowerPush(
-      p.externalIds,
-      many
-        ? `${p.ownerName} added ${p.trips.length} trips`
-        : `${first.number || first.carrier} · ${first.fromCode} → ${first.toCode}`,
-      many
-        ? `Their next one leaves ${when}. You'll get a heads-up the day before each.`
-        : `${p.ownerName} is flying to ${first.toCode} on ${when}. You'll get a heads-up the day before.`,
-      // One trip opens on that trip; several open on the person, which is
-      // where all of them are — but only once a build that HAS those screens
-      // is the one in people's hands. See TRIP_DEEP_LINKS_LANDED.
-      TRIP_DEEP_LINKS_LANDED
-        ? many
-          ? `https://getflyright.com/person/${ownerId}`
-          : `https://getflyright.com/person/${ownerId}/trip/${first.journeyId}`
-        : 'https://getflyright.com/people',
-    );
+    for (const { externalIds, trips } of p.batches) {
+      const [first] = trips;
+      const many = trips.length > 1;
+      const when = new Date(first.scheduledDeparture).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'UTC',
+      });
+      await sendFollowerPush(
+        externalIds,
+        many
+          ? `${p.ownerName} added ${trips.length} trips`
+          : `${first.number || first.carrier} · ${first.fromCode} → ${first.toCode}`,
+        many
+          ? `Their next one leaves ${when}. You'll get a heads-up the day before each.`
+          : `${p.ownerName} is flying to ${first.toCode} on ${when}. You'll get a heads-up the day before.`,
+        // One trip opens on that trip; several open on the person, which is
+        // where all of them are — but only once a build that HAS those screens
+        // is the one in people's hands. See TRIP_DEEP_LINKS_LANDED.
+        TRIP_DEEP_LINKS_LANDED
+          ? many
+            ? `https://getflyright.com/person/${ownerId}`
+            : `https://getflyright.com/person/${ownerId}/trip/${first.journeyId}`
+          : 'https://getflyright.com/people',
+      );
+    }
   },
 });

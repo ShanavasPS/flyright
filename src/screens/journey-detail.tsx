@@ -601,7 +601,7 @@ function tripDetailChips(row: JourneyRow): string[] {
   return [
     row.seat && `Seat ${row.seat}`,
     row.bookingReference && `Booking ${row.bookingReference}`,
-    row.hiddenFromCircle && 'Hidden from your circle',
+    row.hiddenFromCircle && 'Close circle only',
   ].filter((chip): chip is string => !!chip);
 }
 
@@ -762,10 +762,10 @@ function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>) 
   ]);
 }
 
-/** Native "···" menu: Edit (journal entries only), the circle privacy toggle
- * (null when there's no circle feature to hide from), then destructive
- * Remove. Hiding needs no confirmation — the trip card says so at once, and
- * the same menu shows it again. */
+/** Native "···" menu: Edit (journal entries only), the close-circle toggle
+ * (null when there's no circle feature to keep a trip from), then
+ * destructive Remove. Keeping a trip to the close circle needs no
+ * confirmation — the trip card says so at once, and the same menu undoes it. */
 function showTripMenu(
   journeyId: string,
   editable: boolean,
@@ -781,7 +781,7 @@ function showTripMenu(
   }
   if (hidden !== null) {
     items.push({
-      text: hidden ? 'Show to your circle' : 'Hide from your circle',
+      text: hidden ? 'Show to your whole circle' : 'Only my close circle',
       onPress: () => void setJourneyHiddenFromCircle(journeyId, !hidden),
     });
   }

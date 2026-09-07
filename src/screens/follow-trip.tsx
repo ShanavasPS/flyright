@@ -39,6 +39,13 @@ export function FollowTrip({ token }: { token: string }) {
     setBusy(true);
     try {
       const result = await follow({ token });
+      if (result.hidden) {
+        // A close-circle trip: nothing to follow here but the traveler. The
+        // invite page owns the join flow (push permission, share back).
+        trackEvent('trip_follow_hidden', { circleOffered: result.circleInviteToken != null });
+        if (result.circleInviteToken) router.push(`/i/${result.circleInviteToken}`);
+        return;
+      }
       setFollowed(true);
       setCircleInvite(result.circleInviteToken);
       trackEvent('trip_followed', { circleOffered: result.circleInviteToken != null });
@@ -59,6 +66,37 @@ export function FollowTrip({ token }: { token: string }) {
         <ThemedText type="small" themeColor="textSecondary">
           The trip has ended or its owner stopped sharing it.
         </ThemedText>
+      </Card>
+    );
+  } else if ('hidden' in result) {
+    // Kept to the traveler's close circle: no flight, no timeline — only
+    // the person, and a way to follow their other trips.
+    const who = result.travelerName ?? 'This traveler';
+    body = (
+      <Card>
+        <ThemedText type="subtitle">{who} keeps this trip to their close circle</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {result.viewerInCircle
+            ? `You follow ${who}'s trips, and you'll keep hearing about the ones they share with everyone. This one is for their close circle only.`
+            : `You can follow ${who} instead — a heads-up the day before each trip they share, and updates on travel day.`}
+        </ThemedText>
+        {isSignedIn && Platform.OS !== 'web' ? (
+          !result.viewerInCircle && (
+            <PrimaryButton label={`Follow ${who}'s trips`} disabled={busy} onPress={onFollow} />
+          )
+        ) : Platform.OS === 'web' ? (
+          <AppHandoff
+            path={`/t/${token}`}
+            title="Follow along in FlyRight"
+            blurb={`Follow ${who}'s trips and get a heads-up the day before each one.`}
+            openLabel="Open in FlyRight"
+          />
+        ) : (
+          <PrimaryButton
+            label="Sign in to follow"
+            onPress={() => router.push({ pathname: '/sign-in', params: { next: `/t/${token}` } })}
+          />
+        )}
       </Card>
     );
   } else {

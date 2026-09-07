@@ -65,15 +65,35 @@ export async function schedulePoll(ctx: MutationCtx, session: Doc<'liveSessions'
   await ctx.db.patch(session._id, { pollScheduledId });
 }
 
-/** Every circle member becomes a follower of this session (idempotent).
- * Circle-level mute is honored at send time (getNotifyTargets), so the
- * follows row itself stays unmuted and the member can still open the trip.
- * A trip hidden from the circle folds nobody in — its session serves only
- * the links the traveler hands out. */
+/** Who in the owner's circle may see this trip: everyone, or — for a trip
+ * kept to the close circle — only the members flagged close. */
+export async function audienceFor(
+  ctx: MutationCtx | QueryCtx,
+  journey: Pick<Doc<'journeys'>, 'userId' | 'hiddenFromCircle'>,
+) {
+  const members = await circleMembers(ctx, journey.userId);
+  return journey.hiddenFromCircle ? members.filter((m) => m.close) : members;
+}
+
+/** Whether this member may see the owner's close-circle trips. */
+export async function isCloseMember(ctx: MutationCtx | QueryCtx, ownerId: string, memberId: string) {
+  const row = await ctx.db
+    .query('circle')
+    .withIndex('by_owner_member', (q) => q.eq('ownerId', ownerId).eq('memberId', memberId))
+    .unique();
+  return !!row?.close;
+}
+
+/** Every circle member who may see the trip becomes a follower of this
+ * session (idempotent). Circle-level mute is honored at send time
+ * (getNotifyTargets), so the follows row itself stays unmuted and the member
+ * can still open the trip. A close-circle trip folds in the close members
+ * only. */
 export async function materializeCircleFollows(ctx: MutationCtx, session: Doc<'liveSessions'>) {
   const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
-  if (journey?.hiddenFromCircle) return;
-  const members = await circleMembers(ctx, session.userId);
+  const members = journey
+    ? await audienceFor(ctx, journey)
+    : await circleMembers(ctx, session.userId);
   if (!members.length) return;
   const now = new Date().toISOString();
   for (const member of members) {
@@ -94,9 +114,10 @@ export async function materializeCircleFollows(ctx: MutationCtx, session: Doc<'l
   }
 }
 
-/** The trip just went private: circle members following any of its active
- * sessions are dropped, so the People tab and the next push forget it.
- * Followers outside the circle came through an explicit link and stay. */
+/** The trip just went close-circle-only: everyone following any of its
+ * active sessions who isn't a close member is dropped — the rest of the
+ * circle and link-holders alike — so the People tab, the live page and the
+ * next push forget it for them. */
 export async function hideSessionsFromCircle(ctx: MutationCtx, userId: string, naturalKey: string) {
   const sessions = await ctx.db
     .query('liveSessions')
@@ -104,16 +125,47 @@ export async function hideSessionsFromCircle(ctx: MutationCtx, userId: string, n
     .collect();
   const active = sessions.filter((s) => s.status === 'active');
   if (!active.length) return;
-  const members = new Set((await circleMembers(ctx, userId)).map((m) => m.memberId));
+  const close = new Set(
+    (await circleMembers(ctx, userId)).filter((m) => m.close).map((m) => m.memberId),
+  );
   for (const session of active) {
     const follows = await ctx.db
       .query('follows')
       .withIndex('by_session', (q) => q.eq('sessionId', session._id))
       .collect();
     for (const f of follows) {
-      if (members.has(f.followerId)) await ctx.db.delete(f._id);
+      if (!close.has(f.followerId)) await ctx.db.delete(f._id);
     }
   }
+}
+
+/** A member moved into or out of the close circle: their access to the
+ * owner's close-circle trips follows. In: every active session takes them
+ * aboard and the heads-ups those trips lacked get armed. Out: they stop
+ * following the sessions of trips they may no longer see. */
+export async function syncCloseAccess(ctx: MutationCtx, ownerId: string, memberId: string) {
+  const sessions = await ctx.db
+    .query('liveSessions')
+    .withIndex('by_user', (q) => q.eq('userId', ownerId))
+    .collect();
+  const close = await isCloseMember(ctx, ownerId, memberId);
+  for (const session of sessions) {
+    if (session.status !== 'active') continue;
+    if (close) {
+      await materializeCircleFollows(ctx, session);
+      continue;
+    }
+    const journey = await journeyForKey(ctx, ownerId, session.naturalKey);
+    if (!journey?.hiddenFromCircle) continue;
+    const row = await ctx.db
+      .query('follows')
+      .withIndex('by_session_follower', (q) =>
+        q.eq('sessionId', session._id).eq('followerId', memberId),
+      )
+      .unique();
+    if (row) await ctx.db.delete(row._id);
+  }
+  if (close) await armHeadsUpsForOwner(ctx, ownerId);
 }
 
 /** Create the live session for a journey: flight snapshot from the mirror,
@@ -212,11 +264,10 @@ export async function armHeadsUp(ctx: MutationCtx, journey: Doc<'journeys'>) {
   const now = Date.now();
   if (
     !journey.deletedAt &&
-    !journey.hiddenFromCircle &&
     !journey.headsUpSentAt &&
     !Number.isNaN(dep) &&
     dep > now &&
-    (await circleMembers(ctx, journey.userId)).length
+    (await audienceFor(ctx, journey)).length
   ) {
     headsUpScheduledId = await ctx.scheduler.runAt(
       Math.max(now, dep - DAY_MS),

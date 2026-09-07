@@ -61,7 +61,7 @@ export const push = mutation({
       if (!existing) {
         journeyId = await ctx.db.insert('journeys', { ...row, userId: identity.subject });
         scheduleChanged = true;
-        if (!row.deletedAt && !row.hiddenFromCircle) added.push(journeyId);
+        if (!row.deletedAt) added.push(journeyId);
       } else if (row.updatedAt > existing.updatedAt) {
         await ctx.db.patch(existing._id, row);
         const wasHidden = !!existing.hiddenFromCircle;
@@ -73,12 +73,12 @@ export const push = mutation({
           !!row.deletedAt !== !!existing.deletedAt ||
           wasHidden !== nowHidden;
         if (nowHidden && !wasHidden) {
-          // Members already folded into its live session stop following it.
-          // Whoever holds an explicitly shared link keeps it.
+          // Everyone outside the close circle who followed its live session
+          // stops following it — the rest of the circle and link-holders.
           await hideSessionsFromCircle(ctx, identity.subject, row.naturalKey);
         } else if (wasHidden && !nowHidden && !row.deletedAt) {
-          // Shown again: to the circle this is a new trip — they see it,
-          // they hear about it, and any open session takes them aboard.
+          // Shown to the whole circle: to them this is a new trip — they see
+          // it, they hear about it, and any open session takes them aboard.
           const sessions = await ctx.db
             .query('liveSessions')
             .withIndex('by_user_key', (q) =>

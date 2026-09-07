@@ -33,9 +33,11 @@ export default defineSchema({
     rating: v.optional(v.union(v.number(), v.null())),
     bookingReference: v.optional(v.union(v.string(), v.null())),
     seat: v.optional(v.union(v.string(), v.null())),
-    /** Hidden from the owner's circle: no People-tab listing, no push, no
-     * auto-follow of its live session. An explicitly shared link still works.
-     * Optional: rows from clients older than trip privacy are visible. */
+    /** Close circle only: members outside the owner's close circle get no
+     * People-tab listing, no push, no follow of its live session, and a
+     * shared link shows them the traveler, not the trip. They still count
+     * it in the owner's totals. Optional: rows from clients older than trip
+     * privacy are visible to the whole circle. */
     hiddenFromCircle: v.optional(v.boolean()),
     source: v.string(),
     createdAt: v.string(),
@@ -150,6 +152,10 @@ export default defineSchema({
     memberId: v.string(),
     /** Member-side: still see the trip, skip the pushes. */
     muted: v.boolean(),
+    /** Owner-side: the close circle (family) also sees trips the owner
+     * hides from everyone else (journeys.hiddenFromCircle). Optional: rows
+     * from before close circles existed are ordinary members. */
+    close: v.optional(v.boolean()),
     createdAt: v.string(),
   })
     .index('by_owner', ['ownerId'])

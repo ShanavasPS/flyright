@@ -1,8 +1,9 @@
-# Trip privacy: the detail's "···" menu offers "Hide from your circle", the
-# trip-log card then wears a "Hidden from your circle" chip, and the same menu
-# offers "Show to your circle" to undo it. The server side (circle members
-# losing the trip in People, no pushes, no auto-follow) is enforced in Convex
-# and needs two signed-in users — see convex/journeys.ts push.
+# Trip privacy: the detail's "···" menu offers "Only my close circle", the
+# trip-log card then wears a "Close circle only" chip, and the same menu
+# offers "Show to your whole circle" to undo it. The server side (members
+# outside the close circle losing the trip in People, no pushes, no follow,
+# the link showing the traveler instead) is enforced in Convex and needs two
+# signed-in users — see convex/journeys.ts push and circle.setClose.
 #
 # Needs a journal row (see world-map.yaml's recipe) whose id is passed as
 # JOURNEY_ID. Works on any trip, flown or upcoming.
@@ -18,15 +19,15 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Trip options"
     timeout: 15000
-- assertNotVisible: "Hidden from your circle"
+- assertNotVisible: "Close circle only"
 - tapOn: "Trip options"
-- assertVisible: "Hide from your circle"
-- tapOn: "Hide from your circle"
+- assertVisible: "Only my close circle"
+- tapOn: "Only my close circle"
 - extendedWaitUntil:
-    visible: "Hidden from your circle"
+    visible: "Close circle only"
     timeout: 10000
 - takeScreenshot: ${SHOTS}/trip-hidden
 - tapOn: "Trip options"
-- assertVisible: "Show to your circle"
-- tapOn: "Show to your circle"
-- assertNotVisible: "Hidden from your circle"
+- assertVisible: "Show to your whole circle"
+- tapOn: "Show to your whole circle"
+- assertNotVisible: "Close circle only"

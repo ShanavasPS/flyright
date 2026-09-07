@@ -13,6 +13,7 @@ import {
   materializeCircleFollows,
   profileFor,
   severCircle,
+  syncCloseAccess,
 } from './liveHelpers';
 import { toPublicSession } from './liveShared';
 
@@ -281,6 +282,12 @@ export const person = query({
 
     if (theirs) {
       const now = Date.now();
+      // Close-circle trips are for close members. Everyone else still sees
+      // them in the totals — a profile's "21 trips flown" is the truth, not
+      // the list of what they may open.
+      const seesHidden = !!theirs.close;
+      let hiddenAhead = 0;
+      let hiddenFlown = 0;
       const session = await liveFor(ctx, me, userId);
       if (session) {
         const follows = await ctx.db
@@ -294,10 +301,14 @@ export const person = query({
         .withIndex('by_user', (q) => q.eq('userId', userId))
         .collect();
       for (const j of journeys) {
-        // Hidden trips are the owner's alone — not listed, not counted.
-        if (j.deletedAt || j.hiddenFromCircle) continue;
+        if (j.deletedAt) continue;
         const dep = Date.parse(j.scheduledDeparture);
         if (Number.isNaN(dep)) continue;
+        if (j.hiddenFromCircle && !seesHidden) {
+          if (dep >= now) hiddenAhead++;
+          else hiddenFlown++;
+          continue;
+        }
         if (session && j.naturalKey === session.naturalKey) liveJourneyId = j._id;
         (dep >= now ? upcoming : past).push(j);
       }
@@ -305,19 +316,24 @@ export const person = query({
       // outward from today in both directions.
       upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
       past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
-      const flown = past.length;
       return {
         ...who,
         theyShare: true as const,
         iShare: !!mine,
         muted: !!theirs.muted,
+        /** I'm in their close circle. */
+        close: seesHidden,
+        /** They're in mine (meaningful with iShare). */
+        closeMember: !!mine?.close,
         since: theirs.createdAt,
         followsMeSince: mine?.createdAt ?? null,
         live,
         liveJourneyId,
         upcoming: upcoming.map(publicTrip),
         past: past.slice(0, PAST_TRIPS_SHOWN).map(publicTrip),
-        flown,
+        // Totals count every trip; the lists above hold what I may open.
+        ahead: upcoming.length + hiddenAhead,
+        flown: past.length + hiddenFlown,
       };
     }
 
@@ -326,12 +342,15 @@ export const person = query({
       theyShare: false as const,
       iShare: true as const,
       muted: false,
+      close: false,
+      closeMember: !!mine!.close,
       since: null,
       followsMeSince: mine!.createdAt,
       live: null,
       liveJourneyId: null,
       upcoming: [],
       past: [],
+      ahead: 0,
       flown: 0,
     };
   },
@@ -348,12 +367,19 @@ export const trip = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const me = identity.subject;
-    if (!(await areSharing(ctx, ownerId, me))) return { gone: true as const };
+    const membership = await areSharing(ctx, ownerId, me);
+    if (!membership) return { gone: true as const };
 
     const journey = await ctx.db.get(journeyId);
     // The id is the caller's to supply, so it is checked against the owner
     // they claimed rather than trusted: a journey id alone opens nothing.
-    if (!journey || journey.userId !== ownerId || journey.deletedAt || journey.hiddenFromCircle) {
+    // A close-circle trip opens for close members only.
+    if (
+      !journey ||
+      journey.userId !== ownerId ||
+      journey.deletedAt ||
+      (journey.hiddenFromCircle && !membership.close)
+    ) {
       return { gone: true as const };
     }
 
@@ -474,6 +500,25 @@ export const leave = mutation({
   },
 });
 
+/** Owner moves a follower into or out of the close circle — the people who
+ * also see the trips kept from everyone else. */
+export const setClose = mutation({
+  args: { memberId: v.string(), close: v.boolean() },
+  handler: async (ctx, { memberId, close }) => {
+    const identity = await requireIdentity(ctx);
+    const row = await ctx.db
+      .query('circle')
+      .withIndex('by_owner_member', (q) =>
+        q.eq('ownerId', identity.subject).eq('memberId', memberId),
+      )
+      .unique();
+    if (!row) throw new Error('Not in your circle');
+    if (!!row.close === close) return;
+    await ctx.db.patch(row._id, { close });
+    await syncCloseAccess(ctx, identity.subject, memberId);
+  },
+});
+
 export const setMuted = mutation({
   args: { ownerId: v.string(), muted: v.boolean() },
   handler: async (ctx, { ownerId, muted }) => {
@@ -534,7 +579,7 @@ export const list = query({
           .withIndex('by_user', (q) => q.eq('userId', row.ownerId))
           .collect();
         for (const j of journeys) {
-          if (j.deletedAt || j.hiddenFromCircle) continue;
+          if (j.deletedAt || (j.hiddenFromCircle && !row.close)) continue;
           const dep = Date.parse(j.scheduledDeparture);
           if (Number.isNaN(dep) || dep < now) continue;
           if (!next || dep < Date.parse(next.scheduledDeparture)) {
@@ -549,12 +594,23 @@ export const list = query({
           }
         }
       }
-      following.push({ ...owner, muted: row.muted, since: row.createdAt, live, next });
+      following.push({
+        ...owner,
+        muted: row.muted,
+        close: !!row.close,
+        since: row.createdAt,
+        live,
+        next,
+      });
     }
 
     const followers = [];
     for (const row of await circleMembers(ctx, me)) {
-      followers.push({ ...(await personCard(ctx, row.memberId)), since: row.createdAt });
+      followers.push({
+        ...(await personCard(ctx, row.memberId)),
+        close: !!row.close,
+        since: row.createdAt,
+      });
     }
 
     // In-app invitations still waiting: theirs to answer, and mine to watch.

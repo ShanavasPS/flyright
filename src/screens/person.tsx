@@ -65,6 +65,7 @@ export function Person({ userId }: { userId: string }) {
   const theme = useTheme();
   const data = useQuery(api.circle.person, { userId });
   const setMuted = useMutation(api.circle.setMuted);
+  const setClose = useMutation(api.circle.setClose);
   const leave = useMutation(api.circle.leave);
   const remove = useMutation(api.circle.remove);
 
@@ -132,6 +133,7 @@ export function Person({ userId }: { userId: string }) {
               ? `Sharing their trips with you since ${formatDayLabel(p.since!)}`
               : `Following your trips since ${formatDayLabel(p.followsMeSince!)}`}
             {p.theyShare && p.iShare ? ' · you share yours back' : ''}
+            {p.theyShare && p.close ? ' · in their close circle' : ''}
           </ThemedText>
         </View>
 
@@ -152,7 +154,7 @@ export function Person({ userId }: { userId: string }) {
 
         {p.theyShare && (
           <View style={styles.stats}>
-            <Stat label={p.upcoming.length === 1 ? 'Trip ahead' : 'Trips ahead'} value={p.upcoming.length} />
+            <Stat label={p.ahead === 1 ? 'Trip ahead' : 'Trips ahead'} value={p.ahead} />
             <Stat label={p.flown === 1 ? 'Trip flown' : 'Trips flown'} value={p.flown} />
           </View>
         )}
@@ -246,12 +248,28 @@ export function Person({ userId }: { userId: string }) {
           </>
         )}
         {p.iShare && (
-          <ActionRow
-            label={`Remove ${p.name} from your circle`}
-            detail="They stop seeing your trips and getting updates."
-            danger
-            onPress={onRemove}
-          />
+          <>
+            {/* The close circle: the few who also see the trips kept from
+                everyone else (the trip menu's "Only my close circle"). */}
+            <ActionRow
+              label={p.closeMember ? 'Remove from your close circle' : 'Add to your close circle'}
+              detail={
+                p.closeMember
+                  ? `${p.name} sees every trip of yours, including the ones you keep to your close circle.`
+                  : `Let ${p.name} also see the trips you keep to your close circle — family, say.`
+              }
+              onPress={() => {
+                trackEvent('circle_close_toggled', { close: !p.closeMember });
+                void setClose({ memberId: userId, close: !p.closeMember });
+              }}
+            />
+            <ActionRow
+              label={`Remove ${p.name} from your circle`}
+              detail="They stop seeing your trips and getting updates."
+              danger
+              onPress={onRemove}
+            />
+          </>
         )}
       </>
     );
