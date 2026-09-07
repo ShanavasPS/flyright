@@ -42,33 +42,33 @@ type Tier = 'close' | 'rest';
  */
 export function CirclePreview({ memberId, close }: { memberId?: string; close?: boolean }) {
   const theme = useTheme();
-  // Nothing is synced into state: until the owner touches the switch the tier
-  // is whatever the follower we were opened on belongs to (the server derives
-  // it from memberId), and the person shown is derived from the followers the
-  // query returns. Only explicit taps write state.
+  // Both tiers are subscribed from the start and the switch only picks
+  // between them, so flipping tabs is instant — a query whose arguments
+  // change resubscribes and shows a spinner, and a tab that loads on every
+  // tap doesn't read as a tab. Nothing is synced into state: until the owner
+  // touches the switch the tier is whatever the follower we were opened on
+  // belongs to, and the person shown is derived from the followers list.
   const [tier, setTier] = useState<Tier | null>(null);
   const [member, setMember] = useState<string | null | undefined>(undefined);
-  const askFor = member === undefined ? memberId ?? null : member;
-
-  const data = useQuery(api.circle.previewMe, {
-    ...(askFor ? { memberId: askFor } : {}),
-    close: tier ? tier === 'close' : !!close,
-  });
+  const closeData = useQuery(api.circle.previewMe, { close: true });
+  const restData = useQuery(api.circle.previewMe, { close: false });
+  const followers = closeData?.followers ?? restData?.followers ?? [];
   const now = new Date();
 
-  const shownTier: Tier = tier ?? (data ? (data.close ? 'close' : 'rest') : close ? 'close' : 'rest');
-  const inTier = (data?.followers ?? []).filter((f) => (shownTier === 'close') === f.close);
+  const openedOn = memberId ? followers.find((f) => f.userId === memberId) : undefined;
+  const shownTier: Tier =
+    tier ?? (openedOn ? (openedOn.close ? 'close' : 'rest') : close ? 'close' : 'rest');
+  const data = shownTier === 'close' ? closeData : restData;
+  const inTier = followers.filter((f) => (shownTier === 'close') === f.close);
   // The member shown must belong to the tier; otherwise the first who does.
-  const shown =
-    data?.member && inTier.some((f) => f.userId === data.member!.userId)
-      ? data.member
-      : (inTier[0] ?? null);
+  const wanted = member === undefined ? memberId ?? null : member;
+  const shown = inTier.find((f) => f.userId === wanted) ?? inTier[0] ?? null;
 
   const switchTier = (next: Tier) => {
     if (next === shownTier) return;
     trackEvent('circle_preview_tier', { tier: next });
     setTier(next);
-    const first = (data?.followers ?? []).find((f) => (next === 'close') === f.close);
+    const first = followers.find((f) => (next === 'close') === f.close);
     setMember(first?.userId ?? null);
   };
 
