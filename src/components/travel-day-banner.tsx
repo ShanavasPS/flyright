@@ -15,17 +15,12 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AirlineLogo } from '@/components/airline-logo';
+import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
-import {
-  COBALT,
-  NIGHT_SKY,
-  TravelStatsHeader,
-  TravelStatsStrip,
-  WHITE,
-  WHITE_DIM,
-} from '@/components/travel-stats-header';
+import { TravelStatsHeader, TravelStatsStrip } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useTheme } from '@/hooks/use-theme';
 import type { JourneyRow } from '@/services/journeys';
 import type { TravelStats } from '@/services/timeline';
 import {
@@ -39,8 +34,6 @@ import { noteWarning, tapLight } from '@/services/haptics';
 import { getFlightFacts } from '@/services/travel-day-lifecycle';
 import { useTravelDayStates } from '@/services/travel-day-store';
 
-const LIVE_GREEN = '#2FD68C';
-const DELAY_AMBER = '#F2B441';
 const SPRING = { damping: 18, stiffness: 170 } as const;
 /** The plane glyph's box on the route line — its travel is the line minus this. */
 const PLANE_SIZE = 16;
@@ -69,8 +62,10 @@ export function useHeroTrip(
 
 /** The hero at the top of My travels. Every ordinary day it is the navy
  * all-time stats card. On a travel day (T−24h through landing) the live
- * flight takes the navy card for itself — one premium object, one job — and
- * the stats step down to a quiet one-line strip beneath it. Sharing a single
+ * flight takes the top of the screen as a light card — the trip rows'
+ * surface, since it is today's trip — and the stats step down to a one-line
+ * strip beneath it that keeps the navy, so the summary wears the same colour
+ * every day and nobody has to relearn which card is which. Sharing a single
  * card used to read as one confusing object: lifetime kilometres under a
  * boarding pass. */
 export function HomeHero({
@@ -85,6 +80,7 @@ export function HomeHero({
   variant?: 'full' | 'glance';
 }) {
   const router = useRouter();
+  const theme = useTheme();
   const now = useNow(60_000);
   const hero = useHeroTrip(journeys, now);
   if (!hero) return <TravelStatsHeader stats={stats} />;
@@ -95,7 +91,7 @@ export function HomeHero({
 
   return (
     <View style={styles.stack}>
-    <View style={[styles.card, { experimental_backgroundImage: NIGHT_SKY }]}>
+    <SheenCard style={styles.card}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Open travel day for ${content.title}`}
@@ -111,7 +107,7 @@ export function HomeHero({
         <View style={styles.spacedRow}>
           <AirlineLogo number={active.number} carrier={active.carrier} size={32} />
           <View style={styles.headerRight}>
-            <ThemedText type="smallBold" style={styles.microLabel}>
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.microLabel}>
               {content.headline}
             </ThemedText>
             {phase === 'live' && <LiveDot />}
@@ -124,29 +120,29 @@ export function HomeHero({
          * take-off, then flies the line to the destination. */}
         <View style={styles.routeRow}>
           <View style={styles.endpoint}>
-            <ThemedText style={styles.code} numberOfLines={1}>
+            <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
               {content.fromCode}
             </ThemedText>
             {!!content.depTime && (
-              <ThemedText type="small" style={styles.codeTime}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.codeTime}>
                 {content.depTime}
               </ThemedText>
             )}
           </View>
           <RoutePath progress={content.progress} delayed={content.emphasis === 'delay'} />
           <View style={[styles.endpoint, styles.endpointRight]}>
-            <ThemedText style={styles.code} numberOfLines={1}>
+            <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
               {content.toCode}
             </ThemedText>
             {!!content.arrTime && (
-              <ThemedText type="small" style={styles.codeTime}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.codeTime}>
                 {content.arrTime}
               </ThemedText>
             )}
           </View>
         </View>
 
-        <ThemedText type="small" style={styles.subtitle} numberOfLines={1}>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
           {content.subtitle}
         </ThemedText>
 
@@ -157,7 +153,7 @@ export function HomeHero({
             key={`${content.gate ?? '·'}-${content.terminal ?? '·'}`}
             entering={FadeInDown.duration(300)}
             style={styles.factWrap}>
-            <ThemedText type="small" style={styles.factLine} numberOfLines={1}>
+            <ThemedText type="smallBold" style={{ color: theme.tint }} numberOfLines={1}>
               {[
                 content.flightLabel,
                 content.gate ? `Gate ${content.gate}` : null,
@@ -171,7 +167,7 @@ export function HomeHero({
           <SymbolView
             name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
             size={14}
-            tintColor={WHITE_DIM}
+            tintColor={theme.textSecondary}
           />
         </View>
       </Pressable>
@@ -179,7 +175,7 @@ export function HomeHero({
       {/* Keyed by journey so a hero handover never inherits the previous
        * flight's delay/gate memory and false-flashes. */}
       <StatusFlash key={active.id} delayLabel={content.delayLabel} gate={content.gate} />
-    </View>
+    </SheenCard>
     {variant === 'full' && <TravelStatsStrip stats={stats} />}
     </View>
   );
@@ -209,8 +205,14 @@ function StatusFlash({ delayLabel, gate }: { delayLabel: string | null; gate: st
     prevGate.current = gate;
   }, [gate]);
 
+  const theme = useTheme();
   const style = useAnimatedStyle(() => ({ opacity: wash.value }));
-  return <Animated.View pointerEvents="none" style={[styles.wash, style]} />;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.wash, { backgroundColor: theme.warning }, style]}
+    />
+  );
 }
 
 /** The dotted contrail joining the route codes, with the plane riding it as
@@ -236,13 +238,21 @@ function RoutePath({ progress, delayed }: { progress: number; delayed: boolean }
 
   const planeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: planeX.value }] }));
   const flownStyle = useAnimatedStyle(() => ({ width: planeX.value + PLANE_SIZE / 2 }));
-  const tint = delayed ? DELAY_AMBER : COBALT;
+  const theme = useTheme();
+  const tint = delayed ? theme.warning : theme.tint;
 
   return (
     <View style={styles.routePath} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       <View style={styles.routeDots}>
         {Array.from({ length: 9 }, (_, i) => (
-          <View key={i} style={[styles.routeDot, (i === 0 || i === 8) && styles.routeEndDot]} />
+          <View
+            key={i}
+            style={[
+              styles.routeDot,
+              { backgroundColor: theme.textSecondary },
+              (i === 0 || i === 8) && styles.routeEndDot,
+            ]}
+          />
         ))}
       </View>
       <Animated.View style={[styles.routeFlown, { backgroundColor: tint }, flownStyle]} />
@@ -267,12 +277,13 @@ function LiveDot() {
     pulse.value = withRepeat(withTiming(0.35, { duration: 1000 }), -1, true);
     return () => cancelAnimation(pulse);
   }, [pulse, reduceMotion]);
+  const theme = useTheme();
   const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   return (
     <View style={styles.liveRow}>
-      <Animated.View style={[styles.liveDot, style]} />
-      <ThemedText type="smallBold" style={styles.liveLabel}>
+      <Animated.View style={[styles.liveDot, { backgroundColor: theme.success }, style]} />
+      <ThemedText type="smallBold" style={[styles.liveLabel, { color: theme.success }]}>
         Live
       </ThemedText>
     </View>
@@ -286,17 +297,10 @@ const styles = StyleSheet.create({
   stack: {
     gap: Spacing.two,
   },
+  // The wash overlay is clipped to the rounded corners; SheenCard supplies
+  // the surface, border and radius.
   card: {
-    gap: Spacing.three,
-    padding: Spacing.four,
-    borderRadius: Spacing.four,
-    borderWidth: 1,
-    borderColor: 'rgba(242,246,251,0.08)',
-    shadowColor: '#0B1520',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    overflow: 'hidden',
   },
   liveSection: {
     gap: Spacing.two,
@@ -307,7 +311,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   microLabel: {
-    color: WHITE_DIM,
     fontSize: 11,
     lineHeight: 14,
     textTransform: 'uppercase',
@@ -322,10 +325,8 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: LIVE_GREEN,
   },
   liveLabel: {
-    color: LIVE_GREEN,
     fontSize: 11,
     lineHeight: 14,
     textTransform: 'uppercase',
@@ -355,14 +356,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   code: {
-    color: WHITE,
     fontSize: 34,
     lineHeight: 40,
     fontWeight: 700,
     letterSpacing: 1,
   },
   codeTime: {
-    color: WHITE_DIM,
     fontVariant: ['tabular-nums'],
   },
   routePath: {
@@ -385,7 +384,6 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: WHITE_DIM,
     opacity: 0.55,
   },
   routeEndDot: {
@@ -413,14 +411,8 @@ const styles = StyleSheet.create({
   rotated: {
     transform: [{ rotate: '90deg' }],
   },
-  subtitle: {
-    color: WHITE_DIM,
-  },
   factWrap: {
     flexShrink: 1,
-  },
-  factLine: {
-    color: COBALT,
   },
   wash: {
     position: 'absolute',
@@ -428,7 +420,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: Spacing.four,
-    backgroundColor: DELAY_AMBER,
   },
 });

@@ -3,10 +3,8 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { formatKm, timeAloftComparison, type TravelStats } from '@/services/timeline';
 
 // The card keeps the brand's night-flight navy in BOTH themes — on the light
@@ -42,14 +40,14 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
   );
 }
 
-/** The all-time figures in one quiet line — what the stats card shrinks to on
- * a travel day, when the live flight owns the navy hero and lifetime
- * kilometres are the last thing on the traveller's mind. Still the door to
- * Travel stats, so the day never takes the screen away. Renders nothing
- * until there's at least one trip. */
+/** The all-time figures in one line — what the stats card shrinks to on a
+ * travel day, when the live flight takes the top of the screen. It keeps the
+ * navy: the summary card wears the same colour every day of the year, so
+ * the reader always knows which card is "my travels so far" and which is
+ * today's flight. Still the door to Travel stats. Renders nothing until
+ * there's at least one trip. */
 export function TravelStatsStrip({ stats }: { stats: TravelStats }) {
   const router = useRouter();
-  const theme = useTheme();
 
   if (!stats.trips) return null;
   const line = [
@@ -64,21 +62,21 @@ export function TravelStatsStrip({ stats }: { stats: TravelStats }) {
       accessibilityLabel={`Open your travel stats. All-time: ${line}`}
       onPress={() => router.push('/stats')}
       style={({ pressed }) => pressed && styles.pressed}>
-      <SheenCard style={styles.strip}>
+      <View style={[styles.card, styles.strip, { experimental_backgroundImage: NIGHT_SKY }]}>
         <View style={styles.stripText}>
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.stripEyebrow}>
+          <ThemedText type="smallBold" style={styles.microLabel}>
             All-time
           </ThemedText>
-          <ThemedText type="smallBold" themeColor="heading" numberOfLines={1}>
+          <ThemedText type="smallBold" style={styles.stripLine} numberOfLines={1}>
             {line}
           </ThemedText>
         </View>
         <SymbolView
           name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
           size={13}
-          tintColor={theme.textSecondary}
+          tintColor={WHITE_DIM}
         />
-      </SheenCard>
+      </View>
     </Pressable>
   );
 }
@@ -214,17 +212,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
   },
   stripText: {
     flex: 1,
     gap: Spacing.half,
   },
-  stripEyebrow: {
-    fontSize: 11,
-    lineHeight: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+  stripLine: {
+    color: WHITE,
   },
   microLabel: {
     color: WHITE_DIM,
