@@ -1,4 +1,5 @@
-import { StyleSheet, View } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { SheenCard } from '@/components/sheen-card';
@@ -7,7 +8,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { countdown, formatDayLabel, formatTime } from '@/services/dates';
-import { cityOf } from '@/services/timeline';
+import { blockMinutes, cityOf } from '@/services/timeline';
 
 /** Past this age a trip reads as a journal entry rather than a countdown:
  * the date on the row and the year in the section header say enough. */
@@ -32,7 +33,9 @@ export interface RowTrip {
 }
 
 /** One trip as a card: airline mark, the date and flight number with the
- * countdown opposite, then where it goes and when in boarding-pass terms.
+ * countdown opposite, then the leg the way the trip screen's hero draws it —
+ * the two codes big at the edges with the contrail and plane between, city
+ * and clock beneath each, block time under the plane — at list size.
  *
  * The card body only — pressing is the caller's, because the journal pushes
  * a route (or selects into its second pane) while a profile opens somebody
@@ -89,10 +92,7 @@ export function TripRow({
               </ThemedText>
             ))}
         </View>
-        <ThemedText type="smallBold" themeColor="heading" style={styles.route} numberOfLines={1}>
-          {cityOf(trip.fromCode)} to {cityOf(trip.toCode)}
-        </ThemedText>
-        <ScheduleLine trip={trip} />
+        <RouteLine trip={trip} />
         {/* The journal peeks through: the note's first line, so the list
             reads as a diary and not just a timetable. */}
         {trip.notes && (
@@ -118,55 +118,133 @@ export function timerLabel(timer: { value: number; unit: string }): string {
   return timer.unit.endsWith('ago') ? `${timer.value}${short} ago` : `in ${timer.value}${short}`;
 }
 
-/** The card's schedule line, with the ticket's clock struck through in place
- * when the airline has moved the flight. Departure only: two struck clocks on
- * one list row is unreadable, and the trip screen carries both ends. */
-function ScheduleLine({ trip }: { trip: RowTrip }) {
-  const { lead, rest } = scheduleParts(trip);
+/** The leg at list size: codes, then city, then the clock under each — the
+ * same column the trip screen's hero stacks, at 22pt instead of 40. Only the
+ * departure side carries the ticket's struck-through old time: two struck
+ * clocks on one list row is unreadable, and the trip screen shows both ends.
+ * Accessible as one label, since the codes are split views. */
+function RouteLine({ trip }: { trip: RowTrip }) {
+  const theme = useTheme();
+  const { dep, arr } = clocks(trip);
   const was = trip.ticketedDeparture
     ? formatTime(trip.ticketedDeparture, airportZone(trip.fromCode))
     : null;
+  // Block time reads as a fact about the segment (the hero's pattern); the
+  // distance stands in when the times can't be differenced — or were never
+  // typed, which is when the codes alone are the whole line.
+  const middle = durationLabel(trip) ?? distanceLabel(trip) ?? ' ';
+  const spoken = [trip.fromCode, dep, 'to', trip.toCode, arr].filter(Boolean).join(' ');
+
   return (
-    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-      {lead}
-      {was && (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.movedFrom}>
-          {was}{' '}
+    <View accessible accessibilityLabel={spoken} style={styles.routeRow}>
+      <View style={styles.endpoint}>
+        <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
+          {trip.fromCode}
         </ThemedText>
-      )}
-      {rest}
-    </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.city} numberOfLines={1}>
+          {cityOf(trip.fromCode)}
+        </ThemedText>
+        {(dep || arr) && (
+          <ThemedText themeColor="heading" style={styles.clock} numberOfLines={1}>
+            {dep ?? ' '}
+          </ThemedText>
+        )}
+        {/* What the ticket said, struck through beneath the clock that now
+            counts — its own line, so a wide "5:05 PM 6:00 PM" pair never
+            squeezes the contrail or truncates the live time. */}
+        {was && (
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            style={[styles.city, styles.movedFrom]}
+            numberOfLines={1}
+            accessibilityLabel={`Moved from ${was}`}>
+            {was}
+          </ThemedText>
+        )}
+      </View>
+      <View style={styles.contrail}>
+        <View style={styles.contrailLine}>
+          <ContrailDots />
+          <SymbolView
+            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+            size={14}
+            tintColor={theme.tint}
+            style={Platform.OS === 'ios' ? undefined : styles.rotated}
+          />
+          <ContrailDots />
+        </View>
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          style={styles.contrailLabel}
+          numberOfLines={1}>
+          {middle}
+        </ThemedText>
+      </View>
+      <View style={[styles.endpoint, styles.endpointRight]}>
+        <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
+          {trip.toCode}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.city} numberOfLines={1}>
+          {cityOf(trip.toCode)}
+        </ThemedText>
+        {/* A blank keeps the two columns level when only one clock exists. */}
+        {(dep || arr) && (
+          <ThemedText themeColor="heading" style={styles.clock} numberOfLines={1}>
+            {arr ?? ' '}
+          </ThemedText>
+        )}
+      </View>
+    </View>
   );
 }
 
-/** The codes-and-times detail line, Flighty-style: "HEL 10:15 → LHR 14:20".
+/** Half of the dotted contrail between the codes — the hero's motif, three
+ * dots a side at card size. */
+function ContrailDots() {
+  const theme = useTheme();
+  return (
+    <View style={styles.contrailDots}>
+      {Array.from({ length: 3 }, (_, i) => (
+        <View key={i} style={[styles.contrailDot, { backgroundColor: theme.textSecondary }]} />
+      ))}
+    </View>
+  );
+}
+
+/** The clocks under each code, each in its own airport's zone so the row
+ * reads the way a boarding pass does no matter where the phone is.
  * Journal entries only carry times the user typed: identical noon timestamps
- * are the "no times" placeholder (show distance instead), identical non-noon
- * ones mean a single entered time — never render a fabricated departure →
- * arrival pair. Judged on the times themselves rather than on the row's
- * source, which a trip shared with a follower doesn't carry: two identical
- * clocks are the same non-fact whoever wrote them down.
- *
- * Split at the departure clock so a moved flight can strike the old one
- * through in place — "HEL 5:05 PM 6:00 PM" reads as a correction, where the
- * same two clocks either side of the code read as nonsense. */
-function scheduleParts(trip: RowTrip): { lead: string; rest: string } {
+ * are the "no times" placeholder, identical non-noon ones mean a single
+ * entered time — never render a fabricated departure → arrival pair. Judged
+ * on the times themselves rather than on the row's source, which a trip
+ * shared with a follower doesn't carry: two identical clocks are the same
+ * non-fact whoever wrote them down. */
+function clocks(trip: RowTrip): { dep: string | null; arr: string | null } {
   const { scheduledDeparture: dep, scheduledArrival: arr } = trip;
-  // Distance stands in for the times a journal entry never had; a follower's
-  // copy carries neither, and then the codes alone are the whole line.
-  const km = trip.distanceKm ? ` · ${Math.round(trip.distanceKm).toLocaleString()} km` : '';
-  // Each clock belongs to the code beside it, so the line reads the way a
-  // boarding pass does no matter which zone the phone is in.
-  const depTime = formatTime(dep, airportZone(trip.fromCode));
   if (dep === arr) {
-    return dep.endsWith('T12:00:00')
-      ? { lead: '', rest: `${trip.fromCode} → ${trip.toCode}${km}` }
-      : { lead: `${trip.fromCode} `, rest: `${depTime} → ${trip.toCode}${km}` };
+    if (dep.endsWith('T12:00:00')) return { dep: null, arr: null };
+    return { dep: formatTime(dep, airportZone(trip.fromCode)), arr: null };
   }
   return {
-    lead: `${trip.fromCode} `,
-    rest: `${depTime} → ${trip.toCode} ${formatTime(arr, airportZone(trip.toCode))}`,
+    dep: formatTime(dep, airportZone(trip.fromCode)),
+    arr: formatTime(arr, airportZone(trip.toCode)),
   };
+}
+
+/** "4h 5m" — null for entries whose bare wall-clock times can't be
+ * differenced (see blockMinutes). */
+function durationLabel(trip: RowTrip): string | null {
+  const minutes = blockMinutes(trip.scheduledDeparture, trip.scheduledArrival);
+  if (minutes === null) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+}
+
+function distanceLabel(trip: RowTrip): string | null {
+  return trip.distanceKm ? `${Math.round(trip.distanceKm).toLocaleString()} km` : null;
 }
 
 /** The first non-empty line of a note, for the list row's one-line peek. */
@@ -188,7 +266,69 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   metaCarrier: { flex: 1 },
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+    marginTop: Spacing.half,
+  },
+  endpoint: {
+    flexShrink: 1,
+  },
+  endpointRight: {
+    alignItems: 'flex-end',
+  },
+  code: {
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: 700,
+    letterSpacing: -0.3,
+  },
+  city: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  clock: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 600,
+  },
   movedFrom: { textDecorationLine: 'line-through' },
-  route: { fontSize: 16 },
+  // The line is 14pt tall; the 6pt offset centres the plane on the 26pt code
+  // line, and the label beneath then sits level with the cities.
+  contrail: {
+    flex: 1,
+    minWidth: 56,
+    alignItems: 'center',
+    marginTop: 6,
+    gap: Spacing.half,
+  },
+  contrailLine: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    height: 14,
+  },
+  contrailDots: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+  },
+  contrailDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    opacity: 0.55,
+  },
+  contrailLabel: {
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
+  },
+  rotated: {
+    transform: [{ rotate: '90deg' }],
+  },
   noteLine: { fontStyle: 'italic', marginTop: Spacing.half },
 });
