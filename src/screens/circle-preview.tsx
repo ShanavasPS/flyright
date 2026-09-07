@@ -150,39 +150,51 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
           })}
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={inTier.length > 1 ? `${personaTitle}. Change person` : personaTitle}
-          disabled={inTier.length < 2}
-          onPress={pickPerson}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <SheenCard style={styles.persona}>
-            {shown ? (
-              <Avatar name={shown.name} imageUrl={shown.imageUrl} size={44} />
-            ) : (
-              <View style={[styles.personaEmpty, { backgroundColor: `${theme.tint}1A` }]}>
-                <SymbolView
-                  name={{ ios: 'person.2', android: 'group', web: 'group' }}
-                  size={20}
-                  tintColor={theme.tint}
-                />
+        {/* Who this is seen as. A card only when it can be tapped to pick
+            someone else; with one person or nobody it is a plain row, so it
+            doesn't dress up as a button it isn't. */}
+        {inTier.length > 1 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${personaTitle}. Change person`}
+            onPress={pickPerson}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <SheenCard style={styles.persona}>
+              <Avatar name={shown!.name} imageUrl={shown!.imageUrl} size={44} />
+              <View style={styles.personaBody}>
+                <ThemedText themeColor="heading">{personaTitle}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {personaDetail}
+                </ThemedText>
               </View>
-            )}
-            <View style={styles.personaBody}>
-              <ThemedText themeColor="heading">{personaTitle}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {personaDetail}
-              </ThemedText>
-            </View>
-            {inTier.length > 1 && (
               <SymbolView
                 name={{ ios: 'chevron.down', android: 'expand_more', web: 'expand_more' }}
                 size={16}
                 tintColor={theme.textSecondary}
               />
+            </SheenCard>
+          </Pressable>
+        ) : (
+          <View style={styles.personaPlain}>
+            {shown ? (
+              <Avatar name={shown.name} imageUrl={shown.imageUrl} size={28} />
+            ) : (
+              <SymbolView
+                name={{ ios: 'person.2', android: 'group', web: 'group' }}
+                size={18}
+                tintColor={theme.textSecondary}
+              />
             )}
-          </SheenCard>
-        </Pressable>
+            <View style={styles.personaBody}>
+              <ThemedText type="smallBold" themeColor="heading">
+                {personaTitle}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {personaDetail}
+              </ThemedText>
+            </View>
+          </View>
+        )}
 
         <View style={styles.hero}>
           <Avatar name={data.name} imageUrl={data.imageUrl} size={88} />
@@ -301,12 +313,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three - Spacing.one,
     paddingHorizontal: Spacing.three,
   },
-  personaEmpty: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+  personaPlain: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two + Spacing.half,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.one,
   },
   personaBody: { flex: 1, gap: Spacing.half },
   hero: {
