@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.26',
+    date: '2026-09-07',
+    notes: [
+      'World map filters: see a year, a month, or any date range of your travels — the stats follow.',
+      'Share your world: a poster of your routes and numbers for Instagram and Facebook, in story or square, for a period or a single flight.',
+      'Share a trip from its page as the same poster.',
+      'Settings tells you when a newer FlyRight is on the store, with everything you are missing.',
+      'Travel day: the live flight gets the home hero to itself, with a status border and a light running around it.',
+      'Close circle: keep a trip with family only, and preview how your circle sees you.',
+    ],
+  },
+  {
     version: '1.0.25',
     date: '2026-09-06',
     notes: [

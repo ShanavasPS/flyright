@@ -1,7 +1,7 @@
 {
   "name": "flyright",
   "main": "expo-router/entry",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "dependencies": {
     "@clerk/expo": "^4.3.0",
     "@expo/ui": "~57.0.14",
