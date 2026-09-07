@@ -1,0 +1,27 @@
+FlyRight 1.0.27 — a feature release on top of 1.0.25 (1.0.26 was built and withdrawn before review; this build supersedes it). No new permissions, no new purchases, no change to the account model.
+
+NEW SINCE 1.0.25:
+
+1) World tab filters. A pill in the World header narrows the map to a year, a month, or a custom date range; the stats card follows. All time remains the default.
+
+2) Share your world. A share button on the World tab (and the share icon on any trip's page) opens a preview of a poster — the routes drawn on our own offline atlas, the numbers, the records — in story (9:16) or square (1:1), then hands a PNG to the system share sheet. The poster is generated on the device from the traveller's own data; nothing is uploaded.
+
+3) Update notice. Settings shows an "Update available" row (and a badge on the Settings tab) when the App Store serves a newer version than the one running; it opens a screen with an "Update on the App Store" button (a link to our App Store page) and the release notes between the installed version and the current one. Our server answers which version is live from Apple's public lookup API; nothing is announced before the App Store serves it.
+
+4) Travel day: the live flight has the home-screen hero to itself, with a status border and an animated light.
+
+5) Close circle: a trip can be kept to close circle members only, and a preview shows how a follower sees the traveller.
+
+6) Fixes: a "flight moved" alert no longer fires for a flight that has already flown, and the Settings tab badge appears only while an update is actually available.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- World filters and sharing: World tab -> tap the "All time" pill -> pick a year, then a month -> Close. Tap the share icon in the header -> Story / Square -> Share image. On a trip's page, the share icon in the header shares that flight the same way.
+- Update notice: it appears only when the App Store version is newer than the installed build, so it is not visible on a current build; the screen itself is at Settings once a newer version ships.
+- Ticket import: My travels -> + -> "Upload a ticket PDF or screenshot", or share an airline PDF into FlyRight from Files or Mail.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.25: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos, and push for flight status, claim deadlines and trip updates from people the user follows. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
