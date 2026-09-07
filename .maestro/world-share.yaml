@@ -1,0 +1,63 @@
+# World share poster: the share button in the World header opens a dark
+# full-screen preview of the card for whatever the map is showing, with a
+# Story/Square toggle and "Share image" (react-native-view-shot capture →
+# expo-sharing). Needs a journal with at least one flight, so this flow does
+# NOT clearState — seed first (see world-map.yaml / scripts/seed-demo-data.mjs).
+#
+# Run: maestro --device <device> test .maestro/world-share.yaml
+#
+# Gotchas: react-native-view-shot is NATIVE — dev clients built before
+# 2026-09-07 have no share button worth testing (the capture throws). The
+# system share sheet is platform UI: iOS is dismissed by tapping above it,
+# Android's chooser with back; the waits are optional so the flow survives a
+# sheet that renders differently on another OS version.
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://world"
+- extendedWaitUntil:
+    visible: "Everywhere you’ve been"
+    timeout: 15000
+- tapOn: "Share your world"
+- extendedWaitUntil:
+    visible: "Share image"
+    timeout: 10000
+- assertVisible: "FLYRIGHT"
+- assertVisible: "getflyright.com"
+# The eyebrow reads "EVERYWHERE … HAS FLOWN" / "EVERYWHERE I’VE FLOWN" for the
+# unfiltered map.
+- assertVisible: "EVERYWHERE.*"
+- tapOn: "Square"
+- assertVisible: "FLYRIGHT"
+- tapOn: "Story"
+- tapOn: "Share image"
+# The system share sheet. iOS 26's sheet has no labelled close control, so
+# a tap on the dimmed area above it is what dismisses it.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: ".*PNG Image.*"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          point: "50%,8%"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible: ".*(Share|Copy|Nearby).*"
+          timeout: 15000
+          optional: true
+      - back
+- extendedWaitUntil:
+    visible: "Share image"
+    timeout: 10000
+- tapOn: "Close"
+- assertVisible: "Everywhere you’ve been"

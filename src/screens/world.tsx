@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/expo';
-import { Link, useIsFocused } from 'expo-router';
+import { Link, useIsFocused, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -40,6 +40,7 @@ import {
 import { cityOf, formatKm, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 import { ALL_TIME, filterByPeriod, periodKey, type WorldPeriod } from '@/services/world-period';
+import { openWorldShare } from '@/services/world-share';
 
 /** Overlay heights below the safe areas, for `mapPadding`. Header: eyebrow
  * (16) + gap (2) + title (41) + vertical padding (8 + 16). Card: numerals
@@ -98,6 +99,7 @@ export function World() {
       focusedRow={focusedRow}
       loaded={journeys != null}
       onClearFocus={() => focusWorldOn(null)}
+      shareable
       eyebrow="Everywhere you’ve been"
       title="World"
       emptyCard={<EmptyCard />}
@@ -121,6 +123,7 @@ export function WorldCanvas({
   title,
   emptyCard,
   onBack,
+  shareable = false,
 }: {
   /** Every journey the map may draw. The canvas narrows it itself: to the
    * focused trip while there is one, otherwise to the chosen period. */
@@ -139,7 +142,11 @@ export function WorldCanvas({
   /** A pushed screen draws its own back button, since the map runs full
    * bleed under where a header would be. The tab has none. */
   onBack?: () => void;
+  /** Offers the share poster. Only for the traveller's own map — somebody
+   * else's travel is theirs to post, not the viewer's. */
+  shareable?: boolean;
 }) {
+  const router = useRouter();
   const dark = useColorScheme() === 'dark';
   const theme = useTheme();
   const { sea } = mapColors(dark);
@@ -285,6 +292,20 @@ export function WorldCanvas({
   const upcoming = useMemo(() => planes.filter(({ plane }) => plane.upcoming), [planes]);
 
   const selected = planes.find(({ route }) => route.key === selectedKey) ?? null;
+
+  /** What the poster shows follows what the map shows: the tapped route's
+   * legs, the handed-off trip, else the period's rows. */
+  const shareVisible = () => {
+    if (selected) {
+      const ids = new Set(selected.route.legs.map((leg) => leg.id));
+      openWorldShare({ rows: rows.filter((row) => ids.has(row.id)), period, kind: 'route' });
+    } else if (focusedRow) {
+      openWorldShare({ rows: [focusedRow], period, kind: 'route' });
+    } else {
+      openWorldShare({ rows: visible, period, kind: 'period' });
+    }
+    router.push('/share-world');
+  };
 
   // Animation clock for the comets and the pulsing undeparted planes. Runs
   // only while there is something to animate and the tab is on screen in a
@@ -472,6 +493,7 @@ export function WorldCanvas({
               }}
             />
           )}
+          {shareable && loaded && visible.length > 0 && <ShareButton onPress={shareVisible} />}
           {moved && (
             <RecenterButton
               onPress={() => {
@@ -709,6 +731,25 @@ function AllTravelsButton({ onPress }: { onPress: () => void }) {
       <ThemedText type="smallBold" style={{ color: theme.tint }}>
         All travels
       </ThemedText>
+    </Pressable>
+  );
+}
+
+/** Opens the share poster for whatever the map is showing. */
+function ShareButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Share your world"
+      onPress={onPress}
+      style={[styles.recenter, { backgroundColor: theme.backgroundElement }]}>
+      <SymbolView
+        name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }}
+        size={18}
+        weight="semibold"
+        tintColor={theme.tint}
+      />
     </Pressable>
   );
 }

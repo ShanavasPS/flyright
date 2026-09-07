@@ -228,6 +228,15 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* The World map as a shareable poster: preview, Story/Square,
+                the system share sheet. Dark full-screen, like the card. */}
+              <Stack.Screen
+                name="share-world"
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                }}
+              />
               {/* One trip photo on black, with its own close/remove bar. */}
               <Stack.Screen
                 name="photo-viewer"
