@@ -1,0 +1,43 @@
+# World tab period filter: the "All time" pill opens the chooser docked where
+# the stats card sits; a year chip narrows the map and unfolds its months;
+# "Custom" shows a from/to pair. Needs a journal with flights in at least one
+# past year, so this flow does NOT clearState — seed first (see world-map.yaml
+# for the sqlite recipe, or scripts/seed-demo-data.mjs) and pass the year as
+# env: maestro --device <device> -e YEAR=2025 -e MONTH=Sep -e MONTH_LONG=September \
+#        test .maestro/world-period.yaml
+#
+# Gotchas: the pill carries an accessibilityLabel ("Showing All time. Choose
+# a period", with the month spelled out), so Maestro matches that, not the
+# visible "All time"; month chips without flights are disabled but visible.
+appId: com.shanavasshaji.flyright
+env:
+  YEAR: "2025"
+  MONTH: "Sep"
+  MONTH_LONG: "September"
+---
+- launchApp
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://world"
+- extendedWaitUntil:
+    visible: "Everywhere you’ve been"
+    timeout: 15000
+- tapOn: "Showing All time.*"
+- assertVisible: "Custom"
+- tapOn: ${YEAR}
+- assertVisible: "Showing ${YEAR}.*"
+- assertVisible: "Jan"
+- tapOn: ${MONTH}
+- assertVisible: "Showing ${MONTH_LONG} ${YEAR}.*"
+# Tapping the chosen month again widens back to the year.
+- tapOn: ${MONTH}
+- assertVisible: "Showing ${YEAR}.*"
+- tapOn: "Custom"
+- assertVisible: "From"
+- assertVisible: "To"
+- tapOn: "All time"
+- assertVisible: "Showing All time.*"
+- tapOn: "Close"
+- assertVisible: "trips"

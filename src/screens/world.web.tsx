@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { WorldMap, mapColors } from '@/components/world-map';
+import { EmptyPeriodCard, PeriodButton, PeriodCard } from '@/components/world-period-card';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -19,6 +20,7 @@ import { useJourneys } from '@/services/journeys';
 import { formatDayLabel } from '@/services/dates';
 import { formatKm, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
+import { ALL_TIME, filterByPeriod, periodKey, type WorldPeriod } from '@/services/world-period';
 
 /** Deepest zoom-in: 1/16 of the world across the screen — enough to separate
  * co-located city airports without outrunning the 1:110m coastline data. */
@@ -38,13 +40,19 @@ export function World() {
   const focused = useIsFocused();
   const focusId = useWorldFocus();
   const focusedRow = focusId ? journeys?.find((row) => row.id === focusId) : undefined;
-  const rows = useMemo(
-    () => (focusedRow ? [focusedRow] : (journeys ?? [])),
-    [focusedRow, journeys],
-  );
   useEffect(() => {
     if (!focused) focusWorldOn(null);
   }, [focused]);
+
+  // Which slice of the journal is on the map — see the native World for the
+  // reasoning. A hand-off resets it; a new period refits the view.
+  const [period, setPeriod] = useState<WorldPeriod>(ALL_TIME);
+  const [choosing, setChoosing] = useState(false);
+  const all = useMemo(() => journeys ?? [], [journeys]);
+  const rows = useMemo(
+    () => (focusedRow ? [focusedRow] : filterByPeriod(all, period)),
+    [focusedRow, all, period],
+  );
 
   // "Flown vs upcoming" cutoff, frozen per mount — a live clock would redraw
   // the map mid-session for no visible gain.
@@ -61,6 +69,19 @@ export function World() {
   // (so new flights re-fit the map until the user takes the wheel).
   const [userBox, setUserBox] = useState<ViewBox | null>(null);
   const box = userBox ?? fitted;
+
+  const [seenFocus, setSeenFocus] = useState(focusedRow?.id);
+  if (seenFocus !== focusedRow?.id) {
+    setSeenFocus(focusedRow?.id);
+    setUserBox(null);
+    setChoosing(false);
+    if (focusedRow) setPeriod(ALL_TIME);
+  }
+  const [seenPeriod, setSeenPeriod] = useState(periodKey(period));
+  if (seenPeriod !== periodKey(period)) {
+    setSeenPeriod(periodKey(period));
+    setUserBox(null);
+  }
 
   // Live gesture state, applied as a plain view transform while fingers are
   // down. On release it's committed into the SVG viewBox (a crisp vector
@@ -150,7 +171,8 @@ export function World() {
     };
   });
 
-  const empty = journeys != null && data.routes.length === 0;
+  const empty = journeys != null && all.length === 0;
+  const emptyPeriod = journeys != null && !empty && !focusedRow && rows.length === 0;
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -191,6 +213,9 @@ export function World() {
               </ThemedText>
             </View>
             {focusedRow && <AllTravelsButton onPress={() => focusWorldOn(null)} />}
+            {!focusedRow && !empty && (
+              <PeriodButton period={period} onPress={() => setChoosing((open) => !open)} />
+            )}
             {userBox && <RecenterButton onPress={() => setUserBox(null)} />}
           </View>
         </SafeAreaView>
@@ -198,6 +223,20 @@ export function World() {
         <SafeAreaView style={styles.footer} edges={['bottom']} pointerEvents="box-none">
           {empty ? (
             <EmptyCard />
+          ) : choosing ? (
+            <View style={styles.periodCard}>
+              <PeriodCard
+                rows={all}
+                period={period}
+                recap={recap}
+                onChange={setPeriod}
+                onClose={() => setChoosing(false)}
+              />
+            </View>
+          ) : emptyPeriod ? (
+            <View style={styles.periodCard}>
+              <EmptyPeriodCard period={period} onReset={() => setPeriod(ALL_TIME)} />
+            </View>
           ) : recap.trips > 0 ? (
             <Card style={styles.stats}>
               <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
@@ -349,6 +388,12 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: 'center',
+  },
+  periodCard: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    marginBottom: BottomTabInset + Spacing.three,
   },
   stats: {
     flexDirection: 'row',

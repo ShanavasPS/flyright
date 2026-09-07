@@ -11,6 +11,7 @@ import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { AirportMarker, PlaneMarker, alphaHex } from '@/components/map-layers';
 import { ThemedText } from '@/components/themed-text';
 import { mapColors } from '@/components/world-map';
+import { EmptyPeriodCard, PeriodButton, PeriodCard } from '@/components/world-period-card';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -38,6 +39,7 @@ import {
 } from '@/services/map-region';
 import { cityOf, formatKm, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
+import { ALL_TIME, filterByPeriod, periodKey, type WorldPeriod } from '@/services/world-period';
 
 /** Overlay heights below the safe areas, for `mapPadding`. Header: eyebrow
  * (16) + gap (2) + title (41) + vertical padding (8 + 16). Card: numerals
@@ -70,8 +72,9 @@ const FIT_SETTLE_MS = 1200;
  * destination. Flown routes are solid with a plane mid-arc showing the way
  * the latest leg flew; upcoming ones are faint with a light running toward
  * the destination and a pulsing plane waiting by the origin. Tapping a plane
- * docks the route's journeys where the stats card sits. Pan/zoom is the map
- * SDK's own. */
+ * docks the route's journeys where the stats card sits. A period pill in the
+ * header narrows the map to a year, a month or a custom range. Pan/zoom is
+ * the map SDK's own. */
 export function World() {
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
@@ -91,7 +94,7 @@ export function World() {
 
   return (
     <WorldCanvas
-      rows={focusedRow ? [focusedRow] : (journeys ?? [])}
+      rows={journeys ?? []}
       focusedRow={focusedRow}
       loaded={journeys != null}
       onClearFocus={() => focusWorldOn(null)}
@@ -119,6 +122,8 @@ export function WorldCanvas({
   emptyCard,
   onBack,
 }: {
+  /** Every journey the map may draw. The canvas narrows it itself: to the
+   * focused trip while there is one, otherwise to the chosen period. */
   rows: JourneyRow[];
   /** Set when the caller arrived from one trip: the map draws that leg alone
    * and offers "All travels" to widen back out. */
@@ -140,11 +145,22 @@ export function WorldCanvas({
   const { sea } = mapColors(dark);
   const focused = useIsFocused();
 
+  // Which slice of the journal is on the map. Kept for the session, not
+  // reset on blur: tapping a flight on the route card leaves the tab, and
+  // coming back to "All time" after every such trip would undo the choice
+  // the traveller just made. A journey hand-off is a new subject and resets it.
+  const [period, setPeriod] = useState<WorldPeriod>(ALL_TIME);
+  const [choosing, setChoosing] = useState(false);
+  const visible = useMemo(
+    () => (focusedRow ? [focusedRow] : filterByPeriod(rows, period)),
+    [rows, focusedRow, period],
+  );
+
   // "Flown vs upcoming" cutoff, frozen per mount — a live clock would redraw
   // the map mid-session for no visible gain.
   const [now] = useState(() => new Date());
-  const data = useMemo(() => buildWorldRoutes(rows, now), [rows, now]);
-  const recap = useMemo(() => travelRecap(rows), [rows]);
+  const data = useMemo(() => buildWorldRoutes(visible, now), [visible, now]);
+  const recap = useMemo(() => travelRecap(visible), [visible]);
   const airportLons = useMemo(() => data.airports.map((a) => a.lon), [data]);
 
   const mapRef = useRef<MapView>(null);
@@ -188,6 +204,7 @@ export function WorldCanvas({
   const selectAt = async (tap: LatLng) => {
     const map = mapRef.current;
     const { width, height } = mapSize.current;
+    setChoosing(false);
     if (!map || !width) return setSelectedKey(null);
     try {
       const centre = { x: width / 2, y: height / 2 };
@@ -201,6 +218,7 @@ export function WorldCanvas({
         lon: Math.abs(c1.longitude - c0.longitude) / SCALE_PROBE_PT,
         lat: (Math.abs(c1.latitude - c0.latitude) / SCALE_PROBE_PT) * stretch,
       };
+      setChoosing(false);
       setSelectedKey(nearestRoute(data.routes, tap, scale, ROUTE_TAP_TOLERANCE));
     } catch {
       setSelectedKey(null);
@@ -242,10 +260,22 @@ export function WorldCanvas({
   if (seenFocus !== focusedRow?.id) {
     setSeenFocus(focusedRow?.id);
     setMoved(false);
+    setChoosing(false);
+    if (focusedRow) setPeriod(ALL_TIME);
     setSelectedKey(focusedRow ? (data.routes[0]?.key ?? null) : null);
   }
+  // A new period is a new subject too: refit even after a pan. An empty
+  // period has nothing to fit to, so the camera simply stays.
+  const [seenPeriod, setSeenPeriod] = useState(periodKey(period));
+  if (seenPeriod !== periodKey(period)) {
+    setSeenPeriod(periodKey(period));
+    setMoved(false);
+    setSelectedKey(null);
+  }
 
-  const empty = loaded && data.routes.length === 0;
+  // Nothing in the journal at all, versus nothing in the chosen period.
+  const empty = loaded && rows.length === 0;
+  const emptyPeriod = loaded && !empty && !focusedRow && visible.length === 0;
 
   // One plane per route; direction comes from the journeys (see routePlane).
   const planes = useMemo(
@@ -385,7 +415,10 @@ export function WorldCanvas({
             key={route.key}
             plane={plane}
             opacity={plane.upcoming ? pulse : 1}
-            onPress={() => setSelectedKey(route.key)}
+            onPress={() => {
+              setChoosing(false);
+              setSelectedKey(route.key);
+            }}
           />
         ))}
         {data.airports.map((airport) => (
@@ -430,6 +463,15 @@ export function WorldCanvas({
             </ThemedText>
           </View>
           {focusedRow && <AllTravelsButton onPress={onClearFocus} />}
+          {!focusedRow && !empty && (
+            <PeriodButton
+              period={period}
+              onPress={() => {
+                setSelectedKey(null);
+                setChoosing((open) => !open);
+              }}
+            />
+          )}
           {moved && (
             <RecenterButton
               onPress={() => {
@@ -446,12 +488,22 @@ export function WorldCanvas({
         pointerEvents="box-none">
         {empty ? (
           emptyCard
+        ) : choosing ? (
+          <PeriodCard
+            rows={rows}
+            period={period}
+            recap={recap}
+            onChange={setPeriod}
+            onClose={() => setChoosing(false)}
+          />
         ) : selected ? (
           <RouteCard
             route={selected.route}
             plane={selected.plane}
             onClose={() => setSelectedKey(null)}
           />
+        ) : emptyPeriod ? (
+          <EmptyPeriodCard period={period} onReset={() => setPeriod(ALL_TIME)} />
         ) : recap.trips > 0 ? (
           <Card style={styles.stats}>
             <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />

@@ -69,7 +69,7 @@ export function PersonWorld({ userId, focusJourneyId }: { userId: string; focusJ
 
   return (
     <WorldCanvas
-      rows={focusedRow ? [focusedRow] : rows}
+      rows={rows}
       focusedRow={focusedRow}
       loaded
       onClearFocus={() => setCleared(true)}
