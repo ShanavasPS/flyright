@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
+  Easing,
   FadeInDown,
+  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -13,6 +15,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import Svg, { Rect } from 'react-native-svg';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { SheenCard } from '@/components/sheen-card';
@@ -39,6 +42,12 @@ import { useTravelDayStates } from '@/services/travel-day-store';
 const SPRING = { damping: 18, stiffness: 170 } as const;
 /** The plane glyph's box on the route line — its travel is the line minus this. */
 const PLANE_SIZE = 16;
+/** The live card's status border, and the light that runs around it. */
+const BORDER_WIDTH = 1.5;
+const BORDER_RADIUS = Spacing.four;
+const SWEEP_MS = 3200;
+const SWEEP_SHARE = 0.3;
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
 /** The trip the home hero is showing live, if any: the soonest flight inside
  * its travel window (T−24h through landing), with its stage state. One
@@ -91,6 +100,7 @@ export function HomeHero({
   const facts = getFlightFacts(active.id);
   const content = liveContent(active, state, facts, now);
   const delayed = content.emphasis === 'delay';
+  const statusColor = delayed ? theme.warning : theme.tint;
   // What the ticket said, when the airline has moved a clock: struck through
   // under the time that now counts, as the trip screen and the rows do it.
   const depWas = movedFrom(active.scheduledDeparture, facts.estimatedDeparture, active.fromCode);
@@ -100,8 +110,9 @@ export function HomeHero({
     <View style={styles.stack}>
     {/* The border is the card's status: the brand's cobalt while the flight
         is running to plan, amber once the airline has posted a delay — the
-        one colour cue a glance across the room can read. */}
-    <SheenCard style={[styles.card, { borderColor: delayed ? theme.warning : theme.tint }]}>
+        one colour cue a glance across the room can read. Once the flight is
+        live, a light runs clockwise around it: the card is happening now. */}
+    <SheenCard style={[styles.card, { borderColor: `${statusColor}59` }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Open travel day for ${content.title}`}
@@ -193,6 +204,7 @@ export function HomeHero({
       {/* Keyed by journey so a hero handover never inherits the previous
        * flight's delay/gate memory and false-flashes. */}
       <StatusFlash key={active.id} delayLabel={content.delayLabel} gate={content.gate} />
+      <RunningBorder color={statusColor} running={phase === 'live'} />
     </SheenCard>
     {variant === 'full' && <TravelStatsStrip stats={stats} />}
     </View>
@@ -222,6 +234,71 @@ function MovedFrom({ clock }: { clock: string }) {
       accessibilityLabel={`Moved from ${clock}`}>
       {clock}
     </ThemedText>
+  );
+}
+
+/** The light that runs clockwise around the live card: a stroked rounded
+ * rectangle the card's exact size, dashed as one bright segment plus one
+ * gap the rest of the perimeter, with the dash offset driven round the path
+ * on the UI thread. The card's own border stays beneath at low opacity, so
+ * the ring is always closed and the segment reads as light moving along it
+ * rather than a border appearing and vanishing. Before the live window (the
+ * evening before) and under reduce-motion the border is simply solid. */
+function RunningBorder({ color, running }: { color: string; running: boolean }) {
+  const reduceMotion = useReducedMotion();
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const offset = useSharedValue(0);
+
+  const inset = BORDER_WIDTH / 2;
+  const w = size.w - BORDER_WIDTH;
+  const h = size.h - BORDER_WIDTH;
+  const r = BORDER_RADIUS - inset;
+  // Four straight runs plus the four quarter-circles the corners add up to.
+  const perimeter = w > 0 && h > 0 ? 2 * (w + h) - 8 * r + 2 * Math.PI * r : 0;
+  const animate = running && !reduceMotion && perimeter > 0;
+
+  useEffect(() => {
+    if (!animate) return;
+    // A full negative perimeter per loop is one lap in path direction —
+    // clockwise, since the rect path starts top-left and runs right — and
+    // lands exactly where it began, so the repeat is seamless.
+    offset.value = 0;
+    offset.value = withRepeat(
+      withTiming(-perimeter, { duration: SWEEP_MS, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(offset);
+  }, [animate, perimeter, offset]);
+
+  const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: offset.value }));
+
+  return (
+    <View
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+      onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {(animate || !running) && perimeter > 0 && (
+        <Svg width={size.w} height={size.h}>
+          <AnimatedRect
+            x={inset}
+            y={inset}
+            width={w}
+            height={h}
+            rx={r}
+            ry={r}
+            fill="none"
+            stroke={color}
+            strokeWidth={BORDER_WIDTH}
+            strokeLinecap="round"
+            strokeDasharray={
+              animate ? [perimeter * SWEEP_SHARE, perimeter * (1 - SWEEP_SHARE)] : undefined
+            }
+            animatedProps={animatedProps}
+          />
+        </Svg>
+      )}
+    </View>
   );
 }
 
@@ -345,7 +422,7 @@ const styles = StyleSheet.create({
   // the surface, border and radius.
   card: {
     overflow: 'hidden',
-    borderWidth: 1.5,
+    borderWidth: BORDER_WIDTH,
   },
   liveSection: {
     gap: Spacing.two,
