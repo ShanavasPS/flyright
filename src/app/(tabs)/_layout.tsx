@@ -78,7 +78,9 @@ export default function TabsLayout() {
 
       <NativeTabs.Trigger name="(settings)">
         <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Badge hidden={!update}>1</NativeTabs.Trigger.Badge>
+        {/* Mounted only while there is an update: the badge's `hidden` prop
+            does not clear a badge that has already shown its text. */}
+        {update && <NativeTabs.Trigger.Badge>1</NativeTabs.Trigger.Badge>}
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/settings.png')}
           renderingMode="template"
