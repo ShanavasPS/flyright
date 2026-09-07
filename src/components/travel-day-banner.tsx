@@ -21,6 +21,8 @@ import { TravelStatsHeader, TravelStatsStrip } from '@/components/travel-stats-h
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
+import { formatTime } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
 import type { TravelStats } from '@/services/timeline';
 import {
@@ -88,10 +90,18 @@ export function HomeHero({
 
   const facts = getFlightFacts(active.id);
   const content = liveContent(active, state, facts, now);
+  const delayed = content.emphasis === 'delay';
+  // What the ticket said, when the airline has moved a clock: struck through
+  // under the time that now counts, as the trip screen and the rows do it.
+  const depWas = movedFrom(active.scheduledDeparture, facts.estimatedDeparture, active.fromCode);
+  const arrWas = movedFrom(active.scheduledArrival, facts.estimatedArrival, active.toCode);
 
   return (
     <View style={styles.stack}>
-    <SheenCard style={styles.card}>
+    {/* The border is the card's status: the brand's cobalt while the flight
+        is running to plan, amber once the airline has posted a delay — the
+        one colour cue a glance across the room can read. */}
+    <SheenCard style={[styles.card, { borderColor: delayed ? theme.warning : theme.tint }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Open travel day for ${content.title}`}
@@ -124,21 +134,29 @@ export function HomeHero({
               {content.fromCode}
             </ThemedText>
             {!!content.depTime && (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.codeTime}>
+              <ThemedText
+                type={depWas ? 'smallBold' : 'small'}
+                themeColor="textSecondary"
+                style={[styles.codeTime, depWas && delayed && { color: theme.warning }]}>
                 {content.depTime}
               </ThemedText>
             )}
+            {depWas && <MovedFrom clock={depWas} />}
           </View>
-          <RoutePath progress={content.progress} delayed={content.emphasis === 'delay'} />
+          <RoutePath progress={content.progress} delayed={delayed} />
           <View style={[styles.endpoint, styles.endpointRight]}>
             <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
               {content.toCode}
             </ThemedText>
             {!!content.arrTime && (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.codeTime}>
+              <ThemedText
+                type={arrWas ? 'smallBold' : 'small'}
+                themeColor="textSecondary"
+                style={[styles.codeTime, arrWas && delayed && { color: theme.warning }]}>
                 {content.arrTime}
               </ThemedText>
             )}
+            {arrWas && <MovedFrom clock={arrWas} />}
           </View>
         </View>
 
@@ -178,6 +196,32 @@ export function HomeHero({
     </SheenCard>
     {variant === 'full' && <TravelStatsStrip stats={stats} />}
     </View>
+  );
+}
+
+/** The ticketed clock, formatted in its airport's zone, when the airline's
+ * estimate has moved it to a different minute — null while they agree, so
+ * nothing is struck through for a flight running to plan. */
+function movedFrom(scheduled: string, estimated: string | null, code: string): string | null {
+  if (!estimated) return null;
+  const zone = airportZone(code);
+  const was = formatTime(scheduled, zone);
+  return was === formatTime(estimated, zone) ? null : was;
+}
+
+/** What the ticket said before the airline moved the flight — struck through
+ * and quiet under the live clock, so a traveller who wrote 11:30 in their
+ * calendar can see we know it said 11:30. */
+function MovedFrom({ clock }: { clock: string }) {
+  return (
+    <ThemedText
+      type="small"
+      themeColor="textSecondary"
+      style={styles.codeTimeWas}
+      numberOfLines={1}
+      accessibilityLabel={`Moved from ${clock}`}>
+      {clock}
+    </ThemedText>
   );
 }
 
@@ -301,6 +345,7 @@ const styles = StyleSheet.create({
   // the surface, border and radius.
   card: {
     overflow: 'hidden',
+    borderWidth: 1.5,
   },
   liveSection: {
     gap: Spacing.two,
@@ -339,7 +384,9 @@ const styles = StyleSheet.create({
   },
   routeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    // Top-aligned so the path sits on the codes' midline however many clock
+    // lines hang under them (a moved flight shows two).
+    alignItems: 'flex-start',
     gap: Spacing.three,
     marginTop: Spacing.one,
     // On wide windows (tablet, unfolded foldable) an unclamped contrail
@@ -364,13 +411,16 @@ const styles = StyleSheet.create({
   codeTime: {
     fontVariant: ['tabular-nums'],
   },
+  codeTimeWas: {
+    fontVariant: ['tabular-nums'],
+    textDecorationLine: 'line-through',
+  },
   routePath: {
     flex: 1,
     height: PLANE_SIZE,
     justifyContent: 'center',
-    // Lift the path to the codes' midline — centering against the full
-    // code+time endpoint block would sag it toward the time row.
-    marginBottom: 20,
+    // (40pt code line − 16pt plane) / 2: the path on the codes' midline.
+    marginTop: 12,
   },
   routeDots: {
     position: 'absolute',
