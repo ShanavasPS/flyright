@@ -69,6 +69,7 @@ export function PersonTravel({
   onOpenWorld,
   onOpenTrip,
   badgeFor,
+  dimFor,
   afterUpcoming,
 }: {
   name: string;
@@ -77,6 +78,8 @@ export function PersonTravel({
   onOpenWorld?: () => void;
   onOpenTrip?: (journeyId: string) => void;
   badgeFor?: (journeyId: string) => React.ReactNode;
+  /** Rows to fade — the preview's "this member isn't shown this one". */
+  dimFor?: (journeyId: string) => boolean;
   afterUpcoming?: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -89,7 +92,7 @@ export function PersonTravel({
       accessibilityLabel={`${t.number || t.carrier}, ${t.fromCode} to ${t.toCode}`}
       disabled={!onOpenTrip}
       onPress={() => onOpenTrip?.(t.journeyId)}
-      style={({ pressed }) => pressed && styles.pressed}>
+      style={({ pressed }) => [dimFor?.(t.journeyId) && styles.dimmed, pressed && styles.pressed]}>
       <TripRow trip={t} now={now} badge={badgeFor?.(t.journeyId)} />
     </Pressable>
   );
@@ -213,4 +216,5 @@ const styles = StyleSheet.create({
   liveHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   dot: { width: 8, height: 8, borderRadius: 4 },
   pressed: { opacity: 0.6 },
+  dimmed: { opacity: 0.45 },
 });

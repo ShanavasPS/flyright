@@ -305,6 +305,9 @@ async function travelOf(
     hiddenFlown,
     /** Listed trips that are close-circle only — for the owner's preview. */
     hiddenIds: [...upcoming, ...shownPast].filter((j) => j.hiddenFromCircle).map((j) => j._id),
+    /** journeyId → the owner's local row id, so the owner's preview can edit
+     * a trip from the row. Stripped before a member sees anything. */
+    keys: Object.fromEntries([...upcoming, ...shownPast].map((j) => [j._id, j.naturalKey])),
   };
 }
 
@@ -344,7 +347,7 @@ export const person = query({
 
     if (theirs) {
       const session = await liveFor(ctx, me, userId);
-      const { hiddenAhead: _a, hiddenFlown: _f, hiddenIds: _h, ...travel } = await travelOf(
+      const { hiddenAhead: _a, hiddenFlown: _f, hiddenIds: _h, keys: _k, ...travel } = await travelOf(
         ctx,
         userId,
         !!theirs.close,

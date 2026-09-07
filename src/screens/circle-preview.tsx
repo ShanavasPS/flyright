@@ -25,6 +25,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
+import { setJourneyHiddenFromCircle } from '@/services/journeys';
 
 type Tier = 'close' | 'rest';
 
@@ -108,7 +109,14 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
     );
   } else {
     const closeTier = shownTier === 'close';
-    const hidden = new Set<string>(data.hiddenIds);
+    // The close tier's answer holds every trip; the rest tier's is missing
+    // the close-circle ones. The Rest of circle tab lists ALL of them and
+    // fades the ones this tier isn't shown — the owner sees what is missing
+    // in place, and can put it back from the row. Members see no such thing.
+    const full = closeData ?? data;
+    const hidden = new Set<string>(full.hiddenIds);
+    const keys = full.keys;
+    const shownData = closeTier ? data : { ...data, upcoming: full.upcoming, past: full.past };
     const missing = data.hiddenAhead + data.hiddenFlown;
     const who = shown?.name ?? null;
     const tierWord = closeTier ? 'Close circle' : 'Circle';
@@ -122,6 +130,53 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
       : closeTier
         ? 'Add someone from their page in People. This is what they would see.'
         : 'This is what anyone you invite would see.';
+
+    // Tap a row: the same choice the trip's ··· menu offers, here where the
+    // effect is visible. The local row is the source of truth; the sync
+    // carries it up and this query re-renders within a moment.
+    const setHidden = (journeyId: string, next: boolean) => {
+      const key = keys[journeyId];
+      if (!key) return;
+      trackEvent('circle_trip_audience', { hidden: next, from: 'preview' });
+      void setJourneyHiddenFromCircle(key, next);
+    };
+    const audienceMenu = (journeyId: string) => {
+      const t = [...full.upcoming, ...full.past].find((x) => x.journeyId === journeyId);
+      if (!t) return;
+      const isHidden = hidden.has(journeyId);
+      const title = `${t.number || t.carrier} · ${t.fromCode} → ${t.toCode}`;
+      const action = isHidden ? 'Show to your whole circle' : 'Only my close circle';
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          { title, options: [action, 'Cancel'], cancelButtonIndex: 1 },
+          (index) => {
+            if (index === 0) setHidden(journeyId, !isHidden);
+          },
+        );
+        return;
+      }
+      Alert.alert(title, undefined, [
+        { text: action, onPress: () => setHidden(journeyId, !isHidden) },
+        { text: 'Cancel', style: 'cancel' as const },
+      ]);
+    };
+    const showAll = () => {
+      const ids = [...hidden];
+      Alert.alert(
+        'Show everything to your whole circle?',
+        `${plural(ids.length, 'trip')} ${ids.length === 1 ? 'is' : 'are'} kept to your close circle right now. Everyone in your circle will see ${ids.length === 1 ? 'it' : 'them'}.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Show everything',
+            onPress: () => {
+              trackEvent('circle_trip_audience', { hidden: false, from: 'preview-all', count: ids.length });
+              for (const id of ids) setHidden(id, false);
+            },
+          },
+        ],
+      );
+    };
 
     body = (
       <>
@@ -208,35 +263,35 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
 
         <PersonTravel
           name={data.name}
-          data={data}
+          data={shownData}
           now={now}
-          badgeFor={
-            closeTier
-              ? (journeyId) =>
-                  hidden.has(journeyId) ? (
-                    <View style={[styles.marker, { backgroundColor: `${theme.tint}1A` }]}>
-                      <SymbolView
-                        name={{ ios: 'house.fill', android: 'home', web: 'home' }}
-                        size={11}
-                        weight="bold"
-                        tintColor={theme.tint}
-                      />
-                      <ThemedText style={[styles.markerText, { color: theme.tint }]}>
-                        Close circle
-                      </ThemedText>
-                    </View>
-                  ) : undefined
-              : undefined
+          onOpenTrip={audienceMenu}
+          dimFor={closeTier ? undefined : (journeyId) => hidden.has(journeyId)}
+          badgeFor={(journeyId) =>
+            hidden.has(journeyId) ? (
+              <View style={[styles.marker, { backgroundColor: `${theme.tint}1A` }]}>
+                <SymbolView
+                  name={{ ios: 'house.fill', android: 'home', web: 'home' }}
+                  size={11}
+                  weight="bold"
+                  tintColor={theme.tint}
+                />
+                <ThemedText style={[styles.markerText, { color: theme.tint }]}>
+                  Close circle
+                </ThemedText>
+              </View>
+            ) : undefined
           }
           afterUpcoming={
-            <OwnerNote>
+            <OwnerNote
+              action={!closeTier && hidden.size > 0 ? { label: 'Show everything to your whole circle', onPress: showAll } : undefined}>
               {closeTier
                 ? hidden.size
-                  ? `${who ?? 'Your close circle'} sees these trips exactly like this. The Close circle markers show only to you, here.`
-                  : `${who ?? 'Your close circle'} sees these trips exactly like this. Mark a trip "Only my close circle" from its ··· menu and it stays here, for them alone.`
+                  ? `${who ?? 'Your close circle'} sees these trips exactly like this. The Close circle markers show only to you, here. Tap a trip to change who sees it.`
+                  : `${who ?? 'Your close circle'} sees these trips exactly like this. Tap a trip to keep it to your close circle.`
                 : missing
-                  ? `${plural(data.hiddenAhead, 'trip')} ahead${data.hiddenFlown ? ` and ${plural(data.hiddenFlown, 'trip')} flown` : ''} ${missing === 1 ? 'is' : 'are'} kept to your close circle. ${who ?? 'The rest of your circle'} counts them in the totals above but can't see or open them, and a shared link to one shows ${who ?? 'them'} your name and a Follow button instead of the flight.`
-                  : `${who ?? 'Everyone in your circle'} sees every trip. Mark one "Only my close circle" from its ··· menu and it disappears from this view, while still counting in the totals.`}
+                  ? `The faded ${missing === 1 ? 'trip is' : 'trips are'} kept to your close circle. ${who ?? 'The rest of your circle'} counts ${missing === 1 ? 'it' : 'them'} in the totals above but can't see or open ${missing === 1 ? 'it' : 'them'}, and a shared link to one shows ${who ?? 'them'} your name and a Follow button instead of the flight. Tap a trip to change who sees it.`
+                  : `${who ?? 'Everyone in your circle'} sees every trip — that's the default. Tap a trip to keep it to your close circle; it stays in these totals.`}
             </OwnerNote>
           }
         />
@@ -262,8 +317,15 @@ function plural(n: number, word: string) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
 
-/** A dashed aside only the owner sees — what this tier is not shown. */
-function OwnerNote({ children }: { children: React.ReactNode }) {
+/** A dashed aside only the owner sees — what this tier is not shown, and
+ * optionally the one action that undoes it. */
+function OwnerNote({
+  children,
+  action,
+}: {
+  children: React.ReactNode;
+  action?: { label: string; onPress: () => void };
+}) {
   const theme = useTheme();
   return (
     <View style={[styles.note, { borderColor: `${theme.tint}59` }]}>
@@ -273,9 +335,18 @@ function OwnerNote({ children }: { children: React.ReactNode }) {
         tintColor={theme.tint}
         style={styles.noteIcon}
       />
-      <ThemedText type="small" themeColor="heading" style={styles.noteText}>
-        {children}
-      </ThemedText>
+      <View style={styles.noteText}>
+        <ThemedText type="small" themeColor="heading">
+          {children}
+        </ThemedText>
+        {action && (
+          <Pressable accessibilityRole="button" onPress={action.onPress} hitSlop={Spacing.one}>
+            <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              {action.label}
+            </ThemedText>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -348,6 +419,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   noteIcon: { marginTop: Spacing.half },
-  noteText: { flex: 1 },
+  noteText: { flex: 1, gap: Spacing.two },
   pressed: { opacity: 0.6 },
 });
