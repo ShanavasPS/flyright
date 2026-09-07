@@ -481,12 +481,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // The horizontal margin lives on the title row and inside the list's
+  // content, not here: a scroll view clips to its frame, and with the
+  // padding on the container the hero card's shadow was cut off in a
+  // straight line at both sides — a hard band under the card instead of a
+  // glow.
   safeArea: {
     flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
     gap: Spacing.three,
   },
   // Tabletop (Flex mode): the pane above the hinge — hero centered in it.
@@ -523,6 +527,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
   },
   titleBlock: {
     flex: 1,
@@ -564,6 +569,7 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
     // Breathing room past the auto tab-bar inset when scrolled to the end.
     paddingBottom: Spacing.three,
   },
