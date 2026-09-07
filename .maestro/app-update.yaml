@@ -1,0 +1,35 @@
+# Update notice: when the store serves a newer FlyRight than the running
+# build, Settings shows an "Update available" row (and the Settings tab a
+# badge); tapping it opens the What's new sheet with an Update button to the
+# store and the release notes between the two versions.
+#
+# The dev client reports app.json's version, which is normally AHEAD of the
+# stores, so the row never shows by itself. Start Metro pretending to be an
+# older build (the hook honours this in dev only):
+#   EXPO_PUBLIC_PRETEND_APP_VERSION=1.0.20 npx expo start --clear
+#   maestro --device <device> test .maestro/app-update.yaml
+# The API route answers from the live stores (App Store lookup; Play needs
+# GOOGLE_PLAY_SERVICE_ACCOUNT_JSON in .env.local), so it needs network.
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: "Update available.*"
+    timeout: 30000
+- tapOn: "Update available.*"
+- extendedWaitUntil:
+    visible: "Update on .*"
+    timeout: 10000
+- assertVisible: "You have 1.0.20.*"
+# Every release between the pretend build and the store's is listed, newest
+# first; the oldest may sit below the fold, so assert the section heading.
+- assertVisible: "What .*"
+- tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Update available.*"
+    timeout: 10000

@@ -3,6 +3,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useAppVersion } from '@/hooks/use-app-version';
 
 /** Screens the bar steps aside for: a person, a trip, and a map.
  *
@@ -28,6 +29,9 @@ export default function TabsLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
   const pathname = usePathname();
+  // A newer build on the store puts a count on Settings, the way iOS marks
+  // its own Settings for a software update — the row inside explains it.
+  const { update } = useAppVersion();
 
   return (
     <NativeTabs
@@ -74,6 +78,7 @@ export default function TabsLayout() {
 
       <NativeTabs.Trigger name="(settings)">
         <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Badge hidden={!update}>1</NativeTabs.Trigger.Badge>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/settings.png')}
           renderingMode="template"

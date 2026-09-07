@@ -228,6 +228,17 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* A newer FlyRight on the store: the Update button and every
+                release note between this build and it. A card modal, not a
+                sheet — the notes scroll, and a ScrollView inside a formSheet
+                is captured by the sheet's drag integration. */}
+              <Stack.Screen
+                name="whats-new"
+                options={{
+                  presentation: "modal",
+                  headerShown: false,
+                }}
+              />
               {/* The World map as a shareable poster: preview, Story/Square,
                 the system share sheet. Dark full-screen, like the card. */}
               <Stack.Screen

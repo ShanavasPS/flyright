@@ -7,6 +7,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 When the user asks for an EAS build, do ALL of this without being reminded:
 
 1. **Bump the patch version by 1** in `app.json` and `package.json` (1.0.1 → 1.0.2 → 1.0.3 …) before building.
+   **Add the release's notes** as the newest entry in `src/constants/release-notes.ts` (same version string, submission date, 3–6 traveller-facing bullets from the commits since the last bump). `/api/app-version` serves them to older installs as "what you're missing", so after the version bump is committed, **redeploy hosting** (the recipe in the access-map memory: `eas env:pull --environment production --path .env.production.local` → `npx expo export -p web --clear` → `eas deploy --prod --environment production`) — the notes live on the server, not in the binary. The store's live version is looked up at request time (App Store lookup API, Play publisher API), so nothing is announced before the stores actually serve it.
 2. **Sync build numbers**: `appVersionSource` is remote with `autoIncrement`, so run `eas build:version:get -p all` and set `ios.buildNumber` / `android.versionCode` in `app.json` to current + 1 (the number the new builds will receive). If a build later gets re-run, re-sync.
 3. **Run the builds yourself** — the user has standing authorization for these two commands and does not want to be asked to run them manually (use the global `eas` binary, not npx):
    `eas build -p ios --profile production --non-interactive --no-wait --auto-submit`

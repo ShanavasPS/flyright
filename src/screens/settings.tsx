@@ -22,6 +22,7 @@ import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { ThemePicker } from '@/components/theme-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { UpdateAvailableCard } from '@/components/update-available-card';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
@@ -335,6 +336,8 @@ export function Settings() {
         <ThemedText type="title" themeColor="heading">
           Settings
         </ThemedText>
+
+        <UpdateAvailableCard />
 
         <AccountCard />
 
