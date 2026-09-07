@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,45 +8,14 @@ import { api } from '../../convex/_generated/api';
 
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
-import { RouteAtlas } from '@/components/route-atlas';
-import { mapColors } from '@/components/world-map';
+import { PersonTravel, Section } from '@/components/person-travel';
 import { SheenCard } from '@/components/sheen-card';
-import { TripRow } from '@/components/trip-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import type { RouteSource } from '@/services/geo';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
-import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
-
-/** Tall enough to read a long-haul arc, short enough that the trips below
- * still start on the first screen. */
-const PERSON_MAP_HEIGHT = 170;
-
-/** Every trip they share, in the shape the map draws. */
-function routesOf(p: { upcoming: Trip[]; past: Trip[] }): RouteSource[] {
-  return [...p.upcoming, ...p.past].map((t) => ({
-    id: t.journeyId,
-    fromCode: t.fromCode,
-    toCode: t.toCode,
-    number: t.number,
-    carrier: t.carrier,
-    scheduledDeparture: t.scheduledDeparture,
-  }));
-}
-
-type Trip = {
-  journeyId: string;
-  carrier: string;
-  number: string;
-  fromCode: string;
-  toCode: string;
-  scheduledDeparture: string;
-  scheduledArrival: string;
-};
 
 /**
  * A person in your circle, and their travel — the page a row in People opens.
@@ -62,14 +32,12 @@ type Trip = {
  */
 export function Person({ userId }: { userId: string }) {
   const router = useRouter();
-  const theme = useTheme();
   const data = useQuery(api.circle.person, { userId });
   const setMuted = useMutation(api.circle.setMuted);
   const setClose = useMutation(api.circle.setClose);
   const leave = useMutation(api.circle.leave);
   const remove = useMutation(api.circle.remove);
 
-  const { sea } = mapColors(useColorScheme() === 'dark');
   // Read once per render, like the journal's own list: the countdowns on a
   // profile don't need to tick while it's open.
   const now = new Date();
@@ -137,94 +105,14 @@ export function Person({ userId }: { userId: string }) {
           </ThemedText>
         </View>
 
-        {/* Their travel, before the list of it. Opens the same map full
-            screen — on the person, never as a mode of the viewer's own World
-            tab (see screens/person-world). */}
-        {p.theyShare && routesOf(p).length > 0 && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${p.name}'s world`}
-            onPress={openWorld}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <View style={[styles.map, { backgroundColor: sea }]}>
-              <RouteAtlas journeys={routesOf(p)} height={PERSON_MAP_HEIGHT} />
-            </View>
-          </Pressable>
-        )}
-
         {p.theyShare && (
-          <View style={styles.stats}>
-            <Stat label={p.ahead === 1 ? 'Trip ahead' : 'Trips ahead'} value={p.ahead} />
-            <Stat label={p.flown === 1 ? 'Trip flown' : 'Trips flown'} value={p.flown} />
-          </View>
-        )}
-
-        {p.live && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => (p.liveJourneyId ? openTrip(p.liveJourneyId) : undefined)}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <SheenCard style={styles.liveCard}>
-              <View style={styles.liveHeader}>
-                <View style={[styles.dot, { backgroundColor: theme.tint }]} />
-                <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                  TRAVELLING NOW
-                </ThemedText>
-              </View>
-              <ThemedText type="subtitle" themeColor="heading">
-                {p.live.session.fromCode} → {p.live.session.toCode}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {p.live.session.currentStage
-                  ? STAGE_LABELS[p.live.session.currentStage as TravelStage]
-                  : 'Getting ready'}
-                {p.live.session.delayMinutes != null && p.live.session.delayMinutes >= 30
-                  ? ` · ${p.live.session.delayMinutes} min late`
-                  : p.live.session.gate
-                    ? ` · Gate ${p.live.session.gate}`
-                    : ''}
-              </ThemedText>
-            </SheenCard>
-          </Pressable>
-        )}
-
-        {p.theyShare && (
-          <>
-            <Section label="Upcoming" />
-            {p.upcoming.length ? (
-              p.upcoming.map((t) => (
-                <TripCard
-                  key={t.journeyId}
-                  trip={t}
-                  now={now}
-                  onPress={() => openTrip(t.journeyId)}
-                />
-              ))
-            ) : (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-                Nothing booked yet. You&apos;ll hear when {p.name} adds a trip.
-              </ThemedText>
-            )}
-
-            {p.past.length > 0 && (
-              <>
-                <Section label="Flown" />
-                {p.past.map((t) => (
-                  <TripCard
-                    key={t.journeyId}
-                    trip={t}
-                    now={now}
-                    onPress={() => openTrip(t.journeyId)}
-                  />
-                ))}
-                {p.flown > p.past.length && (
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-                    Showing the last {p.past.length} of {p.flown}.
-                  </ThemedText>
-                )}
-              </>
-            )}
-          </>
+          <PersonTravel
+            name={p.name}
+            data={p}
+            now={now}
+            onOpenWorld={openWorld}
+            onOpenTrip={openTrip}
+          />
         )}
 
         <Section label="Notifications and access" />
@@ -263,6 +151,18 @@ export function Person({ userId }: { userId: string }) {
                 void setClose({ memberId: userId, close: !p.closeMember });
               }}
             />
+            {/* Their view of you, rendered by the same component as above —
+                the honest answer to "what does the close circle actually
+                get?" (see screens/circle-preview). */}
+            <ActionRow
+              label={`See what ${p.name} sees`}
+              detail={`Your profile and trips exactly as they appear to ${p.name}.`}
+              trailing={{ ios: 'eye', android: 'visibility', web: 'visibility' }}
+              onPress={() => {
+                trackEvent('circle_preview_opened', { from: 'person' });
+                router.push({ pathname: '/preview', params: { memberId: userId } });
+              }}
+            />
             <ActionRow
               label={`Remove ${p.name} from your circle`}
               detail="They stop seeing your trips and getting updates."
@@ -295,52 +195,18 @@ export function Person({ userId }: { userId: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={styles.stat}>
-      <ThemedText type="title" themeColor="heading">
-        {value}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-    </View>
-  );
-}
-
-function Section({ label }: { label: string }) {
-  return (
-    <ThemedText type="smallBold" themeColor="textSecondary" style={styles.section}>
-      {label.toUpperCase()}
-    </ThemedText>
-  );
-}
-
-/** One of their trips, in the row the journal draws your own with — a flown
- * trip is the same fact as a booked one, just behind you, and somebody
- * else's is the same fact as yours. */
-function TripCard({ trip, onPress, now }: { trip: Trip; onPress: () => void; now: Date }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${trip.number || trip.carrier}, ${trip.fromCode} to ${trip.toCode}`}
-      onPress={onPress}
-      style={({ pressed }) => pressed && styles.pressed}>
-      <TripRow trip={trip} now={now} />
-    </Pressable>
-  );
-}
-
 function ActionRow({
   label,
   detail,
   onPress,
   danger,
+  trailing,
 }: {
   label: string;
   detail: string;
   onPress: () => void;
   danger?: boolean;
+  trailing?: React.ComponentProps<typeof SymbolView>['name'];
 }) {
   const theme = useTheme();
   return (
@@ -357,6 +223,7 @@ function ActionRow({
             {detail}
           </ThemedText>
         </View>
+        {trailing && <SymbolView name={trailing} size={18} tintColor={theme.textSecondary} />}
       </SheenCard>
     </Pressable>
   );
@@ -388,22 +255,5 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.two,
   },
   centered: { textAlign: 'center', alignSelf: 'center' },
-  stats: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: Spacing.six,
-    paddingBottom: Spacing.two,
-  },
-  stat: { alignItems: 'center', gap: Spacing.half },
-  section: {
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    fontSize: 11,
-    paddingTop: Spacing.three,
-  },
-  map: { height: PERSON_MAP_HEIGHT, borderRadius: Spacing.four, overflow: 'hidden' },
-  liveCard: { gap: Spacing.half, padding: Spacing.three },
-  liveHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  dot: { width: 8, height: 8, borderRadius: 4 },
   pressed: { opacity: 0.6 },
 });

@@ -10,6 +10,7 @@ import {
   circleMembers,
   ensureCircleInvite,
   inviteUsable,
+  journeyForKey,
   materializeCircleFollows,
   profileFor,
   severCircle,
@@ -251,6 +252,71 @@ async function liveFor(ctx: QueryCtx, me: string, ownerId: string) {
   return null;
 }
 
+/** The owner's travel as one member sees it: the trips they may open, the
+ * live session among them, and totals that count every trip. `seesHidden`
+ * is the close-circle tier; `session` is the live session the viewer is
+ * following (or, for a preview, the owner's current one). Shared by the
+ * person page and the owner's own "how others see you" preview, so the
+ * preview can never drift from what a member is actually shown. */
+async function travelOf(
+  ctx: QueryCtx,
+  ownerId: string,
+  seesHidden: boolean,
+  session: Doc<'liveSessions'> | null,
+) {
+  const now = Date.now();
+  const upcoming: Doc<'journeys'>[] = [];
+  const past: Doc<'journeys'>[] = [];
+  let hiddenAhead = 0;
+  let hiddenFlown = 0;
+  let liveJourneyId: Id<'journeys'> | null = null;
+  const journeys = await ctx.db
+    .query('journeys')
+    .withIndex('by_user', (q) => q.eq('userId', ownerId))
+    .collect();
+  for (const j of journeys) {
+    if (j.deletedAt) continue;
+    const dep = Date.parse(j.scheduledDeparture);
+    if (Number.isNaN(dep)) continue;
+    if (j.hiddenFromCircle && !seesHidden) {
+      // Close-circle trips are for close members. Everyone else still sees
+      // them in the totals — a profile's "21 trips flown" is the truth, not
+      // the list of what they may open.
+      if (dep >= now) hiddenAhead++;
+      else hiddenFlown++;
+      continue;
+    }
+    if (session && j.naturalKey === session.naturalKey) liveJourneyId = j._id;
+    (dep >= now ? upcoming : past).push(j);
+  }
+  // Soonest first ahead, most recent first behind — a profile reads
+  // outward from today in both directions.
+  upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
+  past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
+  const shownPast = past.slice(0, PAST_TRIPS_SHOWN);
+  return {
+    liveJourneyId,
+    upcoming: upcoming.map(publicTrip),
+    past: shownPast.map(publicTrip),
+    // Totals count every trip; the lists above hold what I may open.
+    ahead: upcoming.length + hiddenAhead,
+    flown: past.length + hiddenFlown,
+    hiddenAhead,
+    hiddenFlown,
+    /** Listed trips that are close-circle only — for the owner's preview. */
+    hiddenIds: [...upcoming, ...shownPast].filter((j) => j.hiddenFromCircle).map((j) => j._id),
+  };
+}
+
+async function liveCard(ctx: QueryCtx, session: Doc<'liveSessions'> | null, name: string | null) {
+  if (!session) return null;
+  const follows = await ctx.db
+    .query('follows')
+    .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+    .collect();
+  return { token: session.shareToken, session: toPublicSession(session, name, follows.length) };
+}
+
 /** PUBLIC (signed in) — one person in my circle, and what I may see of them.
  *
  * The relationship decides the content, in both directions independently:
@@ -275,65 +341,28 @@ export const person = query({
     if (!theirs && !mine) return { gone: true as const };
 
     const who = await personCard(ctx, userId);
-    const upcoming: Doc<'journeys'>[] = [];
-    const past: Doc<'journeys'>[] = [];
-    let liveJourneyId: Id<'journeys'> | null = null;
-    let live = null;
 
     if (theirs) {
-      const now = Date.now();
-      // Close-circle trips are for close members. Everyone else still sees
-      // them in the totals — a profile's "21 trips flown" is the truth, not
-      // the list of what they may open.
-      const seesHidden = !!theirs.close;
-      let hiddenAhead = 0;
-      let hiddenFlown = 0;
       const session = await liveFor(ctx, me, userId);
-      if (session) {
-        const follows = await ctx.db
-          .query('follows')
-          .withIndex('by_session', (q) => q.eq('sessionId', session._id))
-          .collect();
-        live = { token: session.shareToken, session: toPublicSession(session, who.name, follows.length) };
-      }
-      const journeys = await ctx.db
-        .query('journeys')
-        .withIndex('by_user', (q) => q.eq('userId', userId))
-        .collect();
-      for (const j of journeys) {
-        if (j.deletedAt) continue;
-        const dep = Date.parse(j.scheduledDeparture);
-        if (Number.isNaN(dep)) continue;
-        if (j.hiddenFromCircle && !seesHidden) {
-          if (dep >= now) hiddenAhead++;
-          else hiddenFlown++;
-          continue;
-        }
-        if (session && j.naturalKey === session.naturalKey) liveJourneyId = j._id;
-        (dep >= now ? upcoming : past).push(j);
-      }
-      // Soonest first ahead, most recent first behind — a profile reads
-      // outward from today in both directions.
-      upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
-      past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
+      const { hiddenAhead: _a, hiddenFlown: _f, hiddenIds: _h, ...travel } = await travelOf(
+        ctx,
+        userId,
+        !!theirs.close,
+        session,
+      );
       return {
         ...who,
         theyShare: true as const,
         iShare: !!mine,
         muted: !!theirs.muted,
         /** I'm in their close circle. */
-        close: seesHidden,
+        close: !!theirs.close,
         /** They're in mine (meaningful with iShare). */
         closeMember: !!mine?.close,
         since: theirs.createdAt,
         followsMeSince: mine?.createdAt ?? null,
-        live,
-        liveJourneyId,
-        upcoming: upcoming.map(publicTrip),
-        past: past.slice(0, PAST_TRIPS_SHOWN).map(publicTrip),
-        // Totals count every trip; the lists above hold what I may open.
-        ahead: upcoming.length + hiddenAhead,
-        flown: past.length + hiddenFlown,
+        live: await liveCard(ctx, session, who.name),
+        ...travel,
       };
     }
 
@@ -352,6 +381,55 @@ export const person = query({
       past: [],
       ahead: 0,
       flown: 0,
+    };
+  },
+});
+
+/** PUBLIC (signed in) — my own travel as a member of my circle sees it: the
+ * "how others see you" preview. Built by the same travelOf as the person
+ * page, so it is a rendering of the truth, not a mock of it. `memberId`
+ * previews as that follower (their tier); otherwise `close` picks the tier
+ * outright, for a circle with nobody in it yet. The owner-only extras —
+ * which listed trips are close-circle only, and how many are missing from
+ * this tier's view — let the preview mark and explain what a member is not
+ * told. */
+export const previewMe = query({
+  args: { memberId: v.optional(v.string()), close: v.optional(v.boolean()) },
+  handler: async (ctx, { memberId, close }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const me = identity.subject;
+
+    const members = await circleMembers(ctx, me);
+    const followers = [];
+    for (const row of members) {
+      followers.push({ ...(await personCard(ctx, row.memberId)), close: !!row.close, since: row.createdAt });
+    }
+    const member = memberId ? followers.find((f) => f.userId === memberId) ?? null : null;
+    const seesHidden = member ? member.close : !!close;
+
+    // The owner's session in flight right now, if this tier may see its trip.
+    const sessions = await ctx.db
+      .query('liveSessions')
+      .withIndex('by_user', (q) => q.eq('userId', me))
+      .collect();
+    let session: Doc<'liveSessions'> | null = null;
+    for (const s of sessions) {
+      if (s.status !== 'active') continue;
+      const journey = await journeyForKey(ctx, me, s.naturalKey);
+      if (!journey || (journey.hiddenFromCircle && !seesHidden)) continue;
+      session = s;
+      break;
+    }
+
+    const who = await personCard(ctx, me);
+    return {
+      ...who,
+      member,
+      close: seesHidden,
+      followers,
+      live: await liveCard(ctx, session, who.name),
+      ...(await travelOf(ctx, me, seesHidden, session)),
     };
   },
 });

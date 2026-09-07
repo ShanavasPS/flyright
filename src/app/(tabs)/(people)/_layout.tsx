@@ -25,6 +25,13 @@ export default function PeopleStack() {
       {/* No header: the map runs full bleed and draws its own title and
         back button, the way the World tab does. */}
       <Stack.Screen name="person/[id]/world" options={{ headerShown: false }} />
+      {/* The owner's own page as a member sees it. Pushed, not a sheet: the
+        preview is a scrolling page, and a ScrollView inside a formSheet is
+        hoisted over the header (see claim-wizard). */}
+      <Stack.Screen
+        name="preview"
+        options={{ title: 'How others see you', headerBackButtonDisplayMode: 'minimal' }}
+      />
     </Stack>
   );
 }

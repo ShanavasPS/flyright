@@ -93,6 +93,8 @@ function circleEyebrow(data: CircleList | null | undefined): string {
  * (with their live or next flight), and who you share yours with. Render
  * only under CloudSync (Convex configured). */
 export function People() {
+  const theme = useTheme();
+  const router = useRouter();
   const { isSignedIn } = useAuth();
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
   const invite = useInvite(!!data?.full);
@@ -154,7 +156,32 @@ export function People() {
             ))}
           </>
         )}
-        <SectionLabel>Sharing with</SectionLabel>
+        <View style={styles.spacedRow}>
+          <SectionLabel>Sharing with</SectionLabel>
+          {/* Your side of the glass: the same page a member opens, rendered
+              for the tier you pick (screens/circle-preview). */}
+          <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="See what they see"
+              hitSlop={Spacing.one}
+              onPress={() => {
+                trackEvent('circle_preview_opened', { from: 'people' });
+                router.push('/preview');
+              }}
+              style={({ pressed }) => pressed && styles.pressed}>
+              <View style={[styles.previewPill, { backgroundColor: `${theme.tint}1A` }]}>
+                <SymbolView
+                  name={{ ios: 'eye', android: 'visibility', web: 'visibility' }}
+                  size={15}
+                  weight="semibold"
+                  tintColor={theme.tint}
+                />
+                <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                  See what they see
+                </ThemedText>
+              </View>
+            </Pressable>
+        </View>
         {data.followers.map((p) => (
           <FollowerRow key={p.userId} person={p} />
         ))}
@@ -669,6 +696,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  previewPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+    height: 30,
+    borderRadius: 15,
+    paddingHorizontal: Spacing.two + Spacing.half,
+    marginTop: Spacing.two,
   },
   heroAvatars: {
     flexDirection: 'row',

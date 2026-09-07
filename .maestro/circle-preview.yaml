@@ -1,0 +1,31 @@
+# How others see you: People's "See what they see" pill opens the owner's own
+# page rendered for a tier of their circle, with a Close circle / Rest of
+# circle switch. Needs a signed-in account (see clerk-dev-sign-in.yaml); with
+# no followers the persona card shows the empty state for each tier, which is
+# what this flow asserts. A follower's page has the same entry as a
+# "See what <name> sees" row.
+#
+# Run: maestro --device <device> test .maestro/circle-preview.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- tapOn: "People"
+- extendedWaitUntil:
+    visible: "See what they see"
+    timeout: 20000
+- tapOn: "See what they see"
+- extendedWaitUntil:
+    visible: "How others see you"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Trips flown|Trip flown"
+    timeout: 15000
+- takeScreenshot: ${SHOTS}/preview-rest
+- tapOn: "Close circle"
+- extendedWaitUntil:
+    visible: ".*close circle.*"
+    timeout: 10000
+- takeScreenshot: ${SHOTS}/preview-close
