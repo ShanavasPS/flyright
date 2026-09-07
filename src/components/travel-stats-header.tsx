@@ -3,8 +3,10 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { formatKm, timeAloftComparison, type TravelStats } from '@/services/timeline';
 
 // The card keeps the brand's night-flight navy in BOTH themes — on the light
@@ -40,8 +42,48 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
   );
 }
 
-/** The card's contents without the navy card itself, so the travel-day hero
- * can host the same stats inside its combined card. Assumes stats.trips > 0. */
+/** The all-time figures in one quiet line — what the stats card shrinks to on
+ * a travel day, when the live flight owns the navy hero and lifetime
+ * kilometres are the last thing on the traveller's mind. Still the door to
+ * Travel stats, so the day never takes the screen away. Renders nothing
+ * until there's at least one trip. */
+export function TravelStatsStrip({ stats }: { stats: TravelStats }) {
+  const router = useRouter();
+  const theme = useTheme();
+
+  if (!stats.trips) return null;
+  const line = [
+    `${stats.trips.toLocaleString()} ${stats.trips === 1 ? 'trip' : 'trips'}`,
+    `${formatKm(stats.totalKm)} km`,
+    `${stats.countries.toLocaleString()} ${stats.countries === 1 ? 'country' : 'countries'}`,
+  ].join(' · ');
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open your travel stats. All-time: ${line}`}
+      onPress={() => router.push('/stats')}
+      style={({ pressed }) => pressed && styles.pressed}>
+      <SheenCard style={styles.strip}>
+        <View style={styles.stripText}>
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.stripEyebrow}>
+            All-time
+          </ThemedText>
+          <ThemedText type="smallBold" themeColor="heading" numberOfLines={1}>
+            {line}
+          </ThemedText>
+        </View>
+        <SymbolView
+          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+          size={13}
+          tintColor={theme.textSecondary}
+        />
+      </SheenCard>
+    </Pressable>
+  );
+}
+
+/** The card's contents without the navy card itself. Assumes stats.trips > 0. */
 export function TravelStatsBody({ stats }: { stats: TravelStats }) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
@@ -166,6 +208,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  strip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+  },
+  stripText: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  stripEyebrow: {
+    fontSize: 11,
+    lineHeight: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
   },
   microLabel: {
     color: WHITE_DIM,

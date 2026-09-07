@@ -19,11 +19,10 @@ import { ThemedText } from '@/components/themed-text';
 import {
   COBALT,
   NIGHT_SKY,
-  TravelStatsBody,
   TravelStatsHeader,
+  TravelStatsStrip,
   WHITE,
   WHITE_DIM,
-  WHITE_FAINT,
 } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
@@ -33,6 +32,8 @@ import {
   activeJourney,
   liveContent,
   travelWindow,
+  type TravelDayState,
+  type TravelPhase,
 } from '@/services/travel-day';
 import { noteWarning, tapLight } from '@/services/haptics';
 import { getFlightFacts } from '@/services/travel-day-lifecycle';
@@ -44,11 +45,34 @@ const SPRING = { damping: 18, stiffness: 170 } as const;
 /** The plane glyph's box on the route line — its travel is the line minus this. */
 const PLANE_SIZE = 16;
 
-/** The single hero at the top of My travels — one premium navy object per
- * screen. On a travel day (T−24h through landing) the live flight and the
- * all-time stats share one night-sky card: live section on top opening the
- * journey timeline, stats below opening Travel stats. Every other day the
- * plain stats card stands alone. */
+/** The trip the home hero is showing live, if any: the soonest flight inside
+ * its travel window (T−24h through landing), with its stage state. One
+ * answer for the screen and the hero both — the screen uses it to keep that
+ * trip out of the list (the hero IS its row for the day) and to word the
+ * eyebrow, so the same flight never shows up twice with two countdowns. */
+export function useHeroTrip(
+  journeys: JourneyRow[],
+  now: Date,
+): { journey: JourneyRow; phase: 'reminder' | 'live'; state: TravelDayState } | null {
+  // Selection needs every trip's real stamps: with the empty default, a
+  // morning flight whose landed stamp already closed its window wins on
+  // departure time, then fails the phase check below and collapses the hero
+  // to plain stats while a later trip is genuinely live.
+  const stateOf = useTravelDayStates();
+  const active = activeJourney(journeys, now, stateOf);
+  if (!active) return null;
+  const state = stateOf(active.id);
+  const phase: TravelPhase = travelWindow(active, state, now).phase;
+  if (phase !== 'reminder' && phase !== 'live') return null;
+  return { journey: active, phase, state };
+}
+
+/** The hero at the top of My travels. Every ordinary day it is the navy
+ * all-time stats card. On a travel day (T−24h through landing) the live
+ * flight takes the navy card for itself — one premium object, one job — and
+ * the stats step down to a quiet one-line strip beneath it. Sharing a single
+ * card used to read as one confusing object: lifetime kilometres under a
+ * boarding pass. */
 export function HomeHero({
   journeys,
   stats,
@@ -56,29 +80,21 @@ export function HomeHero({
 }: {
   journeys: JourneyRow[];
   stats: TravelStats;
-  /** 'glance' = the tabletop (Flex mode) top pane: live section only, no
-   * stats footer — it must fit a half-screen without scrolling. */
+  /** 'glance' = the tabletop (Flex mode) top pane: live card only, no
+   * stats strip — it must fit a half-screen without scrolling. */
   variant?: 'full' | 'glance';
 }) {
   const router = useRouter();
   const now = useNow(60_000);
-  // Selection needs every trip's real stamps: with the empty default, a
-  // morning flight whose landed stamp already closed its window wins on
-  // departure time, then fails the phase check below and collapses the hero
-  // to plain stats while a later trip is genuinely live.
-  const stateOf = useTravelDayStates();
-  const active = activeJourney(journeys, now, stateOf);
-  const state = stateOf(active?.id ?? '');
-
-  const phase = active ? travelWindow(active, state, now).phase : null;
-  if (!active || (phase !== 'reminder' && phase !== 'live')) {
-    return <TravelStatsHeader stats={stats} />;
-  }
+  const hero = useHeroTrip(journeys, now);
+  if (!hero) return <TravelStatsHeader stats={stats} />;
+  const { journey: active, phase, state } = hero;
 
   const facts = getFlightFacts(active.id);
   const content = liveContent(active, state, facts, now);
 
   return (
+    <View style={styles.stack}>
     <View style={[styles.card, { experimental_backgroundImage: NIGHT_SKY }]}>
       <Pressable
         accessibilityRole="button"
@@ -160,22 +176,11 @@ export function HomeHero({
         </View>
       </Pressable>
 
-      {!!stats.trips && variant === 'full' && (
-        <>
-          <View style={styles.divider} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open your travel stats"
-            onPress={() => router.push('/stats')}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <TravelStatsBody stats={stats} />
-          </Pressable>
-        </>
-      )}
-
       {/* Keyed by journey so a hero handover never inherits the previous
        * flight's delay/gate memory and false-flashes. */}
       <StatusFlash key={active.id} delayLabel={content.delayLabel} gate={content.gate} />
+    </View>
+    {variant === 'full' && <TravelStatsStrip stats={stats} />}
     </View>
   );
 }
@@ -277,6 +282,9 @@ function LiveDot() {
 const styles = StyleSheet.create({
   pressed: {
     opacity: 0.9,
+  },
+  stack: {
+    gap: Spacing.two,
   },
   card: {
     gap: Spacing.three,
@@ -422,9 +430,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: Spacing.four,
     backgroundColor: DELAY_AMBER,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: WHITE_FAINT,
   },
 });

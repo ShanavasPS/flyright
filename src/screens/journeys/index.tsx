@@ -21,7 +21,7 @@ import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
-import { HomeHero } from '@/components/travel-day-banner';
+import { HomeHero, useHeroTrip } from '@/components/travel-day-banner';
 import {
   COBALT,
   MiniContrail,
@@ -37,7 +37,8 @@ import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
 import { requestTrackingConsent } from '@/services/analytics';
 import { useClaims, type ClaimRow } from '@/services/claims';
-import { countdown } from '@/services/dates';
+import { airportZone } from '@/services/airports';
+import { countdown, flightDay, localDateString } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
 import { canPromptForPush } from '@/services/notifications';
@@ -58,8 +59,26 @@ const GHOST_PEEK = 10;
 
 /** The context line above the title — the next departure when one is booked
  * (the thing a traveller actually wants at a glance), today's date otherwise.
- * Relies on groupJourneys putting the soonest upcoming trip first. */
-function headerEyebrow(sections: ReturnType<typeof groupJourneys>, now: Date): string {
+ * Relies on groupJourneys putting the soonest upcoming trip first.
+ *
+ * While the hero shows a flight live, the eyebrow names the day instead of
+ * counting down: the hero's own headline already counts, to the airline's
+ * moved time, and a second countdown from the ticketed time contradicted it
+ * ("Next trip in 2h" over "Flight in 3h"). */
+function headerEyebrow(
+  sections: ReturnType<typeof groupJourneys>,
+  hero: ReturnType<typeof useHeroTrip>,
+  now: Date,
+): string {
+  if (hero) {
+    const { journey, phase } = hero;
+    const today =
+      flightDay(journey.scheduledDeparture, airportZone(journey.fromCode)) ===
+      localDateString(now);
+    // A flight still live after midnight is still today's travel day.
+    const label = today || phase === 'live' ? 'Travel day' : 'Flying tomorrow';
+    return `${label} · ${journey.fromCode} → ${journey.toCode}`;
+  }
   const next = sections[0]?.key === 'upcoming' ? sections[0].data[0] : undefined;
   if (next) {
     const timer = countdown(next.scheduledDeparture, now);
@@ -112,7 +131,15 @@ export function Journeys() {
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const now = new Date();
-  const sections = useMemo(() => groupJourneys(journeys ?? [], now), [journeys]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The hero is that trip's row for the day: listing it again under
+  // "Upcoming" showed the same flight twice, ticketed times against the
+  // airline's moved ones and "in 2h" against "Flight in 3h".
+  const hero = useHeroTrip(journeys ?? [], now);
+  const heroId = hero?.journey.id ?? null;
+  const sections = useMemo(
+    () => groupJourneys((journeys ?? []).filter((j) => j.id !== heroId), now),
+    [journeys, heroId], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
   const claimByJourney = useMemo(() => {
     const map = new Map<string, ClaimRow>();
@@ -160,10 +187,11 @@ export function Journeys() {
   const bookHinge =
     fold.orientation === 'vertical' && fold.isSeparating ? fold.hingeBounds : null;
   const listPaneWidth = bookHinge ? bookHinge.left : Math.round(windowWidth * 0.42);
+  // Nothing selected yet: today's flight if there is one, else the next trip.
   const detailId = twoPane
     ? journeys!.some((j) => j.id === selectedId)
       ? selectedId
-      : (sections[0]?.data[0]?.id ?? null)
+      : (heroId ?? sections[0]?.data[0]?.id ?? null)
     : null;
 
   const listPane = (
@@ -180,7 +208,7 @@ export function Journeys() {
               themeColor="textSecondary"
               style={styles.eyebrow}
               numberOfLines={1}>
-              {headerEyebrow(sections, now)}
+              {headerEyebrow(sections, hero, now)}
             </ThemedText>
             <ThemedText type="title" themeColor="heading">
               My travels
