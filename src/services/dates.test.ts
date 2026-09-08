@@ -1,4 +1,5 @@
 import {
+  wallClock,
   countdown,
   flightDay,
   formatDayLabel,
@@ -193,5 +194,19 @@ describe('flightDay — the date a lookup has to ask about', () => {
   it('leaves the day alone when it is already local', () => {
     expect(flightDay('2026-11-28T11:30:00', 'Pacific/Auckland')).toBe('2026-11-28');
     expect(flightDay('2026-11-28T11:15:00.000Z', null)).toBe('2026-11-28');
+  });
+});
+
+describe('wallClock', () => {
+  it('reads the airport clock out of an instant', () => {
+    expect(wallClock('2026-01-18T22:35:00Z', 'Asia/Kolkata')).toBe('04:05');
+    expect(wallClock('2026-01-18T03:10:00Z', 'Asia/Qatar')).toBe('06:10');
+  });
+  it('keeps a bare wall clock as it is', () => {
+    expect(wallClock('2026-01-18T04:05:00', 'Asia/Kolkata')).toBe('04:05');
+  });
+  it('is null for nothing or garbage', () => {
+    expect(wallClock(null, 'Asia/Kolkata')).toBeNull();
+    expect(wallClock('not a date', 'Asia/Kolkata')).toBeNull();
   });
 });

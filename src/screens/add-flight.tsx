@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -23,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AirlineLogo } from '@/components/airline-logo';
 import { BoardingPassScanner } from '@/components/boarding-pass-scanner';
 import { CalendarMonth } from '@/components/calendar-month';
+import { useChoiceSheet } from '@/components/choice-sheet';
 import {
   MicroLabel,
   PassAction,
@@ -35,16 +37,18 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
-import { carrierFor } from '@/constants/carriers';
+import { CARRIERS, carrierCodeForName, carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport, searchAirports, type Airport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
+import { withYear, yearChoices } from '@/services/year-choice';
 import {
   formatDayLabel,
   formatDayLabelWithYear,
   formatTime,
+  wallClock,
   localDateString,
 } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
@@ -143,6 +147,13 @@ export function AddFlight() {
   // Optional 'HH:mm' times for journal entries; null keeps the noon placeholder.
   const [depTime, setDepTime] = useState<string | null>(null);
   const [arrTime, setArrTime] = useState<string | null>(null);
+  // The airline of a journal entry. Normally the flight number's prefix says
+  // it; this is the traveller's say-so for a number the table doesn't know,
+  // a codeshare flown by someone else, or a trip with no number at all.
+  const [airline, setAirline] = useState<{ iata: string; name: string; country: string } | null>(
+    null,
+  );
+  const [airlineQuery, setAirlineQuery] = useState<string | null>(null);
   const [timePickerFor, setTimePickerFor] = useState<'dep' | 'arr' | null>(null);
   // Booking reference (PNR) and seat: typed on the journal form or read off
   // a scanned boarding pass, saved with either path.
@@ -187,6 +198,19 @@ export function AddFlight() {
     if (editRow.number) setFlightNumber(editRow.number);
     setBookingRef(editRow.bookingReference ?? '');
     setSeat(editRow.seat ?? '');
+    // A stored airline that isn't the number's prefix was chosen by hand (or
+    // read off a codeshare line) — keep it, don't let the prefix overwrite it.
+    if (editRow.carrier && editRow.carrier !== 'Flight') {
+      const byPrefix = editRow.number ? carrierFor(editRow.number) : null;
+      if (!byPrefix || byPrefix.name !== editRow.carrier) {
+        const code = carrierCodeForName(editRow.carrier);
+        setAirline({
+          iata: code ?? '',
+          name: code ? CARRIERS[code].name : editRow.carrier,
+          country: code ? CARRIERS[code].country : editRow.carrierCountry ?? '',
+        });
+      }
+    }
     // Identical noon timestamps are the "no times entered" placeholder.
     const dep = editRow.scheduledDeparture;
     const arr = editRow.scheduledArrival;
@@ -303,6 +327,37 @@ export function AddFlight() {
     setStep('date');
   };
 
+  // The year on its own. A scanned pass carries no year and the app guesses
+  // the closest one, which for an old pass is a year too late — the day and
+  // month are right, and only the year needs touching. The chip offers
+  // last, this and next year; the calendar stays for everything else.
+  const yearSheet = useChoiceSheet();
+  const editYear = () => {
+    if (!date) return;
+    yearSheet.show(
+      'Which year?',
+      yearChoices(date, today).map((y) => ({
+        text: `${y}`,
+        onPress: () => {
+          if (y === Number(date.slice(0, 4))) return;
+          trackEvent('flight_year_changed', { from: Number(date.slice(0, 4)), to: y });
+          setDate(withYear(date, y));
+          // A corrected year is the traveller's word against the provider's,
+          // so nothing is looked up again: the flight already on screen (or
+          // the scanned route) becomes the journal entry, times carried over.
+          if (flight) {
+            if (flight.from.code) setFromInput(flight.from.code);
+            if (flight.to.code) setToInput(flight.to.code);
+            setDepTime(wallClock(flight.scheduledDeparture, airportZone(flight.from.code)));
+            setArrTime(wallClock(flight.scheduledArrival, airportZone(flight.to.code)));
+          }
+          setManualMode(true);
+          setStep('manual');
+        },
+      })),
+    );
+  };
+
   // Live lookups are per-account (the route meters a paid provider), so the
   // result step asks for sign-in first instead of firing a request that
   // would be refused. The journal path stays open without an account.
@@ -393,9 +448,22 @@ export function AddFlight() {
     arrTime ??
     (manualKm != null ? addClockMinutes(depClock, estimatedFlightMinutes(manualKm)) : depClock);
 
+  // The airline the entry is saved under: chosen by hand, else the number's.
+  const manualCarrier = airline ?? (flightNumber ? carrierFor(flightNumber) : null);
+  const airlineMatches =
+    airlineQuery === null
+      ? []
+      : Object.entries(CARRIERS)
+          .filter(([code, c]) => {
+            const q = airlineQuery.trim().toLowerCase();
+            return !q || code.toLowerCase() === q || c.name.toLowerCase().includes(q);
+          })
+          .sort((a, b) => a[1].name.localeCompare(b[1].name))
+          .slice(0, 8);
+
   const saveManual = async () => {
     if (!fromAirport || !toAirport || !date) return;
-    const carrier = flightNumber ? carrierFor(flightNumber) : null;
+    const carrier = manualCarrier;
     const distanceKm = haversineKm(
       fromAirport.lat,
       fromAirport.lon,
@@ -563,32 +631,66 @@ export function AddFlight() {
             </Pressable>
           )}
           {date && (
-            <Pressable onPress={editDate}>
-              <View style={styles.chip}>
-                <SymbolView
-                  name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }}
-                  size={12}
-                  tintColor={COBALT}
-                />
-                <ThemedText type="smallBold" style={styles.chipText}>
-                  {/* Journal dates can be years back — ambiguity needs the year. */}
-                  {date.slice(0, 4) === localDateString(today).slice(0, 4)
-                    ? formatDayLabel(date)
-                    : formatDayLabelWithYear(date)}
-                </ThemedText>
-              </View>
-            </Pressable>
+            <>
+              <Pressable onPress={editDate} testID="token-date">
+                <View style={styles.chip}>
+                  <SymbolView
+                    name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }}
+                    size={12}
+                    tintColor={COBALT}
+                  />
+                  <ThemedText type="smallBold" style={styles.chipText}>
+                    {formatDayLabel(date)}
+                  </ThemedText>
+                </View>
+              </Pressable>
+              {/* The year as its own stub, since it is the one part of a
+                  scanned date that was guessed. Dimmer when it is this year,
+                  loud when it isn't — a trip a year out (or back) should be
+                  noticed before it is saved. */}
+              <Pressable
+                onPress={editYear}
+                testID="token-year"
+                accessibilityRole="button"
+                accessibilityLabel={`Year ${date.slice(0, 4)}. Change`}>
+                <View
+                  style={[
+                    styles.chip,
+                    date.slice(0, 4) !== localDateString(today).slice(0, 4) && styles.chipLoud,
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.chipText}>
+                    {date.slice(0, 4)}
+                  </ThemedText>
+                  <SymbolView
+                    name={{ ios: 'chevron.down', android: 'expand_more', web: 'expand_more' }}
+                    size={10}
+                    weight="semibold"
+                    tintColor={COBALT}
+                  />
+                </View>
+              </Pressable>
+            </>
           )}
         </View>
       )}
+      {yearSheet.sheet}
 
       {/* Every step scrolls: the calendar, the manual card with its time
           spinner, and small screens all need the escape hatch. Taps must
           survive an open keyboard so airport suggestions stay one-tap. */}
+      <KeyboardAvoidingView
+        style={styles.body}
+        // iOS: the scroll view insets itself for the keyboard (below), so the
+        // save button can always be scrolled above it. Android's adjustResize
+        // is dead under edge-to-edge, so the view pads instead.
+        behavior={Platform.OS === 'android' ? 'padding' : undefined}
+        enabled={Platform.OS === 'android'}>
       <ScrollView
         style={styles.body}
         contentContainerStyle={styles.bodyContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}>
         {step === 'flight' && (
           <View style={styles.rowGroup}>
@@ -827,6 +929,8 @@ export function AddFlight() {
                 value={fromInput}
                 onChangeText={setFromInput}
                 onFocus={() => setActiveField('from')}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
                 placeholder="From · city or HEL"
                 placeholderTextColor={theme.textSecondary}
                 style={[
@@ -841,6 +945,8 @@ export function AddFlight() {
                 value={toInput}
                 onChangeText={setToInput}
                 onFocus={() => setActiveField('to')}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
                 placeholder="To · city or JFK"
                 placeholderTextColor={theme.textSecondary}
                 style={[
@@ -877,6 +983,75 @@ export function AddFlight() {
                   ).toLocaleString()}{' '}
                   km{date ? ` · ${formatDayLabel(date)}` : ''}
                 </ThemedText>
+                {/* The airline, as a chip like the times: the prefix's guess
+                    until it's tapped, then a short search over the carriers
+                    we know. */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Airline ${manualCarrier?.name ?? 'not set'}. Change`}
+                  testID="manual-airline"
+                  style={styles.timeChip}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setTimePickerFor(null);
+                    setAirlineQuery((open) => (open === null ? '' : null));
+                  }}>
+                  <ThemedView
+                    type={airlineQuery !== null ? 'backgroundSelected' : 'background'}
+                    style={[styles.timeChipInner, styles.airlineChip]}>
+                    {manualCarrier && (
+                      <AirlineLogo number={flightNumber ?? ''} carrier={manualCarrier.name} size={24} />
+                    )}
+                    <View style={styles.airlineChipText}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        Airline
+                      </ThemedText>
+                      <ThemedText type="smallBold" themeColor="tint" numberOfLines={1}>
+                        {manualCarrier?.name ?? 'Choose an airline'}
+                      </ThemedText>
+                    </View>
+                  </ThemedView>
+                </Pressable>
+                {airlineQuery !== null && (
+                  <View style={styles.rowGroup}>
+                    <TextInput
+                      autoFocus
+                      autoCorrect={false}
+                      value={airlineQuery}
+                      onChangeText={setAirlineQuery}
+                      placeholder="Airline name or code"
+                      placeholderTextColor={theme.textSecondary}
+                      returnKeyType="done"
+                      onSubmitEditing={Keyboard.dismiss}
+                      testID="manual-airline-search"
+                      style={[styles.input, { color: theme.text, backgroundColor: theme.field }]}
+                    />
+                    {airlineMatches.map(([code, c]) => (
+                      <Pressable
+                        key={code}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setAirline({ iata: code, ...c });
+                          setAirlineQuery(null);
+                          Keyboard.dismiss();
+                          trackEvent('manual_airline_changed', { code });
+                        }}>
+                        <ThemedView type="background" style={styles.row}>
+                          <View style={styles.airlineRow}>
+                            <AirlineLogo number={code} carrier={c.name} size={28} />
+                            <View>
+                              <ThemedText type="smallBold">{c.name}</ThemedText>
+                              <ThemedText type="small" themeColor="textSecondary">
+                                {code}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          <ThemedText themeColor="tint">→</ThemedText>
+                        </ThemedView>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
                 <View style={styles.timesRow}>
                   {(
                     [
@@ -935,6 +1110,8 @@ export function AddFlight() {
                     maxLength={8}
                     value={bookingRef}
                     onChangeText={setBookingRef}
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
                     placeholder="Booking ref"
                     placeholderTextColor={theme.textSecondary}
                     style={[styles.input, styles.detailInput, { color: theme.text, backgroundColor: theme.field }]}
@@ -945,6 +1122,8 @@ export function AddFlight() {
                     maxLength={4}
                     value={seat}
                     onChangeText={setSeat}
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
                     placeholder="Seat"
                     placeholderTextColor={theme.textSecondary}
                     style={[styles.input, styles.detailInput, { color: theme.text, backgroundColor: theme.field }]}
@@ -1018,6 +1197,7 @@ export function AddFlight() {
           </Animated.View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
@@ -1143,6 +1323,10 @@ const styles = StyleSheet.create({
   chipText: {
     color: WHITE,
   },
+  chipLoud: {
+    borderColor: COBALT,
+    backgroundColor: '#1E3F73',
+  },
   passInput: {
     color: WHITE,
     fontSize: 30,
@@ -1264,6 +1448,20 @@ const styles = StyleSheet.create({
   },
   cta: {
     marginTop: Spacing.two,
+  },
+  airlineChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  airlineChipText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  airlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   timesRow: {
     flexDirection: 'row',

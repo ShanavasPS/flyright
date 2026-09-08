@@ -183,6 +183,29 @@ export function pinToZone(iso: string, zone: string | null | undefined): string 
   return wall ? zonedTimestamp(wall[1], wall[2], zone) : null;
 }
 
+/** The clock a timestamp reads at its airport, as "HH:MM" — the shape the
+ * add-flight form's time chips hold. A zone-less string is already a wall
+ * clock and keeps its own; null when the timestamp doesn't parse. */
+export function wallClock(iso: string | null | undefined, zone: string | null | undefined): string | null {
+  if (!iso) return null;
+  if (!ZONED.test(iso)) return /T(\d{2}:\d{2})/.exec(iso)?.[1] ?? null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      ...inZone(iso, zone),
+    }).formatToParts(date);
+    const at = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    // Some ICU builds render midnight as hour 24 under hour12: false.
+    return `${`${at('hour') % 24}`.padStart(2, '0')}:${`${at('minute')}`.padStart(2, '0')}`;
+  } catch {
+    return null;
+  }
+}
+
 /** The day a flight leaves, as the departure board says it: 'YYYY-MM-DD' in
  * the origin airport's zone.
  *

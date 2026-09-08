@@ -10,6 +10,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
+import { useChoiceSheet } from '@/components/choice-sheet';
 import {
   MicroLabel,
   PassAction,
@@ -21,7 +22,7 @@ import {
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { COBALT, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
+import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
 import { CARRIERS, carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -30,7 +31,6 @@ import { trackEvent } from '@/services/analytics';
 import {
   flightDay,
   formatDayLabel,
-  formatDayLabelWithYear,
   formatTime,
   localDateString,
 } from '@/services/dates';
@@ -38,6 +38,7 @@ import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
 import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
+import { shiftYears, yearChoices } from '@/services/year-choice';
 import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
 import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
@@ -156,6 +157,9 @@ export function ImportDocument() {
     fileUri ? { kind: 'reading' } : { kind: 'unreadable', message: 'No document was shared.' },
   );
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
+  // Legs whose year the traveller corrected: their word, not the provider's,
+  // so no lookup runs for them — they are saved as printed.
+  const [pinned, setPinned] = useState<Set<string>>(new Set());
   const today = useMemo(() => new Date(), []);
 
   // Read once per file. The copy is ours (the share Inbox, the picker's cache)
@@ -215,7 +219,12 @@ export function ImportDocument() {
     queries: segments.map((s) => ({
       queryKey: ['flight-status', s.flight, s.date],
       queryFn: () => lookupFlight(s.flight!, s.date!),
-      enabled: lookupAllowed && !!s.flight && !!s.date && withinLookupReach(s.date, today),
+      enabled:
+        lookupAllowed &&
+        !pinned.has(s.key) &&
+        !!s.flight &&
+        !!s.date &&
+        withinLookupReach(s.date, today),
       retry: false,
     })),
   });
@@ -239,7 +248,8 @@ export function ImportDocument() {
   const rows = segments.map((segment, i) => {
     const query = lookups[i];
     // A lookup that never ran (out of reach) is "not pending" with no data.
-    const plan = planFor(segment, query.fetchStatus === 'idle' && !query.data ? null : query);
+    const edited = pinned.has(segment.key);
+    const plan = planFor(segment, edited || (query.fetchStatus === 'idle' && !query.data) ? null : query);
     const already = !!segment.flight && !!segment.date && existing.has(`${segment.flight}-${segment.date}`);
     const selectable = !already && (plan.kind === 'lookup' || plan.kind === 'journal');
     const selected = selectable && !deselected.has(segment.key);
@@ -249,12 +259,51 @@ export function ImportDocument() {
       already,
       selectable,
       selected,
+      edited,
       error: lookupAllowed ? query.error : new FlightLookupError('Sign in to look flights up live.', 401),
     };
   });
 
   const selectedRows = rows.filter((r) => r.selected);
   const pendingCount = rows.filter((r) => r.plan.kind === 'pending').length;
+
+  /** Move one leg to another year. The day and month a document prints are
+   * right; the year is the part that was guessed (a barcode carries none)
+   * or misread, and a wrong one files a flown trip under upcoming. The
+   * lookup re-runs on its own — the date is in its query key — and the
+   * arrival keeps its distance from the departure. */
+  const yearSheet = useChoiceSheet();
+  const changeYear = (segment: ImportedSegment) => {
+    if (!segment.date) return;
+    const date = segment.date;
+    yearSheet.show(
+      'Which year?',
+      yearChoices(date, today).map((y) => ({
+        text: `${y}`,
+        onPress: () => {
+          const delta = y - Number(date.slice(0, 4));
+          if (!delta) return;
+          trackEvent('import_year_changed', { from: Number(date.slice(0, 4)), to: y });
+          setPinned((prev) => new Set(prev).add(segment.key));
+          setPhase((current) => {
+            if (current.kind !== 'review') return current;
+            return {
+              ...current,
+              segments: current.segments.map((s) =>
+                s.key !== segment.key
+                  ? s
+                  : {
+                      ...s,
+                      date: shiftYears(date, delta),
+                      arrivalDate: s.arrivalDate ? shiftYears(s.arrivalDate, delta) : null,
+                    },
+              ),
+            };
+          });
+        },
+      })),
+    );
+  };
 
   const toggle = (key: string) =>
     setDeselected((prev) => {
@@ -343,9 +392,13 @@ export function ImportDocument() {
     }
   };
 
-  /** The rare leg with a number but no recognisable route: hand it to the
-   * manual form with everything the document did say already filled in. */
+  /** Hand one leg to the add-flight form with everything the document said
+   * already filled in: the rare leg with a number but no recognisable route
+   * ("Add the route"), and any leg the traveller wants to correct before it
+   * is saved ("Edit details"). Always the journal form: what the traveller
+   * corrects by hand is not looked up again. */
   const completeManually = (segment: ImportedSegment) => {
+    trackEvent('import_segment_edited');
     router.push({
       pathname: '/add-flight',
       params: {
@@ -491,7 +544,7 @@ export function ImportDocument() {
             style={styles.body}
             contentContainerStyle={styles.bodyContent}
             showsVerticalScrollIndicator={false}>
-            {rows.map(({ segment, plan, already, selectable, selected, error }) => (
+            {rows.map(({ segment, plan, already, selectable, selected, edited, error }) => (
               <SegmentCard
                 key={segment.key}
                 segment={segment}
@@ -502,9 +555,14 @@ export function ImportDocument() {
                 lookupError={error}
                 onToggle={() => toggle(segment.key)}
                 onComplete={() => completeManually(segment)}
+                onEdit={() => completeManually(segment)}
+                onYear={() => changeYear(segment)}
+                edited={edited}
+                today={today}
               />
             ))}
           </ScrollView>
+          {yearSheet.sheet}
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
             <PrimaryButton
               label={
@@ -540,6 +598,10 @@ function SegmentCard({
   lookupError,
   onToggle,
   onComplete,
+  onEdit,
+  onYear,
+  edited,
+  today,
 }: {
   segment: ImportedSegment;
   plan: Plan;
@@ -549,6 +611,10 @@ function SegmentCard({
   lookupError: unknown;
   onToggle: () => void;
   onComplete: () => void;
+  onEdit: () => void;
+  onYear: () => void;
+  edited: boolean;
+  today: Date;
 }) {
   const flight = plan.kind === 'lookup' ? plan.flight : null;
   const fromCode = flight?.from.code ?? segment.fromCode;
@@ -557,7 +623,7 @@ function SegmentCard({
   const depTime = schedule.departure ? formatTime(schedule.departure, airportZone(fromCode)) : null;
   const arrTime = schedule.arrival ? formatTime(schedule.arrival, airportZone(toCode)) : null;
   const date = segment.date ?? flight?.date;
-  const thisYear = date ? date.slice(0, 4) === `${new Date().getFullYear()}` : true;
+  const thisYear = date ? date.slice(0, 4) === `${today.getFullYear()}` : true;
   const carrier = segment.flight ? carrierFor(segment.flight) : null;
   const operator = operatorOf(segment);
   const marketingName = flight?.carrier.name ?? carrier?.name ?? 'Flight';
@@ -579,6 +645,7 @@ function SegmentCard({
       return { text: "Scheduled — we'll watch it for delays", color: WHITE_DIM };
     }
     if (plan.kind === 'journal') {
+      if (edited) return { text: 'Year changed by you — saved as printed', color: WHITE_DIM };
       // 404: the provider has no such flight. Any other failure (502, offline)
       // is the lookup's problem, not the flight's. No error at all means the
       // date was outside the provider's reach and the lookup never ran.
@@ -617,9 +684,30 @@ function SegmentCard({
         <View style={styles.passHeader}>
           <View style={styles.passHeaderLeft}>
             <AirlineLogo number={segment.flight ?? ''} carrier={carrierName} size={32} />
-            <MicroLabel>
-              {date ? (thisYear ? formatDayLabel(date) : formatDayLabelWithYear(date)) : 'Date unknown'}
-            </MicroLabel>
+            <MicroLabel>{date ? formatDayLabel(date) : 'Date unknown'}</MicroLabel>
+            {/* The year on its own, tappable: the part of a date a document
+                read months later (or a barcode, which has none) gets wrong.
+                Louder when it isn't this year — that is the case to check. */}
+            {date && !already && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Year ${date.slice(0, 4)}. Change`}
+                hitSlop={Spacing.one}
+                onPress={onYear}
+                testID={`import-year-${segment.key}`}>
+                <View style={[styles.yearPill, !thisYear && styles.yearPillLoud]}>
+                  <ThemedText type="smallBold" style={styles.yearText}>
+                    {date.slice(0, 4)}
+                  </ThemedText>
+                  <SymbolView
+                    name={{ ios: 'chevron.down', android: 'expand_more', web: 'expand_more' }}
+                    size={10}
+                    weight="semibold"
+                    tintColor={COBALT}
+                  />
+                </View>
+              </Pressable>
+            )}
           </View>
           {selectable ? (
             <SymbolView
@@ -665,6 +753,20 @@ function SegmentCard({
             <ThemedText type="small" style={styles.passCarrier} numberOfLines={1}>
               {details}
             </ThemedText>
+          )}
+          {/* Anything else wrong — number, route, times — is fixed on the
+              add-flight form, prefilled with what the document said. */}
+          {!already && plan.kind !== 'incomplete' && plan.kind !== 'pending' && (
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={Spacing.one}
+              onPress={onEdit}
+              testID={`import-edit-${segment.key}`}
+              style={styles.editLink}>
+              <ThemedText type="smallBold" style={styles.passCarrier}>
+                Edit details →
+              </ThemedText>
+            </Pressable>
           )}
         </View>
         {plan.kind === 'incomplete' && !already && (
@@ -740,6 +842,30 @@ const styles = StyleSheet.create({
   },
   passMeta: {
     gap: Spacing.half,
+  },
+  yearPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.two,
+    backgroundColor: '#1C3459',
+    borderWidth: 1,
+    borderColor: WHITE_FAINT,
+  },
+  yearPillLoud: {
+    borderColor: COBALT,
+    backgroundColor: '#1E3F73',
+  },
+  yearText: {
+    color: WHITE,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  editLink: {
+    alignSelf: 'flex-start',
+    paddingTop: Spacing.half,
   },
   passCarrier: {
     color: COBALT,

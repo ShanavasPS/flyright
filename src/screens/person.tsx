@@ -4,10 +4,8 @@ import { Stack, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,7 +18,7 @@ import { CIRCLE_FULL } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
-import { MenuSheet, type MenuOption } from '@/components/menu-sheet';
+import { useChoiceSheet } from '@/components/choice-sheet';
 import { PersonTravel, Stat } from '@/components/person-travel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -54,23 +52,7 @@ export function Person({ userId }: { userId: string }) {
   const cancelRequest = useMutation(api.circle.cancelRequest);
   const proLocked = useProLocked();
   const [busy, setBusy] = useState<'theirs' | 'mine' | null>(null);
-  // The open menu, where the platform has no native sheet (see showSheet).
-  const [sheet, setSheet] = useState<{ title: string; options: MenuOption[] } | null>(null);
-  const showSheet = (title: string, options: MenuOption[]) => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title,
-          options: [...options.map((o) => o.text), 'Cancel'],
-          cancelButtonIndex: options.length,
-          destructiveButtonIndex: options.flatMap((o, i) => (o.destructive ? [i] : [])),
-        },
-        (index) => options[index]?.onPress(),
-      );
-      return;
-    }
-    setSheet({ title, options });
-  };
+  const { show: showSheet, sheet } = useChoiceSheet();
 
   // Read once per render, like the journal's own list: the countdowns on a
   // profile don't need to tick while it's open.
@@ -302,11 +284,7 @@ export function Person({ userId }: { userId: string }) {
           {body}
         </ScrollView>
       </SafeAreaView>
-      <MenuSheet
-        title={sheet?.title ?? ''}
-        options={sheet?.options ?? null}
-        onClose={() => setSheet(null)}
-      />
+      {sheet}
     </ThemedView>
   );
 }

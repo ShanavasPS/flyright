@@ -143,11 +143,11 @@ export function BoardingPassScanner({
             // distance the lens can focus at — getting too close blurs it.
             'Fill the frame with the barcode — no need to get close.'}
       </ThemedText>
-      {/* BCBP encodes only a day-of-year: the date is matched to the nearest
-          year, so passes from another year land on the wrong flight. */}
+      {/* BCBP encodes only a day-of-year: the year is a guess (the nearest),
+          which the year chip on the next step lets the traveller correct. */}
       <ThemedText type="small" style={[styles.subHint, styles.centered]}>
-        Recent passes work best — barcodes don&apos;t carry a year, so we match the
-        closest date.
+        Barcodes don&apos;t carry a year, so we guess the nearest one — an old pass? Tap
+        the year afterwards to change it.
       </ThemedText>
       {onUpload && (
         <Pressable testID="upload-from-scanner" hitSlop={Spacing.two} onPress={onUpload}>
