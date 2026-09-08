@@ -728,6 +728,50 @@ export const setMuted = mutation({
 
 /** The People tab in one reactive query: people I follow (with their live
  * or next trip) and people following me. Null while signed out. */
+/** Someone's next upcoming trip as seen from a seat in their circle — only
+ * the public-safe flight snapshot, the same fields a live session exposes.
+ * Never naturalKey or prices. `close` is the seat's close-circle flag: trips
+ * marked "Only my close circle" stay invisible to everyone else. */
+async function nextTrip(ctx: QueryCtx, ownerId: string, close: boolean, now: number) {
+  const journeys = await ctx.db
+    .query('journeys')
+    .withIndex('by_user', (q) => q.eq('userId', ownerId))
+    .collect();
+  let next = null;
+  for (const j of journeys) {
+    if (j.deletedAt || (j.hiddenFromCircle && !close)) continue;
+    const dep = Date.parse(j.scheduledDeparture);
+    if (Number.isNaN(dep) || dep < now) continue;
+    if (!next || dep < Date.parse(next.scheduledDeparture)) {
+      next = {
+        carrier: j.carrier,
+        number: j.number,
+        fromCode: j.fromCode,
+        toCode: j.toCode,
+        scheduledDeparture: j.scheduledDeparture,
+        scheduledArrival: j.scheduledArrival,
+      };
+    }
+  }
+  return next;
+}
+
+/** List order for a people tab: soonest upcoming departure first, then
+ * those with nothing booked by the newest connection, names as a tiebreak. */
+function byNextTripThenNewest(
+  a: { name: string; since: string; next: { scheduledDeparture: string } | null },
+  b: { name: string; since: string; next: { scheduledDeparture: string } | null },
+) {
+  if (a.next && b.next) {
+    return (
+      Date.parse(a.next.scheduledDeparture) - Date.parse(b.next.scheduledDeparture) ||
+      a.name.localeCompare(b.name)
+    );
+  }
+  if (a.next !== b.next) return a.next ? -1 : 1;
+  return b.since.localeCompare(a.since) || a.name.localeCompare(b.name);
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -765,30 +809,7 @@ export const list = query({
         break;
       }
 
-      // Next upcoming trip — only the public-safe flight snapshot, same
-      // fields a live session exposes. Never naturalKey or prices.
-      let next = null;
-      if (!live) {
-        const journeys = await ctx.db
-          .query('journeys')
-          .withIndex('by_user', (q) => q.eq('userId', row.ownerId))
-          .collect();
-        for (const j of journeys) {
-          if (j.deletedAt || (j.hiddenFromCircle && !row.close)) continue;
-          const dep = Date.parse(j.scheduledDeparture);
-          if (Number.isNaN(dep) || dep < now) continue;
-          if (!next || dep < Date.parse(next.scheduledDeparture)) {
-            next = {
-              carrier: j.carrier,
-              number: j.number,
-              fromCode: j.fromCode,
-              toCode: j.toCode,
-              scheduledDeparture: j.scheduledDeparture,
-              scheduledArrival: j.scheduledArrival,
-            };
-          }
-        }
-      }
+      const next = live ? null : await nextTrip(ctx, row.ownerId, !!row.close, now);
       following.push({
         ...owner,
         muted: row.muted,
@@ -814,14 +835,19 @@ export const list = query({
     const followers = [];
     for (const row of await circleMembers(ctx, me)) {
       const asked = fromMe.find((r) => kindOf(r) === 'follow' && r.toUserId === row.memberId);
+      // My seat in THEIR circle — when I hold one, their next trip is
+      // already mine to see (it's on the Following tab), so it can order
+      // this list too. Anyone I don't follow sorts by when they arrived.
+      const mine = await areSharing(ctx, row.memberId, me);
       followers.push({
         ...(await personCard(ctx, row.memberId)),
         close: !!row.close,
         since: row.createdAt,
         /** I follow them too — otherwise the row offers "Follow back"... */
-        following: !!(await areSharing(ctx, row.memberId, me)),
+        following: !!mine,
         /** ...or shows the ask already out, with its id to withdraw it. */
         askedId: asked?._id ?? null,
+        next: mine ? await nextTrip(ctx, row.memberId, !!mine.close, now) : null,
       });
     }
 
@@ -847,8 +873,10 @@ export const list = query({
       else if (!followers.some((f) => f.userId === r.toUserId)) asked.push(card);
     }
 
-    following.sort((a, b) => (a.live ? 0 : 1) - (b.live ? 0 : 1) || a.name.localeCompare(b.name));
-    followers.sort((a, b) => a.name.localeCompare(b.name));
+    // Both tabs: whoever flies soonest on top (someone in the air first),
+    // then everyone without a trip, newest connection first.
+    following.sort((a, b) => (a.live ? 0 : 1) - (b.live ? 0 : 1) || byNextTripThenNewest(a, b));
+    followers.sort(byNextTripThenNewest);
     for (const list of [incoming, followRequests, outgoing, asked]) {
       list.sort((a, b) => b.since.localeCompare(a.since));
     }
