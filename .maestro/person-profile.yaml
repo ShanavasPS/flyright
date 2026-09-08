@@ -24,7 +24,7 @@ tags:
 - extendedWaitUntil:
     visible: "UPCOMING"
     timeout: 30000
-- assertVisible: ".*Sharing their trips with you since.*"
+- assertVisible: ".*Shares their trips with you since.*"
 - assertVisible: "Trips ahead"
 - assertVisible: "FLOWN"
 

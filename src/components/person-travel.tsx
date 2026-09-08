@@ -71,10 +71,14 @@ export function PersonTravel({
   badgeFor,
   dimFor,
   afterUpcoming,
+  showStats = true,
 }: {
   name: string;
   data: PersonTravelData;
   now: Date;
+  /** Off when the page draws the two totals itself (the person page puts
+   * them beside the avatar); the preview keeps them here. */
+  showStats?: boolean;
   onOpenWorld?: () => void;
   onOpenTrip?: (journeyId: string) => void;
   badgeFor?: (journeyId: string) => React.ReactNode;
@@ -115,10 +119,12 @@ export function PersonTravel({
         </Pressable>
       )}
 
-      <View style={styles.stats}>
-        <Stat label={p.ahead === 1 ? 'Trip ahead' : 'Trips ahead'} value={p.ahead} />
-        <Stat label={p.flown === 1 ? 'Trip flown' : 'Trips flown'} value={p.flown} />
-      </View>
+      {showStats && (
+        <View style={styles.stats}>
+          <Stat label={p.ahead === 1 ? 'Trip ahead' : 'Trips ahead'} value={p.ahead} />
+          <Stat label={p.flown === 1 ? 'Trip flown' : 'Trips flown'} value={p.flown} />
+        </View>
+      )}
 
       {p.live && (
         <Pressable
