@@ -81,7 +81,7 @@ tags:
     text: "People"
     index: 0
 - extendedWaitUntil:
-    visible: "SHARING WITH"
+    visible: "Followers.*"
     timeout: 20000
 
 # The only two things a follower may do, in the "Following" pill's menu at
@@ -125,6 +125,6 @@ tags:
     text: "People"
     index: 0
 - extendedWaitUntil:
-    visible: "SHARING WITH"
+    visible: "Followers.*"
     timeout: 20000
 - assertVisible: "Tab Bar"
