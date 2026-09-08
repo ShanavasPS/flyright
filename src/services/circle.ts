@@ -39,3 +39,13 @@ export function toInAppPath(url: string): string {
   const path = url.replace(/^https?:\/\/(www\.)?getflyright\.com/i, '');
   return path.startsWith('/') ? path : `/${path}`;
 }
+
+/** A count that has to fit beside a tab label: exact to three digits
+ * ("999"), then thousands with one decimal ("1.2k") and none from ten
+ * thousand ("12k"). Circles are family-sized, so this is a guard rail, not
+ * a feature — but a five-digit follower count must not wrap the tab. */
+export function compactCount(n: number): string {
+  if (n >= 10_000) return `${Math.round(n / 1_000)}k`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(n);
+}

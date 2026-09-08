@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { compactCount } from '@/services/circle';
 
 export type SegmentTab<K extends string> = {
   key: K;
@@ -48,12 +49,19 @@ export function SegmentTabs<K extends string>({
                 borderWidth: StyleSheet.hairlineWidth,
               },
             ]}>
-            <ThemedText type="smallBold" themeColor={on ? 'heading' : 'textSecondary'}>
+            <ThemedText
+              type="smallBold"
+              themeColor={on ? 'heading' : 'textSecondary'}
+              numberOfLines={1}
+              style={styles.label}>
               {t.label}
             </ThemedText>
             {t.count != null && t.count > 0 && (
-              <ThemedText type="small" themeColor={on ? 'text' : 'textSecondary'}>
-                {t.count}
+              <ThemedText
+                type="small"
+                themeColor={on ? 'text' : 'textSecondary'}
+                numberOfLines={1}>
+                {compactCount(t.count)}
               </ThemedText>
             )}
             {!!t.badge && (
@@ -85,6 +93,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
+    paddingHorizontal: Spacing.one,
+  },
+  label: {
+    flexShrink: 1,
   },
   badge: {
     minWidth: 18,

@@ -9,6 +9,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Platform,
   Pressable,
   ScrollView,
@@ -50,6 +51,65 @@ type Follower = CircleList['followers'][number];
 type Incoming = CircleList['incoming'][number];
 type Outgoing = CircleList['outgoing'][number];
 type Tab = 'following' | 'followers';
+
+/** One row of a tab, as data: the tabs are FlatLists, so a circle of any
+ * size mounts only the rows on screen. Section labels and the empty card
+ * are rows too — the list is the whole body; only the tail (footnote, paste
+ * link) is a footer. */
+type Item =
+  | { key: string; type: 'label'; text: string }
+  | { key: string; type: 'request'; request: Incoming }
+  | { key: string; type: 'followRequest'; request: Incoming }
+  | { key: string; type: 'following'; person: Following }
+  | { key: string; type: 'follower'; person: Follower }
+  | { key: string; type: 'pending'; request: Outgoing; kind: 'invite' | 'follow' }
+  | { key: string; type: 'note'; count: number }
+  | { key: string; type: 'empty'; title: string; detail: string }
+  | { key: string; type: 'invite'; locked: boolean };
+
+/** Whose trips I follow. Invitations to follow someone answer at the top,
+ * because someone is waiting on it; then the people, live trips first; then
+ * the asks I have out to people who don't follow me (asks to a follower show
+ * on their row in Followers instead). */
+function followingItems(data: CircleList): Item[] {
+  const items: Item[] = [];
+  if (data.incoming.length) {
+    items.push({ key: 'label:invitations', type: 'label', text: 'Invitations' });
+    for (const r of data.incoming) items.push({ key: `request:${r.id}`, type: 'request', request: r });
+    if (data.following.length) items.push({ key: 'label:following', type: 'label', text: 'Following' });
+  }
+  for (const p of data.following) items.push({ key: `following:${p.userId}`, type: 'following', person: p });
+  for (const r of data.asked) items.push({ key: `pending:${r.id}`, type: 'pending', request: r, kind: 'follow' });
+  if (!data.following.length && !data.incoming.length) {
+    items.push({
+      key: 'empty',
+      type: 'empty',
+      title: "You're not following anyone yet",
+      detail: data.followers.length
+        ? 'Follow back anyone in Followers to see their trips here, or paste an invite link someone sent you.'
+        : 'When someone shares their trips with you, they show up here with their next flight.',
+    });
+  }
+  return items;
+}
+
+/** Who follows my trips. Asks to follow me answer at the top; then the
+ * people, each with "Follow back" when I don't follow them; then the
+ * invitations I have out, and the door for more. */
+function followersItems(data: CircleList, locked: boolean): Item[] {
+  const items: Item[] = [];
+  if (data.followRequests.length) {
+    items.push({ key: 'label:requests', type: 'label', text: 'Requests' });
+    for (const r of data.followRequests) {
+      items.push({ key: `followRequest:${r.id}`, type: 'followRequest', request: r });
+    }
+  }
+  items.push({ key: 'note', type: 'note', count: data.followers.length });
+  for (const p of data.followers) items.push({ key: `follower:${p.userId}`, type: 'follower', person: p });
+  for (const r of data.outgoing) items.push({ key: `pending:${r.id}`, type: 'pending', request: r, kind: 'invite' });
+  items.push({ key: 'invite', type: 'invite', locked });
+  return items;
+}
 
 // The navy the hero avatars are ringed in — the pass card's own surface, so
 // overlapping faces cut cleanly into each other.
@@ -150,6 +210,8 @@ export function People() {
 
   let tabs: React.ReactNode = null;
   let body: React.ReactNode;
+  let items: Item[] | null = null;
+  let footer: React.ReactNode = null;
   if (!isSignedIn) {
     body = (
       <>
@@ -211,22 +273,59 @@ export function People() {
         ]}
       />
     );
-    body =
-      tab === 'following' ? (
-        <FollowingTab data={data} />
-      ) : (
-        <FollowersTab
-          data={data}
-          locked={data.full && proLocked}
-          onInvite={invite}
-          onPreview={() => {
-            trackEvent('circle_preview_opened', { from: 'people' });
-            router.push('/preview');
-          }}
-          tint={theme.tint}
-        />
+    if (tab === 'following') {
+      items = followingItems(data);
+      footer = (
+        <>
+          <RedeemInviteLink />
+          <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
+            You see the upcoming flights of everyone you follow and get a heads-up the day before
+            each one.
+          </ThemedText>
+        </>
       );
+    } else {
+      items = followersItems(data, data.full && proLocked);
+      footer = (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
+          Followers see your upcoming flights and get updates on travel day. Remove anyone at any
+          time.
+        </ThemedText>
+      );
+    }
   }
+
+  const renderItem = ({ item }: { item: Item }) => {
+    switch (item.type) {
+      case 'label':
+        return <SectionLabel>{item.text}</SectionLabel>;
+      case 'request':
+        return <RequestRow request={item.request} />;
+      case 'followRequest':
+        return <FollowRequestRow request={item.request} />;
+      case 'following':
+        return <FollowingRow person={item.person} />;
+      case 'follower':
+        return <FollowerRow person={item.person} />;
+      case 'pending':
+        return <PendingRow request={item.request} kind={item.kind} />;
+      case 'note':
+        return (
+          <FollowersNote
+            count={item.count}
+            onPreview={() => {
+              trackEvent('circle_preview_opened', { from: 'people' });
+              router.push('/preview');
+            }}
+            tint={theme.tint}
+          />
+        );
+      case 'empty':
+        return <EmptyTab title={item.title} detail={item.detail} />;
+      case 'invite':
+        return <InviteRow locked={item.locked} onInvite={invite} />;
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -246,130 +345,79 @@ export function People() {
           </View>
           {isSignedIn && <InviteButton onPress={invite} />}
         </View>
-        {/* Outside the scroll view on purpose: the tabs stay put however long
+        {/* Outside the list on purpose: the tabs stay put however long
             either list gets — the old single list buried "sharing with"
             under everyone you follow. */}
         {tabs}
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}>
-          {body}
-        </ScrollView>
+        {items ? (
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.key}
+            renderItem={renderItem}
+            ItemSeparatorComponent={RowGap}
+            ListFooterComponent={<View style={styles.listFooter}>{footer}</View>}
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}>
+            {body}
+          </ScrollView>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
 }
 
-/** Whose trips I follow. Invitations to follow someone answer at the top,
- * because someone is waiting on it; then the people, live trips first; then
- * the asks I have out to people who don't follow me (asks to a follower show
- * on their row in Followers instead). */
-function FollowingTab({ data }: { data: CircleList }) {
-  return (
-    <>
-      {data.incoming.length > 0 && (
-        <>
-          <SectionLabel>Invitations</SectionLabel>
-          {data.incoming.map((r) => (
-            <RequestRow key={r.id} request={r} />
-          ))}
-          {data.following.length > 0 && <SectionLabel>Following</SectionLabel>}
-        </>
-      )}
-      {data.following.map((p) => (
-        <FollowingRow key={p.userId} person={p} />
-      ))}
-      {data.asked.map((r) => (
-        <PendingRow key={r.id} request={r} kind="follow" />
-      ))}
-      {!data.following.length && !data.incoming.length && (
-        <EmptyTab
-          title="You're not following anyone yet"
-          detail={
-            data.followers.length
-              ? 'Follow back anyone in Followers to see their trips here, or paste an invite link someone sent you.'
-              : 'When someone shares their trips with you, they show up here with their next flight.'
-          }
-        />
-      )}
-      <RedeemInviteLink />
-      <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
-        You see the upcoming flights of everyone you follow and get a heads-up the day before
-        each one.
-      </ThemedText>
-    </>
-  );
+function RowGap() {
+  return <View style={styles.rowGap} />;
 }
 
-/** Who follows my trips. Asks to follow me answer at the top; then the
- * people, each with "Follow back" when I don't follow them; then the
- * invitations I have out, and the door for more. */
-function FollowersTab({
-  data,
-  locked,
-  onInvite,
+/** "3 people see your trips" beside the preview pill — the Followers tab's
+ * one line of context above the list. */
+function FollowersNote({
+  count,
   onPreview,
   tint,
 }: {
-  data: CircleList;
-  locked: boolean;
-  onInvite: () => void;
+  count: number;
   onPreview: () => void;
   tint: string;
 }) {
-  const n = data.followers.length;
   return (
-    <>
-      {data.followRequests.length > 0 && (
-        <>
-          <SectionLabel>Requests</SectionLabel>
-          {data.followRequests.map((r) => (
-            <FollowRequestRow key={r.id} request={r} />
-          ))}
-        </>
-      )}
-      <View style={styles.spacedRow}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.tabNote}>
-          {n === 0
-            ? 'Nobody sees your trips yet'
-            : n === 1
-              ? '1 person sees your trips'
-              : `${n} people see your trips`}
-        </ThemedText>
-        {/* Your side of the glass: the same page a member opens, rendered
-            for the tier you pick (screens/circle-preview). */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="See what they see"
-          hitSlop={Spacing.one}
-          onPress={onPreview}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <View style={[styles.previewPill, { backgroundColor: `${tint}1A` }]}>
-            <SymbolView
-              name={{ ios: 'eye', android: 'visibility', web: 'visibility' }}
-              size={15}
-              weight="semibold"
-              tintColor={tint}
-            />
-            <ThemedText type="smallBold" style={{ color: tint }}>
-              See what they see
-            </ThemedText>
-          </View>
-        </Pressable>
-      </View>
-      {data.followers.map((p) => (
-        <FollowerRow key={p.userId} person={p} />
-      ))}
-      {data.outgoing.map((r) => (
-        <PendingRow key={r.id} request={r} kind="invite" />
-      ))}
-      <InviteRow locked={locked} onInvite={onInvite} />
-      <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
-        Followers see your upcoming flights and get updates on travel day. Remove anyone at any
-        time.
+    <View style={styles.spacedRow}>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.tabNote}>
+        {count === 0
+          ? 'Nobody sees your trips yet'
+          : count === 1
+            ? '1 person sees your trips'
+            : `${count} people see your trips`}
       </ThemedText>
-    </>
+      {/* Your side of the glass: the same page a member opens, rendered
+          for the tier you pick (screens/circle-preview). */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="See what they see"
+        hitSlop={Spacing.one}
+        onPress={onPreview}
+        style={({ pressed }) => pressed && styles.pressed}>
+        <View style={[styles.previewPill, { backgroundColor: `${tint}1A` }]}>
+          <SymbolView
+            name={{ ios: 'eye', android: 'visibility', web: 'visibility' }}
+            size={15}
+            weight="semibold"
+            tintColor={tint}
+          />
+          <ThemedText type="smallBold" style={{ color: tint }}>
+            See what they see
+          </ThemedText>
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
@@ -1021,6 +1069,16 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.two,
     paddingBottom: Spacing.four,
+  },
+  listContent: {
+    paddingBottom: Spacing.four,
+  },
+  listFooter: {
+    gap: Spacing.two,
+    paddingTop: Spacing.two,
+  },
+  rowGap: {
+    height: Spacing.two,
   },
   spinner: {
     marginTop: Spacing.six,
