@@ -22,17 +22,20 @@ export function shiftYears(iso: string, delta: number): string {
   return withYear(iso, Number(iso.slice(0, 4)) + delta);
 }
 
-/** How far back the year chooser reaches. A journal is years of old
- * passes and receipts; next year is as far ahead as anything gets booked. */
-export const YEARS_BACK = 10;
+/** How far back the year wheel reaches. A journal can hold a lifetime of
+ * old passes; next year is as far ahead as anything gets booked. */
+export const YEARS_BACK = 60;
 
-/** The years a traveller could mean, newest first: next year, this one,
- * then a decade back — plus whatever the date already says, if it is
- * outside that. Newest first because the wrong guess is usually a year
- * ahead and the right answer is a step or two below it. */
+/** The years the wheel offers, newest first: next year, this one, then
+ * sixty back — stretched to include whatever the date already says, so the
+ * current value is always on the wheel. Newest first because the wrong
+ * guess is usually a year ahead and the right answer sits just below it. */
 export function yearChoices(iso: string, today: Date): number[] {
   const now = today.getFullYear();
-  const years = new Set<number>([Number(iso.slice(0, 4))]);
-  for (let y = now + 1; y >= now - YEARS_BACK; y--) years.add(y);
-  return [...years].sort((a, b) => b - a);
+  const current = Number(iso.slice(0, 4));
+  const top = Math.max(now + 1, current);
+  const bottom = Math.min(now - YEARS_BACK, current);
+  const years: number[] = [];
+  for (let y = top; y >= bottom; y--) years.push(y);
+  return years;
 }

@@ -1,4 +1,4 @@
-import { Modal, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -29,8 +29,11 @@ export function MenuSheet({
       animationType="fade"
       statusBarTranslucent
       onRequestClose={onClose}>
-      <Pressable accessibilityLabel="Cancel" onPress={onClose} style={styles.backdrop}>
-        <Pressable
+      {/* Backdrop and card are siblings (see year-sheet): a card inside a
+          Pressable can't scroll its rows on Android. */}
+      <View style={styles.sheet}>
+        <Pressable accessibilityLabel="Cancel" onPress={onClose} style={styles.backdrop} />
+        <View
           style={[
             styles.card,
             { backgroundColor: theme.backgroundElement, paddingBottom: insets.bottom + Spacing.two },
@@ -69,16 +72,23 @@ export function MenuSheet({
               Cancel
             </ThemedText>
           </Pressable>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  sheet: {
     flex: 1,
     justifyContent: 'flex-end',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   card: {

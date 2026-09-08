@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AirlineLogo } from '@/components/airline-logo';
 import { BoardingPassScanner } from '@/components/boarding-pass-scanner';
 import { CalendarMonth } from '@/components/calendar-month';
-import { useChoiceSheet } from '@/components/choice-sheet';
+import { YearSheet, type YearRequest } from '@/components/year-sheet';
 import {
   MicroLabel,
   PassAction,
@@ -43,7 +43,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport, searchAirports, type Airport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
-import { withYear, yearChoices } from '@/services/year-choice';
+import { withYear } from '@/services/year-choice';
 import {
   formatDayLabel,
   formatDayLabelWithYear,
@@ -329,33 +329,30 @@ export function AddFlight() {
 
   // The year on its own. A scanned pass carries no year and the app guesses
   // the closest one, which for an old pass is a year too late — the day and
-  // month are right, and only the year needs touching. The chip offers
-  // last, this and next year; the calendar stays for everything else.
-  const yearSheet = useChoiceSheet();
+  // month are right, and only the year needs touching. The chip opens a
+  // wheel (components/year-sheet); the calendar stays for everything else.
+  const [yearRequest, setYearRequest] = useState<YearRequest | null>(null);
   const editYear = () => {
     if (!date) return;
-    yearSheet.show(
-      'Which year?',
-      yearChoices(date, today).map((y) => ({
-        text: `${y}`,
-        onPress: () => {
-          if (y === Number(date.slice(0, 4))) return;
-          trackEvent('flight_year_changed', { from: Number(date.slice(0, 4)), to: y });
-          setDate(withYear(date, y));
-          // A corrected year is the traveller's word against the provider's,
-          // so nothing is looked up again: the flight already on screen (or
-          // the scanned route) becomes the journal entry, times carried over.
-          if (flight) {
-            if (flight.from.code) setFromInput(flight.from.code);
-            if (flight.to.code) setToInput(flight.to.code);
-            setDepTime(wallClock(flight.scheduledDeparture, airportZone(flight.from.code)));
-            setArrTime(wallClock(flight.scheduledArrival, airportZone(flight.to.code)));
-          }
-          setManualMode(true);
-          setStep('manual');
-        },
-      })),
-    );
+    setYearRequest({
+      date,
+      onPick: (y) => {
+        if (y === Number(date.slice(0, 4))) return;
+        trackEvent('flight_year_changed', { from: Number(date.slice(0, 4)), to: y });
+        setDate(withYear(date, y));
+        // A corrected year is the traveller's word against the provider's,
+        // so nothing is looked up again: the flight already on screen (or
+        // the scanned route) becomes the journal entry, times carried over.
+        if (flight) {
+          if (flight.from.code) setFromInput(flight.from.code);
+          if (flight.to.code) setToInput(flight.to.code);
+          setDepTime(wallClock(flight.scheduledDeparture, airportZone(flight.from.code)));
+          setArrTime(wallClock(flight.scheduledArrival, airportZone(flight.to.code)));
+        }
+        setManualMode(true);
+        setStep('manual');
+      },
+    });
   };
 
   // Live lookups are per-account (the route meters a paid provider), so the
@@ -673,7 +670,7 @@ export function AddFlight() {
           )}
         </View>
       )}
-      {yearSheet.sheet}
+      <YearSheet request={yearRequest} today={today} onClose={() => setYearRequest(null)} />
 
       {/* Every step scrolls: the calendar, the manual card with its time
           spinner, and small screens all need the escape hatch. Taps must

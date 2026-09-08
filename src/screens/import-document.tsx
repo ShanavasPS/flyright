@@ -10,7 +10,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
-import { useChoiceSheet } from '@/components/choice-sheet';
+import { YearSheet, type YearRequest } from '@/components/year-sheet';
 import {
   MicroLabel,
   PassAction,
@@ -38,7 +38,7 @@ import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
 import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
-import { shiftYears, yearChoices } from '@/services/year-choice';
+import { shiftYears } from '@/services/year-choice';
 import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
 import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
@@ -272,37 +272,34 @@ export function ImportDocument() {
    * or misread, and a wrong one files a flown trip under upcoming. The
    * lookup re-runs on its own — the date is in its query key — and the
    * arrival keeps its distance from the departure. */
-  const yearSheet = useChoiceSheet();
+  const [yearRequest, setYearRequest] = useState<YearRequest | null>(null);
   const changeYear = (segment: ImportedSegment) => {
     if (!segment.date) return;
     const date = segment.date;
-    yearSheet.show(
-      'Which year?',
-      yearChoices(date, today).map((y) => ({
-        text: `${y}`,
-        onPress: () => {
-          const delta = y - Number(date.slice(0, 4));
-          if (!delta) return;
-          trackEvent('import_year_changed', { from: Number(date.slice(0, 4)), to: y });
-          setPinned((prev) => new Set(prev).add(segment.key));
-          setPhase((current) => {
-            if (current.kind !== 'review') return current;
-            return {
-              ...current,
-              segments: current.segments.map((s) =>
-                s.key !== segment.key
-                  ? s
-                  : {
-                      ...s,
-                      date: shiftYears(date, delta),
-                      arrivalDate: s.arrivalDate ? shiftYears(s.arrivalDate, delta) : null,
-                    },
-              ),
-            };
-          });
-        },
-      })),
-    );
+    setYearRequest({
+      date,
+      onPick: (y) => {
+        const delta = y - Number(date.slice(0, 4));
+        if (!delta) return;
+        trackEvent('import_year_changed', { from: Number(date.slice(0, 4)), to: y });
+        setPinned((prev) => new Set(prev).add(segment.key));
+        setPhase((current) => {
+          if (current.kind !== 'review') return current;
+          return {
+            ...current,
+            segments: current.segments.map((s) =>
+              s.key !== segment.key
+                ? s
+                : {
+                    ...s,
+                    date: shiftYears(date, delta),
+                    arrivalDate: s.arrivalDate ? shiftYears(s.arrivalDate, delta) : null,
+                  },
+            ),
+          };
+        });
+      },
+    });
   };
 
   const toggle = (key: string) =>
@@ -562,7 +559,7 @@ export function ImportDocument() {
               />
             ))}
           </ScrollView>
-          {yearSheet.sheet}
+          <YearSheet request={yearRequest} today={today} onClose={() => setYearRequest(null)} />
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
             <PrimaryButton
               label={
