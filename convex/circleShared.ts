@@ -19,6 +19,15 @@ export function searchKey(value: string | null | undefined): string | null {
   return key || null;
 }
 
+/** The first word of a searchable name — what a friend actually types.
+ * Sign-in providers often put the whole name into the first-name field
+ * ("Tamanna Irshad"), and a whole-name match then needs the surname too.
+ * Still a WHOLE word, not a prefix: the no-directory rule stands. */
+export function firstNameKey(value: string | null | undefined): string | null {
+  const key = searchKey(value);
+  return key ? key.split(' ')[0] : null;
+}
+
 /** Pending invitations one account may have out at a time — a cap on how
  * much push a stranger can generate, well above what anyone's circle needs. */
 export const MAX_PENDING_REQUESTS = 20;

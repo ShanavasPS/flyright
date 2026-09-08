@@ -1,4 +1,4 @@
-import { searchKey } from '../../convex/circleShared';
+import { firstNameKey, searchKey } from '../../convex/circleShared';
 
 /** The one comparison "add someone" is built on: what a profile stores
  * (users.writeProfile) and what a search types (circle.findPeople) must
@@ -20,5 +20,16 @@ describe('searchKey', () => {
 
   it('matches a whole name only — a prefix is a different key', () => {
     expect(searchKey('sal')).not.toBe(searchKey('salma'));
+  });
+});
+
+describe('firstNameKey', () => {
+  it('is the first word of the searchable name', () => {
+    expect(firstNameKey('Tamanna Irshad')).toBe('tamanna');
+    expect(firstNameKey('  Salma ')).toBe('salma');
+  });
+  it('is null for nothing', () => {
+    expect(firstNameKey('')).toBeNull();
+    expect(firstNameKey(null)).toBeNull();
   });
 });

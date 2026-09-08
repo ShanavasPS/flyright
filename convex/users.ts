@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
 import { internalMutation, mutation, type MutationCtx } from './_generated/server';
-import { searchKey } from './circleShared';
+import { firstNameKey, searchKey } from './circleShared';
 
 /** One writer for the profile mirror, so the webhook and the client's own
  * sync can't disagree about what a row holds — including the two lowercased
@@ -24,6 +24,7 @@ async function writeProfile(
     imageUrl,
     email: searchKey(email) ?? existing?.email ?? null,
     searchName: searchKey(name),
+    searchFirst: firstNameKey(name),
     updatedAt: new Date().toISOString(),
   };
   if (existing) await ctx.db.patch(existing._id, fields);
@@ -157,10 +158,28 @@ export const syncMyProfile = mutation({
       existing.name === trimmed &&
       existing.imageUrl === imageUrl &&
       existing.searchName === searchKey(trimmed) &&
+      existing.searchFirst === firstNameKey(trimmed) &&
       (searchKey(email) ?? existing.email ?? null) === (existing.email ?? null)
     ) {
       return;
     }
     await writeProfile(ctx, identity.subject, trimmed, imageUrl, email ?? null);
+  },
+});
+
+/** One-off: give every profile its first-name key. Rows are otherwise
+ * backfilled the next time their owner opens the app (syncMyProfile), which
+ * for the friend being searched for may be never. */
+export const backfillSearchFirst = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let patched = 0;
+    for (const p of await ctx.db.query('profiles').collect()) {
+      const searchFirst = firstNameKey(p.name);
+      if (p.searchFirst === searchFirst) continue;
+      await ctx.db.patch(p._id, { searchFirst });
+      patched++;
+    }
+    return { patched };
   },
 });

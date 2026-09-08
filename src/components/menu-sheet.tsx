@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -38,20 +38,24 @@ export function MenuSheet({
           <ThemedText type="small" themeColor="textSecondary" style={styles.title}>
             {title}
           </ThemedText>
-          {(options ?? []).map((o) => (
-            <Pressable
-              key={o.text}
-              accessibilityRole="button"
-              onPress={() => {
-                onClose();
-                o.onPress();
-              }}
-              style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.field }]}>
-              <ThemedText style={o.destructive ? { color: theme.danger } : undefined}>
-                {o.text}
-              </ThemedText>
-            </Pressable>
-          ))}
+          {/* A long list (a decade of years) scrolls inside the card rather
+              than pushing Cancel off the screen. */}
+          <ScrollView style={styles.rows} bounces={false}>
+            {(options ?? []).map((o) => (
+              <Pressable
+                key={o.text}
+                accessibilityRole="button"
+                onPress={() => {
+                  onClose();
+                  o.onPress();
+                }}
+                style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.field }]}>
+                <ThemedText style={o.destructive ? { color: theme.danger } : undefined}>
+                  {o.text}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </ScrollView>
           <Pressable
             accessibilityRole="button"
             onPress={onClose}
@@ -87,6 +91,10 @@ const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
     paddingBottom: Spacing.two,
+  },
+  rows: {
+    maxHeight: 52 * 7,
+    flexGrow: 0,
   },
   row: {
     minHeight: 52,

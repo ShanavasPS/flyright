@@ -19,10 +19,13 @@ describe('shiftYears', () => {
 
 describe('yearChoices', () => {
   const today = new Date(2026, 8, 8, 12);
-  it('offers last, this and next year', () => {
-    expect(yearChoices('2026-01-18', today)).toEqual([2025, 2026, 2027]);
+  it('offers next year, this year and a decade back, newest first', () => {
+    expect(yearChoices('2026-01-18', today)).toEqual([
+      2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016,
+    ]);
   });
   it('keeps a year the date already has, outside that span', () => {
-    expect(yearChoices('2019-05-02', today)).toEqual([2019, 2025, 2026, 2027]);
+    expect(yearChoices('2009-05-02', today)[12]).toBe(2009);
+    expect(yearChoices('2031-05-02', today)[0]).toBe(2031);
   });
 });

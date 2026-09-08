@@ -114,11 +114,13 @@ async function areSharing(ctx: QueryCtx | MutationCtx, ownerId: string, memberId
     .unique();
 }
 
-/** PUBLIC (signed in) — "add someone" search. Matches a WHOLE address or a
- * WHOLE first name, both lowercased (circleShared.searchKey): a prefix
- * search would hand anyone a directory of everyone using the app. Answers
- * with a name and a photo only — never an address, not even the one that
- * was typed, and never a hint that some other query would have matched. */
+/** PUBLIC (signed in) — "add someone" search. Matches a WHOLE address, a
+ * WHOLE name, or a WHOLE first name, all lowercased (circleShared.searchKey /
+ * firstNameKey): a prefix search would hand anyone a directory of everyone
+ * using the app. The first-name match is what makes "tamanna" find a
+ * profile whose sign-in provider filed "Tamanna Irshad" as the first name.
+ * Answers with a name and a photo only — never an address, not even the one
+ * that was typed, and never a hint that some other query would have matched. */
 export const findPeople = query({
   args: { q: v.string() },
   handler: async (ctx, { q }) => {
@@ -128,12 +130,26 @@ export const findPeople = query({
     if (!key) return [];
     const me = identity.subject;
 
-    const index = key.includes('@') ? ('by_email' as const) : ('by_search_name' as const);
-    const field = index === 'by_email' ? ('email' as const) : ('searchName' as const);
-    const hits = await ctx.db
-      .query('profiles')
-      .withIndex(index, (p) => p.eq(field, key))
-      .take(10);
+    let hits: Doc<'profiles'>[];
+    if (key.includes('@')) {
+      hits = await ctx.db
+        .query('profiles')
+        .withIndex('by_email', (p) => p.eq('email', key))
+        .take(10);
+    } else {
+      const whole = await ctx.db
+        .query('profiles')
+        .withIndex('by_search_name', (p) => p.eq('searchName', key))
+        .take(10);
+      const first = key.includes(' ')
+        ? []
+        : await ctx.db
+            .query('profiles')
+            .withIndex('by_search_first', (p) => p.eq('searchFirst', key))
+            .take(10);
+      const seen = new Set<string>();
+      hits = [...whole, ...first].filter((p) => !seen.has(p.userId) && seen.add(p.userId));
+    }
 
     const people = [];
     for (const hit of hits) {

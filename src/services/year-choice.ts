@@ -22,11 +22,17 @@ export function shiftYears(iso: string, delta: number): string {
   return withYear(iso, Number(iso.slice(0, 4)) + delta);
 }
 
-/** The years a traveller could mean: last, this and next relative to today,
- * plus whatever the date already says, ascending. Three is the honest span
- * of a bare day-of-year; a date further off is typed, not guessed at. */
+/** How far back the year chooser reaches. A journal is years of old
+ * passes and receipts; next year is as far ahead as anything gets booked. */
+export const YEARS_BACK = 10;
+
+/** The years a traveller could mean, newest first: next year, this one,
+ * then a decade back — plus whatever the date already says, if it is
+ * outside that. Newest first because the wrong guess is usually a year
+ * ahead and the right answer is a step or two below it. */
 export function yearChoices(iso: string, today: Date): number[] {
   const now = today.getFullYear();
-  const years = new Set([now - 1, now, now + 1, Number(iso.slice(0, 4))]);
-  return [...years].sort((a, b) => a - b);
+  const years = new Set<number>([Number(iso.slice(0, 4))]);
+  for (let y = now + 1; y >= now - YEARS_BACK; y--) years.add(y);
+  return [...years].sort((a, b) => b - a);
 }

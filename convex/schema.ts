@@ -235,10 +235,13 @@ export default defineSchema({
      * server — a search result carries the name and photo, nothing else. */
     email: v.optional(v.union(v.string(), v.null())),
     searchName: v.optional(v.union(v.string(), v.null())),
+    /** The first word of searchName — see circleShared.firstNameKey. */
+    searchFirst: v.optional(v.union(v.string(), v.null())),
   })
     .index('by_user', ['userId'])
     .index('by_email', ['email'])
-    .index('by_search_name', ['searchName']),
+    .index('by_search_name', ['searchName'])
+    .index('by_search_first', ['searchFirst']),
 
   /** An invitation sent inside the app, to someone who already has it:
    * "Shamnad invited you to follow their trips", delivered as a push and a
