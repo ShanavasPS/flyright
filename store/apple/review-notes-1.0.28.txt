@@ -1,0 +1,23 @@
+FlyRight 1.0.28 — a feature release on top of 1.0.27. No new permissions, no new purchases, no change to the account model.
+
+NEW SINCE 1.0.27:
+
+1) People tab: two tabs, Following and Followers. A follower's row carries "Follow back", which sends that person a request; they allow it from a Requests section on their own Followers tab. Someone whose trips you see can be offered yours back with one tap. A person's page opens on a profile header — their trip totals beside their photo — with "Following" and "In your circle" menus holding mute, close circle, stop following and remove.
+
+2) Ticket import: dates read from a ticket now keep the year the ticket prints, so an old receipt no longer files a flown trip as upcoming. Every date carries a year chip that opens a year wheel; any imported leg can be edited before saving; the airline of a journal entry can be chosen. Once the traveller edits a date or details, no live lookup runs again — the trip is saved as they entered it.
+
+3) Adding someone to your circle finds a person by their first name alone (whole name, never a prefix — there is no directory).
+
+4) Followers' "trip added" notification now says when the trip is ("Sam is flying tomorrow") rather than only a date.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- People: People tab -> Following / Followers tabs. With the demo account the circle may be empty; "Invite someone" opens the add-person sheet (search by name or email, or share a link).
+- Ticket import and the year wheel: My travels -> + -> "Upload a ticket PDF or screenshot" (or share an airline PDF into FlyRight). On the review screen each flight card shows its date with a year pill; tap it to spin the year. "Edit details" opens the journal form prefilled.
+- Manual entry and airline: My travels -> + -> type a flight number -> if the lookup has no record, "Add it manually" -> the Airline chip on the card opens a search over airlines.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.27: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos, and push for flight status, claim deadlines and trip updates from people the user follows. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
