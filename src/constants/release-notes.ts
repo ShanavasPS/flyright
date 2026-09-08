@@ -15,6 +15,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.28',
+    date: '2026-09-08',
+    notes: [
+      'People is two tabs, Following and Followers, with Follow back on anyone who follows you — they get a request, one tap says yes.',
+      'A person’s page opens on who they are: their trip totals beside their photo, and Following / In your circle menus for everything about the relationship.',
+      'Imported tickets land in the right year — a receipt read months later no longer files a flown trip as upcoming — and every date carries a year you can spin to any year.',
+      'Edit any imported leg before saving, pick the airline on a journal entry, and the keyboard no longer hides the save button.',
+      'Find people by first name alone when adding someone to your circle.',
+    ],
+  },
+  {
     version: '1.0.27',
     date: '2026-09-07',
     notes: [
