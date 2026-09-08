@@ -65,23 +65,47 @@ export const requestPush = internalQuery({
   },
 });
 
-/** The two pushes an in-app invitation makes: one to the invitee when it is
- * sent, one back to the sender when it is accepted. Both open the People
- * tab, which is where the invitation lives either way. */
+/** The pushes an in-app request makes. An invitation ('invite' kind): one to
+ * the invitee when it is sent, one back to the sender when it is accepted.
+ * A follow request ('follow' kind — "Follow back" on a follower row): one to
+ * the person whose trips are asked for, one back to the asker once allowed.
+ * All open the People tab, which is where the request lives either way. */
 export const notifyRequest = internalAction({
-  args: { requestId: v.id('circleRequests'), kind: v.union(v.literal('invited'), v.literal('accepted')) },
+  args: {
+    requestId: v.id('circleRequests'),
+    kind: v.union(
+      v.literal('invited'),
+      v.literal('accepted'),
+      v.literal('asked'),
+      v.literal('allowed'),
+    ),
+  },
   handler: async (ctx, { requestId, kind }) => {
     const r = await ctx.runQuery(internal.circleInternal.requestPush, { requestId });
     if (!r) return;
-    const invited = kind === 'invited';
-    await sendFollowerPush(
-      [invited ? r.toUserId : r.fromUserId],
-      invited ? `${r.fromName} invited you` : `${r.toName} is following you`,
-      invited
-        ? `Follow ${r.fromName}'s trips for a heads-up the day before each flight and updates on travel day.`
-        : `${r.toName} accepted your invitation and will get updates on your travel days.`,
-      'https://getflyright.com/people',
-    );
+    const copy = {
+      invited: {
+        to: r.toUserId,
+        title: `${r.fromName} invited you`,
+        body: `Follow ${r.fromName}'s trips for a heads-up the day before each flight and updates on travel day.`,
+      },
+      accepted: {
+        to: r.fromUserId,
+        title: `${r.toName} is following you`,
+        body: `${r.toName} accepted your invitation and will get updates on your travel days.`,
+      },
+      asked: {
+        to: r.toUserId,
+        title: `${r.fromName} wants to follow your trips`,
+        body: `Allow it in People and ${r.fromName} gets a heads-up the day before each of your flights.`,
+      },
+      allowed: {
+        to: r.fromUserId,
+        title: `${r.toName} now shares their trips with you`,
+        body: `You'll get a heads-up the day before each of ${r.toName}'s flights and updates on travel day.`,
+      },
+    }[kind];
+    await sendFollowerPush([copy.to], copy.title, copy.body, 'https://getflyright.com/people');
   },
 });
 

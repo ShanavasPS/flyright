@@ -251,6 +251,12 @@ export default defineSchema({
     /** The traveller offering their trips — the circle owner on accept. */
     fromUserId: v.string(),
     toUserId: v.string(),
+    /** Which way the trips flow once accepted. 'invite' (the default —
+     * rows from before the field existed have none): `from` offers their
+     * trips, `to` ends up following them. 'follow': `from` asks to see
+     * `to`'s trips, so it is `to` who ends up with a new circle member —
+     * the "Follow back" on a follower row. */
+    kind: v.optional(v.union(v.literal('invite'), v.literal('follow'))),
     status: v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined')),
     createdAt: v.string(),
     respondedAt: v.union(v.string(), v.null()),

@@ -1,0 +1,36 @@
+# Follow back from the Followers tab (2026-09-08): a one-way follower's row
+# carries "Follow back", which sends them a request; the chip then reads
+# "Requested" until they answer. The other side is checked by hand — the
+# asked person's People opens on Followers with a REQUESTS row (Allow /
+# Ignore), after which both rows read "You follow each other".
+#
+# Needs a signed-in account with at least one follower it does not follow
+# back (dev pair: Dee signed in, Eve follows Dee). Start signed in.
+# Gotchas met writing this: Clerk's sheet prefills "Last used" — type into
+# the field only after tapping its far right and erasing, or the address is
+# appended; runFlow of clerk-dev-sign-in.yaml keeps the helper's own env
+# default over the caller's; Maestro's Android driver answered UNAVAILABLE
+# mid-session, so the Android half ran over adb taps instead.
+appId: com.shanavasshaji.flyright
+tags:
+  - people
+---
+- launchApp
+- openLink: flyright://people
+- extendedWaitUntil:
+    visible: "People"
+    timeout: 30000
+- tapOn:
+    id: "tab-followers"
+- extendedWaitUntil:
+    visible: ".*sees your trips.*"
+    timeout: 20000
+- tapOn:
+    id: "follow-back"
+- extendedWaitUntil:
+    visible: "Requested"
+    timeout: 20000
+- tapOn:
+    id: "follow-requested"
+- assertVisible: "Withdraw request"
+- tapOn: "Keep waiting"

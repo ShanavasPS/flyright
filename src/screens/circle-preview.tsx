@@ -18,6 +18,7 @@ import { api } from '../../convex/_generated/api';
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
 import { PersonTravel } from '@/components/person-travel';
+import { SegmentTabs } from '@/components/segment-tabs';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -180,30 +181,14 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
 
     body = (
       <>
-        <View style={[styles.segment, { backgroundColor: theme.field }]}>
-          {(['close', 'rest'] as const).map((t) => {
-            const on = t === shownTier;
-            return (
-              <Pressable
-                key={t}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                onPress={() => switchTier(t)}
-                style={[
-                  styles.segmentItem,
-                  on && {
-                    backgroundColor: theme.backgroundElement,
-                    borderColor: theme.hairline,
-                    borderWidth: StyleSheet.hairlineWidth,
-                  },
-                ]}>
-                <ThemedText type="smallBold" themeColor={on ? 'heading' : 'textSecondary'}>
-                  {t === 'close' ? 'Close circle' : 'Rest of circle'}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SegmentTabs
+          value={shownTier}
+          onChange={switchTier}
+          tabs={[
+            { key: 'close', label: 'Close circle' },
+            { key: 'rest', label: 'Rest of circle' },
+          ]}
+        />
 
         {/* Who this is seen as. A card only when it can be tapped to pick
             someone else; with one person or nobody it is a plain row, so it
@@ -364,19 +349,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   spinner: { marginTop: Spacing.six },
-  segment: {
-    flexDirection: 'row',
-    gap: Spacing.one,
-    padding: Spacing.one,
-    borderRadius: Spacing.three,
-  },
-  segmentItem: {
-    flex: 1,
-    height: 36,
-    borderRadius: Spacing.three - Spacing.one,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   persona: {
     flexDirection: 'row',
     alignItems: 'center',

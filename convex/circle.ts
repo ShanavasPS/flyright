@@ -75,14 +75,36 @@ export const inviteByToken = query({
   },
 });
 
-/** The pending in-app invitation between two people, in one direction. */
-async function pendingRequest(ctx: QueryCtx | MutationCtx, fromUserId: string, toUserId: string) {
-  const row = await ctx.db
+type RequestKind = NonNullable<Doc<'circleRequests'>['kind']>;
+
+/** Rows minted before the field existed are invitations. */
+function kindOf(r: Doc<'circleRequests'>): RequestKind {
+  return r.kind ?? 'invite';
+}
+
+/** The pending in-app request between two people, in one direction and of
+ * one kind: an 'invite' (from offers their trips) or a 'follow' (from asks
+ * to see to's trips). */
+async function pendingRequest(
+  ctx: QueryCtx | MutationCtx,
+  fromUserId: string,
+  toUserId: string,
+  kind: RequestKind = 'invite',
+) {
+  const rows = await ctx.db
     .query('circleRequests')
     .withIndex('by_pair', (q) => q.eq('fromUserId', fromUserId).eq('toUserId', toUserId))
     .filter((q) => q.eq(q.field('status'), 'pending'))
-    .unique();
-  return row;
+    .collect();
+  return rows.find((r) => kindOf(r) === kind) ?? null;
+}
+
+async function pendingOutstanding(ctx: QueryCtx | MutationCtx, me: string) {
+  const outstanding = await ctx.db
+    .query('circleRequests')
+    .withIndex('by_from_status', (q) => q.eq('fromUserId', me).eq('status', 'pending'))
+    .collect();
+  return outstanding.length;
 }
 
 async function areSharing(ctx: QueryCtx | MutationCtx, ownerId: string, memberId: string) {
@@ -156,15 +178,24 @@ export const requestFollow = mutation({
     // a seat — refuse it here rather than at the far end, where it would be
     // the invitee who hits the wall.
     if (await circleFull(ctx, me)) throw new ConvexError(CIRCLE_FULL);
-    const outstanding = await ctx.db
-      .query('circleRequests')
-      .withIndex('by_from_status', (q) => q.eq('fromUserId', me).eq('status', 'pending'))
-      .collect();
-    if (outstanding.length >= MAX_PENDING_REQUESTS) throw new Error('Too many pending invites');
+    // They already asked to follow me: inviting them is the yes.
+    const ask = await pendingRequest(ctx, userId, me, 'follow');
+    if (ask) {
+      await join(ctx, me, userId);
+      await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
+        requestId: ask._id,
+        kind: 'allowed',
+      });
+      return { status: 'sharing' as const };
+    }
+    if ((await pendingOutstanding(ctx, me)) >= MAX_PENDING_REQUESTS) {
+      throw new Error('Too many pending invites');
+    }
 
     const requestId = await ctx.db.insert('circleRequests', {
       fromUserId: me,
       toUserId: userId,
+      kind: 'invite',
       status: 'pending',
       createdAt: new Date().toISOString(),
       respondedAt: null,
@@ -177,8 +208,59 @@ export const requestFollow = mutation({
   },
 });
 
-/** The invitee answers. Accepting runs the same join as a redeemed link, so
- * both doors open on the same room. */
+/** "Follow back": ask to see someone's trips. The mirror of requestFollow —
+ * there the sender offers their trips, here they ask for the other's — so
+ * it is the other person who says yes, and their circle that gains a
+ * member. Until now a follower could only ever be followed back if THEY
+ * thought to invite; this puts the ask on the follower's own row.
+ *
+ * If they have already invited me, that invitation is the answer: it is
+ * accepted on the spot rather than left pending next to a request that
+ * asks for the same thing. Idempotent per pair. */
+export const askToFollow = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const identity = await requireIdentity(ctx);
+    const me = identity.subject;
+    if (userId === me) throw new Error('Own request');
+    const profile = await profileFor(ctx, userId);
+    if (!profile) throw new Error('No such person');
+    if (await areSharing(ctx, userId, me)) return { status: 'following' as const };
+
+    const invitation = await pendingRequest(ctx, userId, me, 'invite');
+    if (invitation) {
+      // Throws CIRCLE_FULL if their circle filled up since they invited me.
+      await join(ctx, userId, me);
+      await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
+        requestId: invitation._id,
+        kind: 'accepted',
+      });
+      return { status: 'following' as const };
+    }
+
+    if (await pendingRequest(ctx, me, userId, 'follow')) return { status: 'pending' as const };
+    if ((await pendingOutstanding(ctx, me)) >= MAX_PENDING_REQUESTS) {
+      throw new Error('Too many pending requests');
+    }
+    const requestId = await ctx.db.insert('circleRequests', {
+      fromUserId: me,
+      toUserId: userId,
+      kind: 'follow',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      respondedAt: null,
+    });
+    await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
+      requestId,
+      kind: 'asked',
+    });
+    return { status: 'pending' as const };
+  },
+});
+
+/** The person asked answers. Accepting an invitation runs the same join as
+ * a redeemed link, so both doors open on the same room; accepting a follow
+ * request is the same join the other way round — the asker joins MY circle. */
 export const respondToRequest = mutation({
   args: { requestId: v.id('circleRequests'), accept: v.boolean() },
   handler: async (ctx, { requestId, accept }) => {
@@ -188,12 +270,15 @@ export const respondToRequest = mutation({
     if (request.status !== 'pending') return { status: request.status };
 
     if (accept) {
-      // Throws CIRCLE_FULL if the sender's circle filled up meanwhile; the
-      // invitation stays pending so it can be answered again later.
-      await join(ctx, request.fromUserId, identity.subject);
+      // Throws CIRCLE_FULL if the circle being joined filled up meanwhile
+      // (the sender's for an invitation, mine for a follow request); the
+      // request stays pending so it can be answered again later.
+      const follow = kindOf(request) === 'follow';
+      if (follow) await join(ctx, identity.subject, request.fromUserId);
+      else await join(ctx, request.fromUserId, identity.subject);
       await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
         requestId,
-        kind: 'accepted',
+        kind: follow ? 'allowed' : 'accepted',
       });
     }
     await ctx.db.patch(requestId, {
@@ -344,6 +429,9 @@ export const person = query({
     if (!theirs && !mine) return { gone: true as const };
 
     const who = await personCard(ctx, userId);
+    // My standing ask to see their trips, if any — the page shows it as
+    // "asked, waiting" instead of offering to ask again.
+    const asked = theirs ? null : (await pendingRequest(ctx, me, userId, 'follow'))?._id ?? null;
 
     if (theirs) {
       const session = await liveFor(ctx, me, userId);
@@ -364,6 +452,7 @@ export const person = query({
         closeMember: !!mine?.close,
         since: theirs.createdAt,
         followsMeSince: mine?.createdAt ?? null,
+        asked,
         live: await liveCard(ctx, session, who.name),
         ...travel,
       };
@@ -378,6 +467,7 @@ export const person = query({
       closeMember: !!mine!.close,
       since: null,
       followsMeSince: mine!.createdAt,
+      asked,
       live: null,
       liveJourneyId: null,
       upcoming: [],
@@ -501,12 +591,20 @@ async function join(ctx: MutationCtx, ownerId: string, memberId: string) {
       createdAt: new Date().toISOString(),
     });
   }
-  // However they got here — a link or an in-app invitation — any pending
-  // invitation between the two is answered now, so the People tab doesn't
-  // keep offering something that already happened.
-  const request = await pendingRequest(ctx, ownerId, memberId);
-  if (request) {
-    await ctx.db.patch(request._id, { status: 'accepted', respondedAt: new Date().toISOString() });
+  // However they got here — a link, an invitation or a follow request — any
+  // pending request for exactly this (the owner's invitation to the member,
+  // or the member's ask to follow the owner) is answered now, so the People
+  // tab doesn't keep offering something that already happened.
+  for (const request of [
+    await pendingRequest(ctx, ownerId, memberId, 'invite'),
+    await pendingRequest(ctx, memberId, ownerId, 'follow'),
+  ]) {
+    if (request) {
+      await ctx.db.patch(request._id, {
+        status: 'accepted',
+        respondedAt: new Date().toISOString(),
+      });
+    }
   }
 
   // Trips already live ride along immediately; upcoming ones get their
@@ -680,42 +778,74 @@ export const list = query({
         muted: row.muted,
         close: !!row.close,
         since: row.createdAt,
+        /** They follow me too — otherwise the row offers "Share back". */
+        followsMe: !!(await areSharing(ctx, me, row.ownerId)),
         live,
         next,
       });
     }
 
+    // In-app requests still waiting, mine and theirs, of both kinds.
+    const toMe = await ctx.db
+      .query('circleRequests')
+      .withIndex('by_to_status', (q) => q.eq('toUserId', me).eq('status', 'pending'))
+      .collect();
+    const fromMe = await ctx.db
+      .query('circleRequests')
+      .withIndex('by_from_status', (q) => q.eq('fromUserId', me).eq('status', 'pending'))
+      .collect();
+
     const followers = [];
     for (const row of await circleMembers(ctx, me)) {
+      const asked = fromMe.find((r) => kindOf(r) === 'follow' && r.toUserId === row.memberId);
       followers.push({
         ...(await personCard(ctx, row.memberId)),
         close: !!row.close,
         since: row.createdAt,
+        /** I follow them too — otherwise the row offers "Follow back"... */
+        following: !!(await areSharing(ctx, row.memberId, me)),
+        /** ...or shows the ask already out, with its id to withdraw it. */
+        askedId: asked?._id ?? null,
       });
     }
 
-    // In-app invitations still waiting: theirs to answer, and mine to watch.
-    const incoming = [];
-    for (const r of await ctx.db
-      .query('circleRequests')
-      .withIndex('by_to_status', (q) => q.eq('toUserId', me).eq('status', 'pending'))
-      .collect()) {
-      incoming.push({ id: r._id, since: r.createdAt, ...(await personCard(ctx, r.fromUserId)) });
+    // Invitations to follow someone (answer → Following) and asks to follow
+    // me (answer → Followers), kept apart because each is answered on the
+    // tab it changes. Older clients only know the first list.
+    type RequestCard = { id: Id<'circleRequests'>; since: string } & Awaited<
+      ReturnType<typeof personCard>
+    >;
+    const incoming: RequestCard[] = [];
+    const followRequests: RequestCard[] = [];
+    for (const r of toMe) {
+      const card = { id: r._id, since: r.createdAt, ...(await personCard(ctx, r.fromUserId)) };
+      (kindOf(r) === 'follow' ? followRequests : incoming).push(card);
     }
-    const outgoing = [];
-    for (const r of await ctx.db
-      .query('circleRequests')
-      .withIndex('by_from_status', (q) => q.eq('fromUserId', me).eq('status', 'pending'))
-      .collect()) {
-      outgoing.push({ id: r._id, since: r.createdAt, ...(await personCard(ctx, r.toUserId)) });
+    // Mine: invitations out (a seat held open in Followers) and asks out to
+    // people who don't follow me, so they'd have no row to show it on.
+    const outgoing: RequestCard[] = [];
+    const asked: RequestCard[] = [];
+    for (const r of fromMe) {
+      const card = { id: r._id, since: r.createdAt, ...(await personCard(ctx, r.toUserId)) };
+      if (kindOf(r) === 'invite') outgoing.push(card);
+      else if (!followers.some((f) => f.userId === r.toUserId)) asked.push(card);
     }
 
     following.sort((a, b) => (a.live ? 0 : 1) - (b.live ? 0 : 1) || a.name.localeCompare(b.name));
     followers.sort((a, b) => a.name.localeCompare(b.name));
-    incoming.sort((a, b) => b.since.localeCompare(a.since));
-    outgoing.sort((a, b) => b.since.localeCompare(a.since));
+    for (const list of [incoming, followRequests, outgoing, asked]) {
+      list.sort((a, b) => b.since.localeCompare(a.since));
+    }
     // Server truth for the cap — the client's SDK entitlement can lead it
     // (purchase just made) but never the other way round.
-    return { following, followers, incoming, outgoing, full: await circleFull(ctx, me) };
+    return {
+      following,
+      followers,
+      incoming,
+      followRequests,
+      outgoing,
+      asked,
+      full: await circleFull(ctx, me),
+    };
   },
 });

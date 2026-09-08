@@ -1,10 +1,12 @@
 import { useMutation, useQuery } from 'convex/react';
+import { ConvexError } from 'convex/values';
 import { Stack, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
+import { CIRCLE_FULL } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
@@ -16,6 +18,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
+import { useProLocked } from '@/services/purchases';
 
 /**
  * A person in your circle, and their travel — the page a row in People opens.
@@ -37,6 +40,10 @@ export function Person({ userId }: { userId: string }) {
   const setClose = useMutation(api.circle.setClose);
   const leave = useMutation(api.circle.leave);
   const remove = useMutation(api.circle.remove);
+  const shareBack = useMutation(api.circle.shareBack);
+  const askToFollow = useMutation(api.circle.askToFollow);
+  const cancelRequest = useMutation(api.circle.cancelRequest);
+  const proLocked = useProLocked();
 
   // Read once per render, like the journal's own list: the countdowns on a
   // profile don't need to tick while it's open.
@@ -113,6 +120,65 @@ export function Person({ userId }: { userId: string }) {
             onOpenWorld={openWorld}
             onOpenTrip={openTrip}
           />
+        )}
+
+        {/* One-way relationships get the way back, right here. Sharing my
+            trips is mine to do; seeing theirs is theirs to grant, so that one
+            is an ask (circle.askToFollow) and waits on them. */}
+        {p.theyShare !== p.iShare && (
+          <>
+            <Section label="Follow each other" />
+            {p.theyShare ? (
+              <ActionRow
+                label={`Share your trips with ${p.name}`}
+                detail={`${p.name} doesn't see your trips yet. They'd get a heads-up the day before each of your flights.`}
+                onPress={() => {
+                  trackEvent('circle_shared_back', { from: 'person' });
+                  void shareBack({ userId }).catch((e: unknown) => {
+                    if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
+                      if (proLocked) {
+                        router.push({ pathname: '/paywall', params: { next: '/people' } });
+                      } else Alert.alert('Your circle is full', 'Remove someone to make room.');
+                    } else Alert.alert(`Couldn't share with ${p.name}`, 'Check your connection and try again.');
+                  });
+                }}
+              />
+            ) : p.asked ? (
+              <ActionRow
+                label={`Asked to follow ${p.name}'s trips`}
+                detail="Waiting for them to answer. Tap to withdraw the request."
+                onPress={() =>
+                  Alert.alert(`Withdraw the request?`, `You can ask ${p.name} again later.`, [
+                    { text: 'Keep waiting', style: 'cancel' },
+                    {
+                      text: 'Withdraw',
+                      style: 'destructive',
+                      onPress: () => void cancelRequest({ requestId: p.asked! }),
+                    },
+                  ])
+                }
+              />
+            ) : (
+              <ActionRow
+                label={`Ask to follow ${p.name}'s trips`}
+                detail={`${p.name} decides. If they say yes, their upcoming flights show up here.`}
+                onPress={() => {
+                  void askToFollow({ userId })
+                    .then((r) => trackEvent('circle_follow_back', { status: r.status, from: 'person' }))
+                    .catch((e: unknown) =>
+                      Alert.alert(
+                        e instanceof ConvexError && e.data === CIRCLE_FULL
+                          ? `${p.name}'s circle is full`
+                          : `Couldn't ask ${p.name}`,
+                        e instanceof ConvexError && e.data === CIRCLE_FULL
+                          ? 'They can make room with FlyRight Pro.'
+                          : 'Check your connection and try again.',
+                      ),
+                    );
+                }}
+              />
+            )}
+          </>
         )}
 
         <Section label="Notifications and access" />

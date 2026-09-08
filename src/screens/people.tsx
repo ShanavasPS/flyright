@@ -24,6 +24,7 @@ import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
+import { SegmentTabs } from '@/components/segment-tabs';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -48,6 +49,7 @@ type Following = CircleList['following'][number];
 type Follower = CircleList['followers'][number];
 type Incoming = CircleList['incoming'][number];
 type Outgoing = CircleList['outgoing'][number];
+type Tab = 'following' | 'followers';
 
 // The navy the hero avatars are ringed in — the pass card's own surface, so
 // overlapping faces cut cleanly into each other.
@@ -77,21 +79,63 @@ function useInvite(full: boolean) {
   };
 }
 
-/** "2 following · 3 watching you" — the header eyebrow, My travels-style. */
+/** "2 following · 3 followers · 1 waiting" — the header eyebrow, My
+ * travels-style. Waiting = requests for me to answer, of either kind. */
 function circleEyebrow(data: CircleList | null | undefined): string {
   if (!data) return 'Your circle';
   const parts: string[] = [];
-  if (data.incoming.length) {
-    parts.push(`${data.incoming.length} invitation${data.incoming.length > 1 ? 's' : ''}`);
-  }
   if (data.following.length) parts.push(`${data.following.length} following`);
-  if (data.followers.length) parts.push(`${data.followers.length} watching you`);
+  if (data.followers.length) {
+    parts.push(`${data.followers.length} follower${data.followers.length > 1 ? 's' : ''}`);
+  }
+  const waiting = data.incoming.length + data.followRequests.length;
+  if (waiting) parts.push(`${waiting} waiting`);
   return parts.join(' · ') || 'Your circle';
 }
 
-/** The People tab: Find My for flights. Who shares their trips with you
- * (with their live or next flight), and who you share yours with. Render
- * only under CloudSync (Convex configured). */
+/** Whether the People tab has anything to show under tabs at all. */
+function circleEmpty(data: CircleList): boolean {
+  return (
+    !data.following.length &&
+    !data.followers.length &&
+    !data.incoming.length &&
+    !data.followRequests.length &&
+    !data.outgoing.length &&
+    !data.asked.length
+  );
+}
+
+/** The circle-full failure in one place: Pro fixes it for a free account,
+ * otherwise it is simply said. `whose` names the circle that is full. */
+function circleFullAlert(
+  e: unknown,
+  whose: string,
+  proLocked: boolean,
+  router: ReturnType<typeof useRouter>,
+  fallback: string,
+) {
+  if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
+    if (whose === 'Your' && proLocked) {
+      router.push({ pathname: '/paywall', params: { next: '/people' } });
+      return;
+    }
+    Alert.alert(
+      `${whose} circle is full`,
+      whose === 'Your'
+        ? 'Remove someone to make room.'
+        : `They can make room with FlyRight Pro.`,
+    );
+    return;
+  }
+  Alert.alert(fallback, 'Check your connection and try again.');
+}
+
+/** The People tab: Find My for flights. Two tabs, Instagram-style: whose
+ * trips I follow (with their live or next flight) and who follows mine.
+ * Each row carries the one thing to do about the person — follow back,
+ * share back, answer a request — so a follow can be returned in one tap
+ * instead of the other person having to think to invite. Render only under
+ * CloudSync (Convex configured). */
 export function People() {
   const theme = useTheme();
   const router = useRouter();
@@ -99,7 +143,12 @@ export function People() {
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
   const invite = useInvite(!!data?.full);
   const proLocked = useProLocked();
+  // Null until the data is in: the tab with something waiting on it opens
+  // first, and that choice is pinned (below) the moment it is made — a
+  // request answered must not flip the page under the thumb that answered it.
+  const [picked, setPicked] = useState<Tab | null>(null);
 
+  let tabs: React.ReactNode = null;
   let body: React.ReactNode;
   if (!isSignedIn) {
     body = (
@@ -116,12 +165,7 @@ export function People() {
   } else if (data == null) {
     // undefined while loading; null while Convex auth is still settling.
     body = <ActivityIndicator style={styles.spinner} />;
-  } else if (
-    !data.following.length &&
-    !data.followers.length &&
-    !data.incoming.length &&
-    !data.outgoing.length
-  ) {
+  } else if (circleEmpty(data)) {
     body = (
       <>
         <CircleHero
@@ -137,67 +181,51 @@ export function People() {
       </>
     );
   } else {
-    body = (
-      <>
-        {/* Answer first: someone is waiting on it. */}
-        {data.incoming.length > 0 && (
-          <>
-            <SectionLabel>Invitations</SectionLabel>
-            {data.incoming.map((r) => (
-              <RequestRow key={r.id} request={r} />
-            ))}
-          </>
-        )}
-        {data.following.length > 0 && (
-          <>
-            <SectionLabel>Following</SectionLabel>
-            {data.following.map((p) => (
-              <FollowingRow key={p.userId} person={p} />
-            ))}
-          </>
-        )}
-        <View style={styles.spacedRow}>
-          <SectionLabel>Sharing with</SectionLabel>
-          {/* Your side of the glass: the same page a member opens, rendered
-              for the tier you pick (screens/circle-preview). */}
-          <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="See what they see"
-              hitSlop={Spacing.one}
-              onPress={() => {
-                trackEvent('circle_preview_opened', { from: 'people' });
-                router.push('/preview');
-              }}
-              style={({ pressed }) => pressed && styles.pressed}>
-              <View style={[styles.previewPill, { backgroundColor: `${theme.tint}1A` }]}>
-                <SymbolView
-                  name={{ ios: 'eye', android: 'visibility', web: 'visibility' }}
-                  size={15}
-                  weight="semibold"
-                  tintColor={theme.tint}
-                />
-                <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                  See what they see
-                </ThemedText>
-              </View>
-            </Pressable>
-        </View>
-        {data.followers.map((p) => (
-          <FollowerRow key={p.userId} person={p} />
-        ))}
-        {data.outgoing.map((r) => (
-          <PendingRow key={r.id} request={r} />
-        ))}
-        <InviteRow locked={data.full && proLocked} onInvite={invite} />
-        {/* Reachable from a full circle too: the next invitation can come
-            from someone else entirely. */}
-        <RedeemInviteLink />
-        <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
-          People you share with see your upcoming flights and get updates on travel day. Remove
-          anyone at any time.
-        </ThemedText>
-      </>
+    const tab: Tab =
+      picked ??
+      (data.followRequests.length && !data.incoming.length ? 'followers' : 'following');
+    // Derived once, from the first data, then owned by the user's taps. A
+    // set during render (not in an effect) re-runs this render with the
+    // pinned value and nothing else.
+    if (picked === null) setPicked(tab);
+    tabs = (
+      <SegmentTabs<Tab>
+        value={tab}
+        onChange={(t) => {
+          trackEvent('people_tab', { tab: t });
+          setPicked(t);
+        }}
+        tabs={[
+          {
+            key: 'following',
+            label: 'Following',
+            count: data.following.length,
+            badge: data.incoming.length,
+          },
+          {
+            key: 'followers',
+            label: 'Followers',
+            count: data.followers.length,
+            badge: data.followRequests.length,
+          },
+        ]}
+      />
     );
+    body =
+      tab === 'following' ? (
+        <FollowingTab data={data} />
+      ) : (
+        <FollowersTab
+          data={data}
+          locked={data.full && proLocked}
+          onInvite={invite}
+          onPreview={() => {
+            trackEvent('circle_preview_opened', { from: 'people' });
+            router.push('/preview');
+          }}
+          tint={theme.tint}
+        />
+      );
   }
 
   return (
@@ -218,6 +246,10 @@ export function People() {
           </View>
           {isSignedIn && <InviteButton onPress={invite} />}
         </View>
+        {/* Outside the scroll view on purpose: the tabs stay put however long
+            either list gets — the old single list buried "sharing with"
+            under everyone you follow. */}
+        {tabs}
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.list}
@@ -226,6 +258,133 @@ export function People() {
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+/** Whose trips I follow. Invitations to follow someone answer at the top,
+ * because someone is waiting on it; then the people, live trips first; then
+ * the asks I have out to people who don't follow me (asks to a follower show
+ * on their row in Followers instead). */
+function FollowingTab({ data }: { data: CircleList }) {
+  return (
+    <>
+      {data.incoming.length > 0 && (
+        <>
+          <SectionLabel>Invitations</SectionLabel>
+          {data.incoming.map((r) => (
+            <RequestRow key={r.id} request={r} />
+          ))}
+          {data.following.length > 0 && <SectionLabel>Following</SectionLabel>}
+        </>
+      )}
+      {data.following.map((p) => (
+        <FollowingRow key={p.userId} person={p} />
+      ))}
+      {data.asked.map((r) => (
+        <PendingRow key={r.id} request={r} kind="follow" />
+      ))}
+      {!data.following.length && !data.incoming.length && (
+        <EmptyTab
+          title="You're not following anyone yet"
+          detail={
+            data.followers.length
+              ? 'Follow back anyone in Followers to see their trips here, or paste an invite link someone sent you.'
+              : 'When someone shares their trips with you, they show up here with their next flight.'
+          }
+        />
+      )}
+      <RedeemInviteLink />
+      <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
+        You see the upcoming flights of everyone you follow and get a heads-up the day before
+        each one.
+      </ThemedText>
+    </>
+  );
+}
+
+/** Who follows my trips. Asks to follow me answer at the top; then the
+ * people, each with "Follow back" when I don't follow them; then the
+ * invitations I have out, and the door for more. */
+function FollowersTab({
+  data,
+  locked,
+  onInvite,
+  onPreview,
+  tint,
+}: {
+  data: CircleList;
+  locked: boolean;
+  onInvite: () => void;
+  onPreview: () => void;
+  tint: string;
+}) {
+  const n = data.followers.length;
+  return (
+    <>
+      {data.followRequests.length > 0 && (
+        <>
+          <SectionLabel>Requests</SectionLabel>
+          {data.followRequests.map((r) => (
+            <FollowRequestRow key={r.id} request={r} />
+          ))}
+        </>
+      )}
+      <View style={styles.spacedRow}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.tabNote}>
+          {n === 0
+            ? 'Nobody sees your trips yet'
+            : n === 1
+              ? '1 person sees your trips'
+              : `${n} people see your trips`}
+        </ThemedText>
+        {/* Your side of the glass: the same page a member opens, rendered
+            for the tier you pick (screens/circle-preview). */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="See what they see"
+          hitSlop={Spacing.one}
+          onPress={onPreview}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <View style={[styles.previewPill, { backgroundColor: `${tint}1A` }]}>
+            <SymbolView
+              name={{ ios: 'eye', android: 'visibility', web: 'visibility' }}
+              size={15}
+              weight="semibold"
+              tintColor={tint}
+            />
+            <ThemedText type="smallBold" style={{ color: tint }}>
+              See what they see
+            </ThemedText>
+          </View>
+        </Pressable>
+      </View>
+      {data.followers.map((p) => (
+        <FollowerRow key={p.userId} person={p} />
+      ))}
+      {data.outgoing.map((r) => (
+        <PendingRow key={r.id} request={r} kind="invite" />
+      ))}
+      <InviteRow locked={locked} onInvite={onInvite} />
+      <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
+        Followers see your upcoming flights and get updates on travel day. Remove anyone at any
+        time.
+      </ThemedText>
+    </>
+  );
+}
+
+/** A quiet card for a tab with nobody on it yet — not the navy hero, which
+ * belongs to the circle that has nobody at all. */
+function EmptyTab({ title, detail }: { title: string; detail: string }) {
+  return (
+    <SheenCard style={styles.emptyTab}>
+      <ThemedText themeColor="heading" style={styles.emptyTitle}>
+        {title}
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        {detail}
+      </ThemedText>
+    </SheenCard>
   );
 }
 
@@ -360,6 +519,24 @@ function CircleHero({
 function FollowingRow({ person }: { person: Following }) {
   const theme = useTheme();
   const router = useRouter();
+  const proLocked = useProLocked();
+  const shareBack = useMutation(api.circle.shareBack);
+  const [busy, setBusy] = useState(false);
+
+  // "Share back": they share their trips with me and I don't with them.
+  // My trips are mine to share, so this needs no answer from anyone — one
+  // tap and they follow me, the same join the invite page's offer runs.
+  const onShareBack = async () => {
+    setBusy(true);
+    try {
+      await shareBack({ userId: person.userId });
+      trackEvent('circle_shared_back', { from: 'people' });
+    } catch (e) {
+      circleFullAlert(e, 'Your', proLocked, router, `Couldn't share with ${person.name}`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // Tapping a name asks "where are they going?", which an action sheet could
   // never answer — and it put "stop following" one tap from a row anyone
@@ -448,12 +625,24 @@ function FollowingRow({ person }: { person: Following }) {
             </ThemedText>
           )}
         </View>
-        {next && <AirlineLogo number={next.number} carrier={next.carrier} size={32} />}
-        {person.muted && (
-          <SymbolView
-            name={{ ios: 'bell.slash', android: 'notifications_off', web: 'notifications_off' }}
-            size={16}
-            tintColor={theme.textSecondary}
+        {person.followsMe ? (
+          <>
+            {next && <AirlineLogo number={next.number} carrier={next.carrier} size={32} />}
+            {person.muted && (
+              <SymbolView
+                name={{ ios: 'bell.slash', android: 'notifications_off', web: 'notifications_off' }}
+                size={16}
+                tintColor={theme.textSecondary}
+              />
+            )}
+          </>
+        ) : (
+          <RowChip
+            label="Share back"
+            accessibilityLabel={`Share your trips with ${person.name}`}
+            testID="share-back"
+            busy={busy}
+            onPress={() => void onShareBack()}
           />
         )}
       </SheenCard>
@@ -471,10 +660,40 @@ function LivePill() {
   );
 }
 
-/** Someone following my trips — the Find My "who can see me" list. */
+/** Someone following my trips — the Find My "who can see me" list. When I
+ * don't follow them back the row says so with the ask itself: "Follow back"
+ * sends them a request (their trips are theirs to share — it is not
+ * granted here), and while it is out the chip reads "Requested", tap to
+ * withdraw. Someone who already invited me is followed on the spot. */
 function FollowerRow({ person }: { person: Follower }) {
   const theme = useTheme();
   const router = useRouter();
+  const ask = useMutation(api.circle.askToFollow);
+  const cancel = useMutation(api.circle.cancelRequest);
+  const [busy, setBusy] = useState(false);
+
+  const onFollowBack = async () => {
+    setBusy(true);
+    try {
+      const result = await ask({ userId: person.userId });
+      trackEvent('circle_follow_back', { status: result.status });
+    } catch (e) {
+      circleFullAlert(e, `${person.name}'s`, false, router, `Couldn't ask ${person.name}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const onRequested = () =>
+    Alert.alert(`Asked to follow ${person.name}`, "They haven't answered yet.", [
+      {
+        text: 'Withdraw request',
+        style: 'destructive',
+        onPress: () => {
+          if (person.askedId) void cancel({ requestId: person.askedId });
+        },
+      },
+      { text: 'Keep waiting', style: 'cancel' },
+    ]);
 
   return (
     <Pressable
@@ -488,21 +707,137 @@ function FollowerRow({ person }: { person: Follower }) {
             {person.name}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {person.close ? 'Close circle · ' : ''}Following since {formatDayLabel(person.since)}
+            {person.close ? 'Close circle · ' : ''}
+            {person.following ? 'You follow each other' : `Since ${formatDayLabel(person.since)}`}
           </ThemedText>
         </View>
-        <SymbolView
-          name={{ ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' }}
-          size={18}
-          tintColor={theme.textSecondary}
-        />
+        {person.following ? (
+          <SymbolView
+            name={{ ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' }}
+            size={18}
+            tintColor={theme.textSecondary}
+          />
+        ) : person.askedId ? (
+          <RowChip
+            label="Requested"
+            quiet
+            accessibilityLabel={`Asked to follow ${person.name}. Withdraw`}
+            testID="follow-requested"
+            onPress={onRequested}
+          />
+        ) : (
+          <RowChip
+            label="Follow back"
+            accessibilityLabel={`Ask to follow ${person.name}'s trips`}
+            testID="follow-back"
+            busy={busy}
+            onPress={() => void onFollowBack()}
+          />
+        )}
       </SheenCard>
     </Pressable>
   );
 }
 
-/** Dashed "add another" row closing the list. `locked` is the free cap:
- * same row, Pro pitch, and the tap opens the paywall (see useInvite). */
+/** The one action a row carries, on its right: filled for the thing to do,
+ * quiet for a state that is waiting on someone else. */
+function RowChip({
+  label,
+  accessibilityLabel,
+  quiet = false,
+  busy = false,
+  onPress,
+  testID,
+}: {
+  label: string;
+  accessibilityLabel: string;
+  quiet?: boolean;
+  busy?: boolean;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      disabled={busy}
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => [
+        styles.answerChip,
+        { backgroundColor: quiet ? theme.field : theme.tint },
+        pressed && styles.pressed,
+      ]}>
+      {busy ? (
+        <ActivityIndicator color={quiet ? theme.textSecondary : '#ffffff'} />
+      ) : (
+        <ThemedText
+          type="smallBold"
+          themeColor={quiet ? 'textSecondary' : undefined}
+          style={quiet ? undefined : styles.answerChipLabel}>
+          {label}
+        </ThemedText>
+      )}
+    </Pressable>
+  );
+}
+
+/** Someone asking to follow MY trips — "Follow back" from their side. Allow
+ * runs the same join an accepted invitation does, with me as the owner. */
+function FollowRequestRow({ request }: { request: Incoming }) {
+  const router = useRouter();
+  const proLocked = useProLocked();
+  const respond = useMutation(api.circle.respondToRequest);
+  const [busy, setBusy] = useState(false);
+
+  const answer = async (accept: boolean) => {
+    setBusy(true);
+    try {
+      await respond({ requestId: request.id, accept });
+      trackEvent('circle_follow_request_answered', { accept });
+    } catch (e) {
+      // My circle is at the free cap; the request stays here for after.
+      circleFullAlert(e, 'Your', proLocked, router, `Couldn't answer that just now`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SheenCard style={styles.rowCard}>
+      <Avatar name={request.name} imageUrl={request.imageUrl} size={44} />
+      <View style={styles.rowBody}>
+        <ThemedText themeColor="heading" numberOfLines={1}>
+          {request.name}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+          Wants to follow your trips
+        </ThemedText>
+      </View>
+      <View style={styles.answerRow}>
+        <RowChip
+          label="Allow"
+          accessibilityLabel={`Let ${request.name} follow your trips`}
+          testID="allow-follow"
+          busy={busy}
+          onPress={() => void answer(true)}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Ignore ${request.name}'s request`}
+          disabled={busy}
+          onPress={() => void answer(false)}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Ignore
+          </ThemedText>
+        </Pressable>
+      </View>
+    </SheenCard>
+  );
+}
+
 /** An invitation waiting on me: "<name> invited you to follow their trips",
  * with the two answers on the row. Accepting runs the same join a redeemed
  * link does, so this lands in Following exactly like the web invite. */
@@ -577,15 +912,17 @@ function RequestRow({ request }: { request: Incoming }) {
   );
 }
 
-/** An invitation I sent that hasn't been answered — a seat held open in
- * Sharing with, tap to take it back. */
-function PendingRow({ request }: { request: Outgoing }) {
+/** A request of mine that hasn't been answered — an invitation is a seat
+ * held open in Followers, an ask to follow a seat I'm waiting for in
+ * Following. Tap to take it back. */
+function PendingRow({ request, kind }: { request: Outgoing; kind: 'invite' | 'follow' }) {
   const cancel = useMutation(api.circle.cancelRequest);
+  const verb = kind === 'invite' ? 'Invited' : 'Asked to follow';
 
   const actions = () =>
-    Alert.alert(request.name, `Invited ${formatDayLabel(request.since)}. Not answered yet.`, [
+    Alert.alert(request.name, `${verb} ${formatDayLabel(request.since)}. Not answered yet.`, [
       {
-        text: 'Withdraw invitation',
+        text: kind === 'invite' ? 'Withdraw invitation' : 'Withdraw request',
         style: 'destructive',
         onPress: () => void cancel({ requestId: request.id }),
       },
@@ -604,7 +941,7 @@ function PendingRow({ request }: { request: Outgoing }) {
             {request.name}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            Invited — waiting for them
+            {verb} — waiting for them
           </ThemedText>
         </View>
       </SheenCard>
@@ -612,6 +949,8 @@ function PendingRow({ request }: { request: Outgoing }) {
   );
 }
 
+/** Dashed "add another" row closing the list. `locked` is the free cap:
+ * same row, Pro pitch, and the tap opens the paywall (see useInvite). */
 function InviteRow({ locked, onInvite }: { locked: boolean; onInvite: () => void }) {
   const theme = useTheme();
   return (
@@ -847,6 +1186,17 @@ const styles = StyleSheet.create({
   },
   rotated: {
     transform: [{ rotate: '90deg' }],
+  },
+  tabNote: {
+    flex: 1,
+    marginTop: Spacing.two,
+  },
+  emptyTab: {
+    padding: Spacing.four,
+    gap: Spacing.one,
+  },
+  emptyTitle: {
+    fontWeight: 600,
   },
   footnote: {
     textAlign: 'center',
