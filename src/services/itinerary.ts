@@ -717,10 +717,15 @@ export function extractItinerary(pages: DocumentPage[], today = new Date()): Iti
       continue;
     }
     claimed.add(match.key);
-    // The code's day beats the page's: same leg, and the printed one has
-    // only a day and a month to go on. An arrival the text put on the next
-    // day stays on the next day.
-    const date = match.date ?? leg.date;
+    // Same day either way (that is what matched), so the only thing left to
+    // decide is the year — and the page is the one that knows it. A BCBP
+    // date is a bare day of the year that resolveFlightDate has to guess
+    // at, and "closest to today" is wrong for a receipt read months after
+    // the trip: a January flight opened in September landed a year ahead,
+    // as an upcoming trip. A printed "18Jan2026" is not a guess. Only a
+    // page with no date at all leaves the year to the code. An arrival the
+    // text put on the next day stays on the next day.
+    const date = leg.date ?? match.date;
     const overnight = !!leg.date && !!leg.arrivalDate && leg.arrivalDate > leg.date;
     merged.push({
       ...leg,

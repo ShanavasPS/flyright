@@ -110,6 +110,19 @@ describe('extractItinerary — Amadeus e-ticket receipt', () => {
     expect(segments.find((s) => s.flight === 'QR517')!.arrivalDate).toBe('2026-07-25');
   });
 
+  it('keeps the printed year when the receipt is read months after the trip', () => {
+    // 1 Mar 2027: for the BCBP's bare day 206, "closest to today" is
+    // 25 Jul 2027 — a trip that hasn't happened. The page says 25Jul2026,
+    // and the page knows the year; the code doesn't.
+    const later = new Date(2027, 2, 1, 12);
+    const { segments } = extractItinerary(QATAR_RECEIPT_PDFKIT, later);
+    const qr517 = segments.find((s) => s.flight === 'QR517')!;
+    expect(qr517.date).toBe('2026-07-25');
+    expect(qr517.sources).toEqual(['barcode', 'text']);
+    expect(segments.find((s) => s.flight === 'QR516')!.date).toBe('2026-08-02');
+    expect(segments.find((s) => s.flight === 'QR516')!.arrivalDate).toBe('2026-08-03');
+  });
+
   it('ignores the issue date, validity dates and durations', () => {
     const { segments } = extractItinerary(QATAR_RECEIPT_PDFKIT, TODAY);
     const dates = segments.map((s) => s.date);
