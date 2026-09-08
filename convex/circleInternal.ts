@@ -12,6 +12,7 @@ import {
   profileFor,
 } from './liveHelpers';
 import { sendFollowerPush } from './onesignal';
+import { tripsAddedCopy } from './pushCopy';
 
 /** The scheduled T−24h heads-up: opens the trip's live session (so the
  * circle can already see it in their People tab) and pushes "Sam flies to
@@ -155,6 +156,8 @@ export const tripsAddedPush = internalQuery({
         hidden: !!j.hiddenFromCircle,
       });
     }
+    // Soonest first, so the push leads with the flight that is nearest.
+    trips.sort((a, b) => a.scheduledDeparture.localeCompare(b.scheduledDeparture));
     const batches = [
       { externalIds: circle.filter((c) => c.close).map((c) => c.memberId), trips },
       {
@@ -181,22 +184,17 @@ export const notifyTripsAdded = internalAction({
   handler: async (ctx, { ownerId, journeyIds }) => {
     const p = await ctx.runQuery(internal.circleInternal.tripsAddedPush, { ownerId, journeyIds });
     if (!p) return;
+    const now = new Date();
     for (const { externalIds, trips } of p.batches) {
       const [first] = trips;
       const many = trips.length > 1;
-      const when = new Date(first.scheduledDeparture).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        timeZone: 'UTC',
-      });
+      // "Shanavas is flying tomorrow" — when, the way a friend would say it,
+      // then the leg; the count is detail and rides in the body (pushCopy).
+      const { title, body } = tripsAddedCopy(p.ownerName, trips, now);
       await sendFollowerPush(
         externalIds,
-        many
-          ? `${p.ownerName} added ${trips.length} trips`
-          : `${first.number || first.carrier} · ${first.fromCode} → ${first.toCode}`,
-        many
-          ? `Their next one leaves ${when}. You'll get a heads-up the day before each.`
-          : `${p.ownerName} is flying to ${first.toCode} on ${when}. You'll get a heads-up the day before.`,
+        title,
+        body,
         // One trip opens on that trip; several open on the person, which is
         // where all of them are — but only once a build that HAS those screens
         // is the one in people's hands. See TRIP_DEEP_LINKS_LANDED.

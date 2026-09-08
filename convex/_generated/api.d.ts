@@ -31,6 +31,7 @@ import type * as photos from "../photos.js";
 import type * as provider from "../provider.js";
 import type * as providerFetch from "../providerFetch.js";
 import type * as providerShared from "../providerShared.js";
+import type * as pushCopy from "../pushCopy.js";
 import type * as support from "../support.js";
 import type * as users from "../users.js";
 
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   provider: typeof provider;
   providerFetch: typeof providerFetch;
   providerShared: typeof providerShared;
+  pushCopy: typeof pushCopy;
   support: typeof support;
   users: typeof users;
 }>;
