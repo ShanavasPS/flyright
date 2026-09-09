@@ -17,14 +17,13 @@ import {
   flightByNumberPath,
   flightsByRegistrationPath,
   providerConfigured,
-  providerFetch,
   type ProviderResponse,
 } from '../../../convex/providerFetch';
 import { normalizeLeg, toIso } from '../../../convex/flightNormalize';
 import { cacheExpiry, flightPhase, maySpend } from '../../../convex/providerShared';
 import { carrierFor } from '@/constants/carriers';
 import { lookupDay } from '../../../convex/lookupShared';
-import { beginLookup, identifyCaller, recordLookup } from '@/server/lookup-gate';
+import { beginLookup, identifyCaller, providerCall, recordLookup } from '@/server/lookup-gate';
 
 /** Offline/dev stand-in: HEL→FRA on the requested date. Past flights with an
  * odd flight number arrive 195 min late (EU261-eligible); even ones are on
@@ -131,7 +130,7 @@ async function fetchInbound(
   let best: any = null;
   let bestArrival = -Infinity;
   for (const day of dates) {
-    const response = await providerFetch(flightsByRegistrationPath(reg, day));
+    const response = await providerCall(flightsByRegistrationPath(reg, day));
     spent.push(response);
     if (!response.ok) continue;
     const legs = response.body as any[];
@@ -251,7 +250,7 @@ export async function GET(request: Request) {
       ...poolCharge(responses),
     });
 
-  const upstream = await providerFetch(flightByNumberPath(flight, date));
+  const upstream = await providerCall(flightByNumberPath(flight, date));
   spent.push(upstream);
 
   // AeroDataBox answers 204 (empty body) when the flight/date has no data.

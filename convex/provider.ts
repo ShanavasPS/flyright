@@ -15,7 +15,7 @@
 
 import { v } from 'convex/values';
 
-import { internalMutation, mutation, type MutationCtx } from './_generated/server';
+import { action, internalMutation, mutation, type MutationCtx } from './_generated/server';
 import { isPro } from './entitlements';
 import {
   budget,
@@ -24,7 +24,7 @@ import {
   type LookupIdentity,
   type LookupSubject,
 } from './lookupShared';
-import { configuredMonthlyUnits } from './providerFetch';
+import { configuredMonthlyUnits, providerFetch } from './providerFetch';
 import {
   CACHE_MAX_AGE_MS,
   degradationFor,
@@ -283,6 +283,21 @@ export const begin = mutation({
         ? { kind: 'user', userId: subject.userId, pro: await isPro(ctx, subject.userId) }
         : { kind: 'anonymous', address: subject.address };
     return decide(ctx, { ...args, subject: resolved }, Date.now());
+  },
+});
+
+/**
+ * One provider call, made from Convex on the route's behalf. The hosting
+ * worker's own fetch to the provider started failing on 2026-09-09 (every
+ * uncached lookup came back "upstream error" while the poller, which calls
+ * the provider from Convex, kept working) — so the route asks Convex to make
+ * the call. Same secret gate as begin/record: this is never a public fetch.
+ */
+export const fetchPath = action({
+  args: { secret: v.string(), path: v.string() },
+  handler: async (_ctx, { secret, path }) => {
+    assertSecret(secret);
+    return await providerFetch(path);
   },
 });
 

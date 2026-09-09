@@ -1,0 +1,24 @@
+FlyRight 1.0.29 — a feature release on top of 1.0.28. No new permissions, no new purchases, no change to the account model.
+
+NEW SINCE 1.0.28:
+
+1) Following a trip now shows where the flight is. A followed person's card draws the plane along the route as the flight progresses and counts down to departure, then to landing, then states the landing time. Followers see the clocks the airline now reports, with the timetable struck through where the airline moved the flight, and the landing time in the follower's own time zone.
+
+2) Connecting flights read as one journey: the layover between legs is shown, and once a leg lands the next one takes over with a countdown to its departure. A person's page lists a journey under way as one block — legs already flown, the live leg, the legs still ahead.
+
+3) FlyRight Pro members carry a small gold crown on their profile photo. The crown reflects the subscription state the server already holds; nothing new is sold and no purchase flow changed.
+
+4) Times typed in by hand are shown exactly as printed wherever the phone is; they no longer shift when the phone changes time zone mid-trip.
+
+5) Importing a ticket receipt no longer drops a leg when the flight-data provider is busy.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- Following: People tab. With the demo account the circle may be empty; "Invite someone" opens the add-person sheet. Any person you follow appears on the People tab and, while they are travelling, at the top of My travels.
+- A followed person's page: tap their row on the People tab. Their upcoming and flown trips are listed; a connecting itinerary shows the layover between its legs.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.28: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos, and push for flight status, claim deadlines and trip updates from people the user follows. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.

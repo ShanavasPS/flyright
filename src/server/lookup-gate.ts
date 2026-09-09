@@ -28,6 +28,7 @@ import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
 import { lookupDay } from '../../convex/lookupShared';
 import type { BeginResult } from '../../convex/provider';
+import { providerFetch, type ProviderResponse } from '../../convex/providerFetch';
 import type { Degradation } from '../../convex/providerShared';
 
 export type GateSubject = { kind: 'user'; userId: string } | { kind: 'anonymous'; address: string };
@@ -251,6 +252,19 @@ function convex(): ConvexHttpClient | null {
   const url = process.env.EXPO_PUBLIC_CONVEX_URL;
   convexClient = url ? new ConvexHttpClient(url) : null;
   return convexClient;
+}
+
+/**
+ * A provider call for the route. Made from Convex (provider.fetchPath) when
+ * metering is configured, because the hosting worker's own fetch to the
+ * provider is refused (see convex/provider.ts fetchPath); direct otherwise,
+ * which is what dev without a Convex deployment has always done.
+ */
+export async function providerCall(path: string): Promise<ProviderResponse> {
+  const secret = process.env.LOOKUP_QUOTA_SECRET;
+  const client = convex();
+  if (!secret || !client) return providerFetch(path);
+  return (await client.action(api.provider.fetchPath, { secret, path })) as ProviderResponse;
 }
 
 export interface LookupRequest {
