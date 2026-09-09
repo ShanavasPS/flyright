@@ -10,7 +10,7 @@
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
-import { formatTime } from '@/services/dates';
+import { flightInstant, formatTime } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
 
 /** Stages the traveler advances by tapping, in order. Skipping is normal —
@@ -268,13 +268,15 @@ export function travelWindow(
   now: Date,
 ): TravelWindow {
   if (j.mode !== 'flight' || !hasRealTime(j)) return { phase: 'unsupported' };
-  const departure = Date.parse(j.scheduledDeparture);
+  // Manual rows carry bare wall clocks: pin them to their airports before
+  // any instant arithmetic, or the window drifts by the traveller's zone.
+  const departure = flightInstant(j.scheduledDeparture, airportZone(j.fromCode));
   if (Number.isNaN(departure)) return { phase: 'unsupported' };
 
   const startsAt = new Date(departure - REMINDER_LEAD_MS);
 
   const landed = state.stamps.landed ? Date.parse(state.stamps.landed) : NaN;
-  const arrival = Date.parse(j.scheduledArrival);
+  const arrival = flightInstant(j.scheduledArrival, airportZone(j.toCode));
   let end = Number.isNaN(landed)
     ? (Number.isNaN(arrival) ? departure : arrival) + 6 * HOUR_MS
     : landed + 30 * 60_000;
@@ -302,7 +304,11 @@ export function activeJourney<T extends TravelJourney>(
   for (const row of rows) {
     const { phase } = travelWindow(row, stateOf(row.id), now);
     if (phase !== 'reminder' && phase !== 'live') continue;
-    if (!best || Date.parse(row.scheduledDeparture) < Date.parse(best.scheduledDeparture)) {
+    if (
+      !best ||
+      flightInstant(row.scheduledDeparture, airportZone(row.fromCode)) <
+        flightInstant(best.scheduledDeparture, airportZone(best.fromCode))
+    ) {
       best = row;
     }
   }
@@ -368,13 +374,14 @@ export function flightProgress(
   const index = stageIndex(state.stage);
   if (index < stageIndex('departed')) return 0;
   if (state.stage === 'landed') return 1;
-  const departed = Date.parse(
+  const departed = flightInstant(
     facts.actualDeparture ??
       state.stamps.departed ??
       facts.estimatedDeparture ??
       j.scheduledDeparture,
+    airportZone(j.fromCode),
   );
-  const arrives = Date.parse(facts.estimatedArrival ?? j.scheduledArrival);
+  const arrives = flightInstant(facts.estimatedArrival ?? j.scheduledArrival, airportZone(j.toCode));
   if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
   const fraction = (now.getTime() - departed) / (arrives - departed);
   return Math.min(0.97, Math.max(0.03, fraction));
@@ -402,14 +409,14 @@ export function liveContent(
   // landing in the air, then "Landed". The clock times themselves sit under
   // the route codes, so nothing here repeats them.
   const effectiveDeparture = facts.estimatedDeparture ?? j.scheduledDeparture;
-  const departureMs = Date.parse(effectiveDeparture);
+  const departureMs = flightInstant(effectiveDeparture, airportZone(j.fromCode));
   // Travel day is the one screen read while crossing zones, so every clock
   // on it names the airport it happens at: gate times in the departure
   // airport's, the landing time in the destination's. The countdowns are
   // durations and stay zone-free.
   const departureZone = airportZone(j.fromCode);
   const arrivalZone = airportZone(j.toCode);
-  const arrivalMs = Date.parse(facts.estimatedArrival ?? j.scheduledArrival);
+  const arrivalMs = flightInstant(facts.estimatedArrival ?? j.scheduledArrival, arrivalZone);
   let headline: string;
   if (state.stage === 'landed') {
     headline = 'Landed';

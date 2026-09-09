@@ -81,7 +81,7 @@ function headerEyebrow(
   }
   const next = sections[0]?.key === 'upcoming' ? sections[0].data[0] : undefined;
   if (next) {
-    const timer = countdown(next.scheduledDeparture, now);
+    const timer = countdown(next.scheduledDeparture, now, airportZone(next.fromCode));
     const route = `${next.fromCode} → ${next.toCode}`;
     // Once it's happening, the trip isn't "next" any more — lead with the moment.
     if (timer.unit === 'now') return `Boarding soon · ${route}`;

@@ -1,7 +1,6 @@
 import { useAuth, useUser } from '@clerk/expo';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
@@ -20,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { ThemePicker } from '@/components/theme-picker';
+import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UpdateAvailableCard } from '@/components/update-available-card';
@@ -45,6 +45,7 @@ import {
   billingAvailable,
   restorePurchases,
   useActiveSubscriptions,
+  useHasPro,
   useProEntitlement,
 } from '@/services/purchases';
 
@@ -92,6 +93,7 @@ function AccountCard() {
   // don't flash the signed-out card while that resolves.
   const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
   const { user } = useUser();
+  const hasPro = useHasPro();
 
   if (!isLoaded) return <AccountCardSkeleton />;
 
@@ -119,7 +121,7 @@ function AccountCard() {
       onPress={() => router.push('/account')}
       style={({ pressed }) => pressed && styles.pressedRow}>
       <ThemedView type="backgroundElement" style={[styles.card, styles.profileRow]}>
-        <Image source={user?.imageUrl} style={styles.avatar} />
+        <Avatar name={name ?? email ?? ''} imageUrl={user?.imageUrl ?? null} size={48} pro={hasPro} />
         <View style={styles.profileText}>
           <ThemedText numberOfLines={1}>{name ?? email ?? 'Signed in'}</ThemedText>
           {name && email && (

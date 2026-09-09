@@ -69,7 +69,7 @@ export function RouteLeg({
   const codeStyle = compact ? styles.codeCompact : styles.code;
   const clockStyle = compact ? styles.clockCompact : styles.clock;
 
-  return (
+  const row = (
     <View
       accessible
       accessibilityLabel={spoken}
@@ -126,17 +126,25 @@ export function RouteLeg({
           </ThemedText>
         )}
         {arrWas && <Was clock={arrWas} />}
-        {arrLocal && (
-          <ThemedText
-            type="small"
-            themeColor="textSecondary"
-            style={styles.city}
-            numberOfLines={1}
-            accessibilityLabel={`${arrLocal} your time`}>
-            {arrLocal} your time
-          </ThemedText>
-        )}
       </View>
+    </View>
+  );
+
+  if (!arrLocal) return row;
+  // Under the leg rather than inside the destination column: a "10:55 AM
+  // your time" is wider than any code, and inside the column it pushed the
+  // contrail's end away from the code it points at.
+  return (
+    <View>
+      {row}
+      <ThemedText
+        type="small"
+        themeColor="textSecondary"
+        style={[styles.city, styles.yourTime]}
+        numberOfLines={1}
+        accessibilityLabel={`Lands ${arrLocal} your time`}>
+        {arrLocal} your time
+      </ThemedText>
     </View>
   );
 }
@@ -265,10 +273,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     marginTop: Spacing.half,
   },
-  // Hugs its codes instead of pushing them to the card's edges — a compact
-  // leg sits under a name, not across a whole row.
   routeRowCompact: {
-    alignSelf: 'flex-start',
     marginTop: 0,
   },
   endpoint: {
@@ -304,6 +309,7 @@ const styles = StyleSheet.create({
     fontWeight: 500,
   },
   movedFrom: { textDecorationLine: 'line-through' },
+  yourTime: { textAlign: 'right', marginTop: Spacing.half },
   // The line is 14pt tall; the 6pt offset centres the plane on the 26pt code
   // line, and the label beneath then sits level with the cities.
   contrail: {
@@ -313,12 +319,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
     gap: Spacing.half,
   },
-  // Compact codes are 18pt tall, so a 2pt offset centres the 12pt line; the
-  // contrail stays short so the leg fits between a name and a status line.
+  // Compact codes are 18pt tall, so a 3pt offset centres the 12pt line. The
+  // contrail takes the width between the codes, so a compact leg spans its
+  // row edge to edge the way the journal's rows do beneath it.
   contrailCompact: {
-    flex: 0,
-    width: 84,
-    minWidth: 84,
+    minWidth: 40,
     marginTop: 3,
   },
   contrailLine: {

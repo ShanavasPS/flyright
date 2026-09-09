@@ -229,7 +229,7 @@ export function JoinCircle({ token }: { token: string }) {
     body = (
       <>
         <View style={styles.hero}>
-          <Avatar name={name} imageUrl={invite.ownerImageUrl} size={72} />
+          <Avatar name={name} imageUrl={invite.ownerImageUrl} size={72} pro={invite.ownerPro} />
           <ThemedText type="title" themeColor="heading" style={styles.centered}>
             {name} invited you to follow their trips
           </ThemedText>

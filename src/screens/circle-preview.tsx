@@ -200,7 +200,7 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
             onPress={pickPerson}
             style={({ pressed }) => pressed && styles.pressed}>
             <SheenCard style={styles.persona}>
-              <Avatar name={shown!.name} imageUrl={shown!.imageUrl} size={44} />
+              <Avatar name={shown!.name} imageUrl={shown!.imageUrl} size={44} pro={shown!.pro} />
               <View style={styles.personaBody}>
                 <ThemedText themeColor="heading">{personaTitle}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -237,7 +237,7 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
         )}
 
         <View style={styles.hero}>
-          <Avatar name={data.name} imageUrl={data.imageUrl} size={88} />
+          <Avatar name={data.name} imageUrl={data.imageUrl} size={88} pro={data.pro} />
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             {shown
               ? `Sharing their trips with you since ${formatDayLabel(shown.since)}`

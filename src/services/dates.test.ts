@@ -1,6 +1,7 @@
 import {
   wallClock,
   countdown,
+  flightInstant,
   flightDay,
   formatDayLabel,
   formatDayLabelWithYear,
@@ -208,5 +209,36 @@ describe('wallClock', () => {
   it('is null for nothing or garbage', () => {
     expect(wallClock(null, 'Asia/Kolkata')).toBeNull();
     expect(wallClock('not a date', 'Asia/Kolkata')).toBeNull();
+  });
+});
+
+describe('bare wall clocks never touch the phone zone', () => {
+  const bare = '2026-09-09T04:15:00';
+  it('formatTime prints the digits as written', () => {
+    const expected = new Date(Date.UTC(2026, 8, 9, 4, 15)).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    });
+    expect(formatTime(bare)).toBe(expected);
+    expect(formatTime(bare, 'Asia/Qatar')).toBe(expected);
+  });
+  it('formatDayLabel names the day on the string', () => {
+    expect(formatDayLabel(bare)).toBe(formatDayLabel('2026-09-09T22:00:00'));
+    expect(formatDayLabelWithYear('2026-09-09T00:30:00')).toBe(formatDayLabelWithYear(bare));
+  });
+  it('flightInstant pins a bare clock to its airport, and passes instants through', () => {
+    // 04:15 at COK (UTC+5:30) is 22:45Z the day before.
+    expect(flightInstant(bare, 'Asia/Kolkata')).toBe(Date.parse('2026-09-08T22:45:00Z'));
+    expect(flightInstant('2026-09-08T22:45:00Z', 'Asia/Qatar')).toBe(Date.parse('2026-09-08T22:45:00Z'));
+  });
+  it('countdown counts from the airport\'s moment', () => {
+    const now = new Date('2026-09-08T20:45:00Z');
+    expect(countdown(bare, now, 'Asia/Kolkata')).toEqual({ value: 2, unit: 'hours' });
+  });
+  it('tripDateTitle reads the year off a bare clock', () => {
+    expect(tripDateTitle('2025-09-09T04:15:00', new Date('2026-09-09T12:00:00Z'), 'Asia/Kolkata')).toBe(
+      formatDayLabelWithYear('2025-09-09T04:15:00'),
+    );
   });
 });

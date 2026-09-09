@@ -24,6 +24,8 @@
 /** A timestamp that pins itself to an instant, rather than naming a wall
  * clock and leaving the zone to context. */
 const ZONED = /(Z|[+-]\d\d:?\d\d)$/;
+/** A stored wall clock with no zone — a manual entry's "2026-09-09T04:15:00". */
+const WALL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/;
 
 /** Formatting options for a stored timestamp: convert into the airport's
  * zone when the string is an instant and we know the zone, otherwise let the
@@ -60,6 +62,14 @@ export function localDateString(base: Date, days = 0): string {
   return `${d.getFullYear()}-${month}-${day}`;
 }
 
+/** Noon UTC on the calendar day a string names — a date the runtime can
+ * format with `timeZone: 'UTC'` and get that same day back, whatever zone
+ * the phone is in or thinks it is in. */
+function utcNoon(isoDate: string): Date {
+  const [y, m, d] = isoDate.slice(0, 10).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12));
+}
+
 /** "Wed, 5 Aug" — the short label Flighty-style chips and rows use. Pass the
  * airport's zone for a flight time, so a late-evening departure doesn't read
  * as tomorrow to a reader further east. */
@@ -72,11 +82,11 @@ export function formatDayLabel(isoDate: string, zone?: string | null): string {
       timeZone: zone,
     });
   }
-  const date = new Date(`${isoDate.slice(0, 10)}T12:00:00`);
-  return date.toLocaleDateString(undefined, {
+  return utcNoon(isoDate).toLocaleDateString(undefined, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   });
 }
 
@@ -91,11 +101,11 @@ export function formatDayLabelWithYear(isoDate: string, zone?: string | null): s
       timeZone: zone,
     });
   }
-  const date = new Date(`${isoDate.slice(0, 10)}T12:00:00`);
-  return date.toLocaleDateString(undefined, {
+  return utcNoon(isoDate).toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: 'UTC',
   });
 }
 
@@ -104,6 +114,24 @@ export function formatDayLabelWithYear(isoDate: string, zone?: string | null): s
  * a reader who happens to be standing in that airport's country. */
 export function formatTime(iso: string | null, zone?: string | null): string {
   if (!iso) return '—';
+  // A bare wall clock is printed as written. It used to be parsed as
+  // device-local and formatted device-local, two steps that cancel out only
+  // while the runtime agrees with itself about the phone's zone — and it
+  // doesn't for a while after the phone changes zone mid-trip, which is how
+  // a 04:15 typed at COK read 01:45 on landing in DOH.
+  const wall = WALL.exec(iso);
+  if (wall) {
+    const [, y, mo, d, h, mi] = wall;
+    try {
+      return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi)).toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC',
+      });
+    } catch {
+      return `${h}:${mi}`;
+    }
+  }
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
   try {
@@ -221,9 +249,22 @@ export function flightDay(iso: string, zone: string | null | undefined): string 
   return Number.isNaN(date.getTime()) ? iso.slice(0, 10) : zonedDay(date, zone);
 }
 
+/** A flight time as an instant for arithmetic: zoned strings parse as they
+ * are; a bare wall clock is pinned to the airport's zone first, so "04:15 at
+ * COK" is the same moment on a phone in Doha as on one in Kochi. Without a
+ * zone to pin to it falls back to the runtime's reading — the one dependence
+ * on the phone's clock left, and only for airports the table doesn't know. */
+export function flightInstant(iso: string, zone?: string | null): number {
+  return Date.parse(pinToZone(iso, zone) ?? iso);
+}
+
 /** The big left-column label on journey rows: time until (or since) departure. */
-export function countdown(departureIso: string, now: Date): { value: number; unit: string } {
-  const ms = Date.parse(departureIso) - now.getTime();
+export function countdown(
+  departureIso: string,
+  now: Date,
+  zone?: string | null,
+): { value: number; unit: string } {
+  const ms = flightInstant(departureIso, zone) - now.getTime();
   const abs = Math.abs(ms);
   const hours = Math.round(abs / 3_600_000);
   const days = Math.round(abs / 86_400_000);
@@ -248,6 +289,9 @@ function calendarDayDiff(iso: string, now: Date, zone?: string | null): number {
   if (ZONED.test(iso) && zone) {
     return daysBetween(zonedDay(now, zone), zonedDay(target, zone));
   }
+  // A bare wall clock already names its day; "today" is the day at the
+  // airport when we know it, the phone's otherwise.
+  if (WALL.test(iso)) return daysBetween(zone ? zonedDay(now, zone) : localDateString(now), iso.slice(0, 10));
   const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   return Math.round((startOf(target) - startOf(now)) / 86_400_000);
 }
@@ -263,9 +307,12 @@ function calendarDayDiff(iso: string, now: Date, zone?: string | null): number {
  * whole week around a departure: "In 3 days" under "In 3 days". */
 export function tripDateTitle(departureIso: string, now: Date, zone?: string | null): string {
   if (Number.isNaN(Date.parse(departureIso))) return '';
-  const departureYear = ZONED.test(departureIso) && zone
-    ? +zonedDay(new Date(departureIso), zone).slice(0, 4)
-    : new Date(departureIso).getFullYear();
+  const departureYear =
+    ZONED.test(departureIso) && zone
+      ? +zonedDay(new Date(departureIso), zone).slice(0, 4)
+      : WALL.test(departureIso)
+        ? +departureIso.slice(0, 4)
+        : new Date(departureIso).getFullYear();
   return departureYear === now.getFullYear()
     ? formatDayLabel(departureIso, zone)
     : formatDayLabelWithYear(departureIso, zone);

@@ -25,3 +25,21 @@ export const patchLiveSession = internalMutation({
     return await ctx.db.get(sessionId);
   },
 });
+
+/** Grant or revoke Pro for a user on this deployment — `npx convex run
+ * devTools:setPro '{"userId":"user_x","proUntil":"2099-01-01T00:00:00Z"}'`
+ * (null revokes). Production Pro comes from the RevenueCat webhook only;
+ * this exists so the Pro badge can be seen on a seeded dev account. */
+export const setPro = internalMutation({
+  args: { userId: v.string(), proUntil: v.union(v.string(), v.null()) },
+  handler: async (ctx, { userId, proUntil }) => {
+    const row = await ctx.db
+      .query('entitlements')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique();
+    const patch = { proUntil, source: 'devTools', updatedAt: new Date().toISOString() };
+    if (row) await ctx.db.patch(row._id, patch);
+    else await ctx.db.insert('entitlements', { userId, ...patch });
+    return { userId, proUntil };
+  },
+});

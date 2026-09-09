@@ -612,7 +612,14 @@ function FollowingRow({ person }: { person: Following }) {
         style={({ pressed }) => pressed && styles.pressed}>
         <PassCard style={styles.livePass}>
           <View style={styles.row}>
-            <Avatar name={person.name} imageUrl={person.imageUrl} size={44} ring={LIVE_GREEN} />
+            <Avatar
+              name={person.name}
+              imageUrl={person.imageUrl}
+              size={44}
+              ring={LIVE_GREEN}
+              pro={person.pro}
+              badgeBorder={NAVY}
+            />
             <View style={styles.rowBody}>
               <Text style={styles.liveName} numberOfLines={1}>
                 {person.name}
@@ -667,7 +674,7 @@ function FollowingRow({ person }: { person: Following }) {
       onPress={actions}
       style={({ pressed }) => pressed && styles.pressed}>
       <SheenCard style={styles.rowCard}>
-        <Avatar name={person.name} imageUrl={person.imageUrl} size={44} />
+        <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
         <View style={styles.rowBody}>
           <ThemedText themeColor="heading" numberOfLines={1}>
             {person.name}
@@ -770,7 +777,7 @@ function FollowerRow({ person }: { person: Follower }) {
       onPress={() => router.push({ pathname: '/person/[id]', params: { id: person.userId } })}
       style={({ pressed }) => pressed && styles.pressed}>
       <SheenCard style={styles.rowCard}>
-        <Avatar name={person.name} imageUrl={person.imageUrl} size={44} />
+        <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
         <View style={styles.rowBody}>
           <ThemedText themeColor="heading" numberOfLines={1}>
             {person.name}
@@ -875,7 +882,7 @@ function FollowRequestRow({ request }: { request: Incoming }) {
 
   return (
     <SheenCard style={styles.rowCard}>
-      <Avatar name={request.name} imageUrl={request.imageUrl} size={44} />
+      <Avatar name={request.name} imageUrl={request.imageUrl} size={44} pro={request.pro} />
       <View style={styles.rowBody}>
         <ThemedText themeColor="heading" numberOfLines={1}>
           {request.name}
@@ -938,7 +945,7 @@ function RequestRow({ request }: { request: Incoming }) {
 
   return (
     <SheenCard style={styles.rowCard}>
-      <Avatar name={request.name} imageUrl={request.imageUrl} size={44} />
+      <Avatar name={request.name} imageUrl={request.imageUrl} size={44} pro={request.pro} />
       <View style={styles.rowBody}>
         <ThemedText themeColor="heading" numberOfLines={1}>
           {request.name}
@@ -1004,7 +1011,7 @@ function PendingRow({ request, kind }: { request: Outgoing; kind: 'invite' | 'fo
       onPress={actions}
       style={({ pressed }) => pressed && styles.pressed}>
       <SheenCard style={[styles.rowCard, styles.pendingRow]}>
-        <Avatar name={request.name} imageUrl={request.imageUrl} size={44} />
+        <Avatar name={request.name} imageUrl={request.imageUrl} size={44} pro={request.pro} />
         <View style={styles.rowBody}>
           <ThemedText themeColor="heading" numberOfLines={1}>
             {request.name}

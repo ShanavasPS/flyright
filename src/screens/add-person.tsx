@@ -20,7 +20,13 @@ import { trackEvent } from '@/services/analytics';
 import { shareInvite } from '@/services/circle-share';
 import { useProLocked } from '@/services/purchases';
 
-type Person = { userId: string; name: string; imageUrl: string | null; relation: string };
+type Person = {
+  userId: string;
+  name: string;
+  imageUrl: string | null;
+  pro: boolean;
+  relation: string;
+};
 
 /** As many hits as the sheet can show without scrolling — see the note on
  * styles.results. Whole-name matching rarely returns more. */
@@ -258,7 +264,7 @@ function PersonRow({
           : 'On FlyRight';
   return (
     <SheenCard style={styles.rowCard}>
-      <Avatar name={person.name} imageUrl={person.imageUrl} size={44} />
+      <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
       <View style={styles.rowBody}>
         <ThemedText themeColor="heading" numberOfLines={1}>
           {person.name}

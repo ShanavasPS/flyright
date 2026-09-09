@@ -71,8 +71,8 @@ function flightLabel(journey: HeroJourney): string {
 
 /** The date chip's relative reading: a countdown before departure, "Flown"
  * after. */
-function dateChipLabel(departure: string, now: Date): string {
-  const timer = countdown(departure, now);
+function dateChipLabel(departure: string, now: Date, zone: string | null): string {
+  const timer = countdown(departure, now, zone);
   if (timer.unit === 'now') return 'Boarding soon';
   if (timer.unit.endsWith('ago')) return 'Flown';
   if (timer.unit === 'hours') return `In ${timer.value} hour${timer.value === 1 ? '' : 's'}`;
@@ -103,7 +103,7 @@ export function RouteHero({
 }) {
   const theme = useTheme();
   const flown = Date.parse(journey.scheduledDeparture) <= now;
-  const chip = dateChipLabel(journey.scheduledDeparture, new Date(now));
+  const chip = dateChipLabel(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code));
   const duration = durationLabel(journey);
   // The date lives in the screen header (tripDateTitle) and how far off it
   // is in the chip above; the contrail column carries only what belongs to

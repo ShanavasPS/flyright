@@ -48,8 +48,9 @@ import {
   formatDayLabel,
   formatDayLabelWithYear,
   formatTime,
-  wallClock,
   localDateString,
+  wallClock,
+  zonedTimestamp,
 } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
@@ -215,8 +216,9 @@ export function AddFlight() {
     const dep = editRow.scheduledDeparture;
     const arr = editRow.scheduledArrival;
     if (!(dep === arr && dep.endsWith('T12:00:00'))) {
-      setDepTime(dep.slice(11, 16));
-      if (arr !== dep) setArrTime(arr.slice(11, 16));
+      // Pinned rows are instants: read the clock back in the airport's zone.
+      setDepTime(wallClock(dep, airportZone(editRow.fromCode)) ?? dep.slice(11, 16));
+      if (arr !== dep) setArrTime(wallClock(arr, airportZone(editRow.toCode)) ?? arr.slice(11, 16));
     }
     setStep('manual');
   }
@@ -470,6 +472,21 @@ export function AddFlight() {
     // An arrival clock earlier than departure means the flight landed next day.
     const arrivalDay =
       arrClock < depClock ? localDateString(new Date(`${date}T12:00:00`), 1) : date;
+    // The printed clock becomes the instant it names at its airport — the
+    // rule imported tickets already follow — so the countdown, the travel-day
+    // window and every screen read the same moment wherever the phone is.
+    // The airport's zone is what makes "04:15" mean 04:15 at COK; for an
+    // airport the table doesn't know, the bare clock is kept. The identical
+    // noon pair stays bare: it is the "no times entered" placeholder.
+    const bareDep = `${date}T${depClock}:00`;
+    const bareArr = `${arrivalDay}T${arrClock}:00`;
+    const placeholder = bareDep === bareArr && bareDep.endsWith('T12:00:00');
+    const scheduledDeparture = placeholder
+      ? bareDep
+      : (zonedTimestamp(date, depClock, airportZone(fromAirport.iata)) ?? bareDep);
+    const scheduledArrival = placeholder
+      ? bareArr
+      : (zonedTimestamp(arrivalDay, arrClock, airportZone(toAirport.iata)) ?? bareArr);
 
     if (editId) {
       await updateJourney(editId, {
@@ -481,8 +498,8 @@ export function AddFlight() {
         toCode: toAirport.iata,
         toCountry: toAirport.country,
         distanceKm,
-        scheduledDeparture: `${date}T${depClock}:00`,
-        scheduledArrival: `${arrivalDay}T${arrClock}:00`,
+        scheduledDeparture,
+        scheduledArrival,
         ...tripDetails(bookingRef, seat),
       });
       setStep('added');
@@ -505,8 +522,8 @@ export function AddFlight() {
       toCode: toAirport.iata,
       toCountry: toAirport.country,
       distanceKm,
-      scheduledDeparture: `${date}T${depClock}:00`,
-      scheduledArrival: `${arrivalDay}T${arrClock}:00`,
+      scheduledDeparture,
+      scheduledArrival,
       ...tripDetails(bookingRef, seat),
       createdAt: new Date().toISOString(),
     });

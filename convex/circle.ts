@@ -4,6 +4,7 @@ import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { CIRCLE_FULL, MAX_PENDING_REQUESTS, searchKey } from './circleShared';
+import { isPro } from './entitlements';
 import {
   armHeadsUpsForOwner,
   circleFull,
@@ -29,9 +30,18 @@ async function requireIdentity(ctx: MutationCtx | QueryCtx) {
   return identity;
 }
 
+/** The public face of a person: name, photo, and whether they hold Pro —
+ * the one fact about a member the badge on their avatar shows. The server
+ * decides Pro from the RevenueCat webhook's entitlement row, never the
+ * client, so a badge can't be minted by editing a profile. */
 async function personCard(ctx: QueryCtx | MutationCtx, userId: string) {
   const profile = await profileFor(ctx, userId);
-  return { userId, name: profile?.name ?? 'A traveler', imageUrl: profile?.imageUrl ?? null };
+  return {
+    userId,
+    name: profile?.name ?? 'A traveler',
+    imageUrl: profile?.imageUrl ?? null,
+    pro: await isPro(ctx, userId),
+  };
 }
 
 /** Mint (or reuse) the caller's current invite link. */
@@ -71,7 +81,7 @@ export const inviteByToken = query({
     // A link minted before the owner hit the free cap (or before a lapse)
     // still resolves — the page says the circle is full instead of 404ing.
     const full = relation === 'none' && (await circleFull(ctx, invite!.ownerId));
-    return { ownerName: owner.name, ownerImageUrl: owner.imageUrl, relation, full };
+    return { ownerName: owner.name, ownerImageUrl: owner.imageUrl, ownerPro: owner.pro, relation, full };
   },
 });
 
@@ -168,6 +178,7 @@ export const findPeople = query({
         userId: hit.userId,
         name: hit.name,
         imageUrl: hit.imageUrl ?? null,
+        pro: await isPro(ctx, hit.userId),
         relation,
       });
     }

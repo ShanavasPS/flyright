@@ -6,7 +6,7 @@
 import { evaluate } from '@/rules/engine';
 import type { Journey } from '@/rules/types';
 import { airportZone } from '@/services/airports';
-import { formatDayLabel, formatTime } from '@/services/dates';
+import { flightInstant, formatDayLabel, formatTime } from '@/services/dates';
 import type { InboundOutlook } from '@/services/inbound';
 import type { JourneyRow } from '@/services/journeys';
 import { shiftLabel, type ScheduleChange } from '@/services/schedule-change';
@@ -64,7 +64,9 @@ export function hasRealTime(
 }
 
 function tripReminder(j: ReminderJourney, now: Date): PlannedReminder | null {
-  const departure = Date.parse(j.scheduledDeparture);
+  // Pinned to the airport: a manual row's bare 04:15 must fire the day-before
+  // reminder 24h before 04:15 at COK, not 04:15 wherever the phone is.
+  const departure = flightInstant(j.scheduledDeparture, airportZone(j.fromCode));
   if (Number.isNaN(departure)) return null;
   const fireDate = new Date(departure - DAY_MS);
   if (fireDate.getTime() <= now.getTime()) return null;

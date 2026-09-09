@@ -171,7 +171,7 @@ export function Person({ userId }: { userId: string }) {
     body = (
       <>
         <View style={styles.header}>
-          <Avatar name={p.name} imageUrl={p.imageUrl} size={76} />
+          <Avatar name={p.name} imageUrl={p.imageUrl} size={76} pro={p.pro} />
           <View style={styles.headerRight}>
             {p.theyShare ? (
               <View style={styles.stats}>

@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
-import { countdown, formatDayLabel } from '@/services/dates';
+import { countdown, flightInstant, formatDayLabel } from '@/services/dates';
 
 /** Past this age a trip reads as a journal entry rather than a countdown:
  * the date on the row and the year in the section header say enough. */
@@ -59,8 +59,10 @@ export function TripRow({
   selected?: boolean;
 }) {
   const theme = useTheme();
-  const old = now.getTime() - Date.parse(trip.scheduledDeparture) > YEAR_MS;
-  const upcoming = Date.parse(trip.scheduledDeparture) >= now.getTime();
+  const departureZone = airportZone(trip.fromCode);
+  const departs = flightInstant(trip.scheduledDeparture, departureZone);
+  const old = now.getTime() - departs > YEAR_MS;
+  const upcoming = departs >= now.getTime();
 
   return (
     <SheenCard style={[styles.card, selected && { borderWidth: 1, borderColor: theme.tint }]}>
@@ -87,7 +89,7 @@ export function TripRow({
               <ThemedText
                 type={upcoming ? 'smallBold' : 'small'}
                 themeColor={upcoming ? 'heading' : 'textSecondary'}>
-                {timerLabel(countdown(trip.scheduledDeparture, now))}
+                {timerLabel(countdown(trip.scheduledDeparture, now, departureZone))}
               </ThemedText>
             ))}
         </View>
