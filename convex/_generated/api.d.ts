@@ -14,6 +14,7 @@ import type * as circle from "../circle.js";
 import type * as circleInternal from "../circleInternal.js";
 import type * as circleShared from "../circleShared.js";
 import type * as crons from "../crons.js";
+import type * as devTools from "../devTools.js";
 import type * as entitlementShared from "../entitlementShared.js";
 import type * as entitlements from "../entitlements.js";
 import type * as flightData from "../flightData.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   circleInternal: typeof circleInternal;
   circleShared: typeof circleShared;
   crons: typeof crons;
+  devTools: typeof devTools;
   entitlementShared: typeof entitlementShared;
   entitlements: typeof entitlements;
   flightData: typeof flightData;

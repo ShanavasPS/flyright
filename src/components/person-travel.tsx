@@ -9,10 +9,10 @@ import { mapColors } from '@/components/world-map';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { flightCountdown } from '@/services/flight-countdown';
+import type { PublicSession } from '../../convex/liveShared';
+
 import type { RouteSource } from '@/services/geo';
-import { liveTimes } from '@/services/public-session';
-import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
+import { followerStatus, liveTimes, movedClocks, sessionProgress } from '@/services/public-session';
 
 /** Tall enough to read a long-haul arc, short enough that the trips below
  * still start on the first screen. */
@@ -28,21 +28,9 @@ export type PersonTrip = {
   scheduledArrival: string;
 };
 
-/** The live session as a follower is shown it — the public whitelist's
- * fields the card and the countdown read. */
-export type LiveSessionView = {
-  fromCode: string;
-  toCode: string;
-  scheduledDeparture: string;
-  scheduledArrival: string;
-  estimatedDeparture: string | null;
-  actualDeparture: string | null;
-  estimatedArrival: string | null;
-  actualArrival: string | null;
-  currentStage: string | null;
-  delayMinutes: number | null;
-  gate: string | null;
-};
+/** The live session as a follower is shown it — the server's public
+ * whitelist, which is exactly what the card and its countdown read. */
+export type LiveSessionView = PublicSession;
 
 export type PersonTravelData = {
   live: { session: LiveSessionView } | null;
@@ -183,16 +171,7 @@ function LiveNow({
 }) {
   const theme = useTheme();
   const times = liveTimes(session);
-  const timer = flightCountdown(times, now);
-  const stage = session.currentStage
-    ? STAGE_LABELS[session.currentStage as TravelStage]
-    : 'Getting ready';
-  const detail =
-    session.delayMinutes != null && session.delayMinutes >= 30
-      ? ` · ${session.delayMinutes} min late`
-      : session.gate
-        ? ` · Gate ${session.gate}`
-        : '';
+  const { headline, detail, delayed } = followerStatus(session, now);
 
   return (
     <Pressable
@@ -206,19 +185,34 @@ function LiveNow({
           <ThemedText type="smallBold" style={[styles.liveLabel, { color: theme.tint }]}>
             TRAVELLING NOW
           </ThemedText>
-          {/* "Departs in 2h 15m", then "Lands in 45m" — the header's right
-              slot, where the journal's rows keep their countdown too. */}
-          {timer && (
-            <ThemedText type="smallBold" themeColor="heading">
-              {timer}
-            </ThemedText>
-          )}
+          {/* "Departs in 2h 15m", "Lands in 45m", "Landed 8:55" — the
+              header's right slot, where the journal's rows keep their
+              countdown too. */}
+          <ThemedText
+            type="smallBold"
+            themeColor="heading"
+            style={delayed && { color: theme.warning }}>
+            {headline}
+          </ThemedText>
         </View>
-        <ThemedText type="small" themeColor="textSecondary">
-          {stage}
-          {detail}
-        </ThemedText>
-        <RouteLeg leg={{ fromCode: session.fromCode, toCode: session.toCode, ...times }} />
+        {detail && (
+          <ThemedText type="small" themeColor="textSecondary">
+            {detail}
+          </ThemedText>
+        )}
+        {/* The plane where the flight is, the timetable struck through under
+            a moved clock, and the landing time on the reader's own clock —
+            the traveller's hero, read from the other end. */}
+        <RouteLeg
+          progress={sessionProgress(session, now)}
+          yourTime
+          leg={{
+            fromCode: session.fromCode,
+            toCode: session.toCode,
+            ...times,
+            ...movedClocks(session),
+          }}
+        />
       </SheenCard>
     </Pressable>
   );

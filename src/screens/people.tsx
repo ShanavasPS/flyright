@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,7 +24,7 @@ import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
-import { RouteLeg, clocks } from '@/components/route-leg';
+import { Contrail, RouteLeg, clocks } from '@/components/route-leg';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -45,9 +44,7 @@ import { trackEvent } from '@/services/analytics';
 import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
 import { useProLocked } from '@/services/purchases';
-import { flightCountdown } from '@/services/flight-countdown';
-import { liveTimes } from '@/services/public-session';
-import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
+import { followerStatus, liveTimes, sessionProgress, spanLabel } from '@/services/public-session';
 
 type CircleList = NonNullable<ReturnType<typeof useQuery<typeof api.circle.list>>>;
 type Following = CircleList['following'][number];
@@ -600,16 +597,14 @@ function FollowingRow({ person }: { person: Following }) {
   const live = person.live;
   if (live) {
     const s = live.session;
-    const stage = (s.currentStage as TravelStage | null) ?? null;
     const delayed = s.delayMinutes != null && s.delayMinutes >= 30;
-    let status = stage ? STAGE_LABELS[stage] : 'Getting ready';
-    if (delayed) status += ` · ${s.delayMinutes} min late`;
-    else if (s.gate) status += ` · Gate ${s.gate}`;
     // The clocks the airline now says, under each code — the pass shows the
-    // leg and the leg is when as much as where.
+    // leg and the leg is when as much as where — and the plane where the
+    // flight is, the traveller's own progress over the same facts.
     const times = liveTimes(s);
     const when = clocks({ fromCode: s.fromCode, toCode: s.toCode, ...times });
-    const timer = flightCountdown(times, now);
+    const { headline, detail } = followerStatus(s, now);
+    const progress = sessionProgress(s, now);
     return (
       <Pressable
         accessibilityRole="button"
@@ -622,46 +617,32 @@ function FollowingRow({ person }: { person: Following }) {
               <Text style={styles.liveName} numberOfLines={1}>
                 {person.name}
               </Text>
+              {/* The headline — "Departs in 1h 10m", "Lands in 45m", "Landed
+                  8:55" — is the line a follower is here for, so it takes the
+                  bold slot under the name, amber once the flight is late;
+                  what is happening around it reads quietly beneath. */}
               <Text style={[styles.liveStatus, delayed && styles.liveDelayed]} numberOfLines={1}>
-                {status}
+                {headline}
               </Text>
-            </View>
-            <View style={styles.liveAside}>
-              <LivePill />
-              {/* "Departs in 1h 10m", then "Lands in 45m" — under the pill,
-                  the corner a follower's eye goes to for how long. */}
-              {timer && (
-                <Text style={styles.liveTimer} numberOfLines={1}>
-                  {timer}
+              {detail && (
+                <Text style={styles.liveDetail} numberOfLines={1}>
+                  {detail}
                 </Text>
               )}
             </View>
+            <LivePill />
           </View>
           <View style={styles.liveRoute}>
             <View>
               <Text style={styles.liveCode}>{s.fromCode}</Text>
               <Text style={styles.liveClock}>{when.dep ?? ' '}</Text>
             </View>
-            <View style={styles.liveContrail}>
-              <View style={styles.liveEndDot} />
-              <View style={styles.liveDots}>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <View key={i} style={styles.liveDot} />
-                ))}
-              </View>
-              <SymbolView
-                name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-                size={14}
-                tintColor={delayed ? '#F2B441' : COBALT}
-                style={Platform.OS === 'ios' ? undefined : styles.rotated}
-              />
-              <View style={styles.liveDots}>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <View key={i} style={styles.liveDot} />
-                ))}
-              </View>
-              <View style={styles.liveEndDot} />
-            </View>
+            <Contrail
+              progress={progress}
+              tint={delayed ? '#F2B441' : COBALT}
+              dotColor={WHITE_DIM}
+              style={styles.liveContrail}
+            />
             <View>
               <Text style={[styles.liveCode, styles.liveCodeRight]}>{s.toCode}</Text>
               <Text style={[styles.liveClock, styles.liveCodeRight]}>{when.arr ?? ' '}</Text>
@@ -676,12 +657,10 @@ function FollowingRow({ person }: { person: Following }) {
   }
 
   const next = person.next;
-  const nextTimer = next
-    ? flightCountdown(
-        { departure: next.scheduledDeparture, arrival: next.scheduledArrival },
-        now,
-      )
-    : null;
+  // A booked trip has no airline estimate yet, so the countdown is to the
+  // timetable — the same words the live rows use once the day comes.
+  const nextMs = next ? Date.parse(next.scheduledDeparture) - now.getTime() : NaN;
+  const nextTimer = next && nextMs > 60_000 ? `Departs in ${spanLabel(nextMs)}` : null;
   return (
     <Pressable
       accessibilityRole="button"
@@ -1211,8 +1190,14 @@ const styles = StyleSheet.create({
   },
   liveStatus: {
     color: COBALT,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
+    fontWeight: 700,
+  },
+  liveDetail: {
+    color: WHITE_DIM,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: 500,
   },
   liveDelayed: {
@@ -1256,16 +1241,6 @@ const styles = StyleSheet.create({
   liveCodeRight: {
     textAlign: 'right',
   },
-  liveAside: {
-    alignItems: 'flex-end',
-    gap: Spacing.one,
-  },
-  liveTimer: {
-    color: WHITE_DIM,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: 600,
-  },
   liveClock: {
     color: WHITE_DIM,
     fontSize: 13,
@@ -1274,34 +1249,10 @@ const styles = StyleSheet.create({
   },
   liveContrail: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  liveDots: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-  },
-  liveDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: WHITE_DIM,
-    opacity: 0.55,
-  },
-  liveEndDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: WHITE_DIM,
+    alignSelf: 'auto',
   },
   liveLogo: {
     marginLeft: Spacing.two,
-  },
-  rotated: {
-    transform: [{ rotate: '90deg' }],
   },
   tabNote: {
     flex: 1,

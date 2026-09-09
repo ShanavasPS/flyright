@@ -17,11 +17,17 @@ import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabelWithYear } from '@/services/dates';
-import { flightCountdown } from '@/services/flight-countdown';
-import { adaptPublicSession, liveTimes } from '@/services/public-session';
+import {
+  adaptPublicSession,
+  followerStatus,
+  liveTimes,
+  movedClocks,
+  sessionProgress,
+} from '@/services/public-session';
 
 /** The public "follow this trip" page behind getflyright.com/t/<token> —
  * reactive on web for anyone, and the in-app follower view with a Follow
@@ -32,6 +38,7 @@ export function FollowTrip({ token }: { token: string }) {
   const result = useQuery(api.live.byToken, { token });
   const follow = useMutation(api.live.follow);
   const now = useNow();
+  const theme = useTheme();
   const [followed, setFollowed] = useState(false);
   // The traveler's circle invite, when following one trip could become
   // following them all — null once declined, or when the server has no offer
@@ -108,7 +115,7 @@ export function FollowTrip({ token }: { token: string }) {
     const { journey, state, facts } = adaptPublicSession(session);
     const who = session.travelerName ?? 'Your traveler';
     const times = liveTimes(session);
-    const timer = flightCountdown(times, now);
+    const { headline, detail, delayed } = followerStatus(session, now);
     body = (
       <>
         <View style={styles.titleRow}>
@@ -117,23 +124,40 @@ export function FollowTrip({ token }: { token: string }) {
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
               {who} is flying
             </ThemedText>
+            {/* The traveller's hero, read from the other end: the one time
+                fact the follower opened this page for as the title — "Departs
+                in 2h 15m", "Lands in 45m", "Landed 8:55" — then the flight
+                and what is happening around it. */}
+            <ThemedText
+              themeColor="heading"
+              style={[styles.headline, delayed && { color: theme.warning }]}>
+              {headline}
+            </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {session.number || session.carrier} ·{' '}
               {formatDayLabelWithYear(session.scheduledDeparture, airportZone(session.fromCode))}
             </ThemedText>
-            {/* "Departs in 2h 15m", then "Lands in 45m" — the one number a
-                follower opened this page for. */}
-            {timer && (
-              <ThemedText type="smallBold" themeColor="heading">
-                {timer}
+            {detail && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {detail}
               </ThemedText>
             )}
           </View>
         </View>
-        {/* The leg under the title row, full width: codes, cities and the
-            clocks the airline now says — the same drawing as every other
-            trip in the app, not a "HEL → LHR" of its own. */}
-        <RouteLeg leg={{ fromCode: session.fromCode, toCode: session.toCode, ...times }} />
+        {/* The leg under the title row, full width: codes, cities, the
+            clocks the airline now says with the timetable struck through
+            where it moved, the landing time on the reader's own clock, and
+            the plane where the flight is. */}
+        <RouteLeg
+          progress={sessionProgress(session, now)}
+          yourTime
+          leg={{
+            fromCode: session.fromCode,
+            toCode: session.toCode,
+            ...times,
+            ...movedClocks(session),
+          }}
+        />
 
         <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />
 
@@ -233,6 +257,14 @@ const styles = StyleSheet.create({
   titleBlock: {
     flex: 1,
     gap: Spacing.half,
+  },
+  // The route codes below are 22pt; the headline matches them so the page
+  // reads as one block rather than a poster over a caption.
+  headline: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 700,
+    letterSpacing: -0.3,
   },
   eyebrow: {
     textTransform: 'uppercase',

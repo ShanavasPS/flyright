@@ -1,5 +1,6 @@
 import { SymbolView } from 'expo-symbols';
-import { Platform, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -14,9 +15,11 @@ export interface Leg {
   toCode: string;
   departure: string;
   arrival: string;
-  /** The clock the ticket was booked at, struck through in place once the
-   * airline has moved the flight. Nobody but the traveller sees this. */
+  /** The clocks the flight was planned at, struck through in place once the
+   * airline has moved it — the ticket's for the traveller, the timetable's
+   * for a follower reading the airline's new estimate. */
   ticketedDeparture?: string | null;
+  ticketedArrival?: string | null;
   distanceKm?: number | null;
 }
 
@@ -26,17 +29,38 @@ export interface Leg {
  * (15pt codes and the clocks, nothing else) for a row that also has to fit a
  * name and a status line.
  *
+ * `progress` puts the plane where the flight is: at the origin until it
+ * departs, riding the line in the air, at the destination once landed — the
+ * traveller's hero motif, so a follower reads "how much is left" from the
+ * same picture. Without it the plane sits mid-line, as the journal's rows
+ * have always drawn it. `yourTime` adds the landing clock in the reader's
+ * own zone when that differs from the airport's: the traveller is standing
+ * in that zone, the person waiting for them usually isn't.
+ *
  * Every surface that shows a flight to somebody draws it with this: the
- * journal's rows, the trips a follower is shown, the live cards. A follower's
- * rows used to spell the leg as "HEL → LHR" with no clock at all, which told
- * them where without when — the one thing a follower is waiting to know. */
-export function RouteLeg({ leg, compact = false }: { leg: Leg; compact?: boolean }) {
+ * journal's rows, the trips a follower is shown, the live cards. */
+export function RouteLeg({
+  leg,
+  compact = false,
+  progress,
+  yourTime = false,
+}: {
+  leg: Leg;
+  compact?: boolean;
+  progress?: number;
+  yourTime?: boolean;
+}) {
   const theme = useTheme();
   const { dep, arr } = clocks(leg);
-  const was =
+  const depWas =
     !compact && leg.ticketedDeparture
       ? formatTime(leg.ticketedDeparture, airportZone(leg.fromCode))
       : null;
+  const arrWas =
+    !compact && leg.ticketedArrival
+      ? formatTime(leg.ticketedArrival, airportZone(leg.toCode))
+      : null;
+  const arrLocal = !compact && yourTime && arr ? readerClock(leg.arrival, leg.toCode) : null;
   // Block time reads as a fact about the segment (the hero's pattern); the
   // distance stands in when the times can't be differenced — or were never
   // typed, which is when the codes alone are the whole line.
@@ -64,31 +88,18 @@ export function RouteLeg({ leg, compact = false }: { leg: Leg; compact?: boolean
             {dep ?? ' '}
           </ThemedText>
         )}
-        {/* What the ticket said, struck through beneath the clock that now
+        {/* What was planned, struck through beneath the clock that now
             counts — its own line, so a wide "5:05 PM 6:00 PM" pair never
             squeezes the contrail or truncates the live time. */}
-        {was && (
-          <ThemedText
-            type="small"
-            themeColor="textSecondary"
-            style={[styles.city, styles.movedFrom]}
-            numberOfLines={1}
-            accessibilityLabel={`Moved from ${was}`}>
-            {was}
-          </ThemedText>
-        )}
+        {depWas && <Was clock={depWas} />}
       </View>
       <View style={[styles.contrail, compact && styles.contrailCompact]}>
-        <View style={styles.contrailLine}>
-          <ContrailDots />
-          <SymbolView
-            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-            size={compact ? 12 : 14}
-            tintColor={theme.tint}
-            style={Platform.OS === 'ios' ? undefined : styles.rotated}
-          />
-          <ContrailDots />
-        </View>
+        <Contrail
+          progress={progress}
+          tint={theme.tint}
+          dotColor={theme.textSecondary}
+          size={compact ? 12 : 14}
+        />
         {middle !== null && (
           <ThemedText
             type="small"
@@ -114,20 +125,87 @@ export function RouteLeg({ leg, compact = false }: { leg: Leg; compact?: boolean
             {arr ?? ' '}
           </ThemedText>
         )}
+        {arrWas && <Was clock={arrWas} />}
+        {arrLocal && (
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            style={styles.city}
+            numberOfLines={1}
+            accessibilityLabel={`${arrLocal} your time`}>
+            {arrLocal} your time
+          </ThemedText>
+        )}
       </View>
     </View>
   );
 }
 
-/** Half of the dotted contrail between the codes — the hero's motif, three
- * dots a side at card size. */
-function ContrailDots() {
-  const theme = useTheme();
+function Was({ clock }: { clock: string }) {
   return (
-    <View style={styles.contrailDots}>
-      {Array.from({ length: 3 }, (_, i) => (
-        <View key={i} style={[styles.contrailDot, { backgroundColor: theme.textSecondary }]} />
-      ))}
+    <ThemedText
+      type="small"
+      themeColor="textSecondary"
+      style={[styles.city, styles.movedFrom]}
+      numberOfLines={1}
+      accessibilityLabel={`Moved from ${clock}`}>
+      {clock}
+    </ThemedText>
+  );
+}
+
+/** The dotted contrail between the codes, with the plane on it. Given a
+ * `progress` the plane rides the line and the flown part turns solid behind
+ * it (the traveller's hero and Live Activity motif); without one it sits
+ * mid-line, the journal's static drawing. Colours are the caller's, so the
+ * night-sky pass and the light cards draw the same line. */
+export function Contrail({
+  progress,
+  tint,
+  dotColor,
+  size = 14,
+  style,
+}: {
+  progress?: number;
+  tint: string;
+  dotColor: string;
+  size?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const [width, setWidth] = useState(0);
+  const travel = Math.max(0, width - size);
+  const at = progress === undefined ? 0.5 : Math.min(1, Math.max(0, progress));
+  const x = at * travel;
+  const dots = size >= 14 ? 9 : 7;
+  return (
+    <View
+      style={[styles.contrailLine, { height: size }, style]}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <View style={styles.contrailDots}>
+        {Array.from({ length: dots }, (_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.contrailDot,
+              { backgroundColor: dotColor },
+              (i === 0 || i === dots - 1) && styles.contrailEndDot,
+            ]}
+          />
+        ))}
+      </View>
+      {progress !== undefined && width > 0 && (
+        <View style={[styles.contrailFlown, { backgroundColor: tint, width: x + size / 2 }]} />
+      )}
+      {width > 0 && (
+        <View style={[styles.plane, { transform: [{ translateX: x }] }]}>
+          <SymbolView
+            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+            size={size}
+            tintColor={tint}
+            style={Platform.OS === 'ios' ? undefined : styles.rotated}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -150,6 +228,15 @@ export function clocks(leg: Leg): { dep: string | null; arr: string | null } {
     dep: formatTime(dep, airportZone(leg.fromCode)),
     arr: formatTime(arr, airportZone(leg.toCode)),
   };
+}
+
+/** The same instant on the reader's own clock — null when it reads the
+ * same as the airport's, or when the timestamp carries no zone to convert
+ * from (a typed journal time is a wall clock, not an instant). */
+export function readerClock(iso: string, airportCode: string): string | null {
+  if (!/(?:Z|[+-]\d\d:?\d\d)$/.test(iso)) return null;
+  const local = formatTime(iso);
+  return local === formatTime(iso, airportZone(airportCode)) ? null : local;
 }
 
 /** "4h 5m" — null for entries whose times can't be differenced even with
@@ -226,32 +313,48 @@ const styles = StyleSheet.create({
     marginTop: 6,
     gap: Spacing.half,
   },
-  // Compact codes are 18pt tall, so a 2pt offset centres the 14pt line; the
+  // Compact codes are 18pt tall, so a 2pt offset centres the 12pt line; the
   // contrail stays short so the leg fits between a name and a status line.
   contrailCompact: {
     flex: 0,
-    width: 72,
-    minWidth: 72,
-    marginTop: 2,
+    width: 84,
+    minWidth: 84,
+    marginTop: 3,
   },
   contrailLine: {
     alignSelf: 'stretch',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    height: 14,
+    justifyContent: 'center',
   },
   contrailDots: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
   },
   contrailDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
     opacity: 0.55,
+  },
+  contrailEndDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.9,
+  },
+  contrailFlown: {
+    position: 'absolute',
+    left: 0,
+    top: '50%',
+    marginTop: -1,
+    height: 2,
+    borderRadius: 1,
+    opacity: 0.7,
+  },
+  plane: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
   },
   contrailLabel: {
     fontSize: 11,
