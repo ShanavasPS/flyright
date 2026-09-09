@@ -11,14 +11,17 @@ import { AirlineLogo } from '@/components/airline-logo';
 import { AppHandoff } from '@/components/app-handoff';
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
+import { RouteLeg } from '@/components/route-leg';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useNow } from '@/hooks/use-now';
 import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabelWithYear } from '@/services/dates';
-import { adaptPublicSession } from '@/services/public-session';
+import { flightCountdown } from '@/services/flight-countdown';
+import { adaptPublicSession, liveTimes } from '@/services/public-session';
 
 /** The public "follow this trip" page behind getflyright.com/t/<token> —
  * reactive on web for anyone, and the in-app follower view with a Follow
@@ -28,6 +31,7 @@ export function FollowTrip({ token }: { token: string }) {
   const { isSignedIn } = useAuth();
   const result = useQuery(api.live.byToken, { token });
   const follow = useMutation(api.live.follow);
+  const now = useNow();
   const [followed, setFollowed] = useState(false);
   // The traveler's circle invite, when following one trip could become
   // following them all — null once declined, or when the server has no offer
@@ -103,6 +107,8 @@ export function FollowTrip({ token }: { token: string }) {
     const session = result;
     const { journey, state, facts } = adaptPublicSession(session);
     const who = session.travelerName ?? 'Your traveler';
+    const times = liveTimes(session);
+    const timer = flightCountdown(times, now);
     body = (
       <>
         <View style={styles.titleRow}>
@@ -111,15 +117,23 @@ export function FollowTrip({ token }: { token: string }) {
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
               {who} is flying
             </ThemedText>
-            <ThemedText type="title" themeColor="heading">
-              {session.fromCode} → {session.toCode}
-            </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {session.number || session.carrier} ·{' '}
               {formatDayLabelWithYear(session.scheduledDeparture, airportZone(session.fromCode))}
             </ThemedText>
+            {/* "Departs in 2h 15m", then "Lands in 45m" — the one number a
+                follower opened this page for. */}
+            {timer && (
+              <ThemedText type="smallBold" themeColor="heading">
+                {timer}
+              </ThemedText>
+            )}
           </View>
         </View>
+        {/* The leg under the title row, full width: codes, cities and the
+            clocks the airline now says — the same drawing as every other
+            trip in the app, not a "HEL → LHR" of its own. */}
+        <RouteLeg leg={{ fromCode: session.fromCode, toCode: session.toCode, ...times }} />
 
         <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />
 

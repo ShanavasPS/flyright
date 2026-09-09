@@ -46,3 +46,21 @@ export function adaptPublicSession(s: PublicSession): {
     },
   };
 }
+
+/** The clocks a follower should be reading on a live trip: what the airline
+ * now says (actual, then estimated), falling back to the timetable. A live
+ * card that printed the scheduled 08:00 beside "45 min late" made the reader
+ * do the sum; the row should just say 08:45. */
+export function liveTimes(s: {
+  scheduledDeparture: string;
+  scheduledArrival: string;
+  estimatedDeparture: string | null;
+  actualDeparture: string | null;
+  estimatedArrival: string | null;
+  actualArrival: string | null;
+}): { departure: string; arrival: string } {
+  return {
+    departure: s.actualDeparture ?? s.estimatedDeparture ?? s.scheduledDeparture,
+    arrival: s.actualArrival ?? s.estimatedArrival ?? s.scheduledArrival,
+  };
+}

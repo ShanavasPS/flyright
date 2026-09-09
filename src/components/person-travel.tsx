@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { RouteAtlas } from '@/components/route-atlas';
+import { RouteLeg } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { TripRow } from '@/components/trip-row';
@@ -8,7 +9,9 @@ import { mapColors } from '@/components/world-map';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { flightCountdown } from '@/services/flight-countdown';
 import type { RouteSource } from '@/services/geo';
+import { liveTimes } from '@/services/public-session';
 import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
 
 /** Tall enough to read a long-haul arc, short enough that the trips below
@@ -25,16 +28,24 @@ export type PersonTrip = {
   scheduledArrival: string;
 };
 
+/** The live session as a follower is shown it — the public whitelist's
+ * fields the card and the countdown read. */
+export type LiveSessionView = {
+  fromCode: string;
+  toCode: string;
+  scheduledDeparture: string;
+  scheduledArrival: string;
+  estimatedDeparture: string | null;
+  actualDeparture: string | null;
+  estimatedArrival: string | null;
+  actualArrival: string | null;
+  currentStage: string | null;
+  delayMinutes: number | null;
+  gate: string | null;
+};
+
 export type PersonTravelData = {
-  live: {
-    session: {
-      fromCode: string;
-      toCode: string;
-      currentStage: string | null;
-      delayMinutes: number | null;
-      gate: string | null;
-    };
-  } | null;
+  live: { session: LiveSessionView } | null;
   liveJourneyId: string | null;
   upcoming: PersonTrip[];
   past: PersonTrip[];
@@ -86,9 +97,9 @@ export function PersonTravel({
   dimFor?: (journeyId: string) => boolean;
   afterUpcoming?: React.ReactNode;
 }) {
-  const theme = useTheme();
   const { sea } = mapColors(useColorScheme() === 'dark');
   const routes = routesOf(p);
+  const { liveJourneyId } = p;
   const trip = (t: PersonTrip) => (
     <Pressable
       key={t.journeyId}
@@ -127,33 +138,11 @@ export function PersonTravel({
       )}
 
       {p.live && (
-        <Pressable
-          accessibilityRole="button"
-          disabled={!onOpenTrip || !p.liveJourneyId}
-          onPress={() => (p.liveJourneyId ? onOpenTrip?.(p.liveJourneyId) : undefined)}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <SheenCard style={styles.liveCard}>
-            <View style={styles.liveHeader}>
-              <View style={[styles.dot, { backgroundColor: theme.tint }]} />
-              <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                TRAVELLING NOW
-              </ThemedText>
-            </View>
-            <ThemedText type="subtitle" themeColor="heading">
-              {p.live.session.fromCode} → {p.live.session.toCode}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {p.live.session.currentStage
-                ? STAGE_LABELS[p.live.session.currentStage as TravelStage]
-                : 'Getting ready'}
-              {p.live.session.delayMinutes != null && p.live.session.delayMinutes >= 30
-                ? ` · ${p.live.session.delayMinutes} min late`
-                : p.live.session.gate
-                  ? ` · Gate ${p.live.session.gate}`
-                  : ''}
-            </ThemedText>
-          </SheenCard>
-        </Pressable>
+        <LiveNow
+          session={p.live.session}
+          now={now}
+          onPress={liveJourneyId && onOpenTrip ? () => onOpenTrip(liveJourneyId) : undefined}
+        />
       )}
 
       <Section label="Upcoming" />
@@ -178,6 +167,60 @@ export function PersonTravel({
         </>
       )}
     </>
+  );
+}
+
+/** The trip in flight, as a follower reads it: the stage, then the leg with
+ * the clocks the airline now says, and how long until it leaves or lands. */
+function LiveNow({
+  session,
+  now,
+  onPress,
+}: {
+  session: LiveSessionView;
+  now: Date;
+  onPress?: () => void;
+}) {
+  const theme = useTheme();
+  const times = liveTimes(session);
+  const timer = flightCountdown(times, now);
+  const stage = session.currentStage
+    ? STAGE_LABELS[session.currentStage as TravelStage]
+    : 'Getting ready';
+  const detail =
+    session.delayMinutes != null && session.delayMinutes >= 30
+      ? ` · ${session.delayMinutes} min late`
+      : session.gate
+        ? ` · Gate ${session.gate}`
+        : '';
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => pressed && styles.pressed}>
+      <SheenCard style={styles.liveCard}>
+        <View style={styles.liveHeader}>
+          <View style={[styles.dot, { backgroundColor: theme.tint }]} />
+          <ThemedText type="smallBold" style={[styles.liveLabel, { color: theme.tint }]}>
+            TRAVELLING NOW
+          </ThemedText>
+          {/* "Departs in 2h 15m", then "Lands in 45m" — the header's right
+              slot, where the journal's rows keep their countdown too. */}
+          {timer && (
+            <ThemedText type="smallBold" themeColor="heading">
+              {timer}
+            </ThemedText>
+          )}
+        </View>
+        <ThemedText type="small" themeColor="textSecondary">
+          {stage}
+          {detail}
+        </ThemedText>
+        <RouteLeg leg={{ fromCode: session.fromCode, toCode: session.toCode, ...times }} />
+      </SheenCard>
+    </Pressable>
   );
 }
 
@@ -220,6 +263,7 @@ const styles = StyleSheet.create({
   map: { height: PERSON_MAP_HEIGHT, borderRadius: Spacing.four, overflow: 'hidden' },
   liveCard: { gap: Spacing.half, padding: Spacing.three },
   liveHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  liveLabel: { flex: 1 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   pressed: { opacity: 0.6 },
   dimmed: { opacity: 0.45 },

@@ -25,6 +25,7 @@ import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
+import { RouteLeg, clocks } from '@/components/route-leg';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -37,12 +38,15 @@ import {
   WHITE_FAINT,
 } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
 import { useProLocked } from '@/services/purchases';
+import { flightCountdown } from '@/services/flight-countdown';
+import { liveTimes } from '@/services/public-session';
 import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
 
 type CircleList = NonNullable<ReturnType<typeof useQuery<typeof api.circle.list>>>;
@@ -567,6 +571,7 @@ function CircleHero({
 function FollowingRow({ person }: { person: Following }) {
   const theme = useTheme();
   const router = useRouter();
+  const now = useNow();
   const proLocked = useProLocked();
   const shareBack = useMutation(api.circle.shareBack);
   const [busy, setBusy] = useState(false);
@@ -600,6 +605,11 @@ function FollowingRow({ person }: { person: Following }) {
     let status = stage ? STAGE_LABELS[stage] : 'Getting ready';
     if (delayed) status += ` · ${s.delayMinutes} min late`;
     else if (s.gate) status += ` · Gate ${s.gate}`;
+    // The clocks the airline now says, under each code — the pass shows the
+    // leg and the leg is when as much as where.
+    const times = liveTimes(s);
+    const when = clocks({ fromCode: s.fromCode, toCode: s.toCode, ...times });
+    const timer = flightCountdown(times, now);
     return (
       <Pressable
         accessibilityRole="button"
@@ -616,10 +626,22 @@ function FollowingRow({ person }: { person: Following }) {
                 {status}
               </Text>
             </View>
-            <LivePill />
+            <View style={styles.liveAside}>
+              <LivePill />
+              {/* "Departs in 1h 10m", then "Lands in 45m" — under the pill,
+                  the corner a follower's eye goes to for how long. */}
+              {timer && (
+                <Text style={styles.liveTimer} numberOfLines={1}>
+                  {timer}
+                </Text>
+              )}
+            </View>
           </View>
           <View style={styles.liveRoute}>
-            <Text style={styles.liveCode}>{s.fromCode}</Text>
+            <View>
+              <Text style={styles.liveCode}>{s.fromCode}</Text>
+              <Text style={styles.liveClock}>{when.dep ?? ' '}</Text>
+            </View>
             <View style={styles.liveContrail}>
               <View style={styles.liveEndDot} />
               <View style={styles.liveDots}>
@@ -640,7 +662,10 @@ function FollowingRow({ person }: { person: Following }) {
               </View>
               <View style={styles.liveEndDot} />
             </View>
-            <Text style={[styles.liveCode, styles.liveCodeRight]}>{s.toCode}</Text>
+            <View>
+              <Text style={[styles.liveCode, styles.liveCodeRight]}>{s.toCode}</Text>
+              <Text style={[styles.liveClock, styles.liveCodeRight]}>{when.arr ?? ' '}</Text>
+            </View>
             <View style={styles.liveLogo}>
               <AirlineLogo number={s.number} carrier={s.carrier} size={28} />
             </View>
@@ -651,6 +676,12 @@ function FollowingRow({ person }: { person: Following }) {
   }
 
   const next = person.next;
+  const nextTimer = next
+    ? flightCountdown(
+        { departure: next.scheduledDeparture, arrival: next.scheduledArrival },
+        now,
+      )
+    : null;
   return (
     <Pressable
       accessibilityRole="button"
@@ -663,10 +694,21 @@ function FollowingRow({ person }: { person: Following }) {
             {person.name}
           </ThemedText>
           {next ? (
-            <ThemedText type="small" numberOfLines={1} style={{ color: theme.tint }}>
-              {next.fromCode} → {next.toCode} ·{' '}
-              {formatDayLabel(next.scheduledDeparture, airportZone(next.fromCode))}
-            </ThemedText>
+            <>
+              <ThemedText type="small" numberOfLines={1} style={{ color: theme.tint }}>
+                {formatDayLabel(next.scheduledDeparture, airportZone(next.fromCode))}
+                {nextTimer ? ` · ${nextTimer}` : ''}
+              </ThemedText>
+              <RouteLeg
+                compact
+                leg={{
+                  fromCode: next.fromCode,
+                  toCode: next.toCode,
+                  departure: next.scheduledDeparture,
+                  arrival: next.scheduledArrival,
+                }}
+              />
+            </>
           ) : (
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
               No upcoming trips
@@ -1213,6 +1255,22 @@ const styles = StyleSheet.create({
   },
   liveCodeRight: {
     textAlign: 'right',
+  },
+  liveAside: {
+    alignItems: 'flex-end',
+    gap: Spacing.one,
+  },
+  liveTimer: {
+    color: WHITE_DIM,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: 600,
+  },
+  liveClock: {
+    color: WHITE_DIM,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 600,
   },
   liveContrail: {
     flex: 1,
