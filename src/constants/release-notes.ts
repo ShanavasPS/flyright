@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.29',
+    date: '2026-09-09',
+    notes: [
+      'Following someone now shows where their flight is: the plane rides the route, and the card counts down to departure, then to landing, then says when they landed.',
+      'Connecting flights read as one journey — the layover between legs, and once a leg lands, the next one takes over with a countdown to its departure.',
+      'Followers see the clocks the airline now says, the timetable struck through where it moved, and the landing time in their own time zone.',
+      'A gold crown marks FlyRight Pro members on their photo.',
+      'Flight times you typed in are shown exactly as printed wherever you are — they no longer shift when your phone changes time zone mid-trip.',
+      'Importing a receipt no longer drops a leg when the airline data is busy; every leg gets live tracking.',
+    ],
+  },
+  {
     version: '1.0.28',
     date: '2026-09-08',
     notes: [
