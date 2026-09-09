@@ -8,6 +8,7 @@
 
 import { getClerkInstance } from '@clerk/expo';
 import { Platform } from 'react-native';
+import { LOOKUP_GAP_MS, createSerialQueue } from '@/services/lookup-queue';
 
 export interface FlightStatus {
   flight: string;
@@ -102,6 +103,8 @@ export function normalizeFlightNumber(input: string): string | null {
   return FLIGHT_NUMBER.test(compact) ? compact : null;
 }
 
+const lookupQueue = createSerialQueue(LOOKUP_GAP_MS);
+
 export async function lookupFlight(
   flight: string,
   date: string,
@@ -120,9 +123,13 @@ export async function lookupFlight(
     // per-address budget, not the header, is what limits abuse.
     headers['X-FlyRight-Web'] = '1';
   }
-  const response = await fetch(
-    `/api/flight-status?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}${inbound}`,
-    Object.keys(headers).length ? { headers } : undefined,
+  // Through the queue: one provider call at a time, a breath apart, whoever
+  // asked — the import's legs, the flight watch, add-flight.
+  const response = await lookupQueue(() =>
+    fetch(
+      `/api/flight-status?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}${inbound}`,
+      Object.keys(headers).length ? { headers } : undefined,
+    ),
   );
 
   if (!response.ok) {

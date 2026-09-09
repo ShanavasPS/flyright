@@ -1,3 +1,4 @@
+import { instantWith } from '../../convex/itineraryShared';
 import type { PublicSession } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
@@ -177,3 +178,33 @@ export function spanLabel(ms: number): string {
   }
   return `${Math.round(ms / 86_400_000)}d`;
 }
+
+/** How long a landed trip stays at the top of a follower's home screen. Long
+ * enough to see the belt and know they are through, short enough that
+ * yesterday's flight is not the first thing on today's screen. The People
+ * tab keeps the pass until the session closes (48h), which is where you go
+ * to look somebody up. */
+export const HOME_AFTER_LANDING_MS = 2 * 60 * 60_000;
+
+/** Whether a followed live trip still belongs on the home screen: always
+ * until it lands, then for HOME_AFTER_LANDING_MS past the landing stamp
+ * (the stage time the traveller's device or the poller recorded, else the
+ * airline's actual arrival). */
+export function onHomeScreen(
+  s: Pick<PublicSession, 'currentStage' | 'stageTimes' | 'actualArrival'>,
+  now: Date,
+  /** Connecting legs still to leave keep the journey on the home screen:
+   * the row simply becomes the next leg. */
+  onward: { scheduledDeparture: string; fromCode: string }[] = [],
+): boolean {
+  if (s.currentStage !== 'landed') return true;
+  const instant = instantWith(airportZone);
+  if (onward.some((leg) => instant(leg.scheduledDeparture, leg.fromCode) > now.getTime())) return true;
+  const landedAt = Date.parse(s.stageTimes?.landed ?? s.actualArrival ?? '');
+  if (Number.isNaN(landedAt)) return true;
+  return now.getTime() - landedAt < HOME_AFTER_LANDING_MS;
+}
+
+/** "Sam is flying" / "Sam has landed" — the eyebrow over a follower's trip. */
+export const travellerEyebrow = (name: string, s: Pick<PublicSession, 'currentStage'>): string =>
+  s.currentStage === 'landed' ? `${name} has landed` : `${name} is flying`;

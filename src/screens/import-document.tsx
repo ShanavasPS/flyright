@@ -28,12 +28,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
-import {
-  flightDay,
-  formatDayLabel,
-  formatTime,
-  localDateString,
-} from '@/services/dates';
+import { flightDay, formatDayLabel, formatTime, localDateString, zonedTimestamp } from '@/services/dates';
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
@@ -215,6 +210,11 @@ export function ImportDocument() {
   // Live lookups are per-account; signed out, every leg is saved from the
   // document alone and the header says how to get tracking.
   const lookupAllowed = !!isSignedIn;
+  // The legs are looked up together, but lookupFlight itself queues calls
+  // one at a time (see services/lookup-queue): a four-leg receipt used to
+  // fire four provider calls in the same instant, the provider's per-second
+  // limit refused some, and those legs were silently saved as journal
+  // entries with no live tracking — a real receipt lost two of four that way.
   const lookups = useQueries({
     queries: segments.map((s) => ({
       queryKey: ['flight-status', s.flight, s.date],
@@ -225,7 +225,12 @@ export function ImportDocument() {
         !!s.flight &&
         !!s.date &&
         withinLookupReach(s.date, today),
-      retry: false,
+      // A refusal at the provider's edge (rate, a hiccup) is worth one more
+      // try after a breath; "no such flight", "sign in" and a spent daily
+      // allowance are answers, not failures.
+      retry: (count: number, error: unknown) =>
+        count < 1 && error instanceof FlightLookupError && [502, 503].includes(error.status),
+      retryDelay: 1500,
     })),
   });
 
@@ -354,6 +359,12 @@ export function ImportDocument() {
         const arrivalDay =
           segment.arrivalDate ??
           (arrClock < depClock ? localDateString(new Date(`${segment.date}T12:00:00`), 1) : segment.date);
+        // The printed clocks pinned to their airports, the same rule the
+        // lookup rows follow (see legSchedule) — a journal leg is still a
+        // flight at a place, not a clock on the phone. Estimated or
+        // placeholder clocks stay bare, as the add-flight form keeps them.
+        const pinnedDep = segment.depTime ? zonedTimestamp(segment.date, depClock, airportZone(from.iata)) : null;
+        const pinnedArr = segment.arrTime ? zonedTimestamp(arrivalDay, arrClock, airportZone(to.iata)) : null;
         const carrier = operator ?? (segment.flight ? carrierFor(segment.flight) : null);
         await addJourney({
           id: `${segment.flight ?? 'TRIP'}-${from.iata}-${to.iata}-${segment.date}`,
@@ -368,8 +379,8 @@ export function ImportDocument() {
           toCode: to.iata,
           toCountry: to.country,
           distanceKm,
-          scheduledDeparture: `${segment.date}T${depClock}:00`,
-          scheduledArrival: `${arrivalDay}T${arrClock}:00`,
+          scheduledDeparture: pinnedDep ?? `${segment.date}T${depClock}:00`,
+          scheduledArrival: pinnedArr ?? `${arrivalDay}T${arrClock}:00`,
           ...details,
           createdAt: now,
         });

@@ -1,4 +1,4 @@
-import { followerStatus, liveTimes, movedClocks, spanLabel } from './public-session';
+import { followerStatus, liveTimes, movedClocks, onHomeScreen, spanLabel } from './public-session';
 
 const now = new Date('2026-09-09T05:00:00Z');
 const base = {
@@ -92,5 +92,27 @@ describe('movedClocks', () => {
     expect(movedClocks({ ...base, actualArrival: '2026-09-09T08:55:00Z' }).ticketedArrival).toBe(
       base.scheduledArrival,
     );
+  });
+});
+
+describe('onHomeScreen', () => {
+  const at = (iso: string) => new Date(iso);
+  it('keeps a trip on the home screen until it lands', () => {
+    expect(onHomeScreen({ currentStage: null, stageTimes: {}, actualArrival: null }, now)).toBe(true);
+    expect(onHomeScreen({ currentStage: 'departed', stageTimes: {}, actualArrival: null }, now)).toBe(true);
+  });
+  it('lets a landed trip go two hours after the landing stamp', () => {
+    const landed = { currentStage: 'landed', stageTimes: { landed: '2026-09-09T05:00:00Z' }, actualArrival: null };
+    expect(onHomeScreen(landed, at('2026-09-09T06:59:00Z'))).toBe(true);
+    expect(onHomeScreen(landed, at('2026-09-09T07:01:00Z'))).toBe(false);
+  });
+  it("falls back to the airline's actual arrival, and stays when neither is known", () => {
+    expect(
+      onHomeScreen(
+        { currentStage: 'landed', stageTimes: {}, actualArrival: '2026-09-09T05:00:00Z' },
+        at('2026-09-09T08:00:00Z'),
+      ),
+    ).toBe(false);
+    expect(onHomeScreen({ currentStage: 'landed', stageTimes: {}, actualArrival: null }, now)).toBe(true);
   });
 });

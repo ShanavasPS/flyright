@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { TripRow, timerLabel } from '@/components/trip-row';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
+import { LayoverMark } from '@/components/layover-mark';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
@@ -48,6 +49,7 @@ import {
   onboardingSeen,
   pushRemindDue,
 } from '@/services/onboarding';
+import { connectionBetween, connectionLabel, connectionsInto } from '@/services/connections';
 import { groupJourneys, travelStats } from '@/services/timeline';
 
 import { useFoldState } from '../../../modules/flyright-fold';
@@ -141,6 +143,7 @@ export function Journeys() {
     [journeys, heroId], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
+  const connections = useMemo(() => connectionsInto(journeys ?? []), [journeys]);
   const claimByJourney = useMemo(() => {
     const map = new Map<string, ClaimRow>();
     for (const row of claimRows ?? []) map.set(row.claims.journeyId, row.claims);
@@ -240,16 +243,24 @@ export function Journeys() {
                 {section.title}
               </ThemedText>
             )}
-            renderItem={({ item }) => (
-              <JourneyItem
-                row={item}
-                now={now}
-                claim={claimByJourney.get(item.id)}
-                owed={owedByJourney.get(item.id)}
-                onSelect={twoPane ? () => setSelectedId(item.id) : undefined}
-                selected={twoPane && detailId === item.id}
-              />
-            )}
+            renderItem={({ item, index, section }) => {
+              // Two legs of one itinerary sit next to each other; the joint
+              // between them says so, and how long the wait is.
+              const joint = connectionBetween(connections, section.data[index - 1], item);
+              return (
+                <>
+                  {joint && <LayoverMark label={connectionLabel(joint)} />}
+                  <JourneyItem
+                    row={item}
+                    now={now}
+                    claim={claimByJourney.get(item.id)}
+                    owed={owedByJourney.get(item.id)}
+                    onSelect={twoPane ? () => setSelectedId(item.id) : undefined}
+                    selected={twoPane && detailId === item.id}
+                  />
+                </>
+              );
+            }}
           />
         ) : (
           <ScrollView

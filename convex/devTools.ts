@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 
 import { internalMutation } from './_generated/server';
+import { armHeadsUp } from './liveHelpers';
 
 /**
  * Dev-only knobs, callable from the CLI alone (internal functions never
@@ -41,5 +42,70 @@ export const setPro = internalMutation({
     if (row) await ctx.db.patch(row._id, patch);
     else await ctx.db.insert('entitlements', { userId, ...patch });
     return { userId, proUntil };
+  },
+});
+
+/** Insert a journey for a seeded dev traveller — `npx convex run
+ * devTools:insertJourney '{"userId":"user_dev_sam","number":"BA283","fromCode":"LHR",...}'`
+ * — so connecting itineraries can be shown to a follower on the simulator
+ * without a second device adding trips. Dev only; never callable by a client. */
+export const insertJourney = internalMutation({
+  args: {
+    userId: v.string(),
+    carrier: v.string(),
+    carrierCountry: v.string(),
+    number: v.string(),
+    fromCode: v.string(),
+    fromCountry: v.string(),
+    toCode: v.string(),
+    toCountry: v.string(),
+    distanceKm: v.number(),
+    scheduledDeparture: v.string(),
+    scheduledArrival: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = new Date().toISOString();
+    const naturalKey = `${args.number}-${args.scheduledDeparture.slice(0, 10)}`;
+    const id = await ctx.db.insert('journeys', {
+      ...args,
+      naturalKey,
+      mode: 'flight',
+      ticketPriceAmount: null,
+      ticketPriceCurrency: null,
+      source: 'lookup',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    });
+    // What journeys.push does for a real trip: the T−24h heads-up, which for
+    // a same-day leg runs at once and opens the live session the follower
+    // surfaces read. Without it a seeded leg has no timeline to show.
+    const row = await ctx.db.get(id);
+    if (row) await armHeadsUp(ctx, row);
+    return { id, naturalKey };
+  },
+});
+
+/** Patch a dev journey — move a seeded connecting leg into the next hours so
+ * the "under way" block can be screenshotted. Dev only. */
+export const patchJourney = internalMutation({
+  args: { id: v.id('journeys'), patch: v.record(v.string(), v.any()) },
+  handler: async (ctx, { id, patch }) => {
+    await ctx.db.patch(id, { ...patch, updatedAt: new Date().toISOString() });
+    const row = await ctx.db.get(id);
+    if (row) await armHeadsUp(ctx, row);
+    return row;
+  },
+});
+
+/** Arm (or re-arm) the heads-up for a journey — opens its live session at
+ * once when departure is within a day. Dev only. */
+export const armJourney = internalMutation({
+  args: { id: v.id('journeys') },
+  handler: async (ctx, { id }) => {
+    const row = await ctx.db.get(id);
+    if (!row) throw new Error('No such journey');
+    await armHeadsUp(ctx, row);
+    return await ctx.db.get(id);
   },
 });

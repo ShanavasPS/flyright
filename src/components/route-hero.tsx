@@ -6,7 +6,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
-import { countdown } from '@/services/dates';
+import { flightInstant } from '@/services/dates';
+import { spanLabel } from '@/services/public-session';
 import { blockMinutes } from '@/services/timeline';
 
 /** The least a hero needs to draw a leg. Deliberately narrower than the
@@ -70,13 +71,16 @@ function flightLabel(journey: HeroJourney): string {
 }
 
 /** The date chip's relative reading: a countdown before departure, "Flown"
- * after. */
+ * after. Inside two days it counts the way the cards do — "In 2h 23m", not
+ * "In 2 hours" — so the trip page and the row that opened it agree. */
 function dateChipLabel(departure: string, now: Date, zone: string | null): string {
-  const timer = countdown(departure, now, zone);
-  if (timer.unit === 'now') return 'Boarding soon';
-  if (timer.unit.endsWith('ago')) return 'Flown';
-  if (timer.unit === 'hours') return `In ${timer.value} hour${timer.value === 1 ? '' : 's'}`;
-  return timer.value === 1 ? 'Tomorrow' : `In ${timer.value} days`;
+  const ms = flightInstant(departure, zone) - now.getTime();
+  if (Number.isNaN(ms)) return '';
+  if (ms < 0) return 'Flown';
+  if (ms < 60_000) return 'Departing now';
+  if (ms < 48 * 3_600_000) return `In ${spanLabel(ms)}`;
+  const days = Math.round(ms / 86_400_000);
+  return days === 1 ? 'Tomorrow' : `In ${days} days`;
 }
 
 /** The trip at a glance, the boarding-pass row the journeys list uses but on

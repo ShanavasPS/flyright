@@ -49,6 +49,9 @@ export function TripRow({
   now,
   badge,
   selected,
+  eyebrow,
+  eyebrowTone = 'tint',
+  progress,
 }: {
   trip: RowTrip;
   now: Date;
@@ -57,8 +60,22 @@ export function TripRow({
   badge?: React.ReactNode;
   /** Two-pane mode: this is the row the detail pane is showing. */
   selected?: boolean;
+  /** A headline over the row in the live card's own voice — bold, upper-case,
+   * with the dot: "DEPARTS IN 2H 35M" on the leg that continues a journey
+   * under way. Replaces the meta line's countdown, which would say the same
+   * thing smaller. */
+  eyebrow?: string;
+  /** The headline's colour carries the focus: `tint` when this leg is the one
+   * to watch (the previous leg has landed), `heading` while an earlier leg is
+   * still the live one. */
+  eyebrowTone?: 'tint' | 'heading';
+  /** Where the flight is along the route, 0–1 — the plane waits at the
+   * origin, then rides the line. Omitted, the plane sits mid-line as the
+   * journal has always drawn it. */
+  progress?: number;
 }) {
   const theme = useTheme();
+  const eyebrowColor = eyebrowTone === 'heading' ? theme.heading : theme.tint;
   const departureZone = airportZone(trip.fromCode);
   const departs = flightInstant(trip.scheduledDeparture, departureZone);
   const old = now.getTime() - departs > YEAR_MS;
@@ -68,6 +85,14 @@ export function TripRow({
     <SheenCard style={[styles.card, selected && { borderWidth: 1, borderColor: theme.tint }]}>
       <AirlineLogo number={trip.number} carrier={trip.carrier} />
       <View style={styles.body}>
+        {eyebrow && (
+          <View style={styles.eyebrowRow}>
+            <View style={[styles.eyebrowDot, { backgroundColor: eyebrowColor }]} />
+            <ThemedText type="smallBold" style={{ color: eyebrowColor }} numberOfLines={1}>
+              {eyebrow.toUpperCase()}
+            </ThemedText>
+          </View>
+        )}
         {/* Countdown sits on the meta line's right (Flighty's date slot) so
             the title and schedule lines get the full card width below.
             Date leads so a long carrier name truncates, never the date;
@@ -85,7 +110,8 @@ export function TripRow({
             {trip.number || trip.carrier}
           </ThemedText>
           {badge ??
-            (!old && (
+            (!old &&
+              !eyebrow && (
               <ThemedText
                 type={upcoming ? 'smallBold' : 'small'}
                 themeColor={upcoming ? 'heading' : 'textSecondary'}>
@@ -94,6 +120,7 @@ export function TripRow({
             ))}
         </View>
         <RouteLeg
+          progress={progress}
           leg={{
             fromCode: trip.fromCode,
             toCode: trip.toCode,
@@ -141,6 +168,13 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   body: { flex: 1, gap: Spacing.half },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginBottom: Spacing.half,
+  },
+  eyebrowDot: { width: 8, height: 8, borderRadius: 4 },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',

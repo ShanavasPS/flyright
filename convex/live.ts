@@ -13,7 +13,9 @@ import {
   journeyForKey,
   travelerName,
 } from './liveHelpers';
-import { stageIndex, NOTIFY_STAGES, toPublicSession, tripIsOver } from './liveShared';
+import { personCard } from './circle';
+import { onwardLegs } from './itinerary';
+import { preferredSession, stageIndex, NOTIFY_STAGES, toPublicSession, tripIsOver } from './liveShared';
 
 /** Travel-day live sessions: the traveler's device is the only writer of
  * stage state; followers and the public token page read reactively. All
@@ -338,12 +340,36 @@ export const following = query({
       .query('follows')
       .withIndex('by_follower', (q) => q.eq('followerId', identity.subject))
       .collect();
-    const out = [];
+    // One row per traveller: mid-connection they hold two active sessions,
+    // and the leg still travelling is the one the home screen shows.
+    const byOwner = new Map<string, { rowId: typeof rows[number]['sessionId']; session: NonNullable<Awaited<ReturnType<typeof ctx.db.get<'liveSessions'>>>> }[]>();
     for (const row of rows) {
       const session = await ctx.db.get(row.sessionId);
       if (!session || session.status !== 'active') continue;
+      const list = byOwner.get(session.userId) ?? [];
+      list.push({ rowId: row.sessionId, session });
+      byOwner.set(session.userId, list);
+    }
+    const out = [];
+    for (const candidates of byOwner.values()) {
+      const chosen = preferredSession(candidates.map((c) => c.session));
+      const row = candidates.find((c) => c.session === chosen)!;
+      const session = row.session;
+      // Close-circle-only legs of the itinerary show only to a close member,
+      // the same rule the person page applies to the trip list.
+      const seat = await ctx.db
+        .query('circle')
+        .withIndex('by_owner_member', (q) =>
+          q.eq('ownerId', session.userId).eq('memberId', identity.subject),
+        )
+        .unique();
+      // The traveller as the People tab shows them — name, photo, Pro — so
+      // the home screen can draw the very same pass.
+      const owner = await personCard(ctx, session.userId);
       out.push({
-        sessionId: row.sessionId,
+        sessionId: row.rowId,
+        ownerId: session.userId,
+        owner,
         // Followers already hold the token (they followed through it), so
         // returning the current one just routes them back to the live page.
         token: session.shareToken,
@@ -352,6 +378,7 @@ export const following = query({
           await travelerName(ctx, session.userId),
           await followerCount(ctx, session._id),
         ),
+        onward: await onwardLegs(ctx, session.userId, session, !!seat?.close),
       });
     }
     return out;

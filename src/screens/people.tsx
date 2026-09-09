@@ -24,13 +24,13 @@ import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
-import { Contrail, RouteLeg, clocks } from '@/components/route-leg';
+import { LivePass } from '@/components/live-pass';
+import { RouteLeg } from '@/components/route-leg';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
-  COBALT,
   MiniContrail,
   WHITE,
   WHITE_DIM,
@@ -44,7 +44,7 @@ import { trackEvent } from '@/services/analytics';
 import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
 import { useProLocked } from '@/services/purchases';
-import { followerStatus, liveTimes, sessionProgress, spanLabel } from '@/services/public-session';
+import { spanLabel } from '@/services/public-session';
 
 type CircleList = NonNullable<ReturnType<typeof useQuery<typeof api.circle.list>>>;
 type Following = CircleList['following'][number];
@@ -115,7 +115,6 @@ function followersItems(data: CircleList, locked: boolean): Item[] {
 // The navy the hero avatars are ringed in — the pass card's own surface, so
 // overlapping faces cut cleanly into each other.
 const NAVY = '#0C1B36';
-const LIVE_GREEN = '#2FD68C';
 
 /** The one way into someone's circle: the add-person sheet, which searches
  * FlyRight for people who already have it and falls back to the share link
@@ -596,70 +595,14 @@ function FollowingRow({ person }: { person: Following }) {
 
   const live = person.live;
   if (live) {
-    const s = live.session;
-    const delayed = s.delayMinutes != null && s.delayMinutes >= 30;
-    // The clocks the airline now says, under each code — the pass shows the
-    // leg and the leg is when as much as where — and the plane where the
-    // flight is, the traveller's own progress over the same facts.
-    const times = liveTimes(s);
-    const when = clocks({ fromCode: s.fromCode, toCode: s.toCode, ...times });
-    const { headline, detail } = followerStatus(s, now);
-    const progress = sessionProgress(s, now);
     return (
-      <Pressable
-        accessibilityRole="button"
+      <LivePass
+        person={person}
+        session={live.session}
+        onward={live.onward ?? []}
+        now={now}
         onPress={actions}
-        style={({ pressed }) => pressed && styles.pressed}>
-        <PassCard style={styles.livePass}>
-          <View style={styles.row}>
-            <Avatar
-              name={person.name}
-              imageUrl={person.imageUrl}
-              size={44}
-              ring={LIVE_GREEN}
-              pro={person.pro}
-              badgeBorder={NAVY}
-            />
-            <View style={styles.rowBody}>
-              <Text style={styles.liveName} numberOfLines={1}>
-                {person.name}
-              </Text>
-              {/* The headline — "Departs in 1h 10m", "Lands in 45m", "Landed
-                  8:55" — is the line a follower is here for, so it takes the
-                  bold slot under the name, amber once the flight is late;
-                  what is happening around it reads quietly beneath. */}
-              <Text style={[styles.liveStatus, delayed && styles.liveDelayed]} numberOfLines={1}>
-                {headline}
-              </Text>
-              {detail && (
-                <Text style={styles.liveDetail} numberOfLines={1}>
-                  {detail}
-                </Text>
-              )}
-            </View>
-            <LivePill />
-          </View>
-          <View style={styles.liveRoute}>
-            <View>
-              <Text style={styles.liveCode}>{s.fromCode}</Text>
-              <Text style={styles.liveClock}>{when.dep ?? ' '}</Text>
-            </View>
-            <Contrail
-              progress={progress}
-              tint={delayed ? '#F2B441' : COBALT}
-              dotColor={WHITE_DIM}
-              style={styles.liveContrail}
-            />
-            <View>
-              <Text style={[styles.liveCode, styles.liveCodeRight]}>{s.toCode}</Text>
-              <Text style={[styles.liveClock, styles.liveCodeRight]}>{when.arr ?? ' '}</Text>
-            </View>
-            <View style={styles.liveLogo}>
-              <AirlineLogo number={s.number} carrier={s.carrier} size={28} />
-            </View>
-          </View>
-        </PassCard>
-      </Pressable>
+      />
     );
   }
 
@@ -673,53 +616,60 @@ function FollowingRow({ person }: { person: Following }) {
       accessibilityRole="button"
       onPress={actions}
       style={({ pressed }) => pressed && styles.pressed}>
-      <SheenCard style={styles.rowCard}>
-        <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
-        <View style={styles.rowBody}>
-          <ThemedText themeColor="heading" numberOfLines={1}>
-            {person.name}
-          </ThemedText>
-          {next ? (
-            <>
-              <ThemedText type="small" numberOfLines={1} style={{ color: theme.tint }}>
+      <SheenCard style={styles.nextCard}>
+        <View style={styles.row}>
+          <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
+          <View style={styles.rowBody}>
+            <ThemedText themeColor="heading" numberOfLines={1}>
+              {person.name}
+            </ThemedText>
+            {next ? (
+              <ThemedText type="small" numberOfLines={2} style={{ color: theme.tint }}>
                 {formatDayLabel(next.scheduledDeparture, airportZone(next.fromCode))}
                 {nextTimer ? ` · ${nextTimer}` : ''}
               </ThemedText>
-              <RouteLeg
-                compact
-                leg={{
-                  fromCode: next.fromCode,
-                  toCode: next.toCode,
-                  departure: next.scheduledDeparture,
-                  arrival: next.scheduledArrival,
-                }}
-              />
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                No upcoming trips
+              </ThemedText>
+            )}
+          </View>
+          {person.followsMe ? (
+            <>
+              {next && <AirlineLogo number={next.number} carrier={next.carrier} size={32} />}
+              {person.muted && (
+                <SymbolView
+                  name={{ ios: 'bell.slash', android: 'notifications_off', web: 'notifications_off' }}
+                  size={16}
+                  tintColor={theme.textSecondary}
+                />
+              )}
             </>
           ) : (
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              No upcoming trips
-            </ThemedText>
+            <RowChip
+              label="Share back"
+              accessibilityLabel={`Share your trips with ${person.name}`}
+              testID="share-back"
+              busy={busy}
+              onPress={() => void onShareBack()}
+            />
           )}
         </View>
-        {person.followsMe ? (
-          <>
-            {next && <AirlineLogo number={next.number} carrier={next.carrier} size={32} />}
-            {person.muted && (
-              <SymbolView
-                name={{ ios: 'bell.slash', android: 'notifications_off', web: 'notifications_off' }}
-                size={16}
-                tintColor={theme.textSecondary}
-              />
-            )}
-          </>
-        ) : (
-          <RowChip
-            label="Share back"
-            accessibilityLabel={`Share your trips with ${person.name}`}
-            testID="share-back"
-            busy={busy}
-            onPress={() => void onShareBack()}
-          />
+        {/* The first leg only, on its own line under the header. The row is
+            a glance at when they next fly; connections and layovers belong
+            on the person's page, where there is room to lay the journey out. */}
+        {next && (
+          <View style={styles.nextLeg}>
+            <RouteLeg
+              compact
+              leg={{
+                fromCode: next.fromCode,
+                toCode: next.toCode,
+                departure: next.scheduledDeparture,
+                arrival: next.scheduledArrival,
+              }}
+            />
+          </View>
         )}
       </SheenCard>
     </Pressable>
@@ -727,14 +677,6 @@ function FollowingRow({ person }: { person: Following }) {
 }
 
 /** Pulsing-dot "LIVE" chip on the night-sky pass. */
-function LivePill() {
-  return (
-    <View style={styles.livePill}>
-      <View style={styles.livePillDot} />
-      <Text style={styles.livePillText}>Live</Text>
-    </View>
-  );
-}
 
 /** Someone following my trips — the Find My "who can see me" list. When I
  * don't follow them back the row says so with the ask itself: "Follow back"
@@ -1181,85 +1123,18 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
   },
+  nextCard: {
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Spacing.four,
+  },
+  // Avatar 44 + the row gap: the leg lines up with the name above it.
+  nextLeg: {
+    paddingLeft: 44 + Spacing.three,
+  },
   inviteRow: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
-  },
-  livePass: {
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  liveName: {
-    color: WHITE,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: 700,
-  },
-  liveStatus: {
-    color: COBALT,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: 700,
-  },
-  liveDetail: {
-    color: WHITE_DIM,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: 500,
-  },
-  liveDelayed: {
-    color: '#F2B441',
-  },
-  livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one + 2,
-    paddingHorizontal: Spacing.two + 2,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.three,
-    backgroundColor: 'rgba(47,214,140,0.16)',
-  },
-  livePillDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: LIVE_GREEN,
-  },
-  livePillText: {
-    color: LIVE_GREEN,
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  liveRoute: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  liveCode: {
-    color: WHITE,
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: 700,
-    letterSpacing: 1,
-  },
-  liveCodeRight: {
-    textAlign: 'right',
-  },
-  liveClock: {
-    color: WHITE_DIM,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: 600,
-  },
-  liveContrail: {
-    flex: 1,
-    alignSelf: 'auto',
-  },
-  liveLogo: {
-    marginLeft: Spacing.two,
   },
   tabNote: {
     flex: 1,

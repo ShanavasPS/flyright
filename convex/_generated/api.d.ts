@@ -20,6 +20,8 @@ import type * as entitlements from "../entitlements.js";
 import type * as flightData from "../flightData.js";
 import type * as flightNormalize from "../flightNormalize.js";
 import type * as http from "../http.js";
+import type * as itinerary from "../itinerary.js";
+import type * as itineraryShared from "../itineraryShared.js";
 import type * as journeys from "../journeys.js";
 import type * as live from "../live.js";
 import type * as liveHelpers from "../liveHelpers.js";
@@ -55,6 +57,8 @@ declare const fullApi: ApiFromModules<{
   flightData: typeof flightData;
   flightNormalize: typeof flightNormalize;
   http: typeof http;
+  itinerary: typeof itinerary;
+  itineraryShared: typeof itineraryShared;
   journeys: typeof journeys;
   live: typeof live;
   liveHelpers: typeof liveHelpers;

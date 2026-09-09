@@ -81,6 +81,22 @@ describe('groupJourneys', () => {
     expect(groupJourneys([boundary], NOW)[0]!.title).toBe('Upcoming');
   });
 
+  it('files a connecting itinerary as one trip, ahead until its last leg departs', () => {
+    // HEL→LHR landed this morning; LHR→JFK leaves in two hours: still one
+    // upcoming trip, legs in flying order.
+    const first = row({ fromCode: 'HEL', toCode: 'LHR', scheduledDeparture: '2026-08-17T05:55:00Z', scheduledArrival: '2026-08-17T07:55:00Z' });
+    const second = row({ fromCode: 'LHR', toCode: 'JFK', scheduledDeparture: '2026-08-17T14:00:00Z', scheduledArrival: '2026-08-17T22:00:00Z' });
+    const other = row({ fromCode: 'HEL', toCode: 'FRA', scheduledDeparture: '2026-08-10T08:00:00Z', scheduledArrival: '2026-08-10T10:35:00Z' });
+    const ahead = groupJourneys([second, other, first], NOW);
+    expect(ahead.map((s) => s.title)).toEqual(['Upcoming', '2026']);
+    expect(ahead[0]!.data.map((r) => r.id)).toEqual([first.id, second.id]);
+    // Once the last leg has gone, the whole trip files under Flown, still in
+    // flying order, above the older trip.
+    const flown = groupJourneys([second, other, first], new Date('2026-08-18T00:00:00Z'));
+    expect(flown.map((s) => s.title)).toEqual(['2026']);
+    expect(flown[0]!.data.map((r) => r.id)).toEqual([first.id, second.id, other.id]);
+  });
+
   it('splits mixed lists into Upcoming plus year sections', () => {
     const future = row({ scheduledDeparture: '2026-09-01T08:00:00Z' });
     const past = row({ scheduledDeparture: '2015-01-05T08:00:00Z' });

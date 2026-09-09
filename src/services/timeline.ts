@@ -1,5 +1,7 @@
 /** Pure grouping/stats helpers for the My travels timeline — UI-free, testable. */
 
+import { chainLegs, instantWith, itineraryPending } from '../../convex/itineraryShared';
+
 import { airportZone, getAirport } from '@/services/airports';
 import { pinToZone } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
@@ -10,29 +12,39 @@ export interface TimelineSection {
   data: JourneyRow[];
 }
 
+/** Stored times as instants, bare wall clocks pinned to their airports. */
+const instant = instantWith(airportZone);
+
 /** "Upcoming" (soonest first) followed by past years, newest year first.
- * Sorts internally, so callers can pass rows in any order. */
+ * Sorts internally, so callers can pass rows in any order.
+ *
+ * Filed by itinerary, not by leg: connecting legs (see itineraryShared) move
+ * together, in flying order, and a trip counts as upcoming until its LAST
+ * leg has departed — so a journey whose first leg has landed and second leg
+ * leaves in two hours is still one upcoming trip, not a flown flight above
+ * an upcoming one. A past itinerary files under the year of its first leg. */
 export function groupJourneys(rows: JourneyRow[], now: Date): TimelineSection[] {
   const cutoff = now.getTime();
-  const upcoming: JourneyRow[] = [];
-  const past: JourneyRow[] = [];
-  for (const row of rows) {
-    (Date.parse(row.scheduledDeparture) >= cutoff ? upcoming : past).push(row);
+  const start = (chain: JourneyRow[]) => instant(chain[0]!.scheduledDeparture, chain[0]!.fromCode);
+  const upcoming: JourneyRow[][] = [];
+  const past: JourneyRow[][] = [];
+  for (const chain of chainLegs(rows, instant)) {
+    (itineraryPending(chain, cutoff, instant) ? upcoming : past).push(chain);
   }
-  upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
-  past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
+  upcoming.sort((a, b) => start(a) - start(b));
+  past.sort((a, b) => start(b) - start(a));
 
   const sections: TimelineSection[] = [];
   if (upcoming.length) {
-    sections.push({ key: 'upcoming', title: 'Upcoming', data: upcoming });
+    sections.push({ key: 'upcoming', title: 'Upcoming', data: upcoming.flat() });
   }
-  for (const row of past) {
-    const year = row.scheduledDeparture.slice(0, 4);
+  for (const chain of past) {
+    const year = chain[0]!.scheduledDeparture.slice(0, 4);
     const current = sections[sections.length - 1];
     if (current && current.key === year) {
-      current.data.push(row);
+      current.data.push(...chain);
     } else {
-      sections.push({ key: year, title: year, data: [row] });
+      sections.push({ key: year, title: year, data: [...chain] });
     }
   }
   return sections;

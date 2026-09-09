@@ -15,9 +15,9 @@ import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { airportZone, getAirport } from '@/services/airports';
-import { formatTime, tripDateTitle } from '@/services/dates';
+import { flightInstant, formatTime, tripDateTitle } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
-import { adaptPublicSession } from '@/services/public-session';
+import { adaptPublicSession, travellerEyebrow } from '@/services/public-session';
 
 /**
  * One trip of somebody whose circle you're in — everything a follower may
@@ -89,7 +89,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             you came to be reading it. */}
         <View style={styles.heroBlock}>
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-            {session ? `${owner.name} is flying` : `${owner.name}'s trip`}
+            {session ? travellerEyebrow(owner.name, session) : `${owner.name}'s trip`}
           </ThemedText>
           <RouteHero
             journey={{
@@ -116,7 +116,12 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           {session
             ? `You'll get a nudge at every step until ${owner.name} lands.`
-            : `Live updates start the day before ${owner.name} flies. Only ${owner.name} can change this trip.`}
+            : flightInstant(trip.scheduledDeparture, airportZone(trip.fromCode)) - now.getTime() >
+                DAY_MS
+              ? `Live updates start the day before ${owner.name} flies. Only ${owner.name} can change this trip.`
+              : // Inside the last day there is no "day before" left to promise:
+                // the session opens with the traveller's travel day.
+                `Live updates appear here once ${owner.name}'s travel day begins. Only ${owner.name} can change this trip.`}
         </ThemedText>
       </>
     );
@@ -164,6 +169,8 @@ function legDistanceKm(fromCode: string, toCode: string): number | null {
   const to = getAirport(toCode);
   return from && to ? haversineKm(from.lat, from.lon, to.lat, to.lon) : null;
 }
+
+const DAY_MS = 24 * 60 * 60_000;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

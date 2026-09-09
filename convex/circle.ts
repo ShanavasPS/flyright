@@ -5,6 +5,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { CIRCLE_FULL, MAX_PENDING_REQUESTS, searchKey } from './circleShared';
 import { isPro } from './entitlements';
+import { onwardLegs } from './itinerary';
 import {
   armHeadsUpsForOwner,
   circleFull,
@@ -17,7 +18,7 @@ import {
   severCircle,
   syncCloseAccess,
 } from './liveHelpers';
-import { toPublicSession } from './liveShared';
+import { preferredSession, toPublicSession } from './liveShared';
 
 /** Find My-style circles: who follows my trips, whose trips I follow.
  * Invites are personal links (getflyright.com/i/<token>); accepting one adds
@@ -34,7 +35,7 @@ async function requireIdentity(ctx: MutationCtx | QueryCtx) {
  * the one fact about a member the badge on their avatar shows. The server
  * decides Pro from the RevenueCat webhook's entitlement row, never the
  * client, so a badge can't be minted by editing a profile. */
-async function personCard(ctx: QueryCtx | MutationCtx, userId: string) {
+export async function personCard(ctx: QueryCtx | MutationCtx, userId: string) {
   const profile = await profileFor(ctx, userId);
   return {
     userId,
@@ -355,13 +356,15 @@ async function liveFor(ctx: QueryCtx, me: string, ownerId: string) {
     .query('follows')
     .withIndex('by_follower', (q) => q.eq('followerId', me))
     .collect();
+  // Mid-connection the owner has two active sessions; the page leads with
+  // the one still travelling and lists the landed leg above it.
+  const active: Doc<'liveSessions'>[] = [];
   for (const f of follows) {
     if (f.ownerId !== ownerId) continue;
     const session = await ctx.db.get(f.sessionId);
-    if (!session || session.status !== 'active') continue;
-    return session;
+    if (session && session.status === 'active') active.push(session);
   }
-  return null;
+  return preferredSession(active);
 }
 
 /** The owner's travel as one member sees it: the trips they may open, the
@@ -423,13 +426,25 @@ async function travelOf(
   };
 }
 
-async function liveCard(ctx: QueryCtx, session: Doc<'liveSessions'> | null, name: string | null) {
+/** The live leg as a follower sees it, plus `onward`: the connecting legs
+ * that follow it in the owner's journal, so the follower knows the trip
+ * doesn't end where this flight lands. */
+async function liveCard(
+  ctx: QueryCtx,
+  session: Doc<'liveSessions'> | null,
+  name: string | null,
+  seesHidden: boolean,
+) {
   if (!session) return null;
   const follows = await ctx.db
     .query('follows')
     .withIndex('by_session', (q) => q.eq('sessionId', session._id))
     .collect();
-  return { token: session.shareToken, session: toPublicSession(session, name, follows.length) };
+  return {
+    token: session.shareToken,
+    session: toPublicSession(session, name, follows.length),
+    onward: await onwardLegs(ctx, session.userId, session, seesHidden),
+  };
 }
 
 /** PUBLIC (signed in) — one person in my circle, and what I may see of them.
@@ -480,7 +495,7 @@ export const person = query({
         since: theirs.createdAt,
         followsMeSince: mine?.createdAt ?? null,
         asked,
-        live: await liveCard(ctx, session, who.name),
+        live: await liveCard(ctx, session, who.name, !!theirs.close),
         ...travel,
       };
     }
@@ -548,7 +563,7 @@ export const previewMe = query({
       member,
       close: seesHidden,
       followers,
-      live: await liveCard(ctx, session, who.name),
+      live: await liveCard(ctx, session, who.name, seesHidden),
       ...(await travelOf(ctx, me, seesHidden, session)),
     };
   },
@@ -748,7 +763,14 @@ async function nextTrip(ctx: QueryCtx, ownerId: string, close: boolean, now: num
     .query('journeys')
     .withIndex('by_user', (q) => q.eq('userId', ownerId))
     .collect();
-  let next = null;
+  let next: {
+    carrier: string;
+    number: string;
+    fromCode: string;
+    toCode: string;
+    scheduledDeparture: string;
+    scheduledArrival: string;
+  } | null = null;
   for (const j of journeys) {
     if (j.deletedAt || (j.hiddenFromCircle && !close)) continue;
     const dep = Date.parse(j.scheduledDeparture);
@@ -764,7 +786,10 @@ async function nextTrip(ctx: QueryCtx, ownerId: string, close: boolean, now: num
       };
     }
   }
-  return next;
+  if (!next) return null;
+  // The legs that connect off it: the row can then say "COK → DOH → HEL,
+  // 2h 55m in Doha" instead of a first leg that stops short of the trip.
+  return { ...next, onward: await onwardLegs(ctx, ownerId, next, close) };
 }
 
 /** List order for a people tab: soonest upcoming departure first, then
@@ -804,11 +829,18 @@ export const list = query({
     for (const row of shares) {
       const owner = await personCard(ctx, row.ownerId);
 
-      let live = null;
+      // A traveller mid-connection has two active sessions: the leg that
+      // landed and the one about to leave. The row shows the one that
+      // still has travelling in it.
+      const active: Doc<'liveSessions'>[] = [];
       for (const f of myFollows) {
         if (f.ownerId !== row.ownerId) continue;
         const session = await ctx.db.get(f.sessionId);
-        if (!session || session.status !== 'active') continue;
+        if (session && session.status === 'active') active.push(session);
+      }
+      const session = preferredSession(active);
+      let live = null;
+      if (session) {
         const follows = await ctx.db
           .query('follows')
           .withIndex('by_session', (q) => q.eq('sessionId', session._id))
@@ -816,8 +848,8 @@ export const list = query({
         live = {
           token: session.shareToken,
           session: toPublicSession(session, owner.name, follows.length),
+          onward: await onwardLegs(ctx, row.ownerId, session, !!row.close),
         };
-        break;
       }
 
       const next = live ? null : await nextTrip(ctx, row.ownerId, !!row.close, now);

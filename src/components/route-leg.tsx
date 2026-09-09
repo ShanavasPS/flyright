@@ -1,5 +1,5 @@
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -44,11 +44,17 @@ export function RouteLeg({
   compact = false,
   progress,
   yourTime = false,
+  via = [],
 }: {
   leg: Leg;
   compact?: boolean;
   progress?: number;
   yourTime?: boolean;
+  /** Intermediate airports of a connecting itinerary, each with the layover
+   * spent there ("2h 55m"): the compact leg then reads COK ✈ DOH ✈ HEL with
+   * the wait under DOH. `leg` spans the whole trip — first origin to final
+   * destination, first departure to final arrival. */
+  via?: { code: string; layover: string | null }[];
 }) {
   const theme = useTheme();
   const { dep, arr } = clocks(leg);
@@ -65,7 +71,17 @@ export function RouteLeg({
   // distance stands in when the times can't be differenced — or were never
   // typed, which is when the codes alone are the whole line.
   const middle = compact ? null : (durationLabel(leg) ?? distanceLabel(leg) ?? ' ');
-  const spoken = [leg.fromCode, dep, 'to', leg.toCode, arr].filter(Boolean).join(' ');
+  const stops = compact ? via : [];
+  const spoken = [
+    leg.fromCode,
+    dep,
+    ...stops.flatMap((v) => ['via', v.code, v.layover ? `${v.layover} layover` : null]),
+    'to',
+    leg.toCode,
+    arr,
+  ]
+    .filter(Boolean)
+    .join(' ');
   const codeStyle = compact ? styles.codeCompact : styles.code;
   const clockStyle = compact ? styles.clockCompact : styles.clock;
 
@@ -93,9 +109,26 @@ export function RouteLeg({
             squeezes the contrail or truncates the live time. */}
         {depWas && <Was clock={depWas} />}
       </View>
+      {stops.map((stop) => (
+        <Fragment key={stop.code}>
+          <View style={[styles.contrail, styles.contrailCompact]}>
+            <Contrail tint={theme.tint} dotColor={theme.textSecondary} size={12} />
+          </View>
+          <View style={[styles.endpoint, styles.stop]}>
+            <ThemedText themeColor="heading" style={codeStyle} numberOfLines={1}>
+              {stop.code}
+            </ThemedText>
+            {stop.layover && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.layover} numberOfLines={1}>
+                {stop.layover}
+              </ThemedText>
+            )}
+          </View>
+        </Fragment>
+      ))}
       <View style={[styles.contrail, compact && styles.contrailCompact]}>
         <Contrail
-          progress={progress}
+          progress={stops.length ? undefined : progress}
           tint={theme.tint}
           dotColor={theme.textSecondary}
           size={compact ? 12 : 14}
@@ -293,6 +326,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: 700,
     letterSpacing: -0.2,
+    // A code never truncates to its first letter; the contrails give first.
+    flexShrink: 0,
   },
   city: {
     fontSize: 12,
@@ -307,6 +342,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: 500,
+  },
+  // An intermediate stop: the code centred over its layover.
+  stop: { alignItems: 'center' },
+  layover: {
+    fontSize: 11,
+    lineHeight: 16,
   },
   movedFrom: { textDecorationLine: 'line-through' },
   yourTime: { textAlign: 'right', marginTop: Spacing.half },
@@ -323,7 +364,7 @@ const styles = StyleSheet.create({
   // contrail takes the width between the codes, so a compact leg spans its
   // row edge to edge the way the journal's rows do beneath it.
   contrailCompact: {
-    minWidth: 40,
+    minWidth: 28,
     marginTop: 3,
   },
   contrailLine: {

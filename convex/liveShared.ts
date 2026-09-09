@@ -37,6 +37,21 @@ export const STAGE_PUSH_COPY: Record<string, (name: string, to: string) => strin
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 
+/** Of a traveller's active sessions, the one a follower should be shown:
+ * a leg still in the air or still to leave beats one that has landed (the
+ * landed leg of a connection stays active for two days while the next leg
+ * becomes the story), soonest departure first among equals. */
+export function preferredSession<T extends { currentStage: string | null; scheduledDeparture: string }>(
+  sessions: T[],
+): T | null {
+  const score = (s: T) => (s.currentStage === 'landed' ? 1 : 0);
+  return (
+    [...sessions].sort(
+      (a, b) => score(a) - score(b) || Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture),
+    )[0] ?? null
+  );
+}
+
 /** A session lives until 48 h past scheduled arrival; after that the trip is
  * history rather than a travel day. Both the expiry stamp and the "is this
  * still worth a session" check read this, so they can't drift apart. */
