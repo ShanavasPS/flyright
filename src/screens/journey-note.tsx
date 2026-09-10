@@ -1,10 +1,10 @@
 import { useAuth } from '@clerk/expo';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import {
   Alert,
+  Dimensions,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -30,7 +30,8 @@ export function JourneyNote() {
   const theme = useTheme();
   const { userId } = useAuth();
   const row = useJourney(journeyId ?? '', userId);
-  const androidPad = useAndroidKeyboardHeight();
+  const contentRef = useRef<View | null>(null);
+  const { pad: keyboardPad, onLayout: measureContent } = useKeyboardOverlap(contentRef);
 
   // Unset until the traveler types, so the stored note shows through as the
   // initial value once the row loads instead of flashing empty.
@@ -74,32 +75,35 @@ export function JourneyNote() {
           headerRight: () => <HeaderButton label="Save" bold disabled={!dirty} onPress={save} />,
         }}
       />
-      {/* iOS: KeyboardAvoidingView shrinks the editor above the keyboard.
-          Android 15 edge-to-edge: adjustResize is dead and KAV under-pads, so
-          the measured keyboard height pads the editor instead. */}
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 56 : 0}>
-        <View style={[styles.content, { paddingBottom: Spacing.four + androidPad }]}>
-          {tripLine ? (
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {tripLine}
-            </ThemedText>
-          ) : null}
-          <TextInput
-            autoFocus
-            multiline
-            scrollEnabled
-            value={value}
-            onChangeText={setDraft}
-            placeholder="How was the trip? Who you were with, where you sat, the food, what you'd do differently…"
-            placeholderTextColor={theme.textSecondary}
-            textAlignVertical="top"
-            style={[styles.editor, { color: theme.text }]}
-          />
-        </View>
-      </KeyboardAvoidingView>
+      {/* The editor shrinks to end exactly at the keyboard's top edge, by
+          measuring rather than trusting KeyboardAvoidingView: inside this
+          card modal KAV under-pads on iOS (the editor kept running under the
+          keyboard, so the caret vanished and typing "stopped"), and on
+          Android 15 edge-to-edge adjustResize is dead and KAV under-pads too.
+          With its bottom above the keyboard the text view scrolls to keep the
+          caret in view on its own. */}
+      <View
+        ref={contentRef}
+        onLayout={measureContent}
+        style={[styles.content, { paddingBottom: Spacing.four + keyboardPad }]}>
+        {tripLine ? (
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {tripLine}
+          </ThemedText>
+        ) : null}
+        <TextInput
+          testID="trip-note-editor"
+          autoFocus
+          multiline
+          scrollEnabled
+          value={value}
+          onChangeText={setDraft}
+          placeholder="How was the trip? Who you were with, where you sat, the food, what you'd do differently…"
+          placeholderTextColor={theme.textSecondary}
+          textAlignVertical="top"
+          style={[styles.editor, { color: theme.text }]}
+        />
+      </View>
     </ThemedView>
   );
 }
@@ -132,20 +136,50 @@ function HeaderButton({
   );
 }
 
-/** Android only: the keyboard's height while it is up, re-read on every show
- * (the suggestion strip changes it); 0 when hidden and on iOS. */
-function useAndroidKeyboardHeight() {
-  const [height, setHeight] = useState(0);
+/** How far the editor's bottom edge must rise to meet the keyboard's top
+ * edge, both in window coordinates — so it holds inside a card modal, under
+ * Android edge-to-edge, and with the suggestion strip toggling. The padded
+ * view's own frame doesn't move (padding shrinks its content), so the pad is
+ * simply frame-bottom minus keyboard-top, recomputed whenever either side
+ * changes: keyboard frame events on one side, the view's layout on the other.
+ * The layout hook matters because autoFocus raises the keyboard before the
+ * first layout, when a measurement would read zeros. */
+function useKeyboardOverlap(content: RefObject<View | null>) {
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+  const [bottom, setBottom] = useState<number | null>(null);
+
+  const measure = () => {
+    content.current?.measureInWindow((_x, y, _w, h) => {
+      if (h > 0) setBottom(y + h);
+    });
+  };
+
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => setHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setHeight(0));
+    // iOS fires will-change-frame in step with the animation (and for the
+    // suggestion strip / emoji keyboard); Android only has did-show.
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardTop(e.endCoordinates.screenY);
+      measure();
+    });
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardTop(null));
     return () => {
       show.remove();
       hide.remove();
     };
-  }, []);
-  return height;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
+
+  // iPhone: inside a card modal, measureInWindow answers relative to the
+  // modal's own view (72pt short on an iPhone 16 Pro — two lines of text
+  // under the keyboard), while the keyboard's top is in screen coordinates.
+  // The card is flush with the screen bottom, so the window's height IS the
+  // editor's bottom edge there. iPad's floating sheet and Android keep the
+  // measurement (UIKit lifts the iPad sheet above the keyboard itself).
+  const edge = Platform.OS === 'ios' && !Platform.isPad ? Dimensions.get('window').height : bottom;
+  const pad = keyboardTop != null && edge != null ? Math.max(0, edge - keyboardTop) : 0;
+  return { pad, onLayout: measure };
 }
 
 const styles = StyleSheet.create({
