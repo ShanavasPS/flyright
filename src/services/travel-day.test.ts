@@ -423,6 +423,49 @@ describe('liveContent', () => {
     expect(liveContent(manual, departed, EMPTY_FACTS, liveNow).compactLabel).toBe('In air');
   });
 
+  it('anchors the self-ticking countdown to the estimate the headline counts to', () => {
+    // Before take-off: the (estimated) departure. A posted delay moves it.
+    const scheduled = liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, liveNow);
+    expect(scheduled.countdownKind).toBe('departure');
+    expect(scheduled.countdownEnd).toBe(Date.parse('2026-08-25T08:00Z'));
+    expect(scheduled.departsAt).toBe(Date.parse('2026-08-25T08:00Z'));
+    expect(scheduled.arrivesAt).toBe(Date.parse('2026-08-25T10:35Z'));
+    const delayed = liveContent(
+      journey(),
+      EMPTY_TRAVEL_DAY,
+      facts({ delayMinutes: 60, estimatedDeparture: '2026-08-25T09:00Z' }),
+      liveNow,
+    );
+    expect(delayed.countdownEnd).toBe(Date.parse('2026-08-25T09:00Z'));
+    // In the air: the (estimated) arrival.
+    const aloft = liveContent(
+      journey(),
+      { stage: 'departed', stamps: { departed: '2026-08-25T08:05Z' } },
+      facts({ actualDeparture: '2026-08-25T08:05Z', estimatedArrival: '2026-08-25T10:50Z' }),
+      new Date('2026-08-25T09:00Z'),
+    );
+    expect(aloft.countdownKind).toBe('arrival');
+    expect(aloft.countdownEnd).toBe(Date.parse('2026-08-25T10:50Z'));
+    // Landed: nothing left to count.
+    const landed = liveContent(
+      journey(),
+      { stage: 'landed', stamps: { departed: '2026-08-25T08:05Z', landed: '2026-08-25T10:40Z' } },
+      EMPTY_FACTS,
+      new Date('2026-08-25T10:45Z'),
+    );
+    expect(landed.countdownEnd).toBeNull();
+    expect(landed.countdownKind).toBeNull();
+    // Manual rows store bare wall clocks: pinned to the airport, not the phone.
+    const manual = liveContent(
+      journey({ source: 'manual', fromCode: 'COK', toCode: 'DOH', scheduledDeparture: '2026-09-09T04:15:00', scheduledArrival: '2026-09-09T06:05:00' }),
+      EMPTY_TRAVEL_DAY,
+      EMPTY_FACTS,
+      new Date('2026-09-08T20:00Z'),
+    );
+    expect(manual.countdownEnd).toBe(Date.parse('2026-09-08T22:45Z'));
+    expect(manual.arrivesAt).toBe(Date.parse('2026-09-09T03:05Z'));
+  });
+
   it('reflects in-air and landed states', () => {
     const inAir = applyFlightFacts(
       EMPTY_TRAVEL_DAY,

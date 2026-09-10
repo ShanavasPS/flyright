@@ -15,9 +15,12 @@ declare class LiveActivitiesModule extends NativeModule {
 
 const native = requireOptionalNativeModule<LiveActivitiesModule>('FlyRightLiveActivities');
 
-/** Activity ids (as passed to OneSignal's startDefault) the OS still holds. */
-export function listLiveActivityIds(): Promise<string[]> {
-  return native?.listActivityIds() ?? Promise.resolve([]);
+/** Ids (as passed to OneSignal's startDefault) of the activities the OS
+ * still shows live — active or stale, not ended. Null where the module is
+ * absent (Android, web, a dev client built without it): "unknown" must not
+ * read as "none", or the lifecycle would forget every id and start twins. */
+export function listLiveActivityIds(): Promise<string[] | null> {
+  return native?.listActivityIds() ?? Promise.resolve(null);
 }
 
 /** End every activity of ours except the ids in `keep`. Resolves with how

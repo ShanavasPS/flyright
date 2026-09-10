@@ -23,7 +23,9 @@ export function TravelDaySync() {
   const setStage = useMutation(api.live.setStage);
   const { data: rows } = useLiveQuery(db.select().from(travelDay));
   const { data: trips } = useLiveQuery(
-    db.select({ id: journeys.id, scheduledArrival: journeys.scheduledArrival }).from(journeys),
+    db
+      .select({ id: journeys.id, scheduledArrival: journeys.scheduledArrival, toCode: journeys.toCode })
+      .from(journeys),
   );
   const busy = useRef(false);
 
@@ -34,11 +36,11 @@ export function TravelDaySync() {
     // their timeline (mergeFlightStages) and re-dirty the row weeks later, and
     // uploading that is neither news to a circle nor a session worth opening.
     const now = Date.now();
-    const arrivals = new Map(trips.map((t) => [t.id, t.scheduledArrival]));
+    const tripById = new Map(trips.map((t) => [t.id, t]));
     const dirty = rows.filter((row) => {
       if (!isDirty(row)) return false;
-      const arrival = arrivals.get(row.journeyId);
-      return !arrival || !tripIsOver(arrival, now);
+      const trip = tripById.get(row.journeyId);
+      return !trip || !tripIsOver(trip.scheduledArrival, now, trip.toCode);
     });
     if (!dirty.length) return;
 

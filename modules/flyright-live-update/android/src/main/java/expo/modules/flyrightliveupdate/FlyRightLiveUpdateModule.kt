@@ -31,6 +31,8 @@ class LiveUpdateContent : Record {
   /** Flight progress 0..1: zero until departure, then time-based, 1 landed. */
   @Field val progress: Double = 0.0
   @Field val compactLabel: String = ""
+  /** ms since epoch the countdown runs to; 0 = none. */
+  @Field val countdownEnd: Double = 0.0
   @Field val gate: String? = null
   @Field val terminal: String? = null
   @Field val delayLabel: String? = null
@@ -149,7 +151,15 @@ class FlyRightLiveUpdateModule : Module() {
         builder.addExtras(
           android.os.Bundle().apply { putBoolean("android.requestPromotedOngoing", true) },
         )
-        if (content.compactLabel.isNotEmpty()) {
+        // The chip has one slot and short critical text wins over the time,
+        // so while a countdown runs the chip shows THAT: a future `when` at
+        // least two minutes out renders as a live minute-level countdown
+        // ("5min") with no push and no seconds. The compact word takes the
+        // slot back once the countdown is over.
+        val countdownEnd = content.countdownEnd.toLong()
+        if (countdownEnd > System.currentTimeMillis() + 2 * 60_000L) {
+          builder.setWhen(countdownEnd).setShowWhen(true)
+        } else if (content.compactLabel.isNotEmpty()) {
           builder.setShortCriticalText(content.compactLabel)
         }
       }

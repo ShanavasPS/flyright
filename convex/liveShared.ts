@@ -1,7 +1,7 @@
 /** Pure helpers for the travel-day live sessions — no ctx, no I/O.
  * Stage keys mirror src/services/travel-day.ts exactly; rename together. */
 
-import { airportZone } from './airportZones';
+import { airportZone, flightInstant } from './airportZones';
 import type { Doc } from './_generated/dataModel';
 
 export const STAGE_ORDER = [
@@ -41,13 +41,17 @@ const MINUTE_MS = 60_000;
  * a leg still in the air or still to leave beats one that has landed (the
  * landed leg of a connection stays active for two days while the next leg
  * becomes the story), soonest departure first among equals. */
-export function preferredSession<T extends { currentStage: string | null; scheduledDeparture: string }>(
+export function preferredSession<
+  T extends { currentStage: string | null; scheduledDeparture: string; fromCode: string },
+>(
   sessions: T[],
 ): T | null {
   const score = (s: T) => (s.currentStage === 'landed' ? 1 : 0);
   return (
     [...sessions].sort(
-      (a, b) => score(a) - score(b) || Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture),
+      (a, b) =>
+        score(a) - score(b) ||
+        flightInstant(a.scheduledDeparture, a.fromCode) - flightInstant(b.scheduledDeparture, b.fromCode),
     )[0] ?? null
   );
 }
@@ -57,15 +61,54 @@ export function preferredSession<T extends { currentStage: string | null; schedu
  * still worth a session" check read this, so they can't drift apart. */
 export const SESSION_TTL_MS = 48 * HOUR_MS;
 
-export function sessionExpiryFor(scheduledArrival: string, now: number): number {
-  const arrival = Date.parse(scheduledArrival);
+export function sessionExpiryFor(scheduledArrival: string, now: number, toCode?: string | null): number {
+  const arrival = flightInstant(scheduledArrival, toCode);
   return (Number.isNaN(arrival) ? now : arrival) + SESSION_TTL_MS;
 }
 
 /** True once a trip is far enough past to be history — nothing left to open a
  * live session for, and nothing a circle wants pushed about it. */
-export const tripIsOver = (scheduledArrival: string, now: number): boolean =>
-  sessionExpiryFor(scheduledArrival, now) <= now;
+export const tripIsOver = (scheduledArrival: string, now: number, toCode?: string | null): boolean =>
+  sessionExpiryFor(scheduledArrival, now, toCode) <= now;
+
+/** iOS ends a Live Activity eight hours after it starts, whatever the app
+ * does (Apple's documented cap). */
+export const ACTIVITY_LIFETIME_MS = 8 * HOUR_MS;
+const LIVE_LEAD_MS = 4 * HOUR_MS;
+
+/** Whether the poll chain should push-to-start a fresh Live Activity on the
+ * traveler's phone: inside the live window (T−4h until an hour past the
+ * expected landing), not landed, and either no activity is known or the
+ * known one has outlived the eight-hour cap. `activityStartedAt` doubles as
+ * the last-attempt stamp when the id is null (an Android traveler has no
+ * push-to-start token — retry at most once per lifetime, not every poll).
+ * A row with an id but no start stamp predates the field: the device owns
+ * that activity and its own liveness sweep restarts it. */
+export function shouldStartActivity(s: Doc<'liveSessions'>, now: number): boolean {
+  if (s.status !== 'active') return false;
+  if (s.currentStage === 'landed' || s.actualArrival) return false;
+  const dep = flightInstant(s.estimatedDeparture ?? s.scheduledDeparture, s.fromCode);
+  const arr = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
+  if (Number.isNaN(dep) || now < dep - LIVE_LEAD_MS) return false;
+  if (!Number.isNaN(arr) && now > arr + HOUR_MS) return false;
+  const stamp = s.activityStartedAt ? Date.parse(s.activityStartedAt) : NaN;
+  if (!s.activityId) return Number.isNaN(stamp) || now - stamp >= ACTIVITY_LIFETIME_MS;
+  if (Number.isNaN(stamp)) return false;
+  return now - stamp >= ACTIVITY_LIFETIME_MS;
+}
+
+/** Attributes for a server-started activity — the immutable half the widget
+ * reads (mirrors startTravelActivity in src/services/live-activity.ts). */
+export function activityAttributes(s: Doc<'liveSessions'>): Record<string, unknown> {
+  const flight = s.number || s.carrier;
+  return {
+    journeyId: s.naturalKey,
+    title: `${flight} · ${s.fromCode} → ${s.toCode}`,
+    fromCode: s.fromCode,
+    toCode: s.toCode,
+    flightLabel: flight,
+  };
+}
 
 /** How long after a stage was stamped a push about it is still news. */
 export const STAGE_PUSH_FRESH_MS = 60 * MINUTE_MS;
@@ -118,8 +161,8 @@ export function nextPollDelayMs(session: Doc<'liveSessions'>, now: number): numb
   if (session.status !== 'active') return null;
   if (session.actualArrival || session.currentStage === 'landed') return null;
 
-  const dep = Date.parse(session.scheduledDeparture);
-  const arr = Date.parse(session.scheduledArrival);
+  const dep = flightInstant(session.scheduledDeparture, session.fromCode);
+  const arr = flightInstant(session.scheduledArrival, session.toCode);
   if (Number.isNaN(dep)) return null;
   // Hard stop: nothing after scheduled arrival + 6h.
   if (!Number.isNaN(arr) && now > arr + 6 * HOUR_MS) return null;
@@ -151,7 +194,11 @@ export const STAGE_LABELS: Record<string, string> = {
 const fmtTime = (iso: string | null, iata: string | null): string => {
   if (!iso) return '';
   const zone = airportZone(iata);
-  const clock = new Date(iso).toLocaleTimeString('en-GB', {
+  // Pinned first: a bare wall clock must print as written, not shifted by
+  // the UTC reading Date would give it.
+  const at = flightInstant(iso, iata);
+  if (Number.isNaN(at)) return '';
+  const clock = new Date(at).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: zone ?? 'UTC',
@@ -208,12 +255,31 @@ export function flightProgress(s: Doc<'liveSessions'>, now: number): number {
   const index = stageIndex(s.currentStage);
   if (index < stageIndex('departed')) return 0;
   if (s.currentStage === 'landed') return 1;
-  const departed = Date.parse(
+  const departed = flightInstant(
     s.actualDeparture ?? s.stageTimes.departed ?? s.estimatedDeparture ?? s.scheduledDeparture,
+    s.fromCode,
   );
-  const arrives = Date.parse(s.estimatedArrival ?? s.scheduledArrival);
+  const arrives = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
   if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
   return Math.min(0.97, Math.max(0.03, (now - departed) / (arrives - departed)));
+}
+
+/** Which instant the widget's self-ticking countdown runs to — mirrors
+ * liveCountdown in src/services/travel-day.ts. The (estimated) departure
+ * until the wheels leave, the (estimated) arrival in the air, nothing once
+ * landed. The widget re-anchors whenever a push moves the estimate, and
+ * ticks on its own in between — so a delay the airline posts an hour out
+ * reaches the Dynamic Island as a longer countdown, not a frozen number. */
+export function liveCountdown(
+  currentStage: string | null,
+  departureMs: number,
+  arrivalMs: number,
+): { end: number; kind: 'departure' | 'arrival' } | null {
+  if (currentStage === 'landed') return null;
+  if (currentStage === 'departed') {
+    return Number.isNaN(arrivalMs) ? null : { end: arrivalMs, kind: 'arrival' };
+  }
+  return Number.isNaN(departureMs) ? null : { end: departureMs, kind: 'departure' };
 }
 
 /** Server-side mirror of liveContent() for the Live Activity content state —
@@ -231,8 +297,9 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   const gateWord = s.gate ? `gate ${s.gate}` : 'your gate';
 
   const effectiveDeparture = s.estimatedDeparture ?? s.scheduledDeparture;
-  const departureMs = Date.parse(effectiveDeparture);
-  const arrivalMs = Date.parse(s.estimatedArrival ?? s.scheduledArrival);
+  const departureMs = flightInstant(effectiveDeparture, s.fromCode);
+  const arrivalMs = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
+  const countdown = liveCountdown(s.currentStage, departureMs, arrivalMs);
   let headline: string;
   if (s.currentStage === 'landed') {
     headline = 'Landed';
@@ -279,6 +346,10 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
     headline,
     subtitle,
     compactLabel,
+    departsAt: Number.isNaN(departureMs) ? 0 : departureMs,
+    arrivesAt: Number.isNaN(arrivalMs) ? 0 : arrivalMs,
+    countdownEnd: countdown?.end ?? 0,
+    countdownKind: countdown?.kind ?? '',
     progress: flightProgress(s, now),
     stageLabel: s.currentStage ? (STAGE_LABELS[s.currentStage] ?? '') : '',
     gate: s.gate ?? '',

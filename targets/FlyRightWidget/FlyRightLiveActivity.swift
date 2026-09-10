@@ -11,8 +11,14 @@
 //   attributes: journeyId, title, fromCode, toCode, flightLabel
 //   state: headline, subtitle, progress (0…1, flight progress: 0 until
 //          departure, then time-based, 1 landed), stageLabel, compactLabel,
-//          gate, terminal, delayLabel, emphasis ("none" | "delay" | "gate"),
-//          depTime, arrTime
+//          departsAt, arrivesAt, countdownEnd (ms since epoch, 0 = unknown),
+//          countdownKind ("departure" | "arrival" | ""), gate, terminal,
+//          delayLabel, emphasis ("none" | "delay" | "gate"), depTime, arrTime
+//
+// The countdown is drawn with SwiftUI's timer text anchored to countdownEnd,
+// so it ticks every second on the device itself — no push needed, airplane
+// mode included. A push only moves the anchor (a delay the airline posts, the
+// switch from departure to arrival once airborne).
 
 import ActivityKit
 import WidgetKit
@@ -51,6 +57,11 @@ private struct TravelDayModel {
     let arrTime: String?
     let delayLabel: String?
     let delayed: Bool
+    /// The instant the live countdown runs to, and whether it is the
+    /// departure or the arrival. Nil once landed or on updates pushed by
+    /// builds that predate the key.
+    let countdownEnd: Date?
+    let countdownKind: String?
 
     init(context: ActivityViewContext<DefaultLiveActivityAttributes>) {
         // Empty strings travel as "not set" (the JS side can't send nils
@@ -59,6 +70,13 @@ private struct TravelDayModel {
             guard let value, !value.isEmpty else { return nil }
             return value
         }
+        // JSON integers decode as Int, and asDouble() is nil for those — a
+        // whole-number progress (0, 1) or a millisecond instant would read
+        // as missing without this.
+        func number(_ value: AnyCodable?) -> Double? {
+            guard let value else { return nil }
+            return value.asDouble() ?? value.asInt().map(Double.init)
+        }
         journeyId = context.attributes.data["journeyId"]?.asString() ?? ""
         title = text(context.attributes.data["title"]?.asString()) ?? "Travel day"
         fromCode = text(context.attributes.data["fromCode"]?.asString())
@@ -66,7 +84,7 @@ private struct TravelDayModel {
         flightLabel = text(context.attributes.data["flightLabel"]?.asString())
         headline = text(context.state.data["headline"]?.asString())
         subtitle = text(context.state.data["subtitle"]?.asString()) ?? "Following your trip"
-        progress = min(1, max(0, context.state.data["progress"]?.asDouble() ?? 0))
+        progress = min(1, max(0, number(context.state.data["progress"]) ?? 0))
         stageLabel = text(context.state.data["stageLabel"]?.asString())
         compactLabel = text(context.state.data["compactLabel"]?.asString())
         gate = text(context.state.data["gate"]?.asString())
@@ -75,6 +93,18 @@ private struct TravelDayModel {
         arrTime = text(context.state.data["arrTime"]?.asString())
         delayLabel = text(context.state.data["delayLabel"]?.asString())
         delayed = context.state.data["emphasis"]?.asString() == "delay"
+        let endMs = number(context.state.data["countdownEnd"]) ?? 0
+        countdownEnd = endMs > 0 ? Date(timeIntervalSince1970: endMs / 1000) : nil
+        countdownKind = text(context.state.data["countdownKind"]?.asString())
+    }
+
+    /// The self-ticking countdown: its range and the verb it answers
+    /// ("Departs" / "Lands"). Nil once the target instant has passed — a
+    /// closed range can't run backwards, and a timer stuck at 0:00 says
+    /// nothing the headline ("Departing now", "Landing now") doesn't.
+    var countdown: (range: ClosedRange<Date>, verb: String)? {
+        guard let countdownEnd, countdownEnd > Date() else { return nil }
+        return (Date()...countdownEnd, countdownKind == "arrival" ? "Lands" : "Departs")
     }
 
     /// Both route endpoints or nothing — a single code can't make the
@@ -143,7 +173,16 @@ struct OneSignalWidgetLiveActivity: Widget {
                                 .foregroundStyle(Brand.whiteDim)
                                 .lineLimit(1)
                             Spacer(minLength: 8)
-                            if let headline = model.headline {
+                            if let countdown = model.countdown {
+                                (Text("\(countdown.verb) in ")
+                                    + CountdownText.text(countdown.range, style: .spoken))
+                                    .font(.footnote.weight(.semibold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Brand.white)
+                                    .lineLimit(1)
+                                    .multilineTextAlignment(.trailing)
+                                    .layoutPriority(1)
+                            } else if let headline = model.headline {
                                 Text(headline)
                                     .font(.footnote.weight(.semibold))
                                     .foregroundStyle(Brand.white)
@@ -155,24 +194,40 @@ struct OneSignalWidgetLiveActivity: Widget {
                     }
                 }
             } compactLeading: {
-                Image(systemName: "airplane")
-                    .foregroundStyle(model.delayed ? Brand.amber : Brand.cobalt)
+                // Where the traveler is, in a word: the plane plus the stage
+                // ("In air", "Boarded", "G12"; the departure clock before the
+                // first tap). The JS model picks the word — LiveContent.compactLabel.
+                HStack(spacing: 3) {
+                    Image(systemName: "airplane")
+                        .foregroundStyle(model.delayed ? Brand.amber : Brand.cobalt)
+                    if let word = model.compactLabel {
+                        Text(word)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Brand.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
             } compactTrailing: {
-                if let delay = model.delayLabel {
+                if let countdown = model.countdown {
+                    // Time to (estimated) departure, then to landing — ticking
+                    // on-device, re-anchored by every push that moves the
+                    // estimate. Amber while the airline reports a delay.
+                    CountdownText.text(countdown.range, style: .compact)
+                        .font(.caption2.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(model.delayed ? Brand.amber : Brand.cobalt)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 60)
+                } else if let delay = model.delayLabel {
                     Text(delay)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Brand.amber)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                } else if let word = model.compactLabel {
-                    // One word of status ("Security", "G12", "Boarded") —
-                    // the JS model picks it; see LiveContent.compactLabel.
-                    Text(word)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Brand.cobalt)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                } else {
+                } else if model.compactLabel == nil {
                     // Pre-compactLabel app versions: static progress ring —
                     // NEVER a ProgressView spinner here: widgets don't
                     // animate it, so it reads as a stuck loader.
@@ -285,7 +340,19 @@ private struct LockScreenView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 BrandChip()
-                if let headline = model.headline {
+                if let countdown = model.countdown {
+                    // "LANDS IN 2:14:05", ticking — the headline's countdown
+                    // made live, so the card stays right with the phone offline.
+                    (Text("\(countdown.verb.uppercased()) IN ")
+                        + CountdownText.text(countdown.range, style: .spoken))
+                        .textCase(.uppercase)
+                        .font(.caption2.weight(.bold))
+                        .monospacedDigit()
+                        .kerning(1.2)
+                        .foregroundStyle(Brand.whiteDim)
+                        .lineLimit(1)
+                        .multilineTextAlignment(.leading)
+                } else if let headline = model.headline {
                     Text(headline.uppercased())
                         .font(.caption2.weight(.bold))
                         .kerning(1.2)
@@ -522,6 +589,36 @@ private struct PlaneShape: Shape {
         path.addLine(to: p(21, 16))
         path.closeSubpath()
         return path
+    }
+}
+
+/// The self-ticking countdown text, without seconds: a flight is hours away,
+/// and a seconds column only makes the island twitch. iOS 18's `.offset`
+/// system style re-renders itself at each minute boundary with no push;
+/// SwiftUI spells the units out ("2 hours, 14 minutes" — there is no
+/// abbreviated variant, and a custom DiscreteFormatStyle is NOT an option:
+/// Live Activity views are archived and decoded in the system process,
+/// which can't decode a private type and then shows redacted placeholders
+/// for the whole activity). So `.compact` keeps ONE field ("2 hours", then
+/// "14 minutes" inside the last hour) for the island's trailing slot, and
+/// `.spoken` two for the card and expanded island. Before iOS 18 the only
+/// live text is the timer with seconds, so that stays as the fallback.
+private enum CountdownText {
+    enum Style { case compact, spoken }
+
+    static func text(_ range: ClosedRange<Date>, style: Style) -> Text {
+        if #available(iOS 18.0, *) {
+            return Text(
+                .currentDate,
+                format: .offset(
+                    to: range.upperBound,
+                    allowedFields: [.hour, .minute],
+                    maxFieldCount: style == .compact ? 1 : 2,
+                    sign: .never
+                )
+            )
+        }
+        return Text(timerInterval: range, countsDown: true)
     }
 }
 

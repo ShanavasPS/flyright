@@ -9,14 +9,17 @@ import {
 } from './_generated/server';
 import { fetchFlightFacts } from './flightData';
 import {
+  activityAttributes,
   buildContentState,
+  makeToken,
   nextPollDelayMs,
+  shouldStartActivity,
   stageIndex,
   shouldNotifyFollowers,
   STAGE_PUSH_COPY,
   toPublicSession,
 } from './liveShared';
-import { pushLiveActivity, sendFollowerPush } from './onesignal';
+import { pushLiveActivity, sendFollowerPush, startLiveActivity } from './onesignal';
 import { poolStretchFactor } from './provider';
 
 /** Internal half of the live sessions: the self-rescheduling poll chain,
@@ -161,12 +164,23 @@ export const applyFlightFacts = internalMutation({
 
     await ctx.db.patch(sessionId, patch as never);
 
-    if (widgetWorthy && session.activityId) {
+    // iOS ends a Live Activity eight hours in; the device can only restart
+    // one while open. The chain does it from here: mint the id (the device
+    // adopts it by the `<journeyId>~` prefix on its next reconcile), stamp
+    // the attempt, and push-to-start. A failed start clears the id again.
+    let updated = (await ctx.db.get(sessionId))!;
+    if (shouldStartActivity(updated, now)) {
+      await ctx.db.patch(sessionId, {
+        activityId: `${updated.naturalKey}~srv${makeToken().slice(0, 12)}`,
+        activityStartedAt: new Date(now).toISOString(),
+      });
+      await ctx.scheduler.runAfter(0, internal.liveInternal.startActivity, { sessionId });
+    } else if (widgetWorthy && session.activityId) {
       await ctx.scheduler.runAfter(0, internal.liveInternal.updateActivity, { sessionId });
     }
 
     // Re-arm the chain from the fresh state.
-    const updated = (await ctx.db.get(sessionId))!;
+    updated = (await ctx.db.get(sessionId))!;
     const base = nextPollDelayMs(updated, now);
     const delay = base === null ? null : base * (await poolStretchFactor(ctx, now));
     const pollScheduledId =
@@ -246,6 +260,39 @@ export const notifyFollowers = internalAction({
         ? 'https://getflyright.com/people'
         : `https://getflyright.com/t/${targets.token}`,
     );
+  },
+});
+
+export const startActivity = internalAction({
+  args: { sessionId: v.id('liveSessions') },
+  handler: async (ctx, { sessionId }) => {
+    const session = await ctx.runQuery(internal.liveInternal.getSession, { sessionId });
+    if (!session?.activityId || session.status !== 'active') return;
+    const state = buildContentState(session, Date.now());
+    const started = await startLiveActivity(
+      session.userId,
+      session.activityId,
+      activityAttributes(session),
+      state,
+      String((activityAttributes(session) as { title: string }).title),
+      String(state.headline ?? 'Travel day'),
+    );
+    if (!started) {
+      await ctx.runMutation(internal.liveInternal.clearActivity, {
+        sessionId,
+        activityId: session.activityId,
+      });
+    }
+  },
+});
+
+/** Undo a minted id whose start push went nowhere; the attempt stamp stays
+ * so the chain doesn't retry every poll. */
+export const clearActivity = internalMutation({
+  args: { sessionId: v.id('liveSessions'), activityId: v.string() },
+  handler: async (ctx, { sessionId, activityId }) => {
+    const session = await ctx.db.get(sessionId);
+    if (session?.activityId === activityId) await ctx.db.patch(sessionId, { activityId: null });
   },
 });
 

@@ -182,7 +182,9 @@ export async function createSession(
   init: { stage: string | null; stamps: Record<string, string>; activityId: string | null },
 ) {
   const now = new Date().toISOString();
-  const expiresAt = new Date(sessionExpiryFor(journey.scheduledArrival, Date.now())).toISOString();
+  const expiresAt = new Date(
+    sessionExpiryFor(journey.scheduledArrival, Date.now(), journey.toCode),
+  ).toISOString();
 
   const sessionId = await ctx.db.insert('liveSessions', {
     userId: journey.userId,
@@ -207,6 +209,7 @@ export async function createSession(
     actualArrival: null,
     lastCheckedAt: null,
     activityId: init.activityId,
+    activityStartedAt: init.activityId ? now : null,
     shareToken: makeToken(),
     expiresAt,
     notifiedStages: Object.fromEntries(Object.keys(init.stamps).map((k) => [k, true])),

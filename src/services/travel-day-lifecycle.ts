@@ -19,7 +19,9 @@ import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import type { FlightStatus } from '@/services/flight-lookup';
 import {
+  adoptLiveActivity,
   endTravelActivity,
+  forgetActivityIfDead,
   getActivityId,
   startTravelActivity,
   updateTravelActivity,
@@ -38,7 +40,7 @@ import {
   postTravelLiveUpdate,
   type LiveUpdateContent,
 } from '../../modules/flyright-live-update';
-import { endOrphanLiveActivities } from '../../modules/flyright-live-activities';
+import { endOrphanLiveActivities, listLiveActivityIds } from '../../modules/flyright-live-activities';
 import {
   allTravelDayRows,
   markActivity,
@@ -117,6 +119,7 @@ const toLiveUpdate = (content: LiveContent): LiveUpdateContent => ({
   flightLabel: content.flightLabel,
   progress: content.progress,
   compactLabel: content.compactLabel,
+  countdownEnd: content.countdownEnd ?? 0,
   gate: content.gate,
   terminal: content.terminal,
   delayLabel: content.delayLabel,
@@ -175,12 +178,39 @@ async function doReconcile(): Promise<void> {
     .from(journeys)
     .where(isNull(journeys.deletedAt));
 
+  // iOS ends every Live Activity eight hours after it starts, silently: the
+  // id we remember then points at a dimmed leftover that swallows updates.
+  // Ask the OS what is actually live and forget the rest, so the loop below
+  // starts a fresh activity instead of updating a dead one all travel day.
+  if (Platform.OS === 'ios') {
+    const live = await listLiveActivityIds().catch(() => null);
+    if (live) {
+      for (const j of journeyRows) {
+        if (forgetActivityIfDead(j.id, live)) {
+          Storage.removeItemSync(postedKey(j.id));
+          Observe.logEvent('travel_day.activity_expired');
+        }
+        // The server push-starts a fresh activity once ours has expired
+        // (convex/liveInternal.ts startActivity); make it ours so updates
+        // and the orphan sweep below treat it as the journey's own.
+        if (adoptLiveActivity(j.id, live)) {
+          Storage.removeItemSync(postedKey(j.id));
+          Observe.logEvent('travel_day.activity_adopted');
+        }
+      }
+    }
+  }
+
   for (const j of journeyRows) {
     const row = byJourney.get(j.id);
     const state = rowToState(row);
     const { phase } = travelWindow(j, state, now);
 
     if (phase === 'reminder' || phase === 'live') {
+      // The eight-hour cap again: an activity started at T−24h is dead before
+      // boarding. Start iOS activities at T−4h (the live phase) only — one
+      // that already exists keeps updating through the reminder phase.
+      if (Platform.OS === 'ios' && phase === 'reminder' && !getActivityId(j.id)) continue;
       const facts = getFlightFacts(j.id);
       const content = liveContent(j, state, facts, now);
       // Progress is bucketed to 2% so the in-flight plane creeps along on

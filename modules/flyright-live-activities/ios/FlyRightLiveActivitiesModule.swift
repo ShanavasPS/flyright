@@ -10,8 +10,15 @@ public class FlyRightLiveActivitiesModule: Module {
   public func definition() -> ModuleDefinition {
     Name("FlyRightLiveActivities")
 
+    // Only activities still alive: `activities` also lists ones the OS has
+    // ended but still shows dimmed on the lock screen (the eight-hour cap
+    // does that to every long travel day), and those can't be updated —
+    // the lifecycle must forget them and start afresh. `.stale` is alive
+    // with a passed staleDate.
     AsyncFunction("listActivityIds") { () -> [String] in
-      return Activity<DefaultLiveActivityAttributes>.activities.map { $0.attributes.onesignal.activityId }
+      return Activity<DefaultLiveActivityAttributes>.activities
+        .filter { $0.activityState == .active || $0.activityState == .stale }
+        .map { $0.attributes.onesignal.activityId }
     }
 
     // End every activity whose id is not in `keep` — orphans from journeys

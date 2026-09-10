@@ -43,7 +43,9 @@ export const start = mutation({
     const existing = await activeSessionForKey(ctx, identity.subject, naturalKey);
     if (existing) {
       if (activityId && activityId !== existing.activityId) {
-        await ctx.db.patch(existing._id, { activityId });
+        // The device's report is the latest the activity can have started —
+        // a safe upper bound for the eight-hour restart rule.
+        await ctx.db.patch(existing._id, { activityId, activityStartedAt: new Date().toISOString() });
       }
       return { token: existing.shareToken };
     }
@@ -80,7 +82,7 @@ export const setStage = mutation({
       // can still arrive long after the fact — a reinstall re-uploading, or a
       // status refresh backfilling actual departure/arrival — and a session
       // opened for one would be born expired.
-      if (tripIsOver(journey.scheduledArrival, Date.now())) return { shared: false };
+      if (tripIsOver(journey.scheduledArrival, Date.now(), journey.toCode)) return { shared: false };
       session = await createSession(ctx, journey, { stage: null, stamps: {}, activityId });
     }
 
@@ -109,7 +111,9 @@ export const setStage = mutation({
       currentStage: nextStage,
       stageTimes: nextStamps,
       notifiedStages,
-      ...(activityId ? { activityId } : {}),
+      ...(activityId && activityId !== session.activityId
+        ? { activityId, activityStartedAt: new Date().toISOString() }
+        : {}),
       updatedAt: new Date().toISOString(),
     });
 

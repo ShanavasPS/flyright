@@ -345,11 +345,37 @@ export interface LiveContent {
    * the gate code once the gate is the destination); from boarding on, the
    * stage word; the baggage belt after landing. */
   compactLabel: string;
+  /** The (estimated) departure and arrival as instants — ms since epoch,
+   * null when the stored time can't be placed. The widget anchors its
+   * self-ticking countdown to these, so a delay that moves the estimate
+   * moves the countdown on the next push and the seconds keep running
+   * offline in between. */
+  departsAt: number | null;
+  arrivesAt: number | null;
+  /** What the countdown runs to right now: the departure until the wheels
+   * leave, the arrival in the air, nothing once landed (see liveCountdown). */
+  countdownEnd: number | null;
+  countdownKind: 'departure' | 'arrival' | null;
   gate: string | null;
   terminal: string | null;
   boardingTime: string | null;
   delayLabel: string | null;
   emphasis: 'none' | 'delay' | 'gate';
+}
+
+/** Which instant the live surfaces' self-ticking countdown runs to. The
+ * (estimated) departure before take-off, the (estimated) arrival in the air,
+ * nothing once landed. Mirrored by liveCountdown in convex/liveShared.ts. */
+export function liveCountdown(
+  stage: TravelStage | null,
+  departureMs: number,
+  arrivalMs: number,
+): { end: number; kind: 'departure' | 'arrival' } | null {
+  if (stage === 'landed') return null;
+  if (stage === 'departed') {
+    return Number.isNaN(arrivalMs) ? null : { end: arrivalMs, kind: 'arrival' };
+  }
+  return Number.isNaN(departureMs) ? null : { end: departureMs, kind: 'departure' };
 }
 
 const routeLabel = (j: TravelJourney) => `${j.fromCode} → ${j.toCode}`;
@@ -481,6 +507,7 @@ export function liveContent(
 
   const timeOf = (iso: string | null, zone: string | null) =>
     iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso, zone) : null;
+  const countdown = liveCountdown(state.stage, departureMs, arrivalMs);
 
   return {
     title: `${flight} · ${routeLabel(j)}`,
@@ -495,6 +522,10 @@ export function liveContent(
     stageIndex: index,
     stageLabel,
     compactLabel,
+    departsAt: Number.isNaN(departureMs) ? null : departureMs,
+    arrivesAt: Number.isNaN(arrivalMs) ? null : arrivalMs,
+    countdownEnd: countdown?.end ?? null,
+    countdownKind: countdown?.kind ?? null,
     gate: facts.gate,
     terminal: facts.terminal,
     boardingTime: facts.boardingTime,

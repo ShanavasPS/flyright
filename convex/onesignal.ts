@@ -41,6 +41,50 @@ export async function sendFollowerPush(
   }
 }
 
+/** Push-to-start a Live Activity on the traveler's phone (iOS 17.2+, the
+ * device registered its push-to-start token via setupDefault). The widget is
+ * OneSignal's DefaultLiveActivityAttributes, so both halves nest under
+ * "data". Resolves false on an upstream error so the caller can drop the
+ * id it minted. */
+export async function startLiveActivity(
+  externalId: string,
+  activityId: string,
+  attributes: Record<string, unknown>,
+  contentState: Record<string, unknown>,
+  heading: string,
+  body: string,
+): Promise<boolean> {
+  const cfg = config();
+  if (!cfg) return false;
+  const res = await fetch(
+    `https://api.onesignal.com/apps/${cfg.appId}/activities/activity/DefaultLiveActivityAttributes`,
+    {
+      method: 'POST',
+      headers: { authorization: cfg.auth, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        event: 'start',
+        activity_id: activityId,
+        name: 'travel-day start',
+        event_attributes: { data: attributes },
+        event_updates: { data: contentState },
+        headings: { en: heading },
+        contents: { en: body },
+        target_channel: 'push',
+        include_aliases: { external_id: [externalId] },
+      }),
+    },
+  );
+  const text = (await res.text()).slice(0, 300);
+  // 201 {"notification_id": …} — also for a user with no push-to-start
+  // token (probed 2026-09-10 with a made-up external_id), so "accepted" is
+  // all this can promise. An Android traveler's session therefore keeps a
+  // minted id and gets one no-op update push per poll; the device side
+  // never sees it. Only upstream errors clear the id.
+  const started = res.ok;
+  if (!started) console.warn('[onesignal] LA start failed', res.status, text);
+  return started;
+}
+
 /** Update or end the traveler's lock-screen Live Activity. */
 export async function pushLiveActivity(
   activityId: string,

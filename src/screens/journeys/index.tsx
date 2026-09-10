@@ -73,12 +73,18 @@ function headerEyebrow(
   now: Date,
 ): string {
   if (hero) {
-    const { journey, phase } = hero;
+    const { journey, phase, state } = hero;
     const today =
       flightDay(journey.scheduledDeparture, airportZone(journey.fromCode)) ===
       localDateString(now);
-    // A flight still live after midnight is still today's travel day.
-    const label = today || phase === 'live' ? 'Travel day' : 'Flying tomorrow';
+    // The eyebrow follows the flight: what the day is until the wheels
+    // leave, then where the plane is. A flight still live after midnight is
+    // still today's — "Flying today" beats a wrong "tomorrow".
+    let label: string;
+    if (state.stage === 'landed') label = 'Landed';
+    else if (state.stage === 'departed') label = 'In the air';
+    else if (today || phase === 'live') label = 'Flying today';
+    else label = 'Flying tomorrow';
     return `${label} · ${journey.fromCode} → ${journey.toCode}`;
   }
   const next = sections[0]?.key === 'upcoming' ? sections[0].data[0] : undefined;

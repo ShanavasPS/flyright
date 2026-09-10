@@ -46,3 +46,50 @@ export function flightDay(iso: string, iata: string | null | undefined): string 
     return iso.slice(0, 10);
   }
 }
+
+const ZONED = /(Z|[+-]\d\d:?\d\d)$/;
+const WALL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/;
+
+/** Offset of `zone` from UTC at `utcMs`, via the same Intl round-trip the app
+ * uses (src/services/dates.ts#zoneOffsetMs). */
+function zoneOffsetMs(utcMs: number, zone: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: zone,
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(new Date(utcMs));
+    const at = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    const asUtc = Date.UTC(at('year'), at('month') - 1, at('day'), at('hour') % 24, at('minute'), at('second'));
+    return Number.isFinite(asUtc) ? asUtc - utcMs : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** A stored flight time as an instant (ms) — the server twin of
+ * src/services/dates.ts#flightInstant. Zoned strings parse as they are; a
+ * bare wall clock ("2026-09-09T04:15:00", how manual rows are stored) is
+ * pinned to its airport's zone instead of being read as UTC, which is what
+ * `Date.parse` silently does on the server and drifts every countdown,
+ * progress bar and poll schedule by the airport's offset. NaN when the
+ * string can't be placed. */
+export function flightInstant(iso: string | null | undefined, iata: string | null | undefined): number {
+  if (!iso) return NaN;
+  if (ZONED.test(iso)) return Date.parse(iso);
+  const wall = WALL.exec(iso);
+  const zone = airportZone(iata);
+  if (!wall || !zone) return Date.parse(iso);
+  const asUtc = Date.UTC(+wall[1], +wall[2] - 1, +wall[3], +wall[4], +wall[5]);
+  if (!Number.isFinite(asUtc)) return NaN;
+  // Twice: the offset depends on the instant, and the first guess can land
+  // on the wrong side of a daylight-saving switch.
+  let ms = asUtc - zoneOffsetMs(asUtc, zone);
+  ms = asUtc - zoneOffsetMs(ms, zone);
+  return ms;
+}

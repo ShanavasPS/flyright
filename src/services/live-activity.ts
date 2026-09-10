@@ -20,6 +20,12 @@ import { ONESIGNAL_APP_ID } from '@/constants/config';
 import type { LiveContent, TravelJourney } from '@/services/travel-day';
 
 const activityKey = (journeyId: string) => `travel-activity-id-${journeyId}`;
+const startedKey = (journeyId: string) => `travel-activity-started-${journeyId}`;
+
+/** ActivityKit reports a just-requested activity a moment after the call
+ * returns; a liveness sweep inside this grace period must not mistake it
+ * for gone and start a twin. */
+const START_GRACE_MS = 2 * 60_000;
 
 // Reinstalls and app updates kill OS-level Live Activities, but the id
 // persisted below outlives them — without a liveness check (the JS SDK has
@@ -65,6 +71,12 @@ function contentState(content: LiveContent) {
     progress: content.progress,
     stageLabel: content.stageLabel ?? '',
     compactLabel: content.compactLabel,
+    // Instants travel as ms (0 = unknown); the widget turns them into a
+    // countdown that ticks on its own between pushes.
+    departsAt: content.departsAt ?? 0,
+    arrivesAt: content.arrivesAt ?? 0,
+    countdownEnd: content.countdownEnd ?? 0,
+    countdownKind: content.countdownKind ?? '',
     gate: content.gate ?? '',
     terminal: content.terminal ?? '',
     delayLabel: content.delayLabel ?? '',
@@ -96,6 +108,40 @@ export function startTravelActivity(journey: TravelJourney, content: LiveContent
     contentState(content),
   );
   Storage.setItemSync(activityKey(journey.id), `${buildStamp()}|${activityId}`);
+  Storage.setItemSync(startedKey(journey.id), String(Date.now()));
+}
+
+/** Ids this process has asked the server to end — an activity being torn
+ * down must not be re-adopted from a listing taken a moment earlier. */
+const recentlyEnded = new Set<string>();
+
+/** Take over an activity the OS shows for this journey that we don't
+ * remember — one the server push-started (ids `<journeyId>~srv…`), or a
+ * start whose id was lost. From then on it's updated like our own. Returns
+ * true when something was adopted. */
+export function adoptLiveActivity(journeyId: string, liveIds: readonly string[]): boolean {
+  if (!supported() || getActivityId(journeyId)) return false;
+  const id = liveIds.find((x) => x.startsWith(`${journeyId}~`) && !recentlyEnded.has(x));
+  if (!id) return false;
+  Storage.setItemSync(activityKey(journeyId), `${buildStamp()}|${id}`);
+  Storage.setItemSync(startedKey(journeyId), String(Date.now()));
+  return true;
+}
+
+/** Drop the remembered id of an activity the OS no longer shows — iOS ends
+ * every Live Activity eight hours after it starts, whatever the app does,
+ * and the JS SDK never hears about it. Only ids outside the start grace
+ * period are dropped; the next reconcile then starts a fresh activity (the
+ * caller decides whether the window still warrants one). Returns true when
+ * something was forgotten. */
+export function forgetActivityIfDead(journeyId: string, liveIds: readonly string[]): boolean {
+  const id = getActivityId(journeyId);
+  if (!id || liveIds.includes(id)) return false;
+  const started = Number(Storage.getItemSync(startedKey(journeyId)) ?? 0);
+  if (started && Date.now() - started < START_GRACE_MS) return false;
+  Storage.removeItemSync(activityKey(journeyId));
+  Storage.removeItemSync(startedKey(journeyId));
+  return true;
 }
 
 /** Push fresh content to an already-started activity via the server proxy.
@@ -117,6 +163,7 @@ export function endTravelActivity(journeyId: string, content?: LiveContent): voi
   const activityId = getActivityId(journeyId);
   if (!activityId) return;
   Storage.removeItemSync(activityKey(journeyId));
+  Storage.removeItemSync(startedKey(journeyId));
   endById(activityId, content);
 }
 
@@ -124,6 +171,7 @@ export function endTravelActivity(journeyId: string, content?: LiveContent): voi
  * already gone (or about to be). */
 function endById(activityId: string, content?: LiveContent): void {
   if (!supported()) return;
+  recentlyEnded.add(activityId);
   const finalState = content
     ? contentState(content)
     : {
@@ -132,6 +180,10 @@ function endById(activityId: string, content?: LiveContent): void {
         progress: 1,
         stageLabel: '',
         compactLabel: 'Done',
+        departsAt: 0,
+        arrivesAt: 0,
+        countdownEnd: 0,
+        countdownKind: '',
         gate: '',
         terminal: '',
         delayLabel: '',

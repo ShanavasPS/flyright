@@ -111,6 +111,10 @@ export default defineSchema({
     /** The traveler device's Live Activity id — lets the poll chain push
      * lock-screen updates. Never public. */
     activityId: v.union(v.string(), v.null()),
+    /** When that activity (or the last server push-to-start attempt) began —
+     * iOS ends every Live Activity eight hours in, so the poll chain starts a
+     * fresh one past that. Absent on rows from before the field. */
+    activityStartedAt: v.optional(v.union(v.string(), v.null())),
 
     shareToken: v.union(v.string(), v.null()),
     expiresAt: v.string(),

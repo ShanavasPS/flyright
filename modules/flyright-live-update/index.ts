@@ -21,6 +21,11 @@ export interface LiveUpdateContent {
   progress: number;
   /** One-or-two-word status for the Android 16 status-bar chip. */
   compactLabel: string;
+  /** Instant (ms since epoch, 0 = none) the countdown runs to — the
+   * (estimated) departure, then the arrival. On Android 16 the status-bar
+   * chip counts down to it by itself ("2h 14m" style, no seconds) in place
+   * of the compact word; a push only moves the anchor. */
+  countdownEnd: number;
   gate: string | null;
   terminal: string | null;
   delayLabel: string | null;
