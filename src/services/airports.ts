@@ -8,10 +8,11 @@ import zoneData from '../../assets/data/airport-timezones.json';
 
 import { COUNTRY_NAMES } from '@/constants/countries';
 
-/** [lat, lon, ISO country, city, rank?] — the compact tuple the build script
- * emits; the trailing rank (2 = curated major hub, 1 = large_airport,
- * omitted = medium) orders search suggestions. */
-type AirportTuple = [number, number, string, string, (1 | 2)?];
+/** [lat, lon, ISO country, city, rank, name?] — the compact tuple the build
+ * script emits; the rank (2 = curated major hub, 1 = large_airport, 0 =
+ * medium) orders search suggestions, and the name ("Helsinki Vantaa
+ * Airport") is omitted when it would only repeat the city. */
+type AirportTuple = [number, number, string, string, 0 | 1 | 2, string?];
 
 const AIRPORTS = data as unknown as Record<string, AirportTuple>;
 
@@ -21,11 +22,14 @@ export interface Airport {
   lon: number;
   country: string;
   city: string;
+  /** The airport's own name when it says more than the city does — "London
+   * Heathrow Airport" tells LHR from LGW where "London" alone cannot. */
+  name?: string;
 }
 
 function toAirport(iata: string, tuple: AirportTuple): Airport {
-  const [lat, lon, country, city] = tuple;
-  return { iata, lat, lon, country, city };
+  const [lat, lon, country, city, , name] = tuple;
+  return name ? { iata, lat, lon, country, city, name } : { iata, lat, lon, country, city };
 }
 
 /** "FI" → "Finland"; falls back to the code itself for unknown values. */
@@ -46,9 +50,10 @@ export function isValidIata(input: string): boolean {
 }
 
 /** Ranked search: exact code, then code prefixes, then cities with a word
- * starting on the query, then bare substrings. Tiers matter — a flat scan
- * let alphabetically early substring hits (ABE, "Bethlehem") fill the list
- * before the obvious code match (HEL) was ever reached. */
+ * starting on the query, then airport names with one ("Heathrow" → LHR),
+ * then bare substrings. Tiers matter — a flat scan let alphabetically early
+ * substring hits (ABE, "Bethlehem") fill the list before the obvious code
+ * match (HEL) was ever reached. */
 export function searchAirports(query: string, limit = 6): Airport[] {
   const q = query.trim().toUpperCase();
   if (!q) return [];
@@ -60,15 +65,19 @@ export function searchAirports(query: string, limit = 6): Airport[] {
   // alphabetical within a rank (Array.sort is stable).
   const codePrefix: [Airport, number][] = [];
   const cityWord: [Airport, number][] = [];
+  const nameWord: [Airport, number][] = [];
   const citySubstring: [Airport, number][] = [];
+  const wordStarts = (text: string) => text.split(/[^A-Z]+/).some((w) => w.startsWith(q));
 
   for (const [iata, tuple] of Object.entries(AIRPORTS)) {
     if (iata === q) continue;
     const city = tuple[3].toUpperCase();
     if (iata.startsWith(q)) {
       codePrefix.push([toAirport(iata, tuple), tuple[4] ?? 0]);
-    } else if (city.split(/[^A-Z]+/).some((w) => w.startsWith(q))) {
+    } else if (wordStarts(city)) {
       cityWord.push([toAirport(iata, tuple), tuple[4] ?? 0]);
+    } else if (tuple[5] && wordStarts(tuple[5].toUpperCase())) {
+      nameWord.push([toAirport(iata, tuple), tuple[4] ?? 0]);
     } else if (city.includes(q)) {
       citySubstring.push([toAirport(iata, tuple), tuple[4] ?? 0]);
     }
@@ -78,7 +87,7 @@ export function searchAirports(query: string, limit = 6): Airport[] {
     tier.sort((a, b) => b[1] - a[1]).map(([airport]) => airport);
 
   return results
-    .concat(ranked(codePrefix), ranked(cityWord), ranked(citySubstring))
+    .concat(ranked(codePrefix), ranked(cityWord), ranked(nameWord), ranked(citySubstring))
     .slice(0, limit);
 }
 

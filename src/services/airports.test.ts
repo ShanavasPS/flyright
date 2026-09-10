@@ -56,6 +56,14 @@ describe('searchAirports', () => {
     expect(searchAirports('Vantaa').map((a) => a.iata)).toContain('HEL');
   });
 
+  it('matches airport names and carries them on the result', () => {
+    // "Heathrow" is nowhere in the city ("London"); the name tier finds it.
+    const heathrow = searchAirports('Heathrow')[0]!;
+    expect(heathrow.iata).toBe('LHR');
+    expect(heathrow.name).toBe('London Heathrow Airport');
+    expect(searchAirports('Kennedy').map((a) => a.iata)).toContain('JFK');
+  });
+
   it('respects the limit and empty queries', () => {
     expect(searchAirports('A', 3)).toHaveLength(3);
     expect(searchAirports('  ')).toHaveLength(0);

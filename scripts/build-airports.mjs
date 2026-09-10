@@ -5,11 +5,14 @@
  *
  *   node scripts/build-airports.mjs
  *
- * Output shape, keyed by IATA code, ~270 KB for ~4,800 airports:
- *   { "HEL": [60.3172, 24.9633, "FI", "Helsinki", 2] } // [lat, lon, country, city, rank?]
- * The trailing rank drives search ordering: 2 = major hub (curated list
- * below — OurAirports marks Laoag City "large" just like LAX, so its type
- * column alone can't rank), 1 = large_airport, omitted = medium.
+ * Output shape, keyed by IATA code, ~330 KB for ~4,800 airports:
+ *   { "HEL": [60.3172, 24.9633, "FI", "Helsinki", 2, "Helsinki Vantaa Airport"] }
+ *   // [lat, lon, country, city, rank, name]
+ * The rank drives search ordering: 2 = major hub (curated list below —
+ * OurAirports marks Laoag City "large" just like LAX, so its type column
+ * alone can't rank), 1 = large_airport, 0 = medium. The name is what the
+ * add-flight picker prints under a chosen code so "HEL" reads as somewhere
+ * real; it is dropped when it merely repeats the city ("Anaa" airport, Anaa).
  *
  * The output is committed so builds stay offline and reproducible.
  */
@@ -95,14 +98,18 @@ for (const line of lines) {
   // On duplicate IATA codes, prefer the large airport.
   if (airports[iata] && airports[iata].type === 'large_airport') continue;
 
+  const name = row[col.name]?.trim() ?? '';
+  const city = row[col.municipality]?.trim() || name;
+
   airports[iata] = {
     type,
     entry: [
       Math.round(lat * 10000) / 10000,
       Math.round(lon * 10000) / 10000,
       row[col.iso_country] ?? '',
-      row[col.municipality]?.trim() || row[col.name] || '',
-      ...(MAJOR_HUBS.has(iata) ? [2] : type === 'large_airport' ? [1] : []),
+      city,
+      MAJOR_HUBS.has(iata) ? 2 : type === 'large_airport' ? 1 : 0,
+      ...(name && name !== city ? [name] : []),
     ],
   };
   kept++;

@@ -1,0 +1,88 @@
+# Manual add-flight airport picker: a typed 3-letter code keeps its match
+# listed (highlighted, on top) until it is tapped; the pick moves focus to
+# the next field and prints the airport's name under the code. Also covers
+# the airport-name search tier ("Heathrow" → LHR) and the no-match message.
+# Suggestion rows carry an accessibilityLabel of "CODE, Airport name", so
+# selectors use that exact string rather than the two visible lines.
+# Run: maestro test .maestro/add-flight-airport-picker.yaml   (booted device
+# with the dev build installed and `npx expo start` serving :8081)
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+# Onboarding shows on a fresh install; a signed-in dev client may skip it.
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+# The ATT prompt can also follow onboarding (see layers-analytics); an alert
+# hides the whole hierarchy from Maestro, so clear it before going on.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 15000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- openLink: flyright://add-flight
+- extendedWaitUntil:
+    visible: "Add a trip manually.*"
+    timeout: 30000
+- tapOn: "Add a trip manually.*"
+- extendedWaitUntil:
+    visible: "Yesterday.*"
+    timeout: 10000
+- tapOn: "Yesterday.*"
+- extendedWaitUntil:
+    visible: "From · city or HEL"
+    timeout: 10000
+- tapOn: "From · city or HEL"
+# A full code still offers its airport — the list must not vanish.
+- inputText: "HEL"
+- extendedWaitUntil:
+    visible: "HEL, Helsinki Vantaa Airport"
+    timeout: 5000
+- tapOn: "HEL, Helsinki Vantaa Airport"
+# The pick closes the list, captions the field and hands focus to "To".
+- extendedWaitUntil:
+    visible: "Helsinki Vantaa Airport"
+    timeout: 5000
+- assertNotVisible: "HEL, Helsinki Vantaa Airport"
+- inputText: "QQQ"
+- extendedWaitUntil:
+    visible: "No airport matches .*"
+    timeout: 5000
+- eraseText: 3
+- inputText: "Heathrow"
+- extendedWaitUntil:
+    visible: "LHR, London Heathrow Airport"
+    timeout: 5000
+- tapOn: "LHR, London Heathrow Airport"
+- extendedWaitUntil:
+    visible: "London Heathrow Airport"
+    timeout: 5000
+- assertVisible: "HEL → LHR"

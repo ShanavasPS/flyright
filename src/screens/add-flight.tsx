@@ -41,7 +41,13 @@ import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats
 import { CARRIERS, carrierCodeForName, carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { airportZone, getAirport, searchAirports, type Airport } from '@/services/airports';
+import {
+  airportZone,
+  countryName,
+  getAirport,
+  searchAirports,
+  type Airport,
+} from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
 import { withYear } from '@/services/year-choice';
@@ -148,6 +154,13 @@ export function AddFlight() {
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
   const [activeField, setActiveField] = useState<'from' | 'to'>('from');
+  // The field the traveller is typing into right now — the only one that
+  // shows suggestions. Typing a full code ("HEL") keeps its match listed
+  // until it is tapped or submitted: a list that vanished the moment the
+  // third letter landed read as "no such airport". Prefills (edit, scan,
+  // lookup) never set this, so they open with the fields quiet.
+  const [typing, setTyping] = useState<'from' | 'to' | null>(null);
+  const toInputRef = useRef<TextInput>(null);
   // Optional 'HH:mm' times for journal entries; null keeps the noon placeholder.
   const [depTime, setDepTime] = useState<string | null>(null);
   const [arrTime, setArrTime] = useState<string | null>(null);
@@ -455,6 +468,22 @@ export function AddFlight() {
 
   const fromAirport = getAirport(fromInput);
   const toAirport = getAirport(toInput);
+
+  /** A suggestion tapped, or Return pressed on a field that already names an
+   * airport: the code goes in, the list closes, and the cursor moves on —
+   * From hands over to To, To puts the keyboard away. Return on a field that
+   * doesn't resolve just dismisses, leaving the list up to pick from. */
+  const confirmAirport = (field: 'from' | 'to', airport: Airport | undefined) => {
+    if (!airport) {
+      Keyboard.dismiss();
+      return;
+    }
+    if (field === 'from') setFromInput(airport.iata);
+    else setToInput(airport.iata);
+    setTyping(null);
+    if (field === 'from') toInputRef.current?.focus();
+    else Keyboard.dismiss();
+  };
 
   // The time chips come prefilled: noon departure, arrival tracking whatever
   // departure is chosen plus the leg's estimated duration.
@@ -958,48 +987,61 @@ export function AddFlight() {
         {step === 'manual' && (
           <View style={styles.rowGroup}>
             <View style={styles.airportInputs}>
-              <TextInput
-                autoFocus
-                autoCapitalize="characters"
-                autoCorrect={false}
-                value={fromInput}
-                onChangeText={setFromInput}
-                onFocus={() => setActiveField('from')}
-                returnKeyType="done"
-                onSubmitEditing={Keyboard.dismiss}
-                placeholder="From · city or HEL"
-                placeholderTextColor={theme.textSecondary}
-                style={[
-                  styles.input,
-                  styles.airportInput,
-                  { color: theme.text, backgroundColor: theme.field },
-                ]}
-              />
-              <TextInput
-                autoCapitalize="characters"
-                autoCorrect={false}
-                value={toInput}
-                onChangeText={setToInput}
-                onFocus={() => setActiveField('to')}
-                returnKeyType="done"
-                onSubmitEditing={Keyboard.dismiss}
-                placeholder="To · city or JFK"
-                placeholderTextColor={theme.textSecondary}
-                style={[
-                  styles.input,
-                  styles.airportInput,
-                  { color: theme.text, backgroundColor: theme.field },
-                ]}
-              />
+              <View style={styles.airportColumn}>
+                <TextInput
+                  autoFocus
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  value={fromInput}
+                  onChangeText={(text) => {
+                    setFromInput(text);
+                    setTyping('from');
+                  }}
+                  onFocus={() => setActiveField('from')}
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => confirmAirport('from', fromAirport)}
+                  placeholder="From · city or HEL"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[
+                    styles.input,
+                    styles.airportInput,
+                    { color: theme.text, backgroundColor: theme.field },
+                  ]}
+                />
+                {fromAirport && typing !== 'from' && <AirportCaption airport={fromAirport} />}
+              </View>
+              <View style={styles.airportColumn}>
+                <TextInput
+                  ref={toInputRef}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  value={toInput}
+                  onChangeText={(text) => {
+                    setToInput(text);
+                    setTyping('to');
+                  }}
+                  onFocus={() => setActiveField('to')}
+                  returnKeyType="done"
+                  onSubmitEditing={() => confirmAirport('to', toAirport)}
+                  placeholder="To · city or JFK"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[
+                    styles.input,
+                    styles.airportInput,
+                    { color: theme.text, backgroundColor: theme.field },
+                  ]}
+                />
+                {toAirport && typing !== 'to' && <AirportCaption airport={toAirport} />}
+              </View>
             </View>
 
-            <AirportSuggestions
-              query={activeField === 'from' ? fromInput : toInput}
-              onPick={(airport) => {
-                if (activeField === 'from') setFromInput(airport.iata);
-                else setToInput(airport.iata);
-              }}
-            />
+            {typing === activeField && (
+              <AirportSuggestions
+                query={activeField === 'from' ? fromInput : toInput}
+                onPick={(airport) => confirmAirport(activeField, airport)}
+              />
+            )}
 
             {fromAirport && toAirport && (
               <ThemedView type="backgroundElement" style={styles.card}>
@@ -1240,8 +1282,21 @@ export function AddFlight() {
   );
 }
 
-/** Up to three airport matches for the active input — tapping one fills in the
- * IATA code. Hidden once the input already resolves to an airport. */
+/** What a resolved code stands for, printed under its field once the list
+ * has closed so "HEL" reads as Helsinki Vantaa Airport rather than three
+ * letters the app accepted. */
+function AirportCaption({ airport }: { airport: Airport }) {
+  return (
+    <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.caption}>
+      {airport.name ?? `${airport.city}, ${countryName(airport.country)}`}
+    </ThemedText>
+  );
+}
+
+/** Up to six airport matches for the field being typed in — tapping one
+ * confirms it. The exact code match stays listed (highlighted, on top) so
+ * a traveller who types "HEL" sees Helsinki offered, not a list that
+ * vanished; a query nothing matches says so instead of going quiet. */
 function AirportSuggestions({
   query,
   onPick,
@@ -1250,22 +1305,41 @@ function AirportSuggestions({
   onPick: (airport: Airport) => void;
 }) {
   const q = query.trim();
-  if (q.length < 2 || getAirport(q)) return null;
+  if (q.length < 2) return null;
   // Six, not three: prefix typing ("LA") fans out over many codes, and the
   // step has the vertical room — the body scrolls and nothing renders below
   // the suggestions until an airport resolves.
   const matches = searchAirports(q, 6);
-  if (!matches.length) return null;
+  if (!matches.length) {
+    if (q.length < 3) return null;
+    return (
+      <ThemedView type="backgroundElement" style={styles.row}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.airportText}>
+          No airport matches “{q}” — try the city name.
+        </ThemedText>
+      </ThemedView>
+    );
+  }
+  const exact = q.toUpperCase();
 
   return (
     <View style={styles.rowGroup}>
       {matches.map((airport) => (
-        <Pressable key={airport.iata} onPress={() => onPick(airport)}>
-          <ThemedView type="backgroundElement" style={styles.row}>
-            <View>
-              <ThemedText type="smallBold">{airport.iata}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {airport.city}, {airport.country}
+        <Pressable
+          key={airport.iata}
+          accessibilityRole="button"
+          accessibilityLabel={`${airport.iata}, ${airport.name ?? airport.city}`}
+          onPress={() => onPick(airport)}>
+          <ThemedView
+            type={airport.iata === exact ? 'backgroundSelected' : 'backgroundElement'}
+            style={styles.row}>
+            <View style={styles.airportText}>
+              <ThemedText type="smallBold">
+                {airport.iata} · {airport.city}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                {airport.name ? `${airport.name} · ` : ''}
+                {countryName(airport.country)}
               </ThemedText>
             </View>
             <ThemedText themeColor="tint">→</ThemedText>
@@ -1469,8 +1543,22 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   // Two-up in a row: let them shrink below the single input's minWidth.
-  airportInput: {
+  airportColumn: {
+    flex: 1,
     minWidth: 0,
+    gap: Spacing.one,
+  },
+  airportInput: {
+    flex: 0,
+    minWidth: 0,
+  },
+  caption: {
+    paddingHorizontal: Spacing.one,
+  },
+  airportText: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: Spacing.two,
   },
   row: {
     flexDirection: 'row',
