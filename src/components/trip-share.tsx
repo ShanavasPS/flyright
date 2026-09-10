@@ -14,10 +14,10 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { watcherNames } from '@/services/circle';
-import { setJourneyHiddenFromCircle } from '@/services/journeys';
 import { shareInvite } from '@/services/circle-share';
 import { getActivityId } from '@/services/live-activity';
 import { useTravelDay } from '@/services/travel-day-store';
+import { VISIBILITY_LABEL, type TripVisibility } from '@/services/trip-visibility';
 
 interface Watcher {
   userId: string;
@@ -32,11 +32,22 @@ const FACE = 24;
  * showing the faces of whoever follows this trip — circle members before
  * departure (they auto-follow every trip), the live session's followers once
  * it's open — or a group glyph when nobody does yet. Tapping the faces opens
- * People. A trip kept to the close circle (`hidden`) shows the close members
- * only — or a crossed eye when there are none — and its share button hands
- * out the traveler's circle invite, not the trip. Render only under CloudSync
- * (Convex configured). */
-export function TripShareActions({ journeyId, hidden = false }: { journeyId: string; hidden?: boolean }) {
+ * People. A trip kept to the close circle shows the close members only — or
+ * a crossed eye when there are none — and its share button hands out the
+ * traveler's circle invite, not the trip. A private trip shows the crossed
+ * eye and neither pill does anything but explain, with `onChangeAudience`
+ * as the way out. Render only under CloudSync (Convex configured). */
+export function TripShareActions({
+  journeyId,
+  visibility = 'circle',
+  onChangeAudience,
+}: {
+  journeyId: string;
+  visibility?: TripVisibility;
+  onChangeAudience: () => void;
+}) {
+  const hidden = visibility === 'close';
+  const isPrivate = visibility === 'private';
   const theme = useTheme();
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -52,7 +63,7 @@ export function TripShareActions({ journeyId, hidden = false }: { journeyId: str
   // dropped everyone else.
   const byId = new Map<string, Watcher>();
   for (const p of circle?.followers ?? []) {
-    if (hidden && !p.close) continue;
+    if (isPrivate || (hidden && !p.close)) continue;
     byId.set(p.userId, { userId: p.userId, name: p.name ?? 'Someone', imageUrl: p.imageUrl });
   }
   for (const f of session?.followers ?? []) {
@@ -95,7 +106,9 @@ export function TripShareActions({ journeyId, hidden = false }: { journeyId: str
     }
   };
 
-  const circleLabel = hidden
+  const circleLabel = isPrivate
+    ? 'Only you — nobody in your circle sees this trip'
+    : hidden
     ? watchers.length
       ? `Close circle only — ${watcherNames(watchers)} following this trip`
       : 'Close circle only — nobody in your close circle yet'
@@ -112,14 +125,48 @@ export function TripShareActions({ journeyId, hidden = false }: { journeyId: str
           : 'Nobody is in your close circle yet — add people from their page in People.'
       } The rest of your circle still counts it in your totals but can't open or follow it, and a shared link invites people to follow you, not this trip.`,
       [
-        {
-          text: 'Show to your whole circle',
-          onPress: () => void setJourneyHiddenFromCircle(journeyId, false),
-        },
+        { text: 'Change who sees it', onPress: onChangeAudience },
         { text: 'OK', style: 'cancel' },
       ],
     );
   };
+
+  const explainPrivate = () => {
+    Alert.alert(
+      VISIBILITY_LABEL.private,
+      'Nobody in your circle sees this trip, hears about it, or can follow it, and there is no live link to share. Change who sees it to share it.',
+      [
+        { text: 'Change who sees it', onPress: onChangeAudience },
+        { text: 'OK', style: 'cancel' },
+      ],
+    );
+  };
+
+  // A private trip has nothing to share and nobody watching: one quiet
+  // "Only you" pill that explains itself and offers the way out.
+  if (isPrivate) {
+    return (
+      <View style={styles.row}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={circleLabel}
+          onPress={explainPrivate}
+          hitSlop={Spacing.one}>
+          <View style={[styles.pill, { backgroundColor: theme.field }]}>
+            <SymbolView
+              name={{ ios: 'eye.slash.fill', android: 'visibility_off', web: 'visibility_off' }}
+              size={15}
+              weight="semibold"
+              tintColor={theme.textSecondary}
+            />
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              Only you
+            </ThemedText>
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.row}>

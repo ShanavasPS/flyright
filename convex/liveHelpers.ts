@@ -1,6 +1,7 @@
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
+import { maySee } from './audience';
 import { FREE_CIRCLE_SIZE } from './circleShared';
 import { isPro } from './entitlements';
 import { makeToken, nextPollDelayMs, sessionExpiryFor } from './liveShared';
@@ -65,14 +66,14 @@ export async function schedulePoll(ctx: MutationCtx, session: Doc<'liveSessions'
   await ctx.db.patch(session._id, { pollScheduledId });
 }
 
-/** Who in the owner's circle may see this trip: everyone, or — for a trip
- * kept to the close circle — only the members flagged close. */
+/** Who in the owner's circle may see this trip: everyone, only the members
+ * flagged close for a close-circle trip, nobody for a private one. */
 export async function audienceFor(
   ctx: MutationCtx | QueryCtx,
-  journey: Pick<Doc<'journeys'>, 'userId' | 'hiddenFromCircle'>,
+  journey: Pick<Doc<'journeys'>, 'userId' | 'hiddenFromCircle' | 'privateTrip'>,
 ) {
   const members = await circleMembers(ctx, journey.userId);
-  return journey.hiddenFromCircle ? members.filter((m) => m.close) : members;
+  return members.filter((m) => maySee(journey, !!m.close));
 }
 
 /** Whether this member may see the owner's close-circle trips. */
@@ -125,8 +126,11 @@ export async function hideSessionsFromCircle(ctx: MutationCtx, userId: string, n
     .collect();
   const active = sessions.filter((s) => s.status === 'active');
   if (!active.length) return;
-  const close = new Set(
-    (await circleMembers(ctx, userId)).filter((m) => m.close).map((m) => m.memberId),
+  const journey = await journeyForKey(ctx, userId, naturalKey);
+  // Whoever the trip still admits keeps their follow; a private trip admits
+  // nobody, so every follower goes — link-holders included.
+  const keep = new Set(
+    journey ? (await audienceFor(ctx, journey)).map((m) => m.memberId) : [],
   );
   for (const session of active) {
     const follows = await ctx.db
@@ -134,7 +138,7 @@ export async function hideSessionsFromCircle(ctx: MutationCtx, userId: string, n
       .withIndex('by_session', (q) => q.eq('sessionId', session._id))
       .collect();
     for (const f of follows) {
-      if (!close.has(f.followerId)) await ctx.db.delete(f._id);
+      if (!keep.has(f.followerId)) await ctx.db.delete(f._id);
     }
   }
 }
@@ -156,7 +160,7 @@ export async function syncCloseAccess(ctx: MutationCtx, ownerId: string, memberI
       continue;
     }
     const journey = await journeyForKey(ctx, ownerId, session.naturalKey);
-    if (!journey?.hiddenFromCircle) continue;
+    if (!journey || maySee(journey, false)) continue;
     const row = await ctx.db
       .query('follows')
       .withIndex('by_session_follower', (q) =>

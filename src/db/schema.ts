@@ -42,6 +42,10 @@ export const journeys = sqliteTable('journeys', {
    *  A link the traveler shares explicitly still works — the token is the
    *  invitation. Default false: circles see every trip unless told not to. */
   hiddenFromCircle: integer('hidden_from_circle', { mode: 'boolean' }).notNull().default(false),
+  /** Only the traveler's: nobody in the circle, close or not, sees this trip,
+   *  hears about it, or can follow it — a surprise visit, an interview. Wins
+   *  over hiddenFromCircle when both are set; see services/trip-visibility. */
+  privateTrip: integer('private_trip', { mode: 'boolean' }).notNull().default(false),
   /** 'lookup' rows track a live flight via the status API; 'manual' rows are
    *  journal entries (historical or number-less) that must never be polled. */
   source: text('source', { enum: ['lookup', 'manual'] }).notNull().default('lookup'),

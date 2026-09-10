@@ -21,12 +21,14 @@ import { PersonTravel } from '@/components/person-travel';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
+import { useVisibilityChooser } from '@/components/trip-audience';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
-import { setJourneyHiddenFromCircle } from '@/services/journeys';
+import { setJourneyVisibility } from '@/services/journeys';
+import type { TripVisibility } from '@/services/trip-visibility';
 
 type Tier = 'close' | 'rest';
 
@@ -65,6 +67,8 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
   // The member shown must belong to the tier; otherwise the first who does.
   const wanted = member === undefined ? memberId ?? null : member;
   const shown = inTier.find((f) => f.userId === wanted) ?? inTier[0] ?? null;
+
+  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers);
 
   const switchTier = (next: Tier) => {
     if (next === shownTier) return;
@@ -135,32 +139,19 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
     // Tap a row: the same choice the trip's ··· menu offers, here where the
     // effect is visible. The local row is the source of truth; the sync
     // carries it up and this query re-renders within a moment.
-    const setHidden = (journeyId: string, next: boolean) => {
+    const setVisibility = (journeyId: string, next: TripVisibility, from: string) => {
       const key = keys[journeyId];
       if (!key) return;
-      trackEvent('circle_trip_audience', { hidden: next, from: 'preview' });
-      void setJourneyHiddenFromCircle(key, next);
+      trackEvent('circle_trip_audience', { audience: next, from });
+      void setJourneyVisibility(key, next);
     };
-    const audienceMenu = (journeyId: string) => {
-      const t = [...full.upcoming, ...full.past].find((x) => x.journeyId === journeyId);
-      if (!t) return;
-      const isHidden = hidden.has(journeyId);
-      const title = `${t.number || t.carrier} · ${t.fromCode} → ${t.toCode}`;
-      const action = isHidden ? 'Show to your whole circle' : 'Only my close circle';
-      if (Platform.OS === 'ios') {
-        ActionSheetIOS.showActionSheetWithOptions(
-          { title, options: [action, 'Cancel'], cancelButtonIndex: 1 },
-          (index) => {
-            if (index === 0) setHidden(journeyId, !isHidden);
-          },
-        );
-        return;
-      }
-      Alert.alert(title, undefined, [
-        { text: action, onPress: () => setHidden(journeyId, !isHidden) },
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
-    };
+    // The same three-way chooser the trip's ··· menu opens. A trip made
+    // private leaves both tiers' lists — the preview shows what others see,
+    // and nobody sees it; the note below counts it.
+    const audienceMenu = (journeyId: string) =>
+      chooseAudience(hidden.has(journeyId) ? 'close' : 'circle', (next) =>
+        setVisibility(journeyId, next, 'preview'),
+      );
     const showAll = () => {
       const ids = [...hidden];
       Alert.alert(
@@ -171,8 +162,8 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
           {
             text: 'Show everything',
             onPress: () => {
-              trackEvent('circle_trip_audience', { hidden: false, from: 'preview-all', count: ids.length });
-              for (const id of ids) setHidden(id, false);
+              trackEvent('circle_trip_audience', { audience: 'circle', from: 'preview-all', count: ids.length });
+              for (const id of ids) setVisibility(id, 'circle', 'preview-all');
             },
           },
         ],
@@ -277,6 +268,9 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
                 : missing
                   ? `The faded ${missing === 1 ? 'trip is' : 'trips are'} kept to your close circle. ${who ?? 'The rest of your circle'} counts ${missing === 1 ? 'it' : 'them'} in the totals above but can't see or open ${missing === 1 ? 'it' : 'them'}, and a shared link to one shows ${who ?? 'them'} your name and a Follow button instead of the flight. Tap a trip to change who sees it.`
                   : `${who ?? 'Everyone in your circle'} sees every trip — that's the default. Tap a trip to keep it to your close circle; it stays in these totals.`}
+              {full.privateCount
+                ? ` ${plural(full.privateCount, 'trip')} ${full.privateCount === 1 ? 'is' : 'are'} only yours and ${full.privateCount === 1 ? 'appears' : 'appear'} nowhere here, not even in the totals.`
+                : ''}
             </OwnerNote>
           }
         />
@@ -293,6 +287,7 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
           contentContainerStyle={styles.scrollContent}>
           {body}
         </ScrollView>
+        {audienceSheet}
       </SafeAreaView>
     </ThemedView>
   );

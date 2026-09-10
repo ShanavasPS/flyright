@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AirlineLogo } from '@/components/airline-logo';
 import { BoardingPassScanner } from '@/components/boarding-pass-scanner';
 import { CalendarMonth } from '@/components/calendar-month';
+import { AudienceRow, useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
 import { YearSheet, type YearRequest } from '@/components/year-sheet';
 import {
   MicroLabel,
@@ -62,6 +63,8 @@ import {
 } from '@/services/flight-lookup';
 import { recordDelay } from '@/services/disruptions';
 import { addJourney, updateJourney, useJourney } from '@/services/journeys';
+import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
+import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 import {
   LibraryPermissionError,
   promptForTravelDocument,
@@ -160,6 +163,22 @@ export function AddFlight() {
   // a scanned boarding pass, saved with either path.
   const [bookingRef, setBookingRef] = useState('');
   const [seat, setSeat] = useState('');
+  // Who sees the trip, and gets the "added a trip" push, the moment it is
+  // saved: the Settings default, changeable here for this trip only. Shown
+  // to signed-in travelers — anonymous ones have nobody to show it to.
+  const [audience, setAudience] = useState<TripVisibility>(getDefaultTripVisibility);
+  const followers = useCircleFollowers();
+  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers);
+  const audienceRow = (tone: 'card' | 'pass') =>
+    isSignedIn &&
+    !editId && (
+      <AudienceRow
+        value={audience}
+        followers={followers}
+        tone={tone}
+        onPress={() => chooseAudience(audience, setAudience)}
+      />
+    );
   // Boarding-pass scanner open on the flight step (native only — web camera
   // barcode support is too patchy to offer).
   const [scanning, setScanning] = useState(false);
@@ -408,6 +427,7 @@ export function AddFlight() {
       scheduledDeparture: flight.scheduledDeparture ?? `${flight.date}T00:00:00Z`,
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
       ...tripDetails(bookingRef, seat),
+      ...flagsFor(audience),
       createdAt: new Date().toISOString(),
     });
     trackEvent('flight_added', { source: 'lookup' });
@@ -525,6 +545,7 @@ export function AddFlight() {
       scheduledDeparture,
       scheduledArrival,
       ...tripDetails(bookingRef, seat),
+      ...flagsFor(audience),
       createdAt: new Date().toISOString(),
     });
     setStep('added');
@@ -688,6 +709,7 @@ export function AddFlight() {
         </View>
       )}
       <YearSheet request={yearRequest} today={today} onClose={() => setYearRequest(null)} />
+      {audienceSheet}
 
       {/* Every step scrolls: the calendar, the manual card with its time
           spinner, and small screens all need the escape hatch. Taps must
@@ -1143,6 +1165,7 @@ export function AddFlight() {
                     style={[styles.input, styles.detailInput, { color: theme.text, backgroundColor: theme.field }]}
                   />
                 </View>
+                {audienceRow('card')}
                 <View style={styles.cta}>
                   <PrimaryButton
                     label={editId ? 'Save changes →' : 'Add to My travels →'}
@@ -1196,6 +1219,7 @@ export function AddFlight() {
                         .join(' · ')}
                     </ThemedText>
                   )}
+                  {audienceRow('pass')}
                   <PassDivider />
                   <PassAction
                     label={flightPast ? 'Save to My travels →' : 'Track this flight →'}

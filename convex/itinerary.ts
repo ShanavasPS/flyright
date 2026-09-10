@@ -1,5 +1,6 @@
 import type { Doc } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
+import { maySee } from './audience';
 import { airportZone } from './airportZones';
 import { type LegLike, instantWith, onwardFrom } from './itineraryShared';
 
@@ -33,7 +34,7 @@ export async function onwardLegs(
     .withIndex('by_user', (q) => q.eq('userId', ownerId))
     .collect();
   const candidates = journeys.filter(
-    (j) => !j.deletedAt && (seesHidden || !j.hiddenFromCircle) && !Number.isNaN(Date.parse(j.scheduledDeparture)),
+    (j) => !j.deletedAt && maySee(j, seesHidden) && !Number.isNaN(Date.parse(j.scheduledDeparture)),
   );
   return onwardFrom(from, candidates, legInstant).map((j) => ({
     journeyId: j._id,

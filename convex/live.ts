@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { maySee } from './audience';
 import {
   activeSessionForKey,
   audienceFor,
@@ -52,6 +53,9 @@ export const start = mutation({
 
     const journey = await journeyForKey(ctx, identity.subject, naturalKey);
     if (!journey) throw new Error('Trip not found');
+    // A private trip has no link to hand out; the client never asks, but
+    // the rule is the server's to keep.
+    if (journey.privateTrip) throw new Error('Trip is private');
     const session = await createSession(ctx, journey, { stage, stamps, activityId });
     return { token: session.shareToken };
   },
@@ -181,8 +185,10 @@ export const follow = mutation({
     // follow the traveler instead (their circle invite), and only close
     // members — already aboard — get the trip itself.
     const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
-    const hidden = !!journey?.hiddenFromCircle;
-    if (hidden && !(await isCloseMember(ctx, session.userId, identity.subject))) {
+    if (
+      journey &&
+      !maySee(journey, await isCloseMember(ctx, session.userId, identity.subject))
+    ) {
       const inCircle = await ctx.db
         .query('circle')
         .withIndex('by_owner_member', (q) =>
@@ -263,12 +269,9 @@ export const byToken = query({
     // the page becomes an invitation to follow them (see live.follow).
     const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
     if (
-      journey?.hiddenFromCircle &&
-      !(
-        identity &&
-        (identity.subject === session.userId ||
-          (await isCloseMember(ctx, session.userId, identity.subject)))
-      )
+      journey &&
+      !(identity && identity.subject === session.userId) &&
+      !maySee(journey, !!identity && (await isCloseMember(ctx, session.userId, identity.subject)))
     ) {
       let viewerInCircle = false;
       if (identity) {

@@ -1,0 +1,1 @@
+ALTER TABLE `journeys` ADD `private_trip` integer DEFAULT false NOT NULL;

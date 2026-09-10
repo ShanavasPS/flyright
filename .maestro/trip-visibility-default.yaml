@@ -1,0 +1,92 @@
+# Trip audience: Settings → "Show new trips to" (Whole circle / Close circle /
+# Only me) seeds every trip added afterwards; the add-flight pass shows the
+# choice as a "who sees this trip" row (testID trip-audience) that opens the
+# three-way chooser for this trip only; the saved trip's card wears "Close
+# circle only" / "Only you"; the trip's ··· menu offers "Who sees this trip…".
+# Uses the lookup path with the dev mock (odd AY number, yesterday). Leaves the
+# device as found: removes the trip, restores the Whole circle default.
+# Needs a signed-in user (the rows only render with a Convex URL).
+#
+# Run: maestro --device <device> test -e FLIGHT=AY1339 .maestro/trip-visibility-default.yaml
+appId: com.shanavasshaji.flyright
+env:
+  FLIGHT: AY1339
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+# 1. The Settings default.
+- openLink: "flyright:///settings"
+- extendedWaitUntil:
+    visible: "Show new trips to"
+    timeout: 15000
+# The picker's label is whatever a previous run left; open it by any of them.
+- tapOn: "Whole circle|Close circle|Only me"
+- extendedWaitUntil:
+    visible: "Only me"
+    timeout: 5000
+- tapOn: "Close circle"
+- assertVisible: "Close circle"
+# 2. Add-flight shows it, and the chooser overrides it for this trip.
+- openLink: "flyright:///add-flight"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+- tapOn: "AY1331 or LH873"
+- inputText: ${FLIGHT}
+- tapOn: ".*Search this flight.*"
+- extendedWaitUntil:
+    visible: ".*Yesterday.*"
+    timeout: 5000
+- tapOn: ".*Yesterday.*"
+# The pressable row flattens to one label: "Who sees this trip: <level>. <line> Change".
+- extendedWaitUntil:
+    visible: ".*Close circle.*close circle yet.*|.*Close circle.*will see it.*"
+    timeout: 20000
+- tapOn:
+    id: "trip-audience"
+- extendedWaitUntil:
+    visible: "Only me"
+    timeout: 5000
+- tapOn: "Only me"
+- extendedWaitUntil:
+    visible: ".*Only me.*Nobody else.*"
+    timeout: 5000
+- takeScreenshot: ${SHOTS}/add-flight-private
+- tapOn: ".*Save to My travels.*"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 10000
+# 3. The trip wears the chip, and its menu changes it.
+- openLink: "flyright:///journey/${FLIGHT}-${DATE}"
+- extendedWaitUntil:
+    visible: "Only you"
+    timeout: 15000
+- tapOn: "Trip options"
+- tapOn: "Who sees this trip…"
+- extendedWaitUntil:
+    visible: "Whole circle.*"
+    timeout: 5000
+- tapOn: "Close circle.*"
+- extendedWaitUntil:
+    visible: "Close circle only"
+    timeout: 10000
+- takeScreenshot: ${SHOTS}/trip-close-circle
+# 4. Leave the device as found.
+- tapOn: "Trip options"
+- tapOn: "Remove from My travels"
+- extendedWaitUntil:
+    visible: "Remove"
+    timeout: 5000
+- tapOn: "Remove"
+- openLink: "flyright:///settings"
+- extendedWaitUntil:
+    visible: "Show new trips to"
+    timeout: 15000
+- tapOn: "Whole circle|Close circle|Only me"
+- extendedWaitUntil:
+    visible: "Only me"
+    timeout: 5000
+- tapOn: "Whole circle"
+- assertVisible: "Whole circle"

@@ -27,6 +27,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { TripPhotos } from '@/components/trip-photos';
+import { useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
 import { TripShareActions } from '@/components/trip-share';
 import { CONVEX_URL } from '@/constants/config';
 import { DEMO_DISRUPTION, DEMO_JOURNEY, isDemoJourneyId } from '@/constants/demo-journey';
@@ -36,6 +37,7 @@ import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Disruption, Journey } from '@/rules/types';
+import { trackEvent } from '@/services/analytics';
 import { airportZone, countryName, getAirport } from '@/services/airports';
 import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
@@ -53,7 +55,7 @@ import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
 import { noteSuccess } from '@/services/haptics';
 import {
   deleteJourney,
-  setJourneyHiddenFromCircle,
+  setJourneyVisibility,
   toDomainJourney,
   updateJourney,
   useJourney,
@@ -65,6 +67,7 @@ import { shiftLabel } from '@/services/schedule-change';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
 import { travelWindow, type TravelStage } from '@/services/travel-day';
 import { tripFacts } from '@/services/trip-facts';
+import { visibilityChip, visibilityOf } from '@/services/trip-visibility';
 import { focusWorldOn } from '@/services/world-focus';
 import { ALL_TIME } from '@/services/world-period';
 import { openWorldShare } from '@/services/world-share';
@@ -130,6 +133,9 @@ export function JourneyDetail({
   // instead, and the status call skips the rotation lookup entirely — the
   // key change refetches with it the moment an unlock lands.
   const proLocked = useProLocked();
+  // Who sees this trip — the chooser the ··· menu and the circle pill open.
+  const followers = useCircleFollowers();
+  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers);
   const upcoming = !!journey && Date.parse(journey.scheduledDeparture) > now;
   const inboundUnlocked = upcoming && !proLocked;
 
@@ -196,6 +202,8 @@ export function JourneyDetail({
       : '';
 
   if (!journey) {
+    // Three different frames: the row is still being read, the read failed,
+    // or nothing matches the id (removed on another device, a stale link).
     return (
       <ThemedView style={styles.container}>
         {!embedded && <Stack.Screen options={{ title: routeTitle }} />}
@@ -211,8 +219,6 @@ export function JourneyDetail({
         )}
       </ThemedView>
     );
-    // Three different frames: the row is still being read, the read failed,
-    // or nothing matches the id (removed on another device, a stale link).
   }
 
   const tripAge = now - Date.parse(journey.scheduledDeparture);
@@ -288,13 +294,20 @@ export function JourneyDetail({
   // Share + circle pills for the trip cards' headers, while there's something
   // left to follow; the demo has no row to share, and the web build has no
   // Convex provider.
-  const shareActions =
-    CONVEX_URL && !isDemo && row && (travelActive || tripAge <= 0) ? (
-      <TripShareActions journeyId={row.id} hidden={row.hiddenFromCircle} />
-    ) : undefined;
   // Trip privacy is a circle feature: without Convex there is no circle to
   // hide from, so the menu doesn't offer it.
   const privacyOn = !!CONVEX_URL;
+  const changeAudience = row
+    ? () =>
+        chooseAudience(visibilityOf(row), (next) => {
+          trackEvent('circle_trip_audience', { audience: next, from: 'trip' });
+          void setJourneyVisibility(row.id, next);
+        })
+    : null;
+  const shareActions =
+    CONVEX_URL && !isDemo && row && changeAudience && (travelActive || tripAge <= 0) ? (
+      <TripShareActions journeyId={row.id} visibility={visibilityOf(row)} onChangeAudience={changeAudience} />
+    ) : undefined;
 
   // Share = the poster the World tab makes for one flight (screens/share-world),
   // for a real row on a platform that can rasterise it. The demo has no row,
@@ -362,7 +375,7 @@ export function JourneyDetail({
                     label="Trip options"
                     name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
                     onPress={() =>
-                      showTripMenu(row.id, row.source === 'manual', privacyOn ? row.hiddenFromCircle : null, router)
+                      showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router)
                     }
                   />
                 )}
@@ -480,7 +493,7 @@ export function JourneyDetail({
                       label="Trip options"
                       name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
                       onPress={() =>
-                      showTripMenu(row.id, row.source === 'manual', privacyOn ? row.hiddenFromCircle : null, router)
+                      showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router)
                     }
                     />
                   )}
@@ -489,6 +502,7 @@ export function JourneyDetail({
             }}
           />
         )}
+        {audienceSheet}
       </SafeAreaView>
     </ThemedView>
   );
@@ -626,7 +640,7 @@ function tripDetailChips(row: JourneyRow): string[] {
   return [
     row.seat && `Seat ${row.seat}`,
     row.bookingReference && `Booking ${row.bookingReference}`,
-    row.hiddenFromCircle && 'Close circle only',
+    visibilityChip(visibilityOf(row)),
   ].filter((chip): chip is string => !!chip);
 }
 
@@ -787,14 +801,14 @@ function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>) 
   ]);
 }
 
-/** Native "···" menu: Edit (journal entries only), the close-circle toggle
- * (null when there's no circle feature to keep a trip from), then
- * destructive Remove. Keeping a trip to the close circle needs no
- * confirmation — the trip card says so at once, and the same menu undoes it. */
+/** Native "···" menu: Edit (journal entries only), "Who sees this trip"
+ * (null when there's no circle feature to keep a trip from — it opens the
+ * three-way chooser), then destructive Remove. Changing the audience needs
+ * no confirmation — the trip card says so at once, and the same menu undoes it. */
 function showTripMenu(
   journeyId: string,
   editable: boolean,
-  hidden: boolean | null,
+  changeAudience: (() => void) | null,
   router: ReturnType<typeof useRouter>,
 ) {
   const items: { text: string; onPress: () => void; destructive?: boolean }[] = [];
@@ -804,11 +818,8 @@ function showTripMenu(
       onPress: () => router.push({ pathname: '/add-flight', params: { editId: journeyId } }),
     });
   }
-  if (hidden !== null) {
-    items.push({
-      text: hidden ? 'Show to your whole circle' : 'Only my close circle',
-      onPress: () => void setJourneyHiddenFromCircle(journeyId, !hidden),
-    });
+  if (changeAudience) {
+    items.push({ text: 'Who sees this trip…', onPress: changeAudience });
   }
   items.push({
     text: 'Remove from My travels',

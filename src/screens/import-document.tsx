@@ -20,6 +20,7 @@ import {
   PASS_AMBER,
 } from '@/components/pass-card';
 import { PrimaryButton } from '@/components/primary-button';
+import { AudienceRow, useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
@@ -35,6 +36,8 @@ import { haversineKm } from '@/services/geo';
 import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
 import { shiftYears } from '@/services/year-choice';
 import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
+import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
+import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
@@ -278,6 +281,11 @@ export function ImportDocument() {
    * lookup re-runs on its own — the date is in its query key — and the
    * arrival keeps its distance from the departure. */
   const [yearRequest, setYearRequest] = useState<YearRequest | null>(null);
+  // Who sees the imported trips (all of them alike): the Settings default,
+  // changeable here before they are saved and the circle hears about them.
+  const [audience, setAudience] = useState<TripVisibility>(getDefaultTripVisibility);
+  const followers = useCircleFollowers();
+  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers);
   const changeYear = (segment: ImportedSegment) => {
     if (!segment.date) return;
     const date = segment.date;
@@ -321,7 +329,7 @@ export function ImportDocument() {
     let tracked = 0;
     const now = new Date().toISOString();
     for (const { segment, plan } of selectedRows) {
-      const details = { bookingReference: segment.pnr, seat: segment.seat };
+      const details = { bookingReference: segment.pnr, seat: segment.seat, ...flagsFor(audience) };
       // A codeshare leg is stored as the airline flying it — EU261's carrier
       // test is about the operator — under the number on the ticket.
       const operator = operatorOf(segment);
@@ -571,7 +579,15 @@ export function ImportDocument() {
             ))}
           </ScrollView>
           <YearSheet request={yearRequest} today={today} onClose={() => setYearRequest(null)} />
+          {audienceSheet}
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
+            {isSignedIn && (
+              <AudienceRow
+                value={audience}
+                followers={followers}
+                onPress={() => chooseAudience(audience, setAudience)}
+              />
+            )}
             <PrimaryButton
               label={
                 phase.kind === 'saving'
@@ -818,6 +834,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.four,
   },
   footer: {
+    gap: Spacing.two,
     paddingTop: Spacing.two,
   },
   rowGroup: {

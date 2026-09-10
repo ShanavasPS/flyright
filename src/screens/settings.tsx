@@ -18,11 +18,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
-import { ThemePicker } from '@/components/theme-picker';
+import { OptionPicker } from '@/components/option-picker';
 import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UpdateAvailableCard } from '@/components/update-available-card';
+import { CONVEX_URL } from '@/constants/config';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSignedOutNotice } from '@/hooks/use-signed-out-notice';
 import { useTheme } from '@/hooks/use-theme';
@@ -42,6 +43,8 @@ import {
   setThemePreference,
   type ThemePreference,
 } from '@/services/theme';
+import { VISIBILITY_LABEL, VISIBILITY_ORDER, type TripVisibility } from '@/services/trip-visibility';
+import { getDefaultTripVisibility, setDefaultTripVisibility } from '@/services/trip-visibility-default';
 import {
   billingAvailable,
   restorePurchases,
@@ -178,7 +181,41 @@ function AppearanceRow() {
         <View style={styles.rowLabel}>
           <ThemedText>Appearance</ThemedText>
         </View>
-        <ThemePicker value={preference} options={THEME_OPTIONS} onSelect={select} />
+        <OptionPicker value={preference} options={THEME_OPTIONS} onSelect={select} />
+      </View>
+      <RowSeparator />
+    </>
+  );
+}
+
+const VISIBILITY_OPTIONS: { value: TripVisibility; label: string }[] = VISIBILITY_ORDER.map(
+  (value) => ({ value, label: VISIBILITY_LABEL[value] }),
+);
+
+/** Seeds hiddenFromCircle on every trip added from now on (see addJourney).
+ * Existing trips keep whatever their menu says — this is a default, not a
+ * bulk switch, so nobody's followers lose a trip they already got a push
+ * about. Needs the circle backend to mean anything. */
+function TripVisibilityRow() {
+  const [visibility, setVisibility] = useState(getDefaultTripVisibility);
+
+  const select = (value: TripVisibility) => {
+    setVisibility(value);
+    setDefaultTripVisibility(value);
+  };
+
+  if (!CONVEX_URL || Platform.OS === 'web') return null;
+
+  return (
+    <>
+      <View style={styles.row}>
+        <View style={styles.rowLabel}>
+          <ThemedText>Show new trips to</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Who follows a trip you add. Change any trip from its menu.
+          </ThemedText>
+        </View>
+        <OptionPicker value={visibility} options={VISIBILITY_OPTIONS} onSelect={select} />
       </View>
       <RowSeparator />
     </>
@@ -354,6 +391,7 @@ export function Settings() {
         <ThemedView type="backgroundElement" style={styles.group}>
           <PushNotificationsRow />
           <TravelDayRow />
+          <TripVisibilityRow />
 
           <AppearanceRow />
 

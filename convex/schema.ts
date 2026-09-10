@@ -39,6 +39,8 @@ export default defineSchema({
      * it in the owner's totals. Optional: rows from clients older than trip
      * privacy are visible to the whole circle. */
     hiddenFromCircle: v.optional(v.boolean()),
+    /** Only the owner's: no member sees it, close or not (convex/audience.ts). */
+    privateTrip: v.optional(v.boolean()),
     source: v.string(),
     createdAt: v.string(),
     updatedAt: v.string(),

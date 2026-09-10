@@ -27,6 +27,7 @@ function row(overrides: Partial<JourneyRow>): JourneyRow {
     bookingReference: null,
     seat: null,
     hiddenFromCircle: false,
+    privateTrip: false,
     source: 'lookup',
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-08-01T00:00:00Z',
@@ -77,6 +78,7 @@ describe('hiddenFromCircle on the wire', () => {
   it('carries the flag so the server can enforce it', () => {
     expect(toRemoteJourney(row({ hiddenFromCircle: true })).hiddenFromCircle).toBe(true);
     expect(toRemoteJourney(row({})).hiddenFromCircle).toBe(false);
+    expect(toRemoteJourney(row({ privateTrip: true })).privateTrip).toBe(true);
   });
 
   it('lets a row from an older client omit the flag', () => {

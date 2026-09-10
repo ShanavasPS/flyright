@@ -37,6 +37,10 @@ export async function saveJourneyNotes(_id: string, _text: string): Promise<void
   throw new Error('Editing journeys is not supported on web yet.');
 }
 
+export async function setJourneyVisibility(_id: string, _visibility: string): Promise<void> {
+  throw new Error('Editing journeys is not supported on web yet.');
+}
+
 export async function deleteJourney(_id: string): Promise<void> {
   throw new Error('Deleting journeys is not supported on web yet.');
 }

@@ -3,6 +3,7 @@ import { ConvexError, v } from 'convex/values';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { maySee } from './audience';
 import { CIRCLE_FULL, MAX_PENDING_REQUESTS, searchKey } from './circleShared';
 import { isPro } from './entitlements';
 import { onwardLegs } from './itinerary';
@@ -384,6 +385,7 @@ async function travelOf(
   const past: Doc<'journeys'>[] = [];
   let hiddenAhead = 0;
   let hiddenFlown = 0;
+  let privateCount = 0;
   let liveJourneyId: Id<'journeys'> | null = null;
   const journeys = await ctx.db
     .query('journeys')
@@ -393,7 +395,12 @@ async function travelOf(
     if (j.deletedAt) continue;
     const dep = Date.parse(j.scheduledDeparture);
     if (Number.isNaN(dep)) continue;
-    if (j.hiddenFromCircle && !seesHidden) {
+    if (j.privateTrip) {
+      // A private trip is nobody's business — not even as a count.
+      privateCount++;
+      continue;
+    }
+    if (!maySee(j, seesHidden)) {
       // Close-circle trips are for close members. Everyone else still sees
       // them in the totals — a profile's "21 trips flown" is the truth, not
       // the list of what they may open.
@@ -418,6 +425,8 @@ async function travelOf(
     flown: past.length + hiddenFlown,
     hiddenAhead,
     hiddenFlown,
+    /** Trips only the owner sees, listed nowhere — for the owner's preview. */
+    privateCount,
     /** Listed trips that are close-circle only — for the owner's preview. */
     hiddenIds: [...upcoming, ...shownPast].filter((j) => j.hiddenFromCircle).map((j) => j._id),
     /** journeyId → the owner's local row id, so the owner's preview can edit
@@ -552,7 +561,7 @@ export const previewMe = query({
     for (const s of sessions) {
       if (s.status !== 'active') continue;
       const journey = await journeyForKey(ctx, me, s.naturalKey);
-      if (!journey || (journey.hiddenFromCircle && !seesHidden)) continue;
+      if (!journey || !maySee(journey, seesHidden)) continue;
       session = s;
       break;
     }
@@ -591,7 +600,7 @@ export const trip = query({
       !journey ||
       journey.userId !== ownerId ||
       journey.deletedAt ||
-      (journey.hiddenFromCircle && !membership.close)
+      !maySee(journey, !!membership.close)
     ) {
       return { gone: true as const };
     }
@@ -772,7 +781,7 @@ async function nextTrip(ctx: QueryCtx, ownerId: string, close: boolean, now: num
     scheduledArrival: string;
   } | null = null;
   for (const j of journeys) {
-    if (j.deletedAt || (j.hiddenFromCircle && !close)) continue;
+    if (j.deletedAt || !maySee(j, close)) continue;
     const dep = Date.parse(j.scheduledDeparture);
     if (Number.isNaN(dep) || dep < now) continue;
     if (!next || dep < Date.parse(next.scheduledDeparture)) {

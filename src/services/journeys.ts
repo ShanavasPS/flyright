@@ -9,6 +9,8 @@ import type { Journey } from '@/rules/types';
 import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
+import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
+import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 
 export type JourneyRow = typeof journeys.$inferSelect;
 export type NewJourneyRow = typeof journeys.$inferInsert;
@@ -61,10 +63,16 @@ export async function addJourney(row: NewJourneyRow) {
   // source — a receipt that names the operating airline of a codeshare leg
   // must win over the marketing carrier a plain lookup stored earlier. The
   // journal fields (notes, rating, photos) are never touched; seat and
-  // booking reference only when the new source knows them.
+  // booking reference only when the new source knows them. The audience:
+  // the add-trip screens pass the traveler's choice, which wins even on a
+  // revived row (they saw it before saving); a caller that sets neither
+  // flag gets the Settings default ("Show new trips to") on a brand-new
+  // trip, and a revived row keeps what it had.
+  const chosen = row.hiddenFromCircle != null || row.privateTrip != null;
+  const seeded = chosen ? {} : flagsFor(getDefaultTripVisibility());
   await db
     .insert(journeys)
-    .values({ ...row, updatedAt: row.updatedAt ?? now })
+    .values({ ...row, ...seeded, updatedAt: row.updatedAt ?? now })
     .onConflictDoUpdate({
       target: journeys.id,
       set: {
@@ -81,6 +89,9 @@ export async function addJourney(row: NewJourneyRow) {
         scheduledArrival: row.scheduledArrival,
         ...(row.seat != null ? { seat: row.seat } : {}),
         ...(row.bookingReference != null ? { bookingReference: row.bookingReference } : {}),
+        ...(chosen
+          ? { hiddenFromCircle: !!row.hiddenFromCircle, privateTrip: !!row.privateTrip }
+          : {}),
       },
     });
   void reconcileNotifications();
@@ -115,15 +126,15 @@ export async function saveJourneyNotes(id: string, text: string) {
     .where(eq(journeys.id, id));
 }
 
-/** Hide a trip from (or show it to) the traveler's circle. Enforced on the
- * server once the row syncs — see convex/journeys.ts push, which also drops
- * circle members already following its live session and cancels the T−24h
- * heads-up. Only updatedAt moves besides the flag, so the change follows the
- * trip to the account's other devices like any other edit. */
-export async function setJourneyHiddenFromCircle(id: string, hidden: boolean) {
+/** Who sees a trip: the whole circle, the close circle, or nobody else.
+ * Enforced on the server once the row syncs — see convex/journeys.ts push,
+ * which drops followers the trip no longer admits and re-arms the T−24h
+ * heads-up. Only updatedAt moves besides the flags, so the change follows
+ * the trip to the account's other devices like any other edit. */
+export async function setJourneyVisibility(id: string, visibility: TripVisibility) {
   await db
     .update(journeys)
-    .set({ hiddenFromCircle: hidden, updatedAt: new Date().toISOString() })
+    .set({ ...flagsFor(visibility), updatedAt: new Date().toISOString() })
     .where(eq(journeys.id, id));
 }
 

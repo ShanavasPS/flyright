@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
+import { audienceOf, audienceRank } from './audience';
 import { armHeadsUp, hideSessionsFromCircle, materializeCircleFollows } from './liveHelpers';
 
 /** Row shape the client pushes — deliberately has NO userId field: the server
@@ -28,6 +29,7 @@ const journeyRow = v.object({
   bookingReference: v.optional(v.union(v.string(), v.null())),
   seat: v.optional(v.union(v.string(), v.null())),
   hiddenFromCircle: v.optional(v.boolean()),
+  privateTrip: v.optional(v.boolean()),
   source: v.string(),
   createdAt: v.string(),
   updatedAt: v.string(),
@@ -64,20 +66,25 @@ export const push = mutation({
         if (!row.deletedAt) added.push(journeyId);
       } else if (row.updatedAt > existing.updatedAt) {
         await ctx.db.patch(existing._id, row);
-        const wasHidden = !!existing.hiddenFromCircle;
-        const nowHidden = !!row.hiddenFromCircle;
-        // Privacy flips count as schedule changes: armHeadsUp re-evaluates
+        // A client from before private trips omits privateTrip; the patch
+        // above left the stored flag alone, so read the audience the same way.
+        const wasRank = audienceRank(audienceOf(existing));
+        const nowRank = audienceRank(
+          audienceOf({ ...row, privateTrip: row.privateTrip ?? existing.privateTrip }),
+        );
+        // Audience changes count as schedule changes: armHeadsUp re-evaluates
         // whether the circle should hear about this trip the day before.
         scheduleChanged =
           row.scheduledDeparture !== existing.scheduledDeparture ||
           !!row.deletedAt !== !!existing.deletedAt ||
-          wasHidden !== nowHidden;
-        if (nowHidden && !wasHidden) {
-          // Everyone outside the close circle who followed its live session
-          // stops following it — the rest of the circle and link-holders.
+          wasRank !== nowRank;
+        if (nowRank > wasRank) {
+          // Narrowed: whoever the trip no longer admits stops following its
+          // live session — the rest of the circle, link-holders, everyone
+          // for a private trip.
           await hideSessionsFromCircle(ctx, identity.subject, row.naturalKey);
-        } else if (wasHidden && !nowHidden && !row.deletedAt) {
-          // Shown to the whole circle: to them this is a new trip — they see
+        } else if (nowRank < wasRank && !row.deletedAt) {
+          // Widened: to whoever just gained it this is a new trip — they see
           // it, they hear about it, and any open session takes them aboard.
           const sessions = await ctx.db
             .query('liveSessions')
