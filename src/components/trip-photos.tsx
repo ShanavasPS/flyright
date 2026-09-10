@@ -40,6 +40,10 @@ export function TripPhotos({
       }
     });
 
+  // Until the first read lands there is nothing to say: painting the "Add
+  // photos" prompt and then swapping it for thumbnails reads as a glitch.
+  if (!photos) return null;
+
   if (!photos.length) {
     return (
       <Pressable

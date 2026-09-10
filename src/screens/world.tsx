@@ -7,6 +7,7 @@ import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline, type Region } fro
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
+import { DataErrorCard } from '@/components/data-state';
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { AirportMarker, PlaneMarker, alphaHex } from '@/components/map-layers';
 import { ThemedText } from '@/components/themed-text';
@@ -78,7 +79,7 @@ const FIT_SETTLE_MS = 1200;
  * the map SDK's own. */
 export function World() {
   const { userId } = useAuth();
-  const { data: journeys } = useJourneys(userId);
+  const { data: journeys, error } = useJourneys(userId);
   const focused = useIsFocused();
 
   // A journey detail can hand the tab one trip to open on; the map then
@@ -97,12 +98,12 @@ export function World() {
     <WorldCanvas
       rows={journeys ?? []}
       focusedRow={focusedRow}
-      loaded={journeys != null}
+      loaded={journeys != null || !!error}
       onClearFocus={() => focusWorldOn(null)}
       shareable
       eyebrow="Everywhere you’ve been"
       title="World"
-      emptyCard={<EmptyCard />}
+      emptyCard={error ? <DataErrorCard error={error} /> : <EmptyCard />}
     />
   );
 }

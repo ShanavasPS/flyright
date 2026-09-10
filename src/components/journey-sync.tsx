@@ -1,12 +1,12 @@
 import { useAuth } from '@clerk/expo';
 import { useConvexAuth, useMutation, useQuery } from 'convex/react';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useRef } from 'react';
 
 import { api } from '../../convex/_generated/api';
 
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
+import { useLiveRows } from '@/services/live-rows';
 import { planSync, toRemoteJourney } from '@/services/sync-merge';
 import {
   applyRemoteJourney,
@@ -29,7 +29,7 @@ export function JourneySync() {
   const remote = useQuery(api.journeys.list, isAuthenticated ? {} : 'skip');
   const push = useMutation(api.journeys.push);
   // All rows, tombstones included — deletes must sync too.
-  const { data: local } = useLiveQuery(db.select().from(journeys));
+  const { data: local } = useLiveRows(db.select().from(journeys));
   const busy = useRef(false);
 
   // Sign-in claims the device's anonymous rows for this account.

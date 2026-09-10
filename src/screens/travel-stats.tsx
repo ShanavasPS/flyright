@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
+import { DataErrorState, LoadingState } from '@/components/data-state';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -25,11 +26,14 @@ import {
  * airlines, and logbook facts computed from the same local journey rows. */
 export function TravelStats() {
   const { userId } = useAuth();
-  const { data: journeys } = useJourneys(userId);
+  const { data: journeys, error } = useJourneys(userId);
   const recap = useMemo(() => travelRecap(journeys ?? []), [journeys]);
   // The headline number counts up on entry — a logbook total should feel
   // accumulated, not printed.
   const shownKm = useCountUp(recap.totalKm, 1100);
+
+  if (error) return <DataErrorState error={error} />;
+  if (!journeys) return <LoadingState />;
 
   if (!recap.trips) {
     return (

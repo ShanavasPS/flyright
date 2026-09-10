@@ -3,6 +3,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 
 import { db } from '@/db/client';
 import { disruptions } from '@/db/schema';
+import { useLiveRows } from '@/services/live-rows';
 
 export type DisruptionRow = typeof disruptions.$inferSelect;
 
@@ -31,7 +32,7 @@ export async function recordDelay(journeyId: string, delayMinutes: number): Prom
 
 /** All recorded disruptions, live. */
 export function useDisruptions() {
-  return useLiveQuery(db.select().from(disruptions));
+  return useLiveRows(db.select().from(disruptions));
 }
 
 /** The recorded disruption for one journey, live; undefined when none. */

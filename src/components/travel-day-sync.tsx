@@ -1,6 +1,5 @@
 import { useAuth } from '@clerk/expo';
 import { useConvexAuth, useMutation } from 'convex/react';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useRef } from 'react';
 
 import { api } from '../../convex/_generated/api';
@@ -9,6 +8,7 @@ import { tripIsOver } from '../../convex/liveShared';
 import { db } from '@/db/client';
 import { journeys, travelDay } from '@/db/schema';
 import { getActivityId } from '@/services/live-activity';
+import { useLiveRows } from '@/services/live-rows';
 import { isDirty, markTravelDaySynced, rowToState } from '@/services/travel-day-store';
 
 /** Push-only mirror of the traveler's stage state into the Convex live
@@ -21,8 +21,8 @@ export function TravelDaySync() {
   const { userId } = useAuth();
   const { isAuthenticated } = useConvexAuth();
   const setStage = useMutation(api.live.setStage);
-  const { data: rows } = useLiveQuery(db.select().from(travelDay));
-  const { data: trips } = useLiveQuery(
+  const { data: rows } = useLiveRows(db.select().from(travelDay));
+  const { data: trips } = useLiveRows(
     db
       .select({ id: journeys.id, scheduledArrival: journeys.scheduledArrival, toCode: journeys.toCode })
       .from(journeys),

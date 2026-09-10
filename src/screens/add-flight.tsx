@@ -131,7 +131,7 @@ export function AddFlight() {
     /** '1' to open straight on the journal form instead of the lookup. */
     manual?: string;
   }>();
-  const editRow = useJourney(editId ?? '', userId);
+  const { row: editRow } = useJourney(editId ?? '', userId);
 
   const [step, setStep] = useState<Step>('flight');
   const [flightInput, setFlightInput] = useState('');

@@ -14,7 +14,13 @@ import { TravelDaySync } from "@/components/travel-day-sync";
 import { CONVEX_URL } from "@/constants/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Observe, ObserveRoot } from "expo-observe";
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import {
+  DarkTheme,
+  DefaultTheme,
+  Stack,
+  ThemeProvider,
+  type ErrorBoundaryProps,
+} from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { LogBox, Platform } from "react-native";
@@ -25,8 +31,8 @@ import { LogBox, Platform } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useOrientationPolicy } from "@/hooks/use-orientation-policy";
 
+import { ErrorScreen } from "@/components/error-screen";
 import { NotificationRouter } from "@/components/notification-router";
-import { ThemedText } from "@/components/themed-text";
 import { UpdateRequired } from "@/components/update-required";
 import { Colors } from "@/constants/theme";
 import { useVersionGate } from "@/hooks/use-version-gate";
@@ -41,6 +47,23 @@ import { initNotifications } from "@/services/notifications";
 import { reconcileTravelDay } from "@/services/travel-day-lifecycle";
 import { initPurchases } from "@/services/purchases";
 import { applyStoredTheme } from "@/services/theme";
+
+/** A screen that threw during render. Exported from the root layout so it is
+ * inherited by every nested layout: each route gets its own boundary, so the
+ * tab bar and stack headers around a broken screen stay up and the traveler
+ * can leave it — a bare React crash would take the whole tree down. */
+function ScreenErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <ErrorScreen error={error} retry={retry} />;
+}
+
+export const unstable_settings = {
+  screenErrorBoundary: ScreenErrorBoundary,
+};
+
+/** The last line: the root layout itself (providers, sync, the DB gate). */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <ErrorScreen error={error} retry={retry} />;
+}
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
@@ -151,9 +174,9 @@ function RootLayout() {
   }, [dbReady]);
 
   if (dbError) {
-    return (
-      <ThemedText>Database migration failed: {dbError.message}</ThemedText>
-    );
+    // No retry: the migration runs once per launch, so the way back is a
+    // fresh start — the screen says so, and reports the failure to Observe.
+    return <ErrorScreen error={dbError} title="Couldn't open your journal" />;
   }
   if (!dbReady) {
     return null; // splash screen keeps covering this frame

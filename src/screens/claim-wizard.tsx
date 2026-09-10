@@ -24,6 +24,7 @@ import {
   renderClaimLetterText,
   type Claimant,
 } from '@/claims/letter';
+import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -67,7 +68,7 @@ export function ClaimWizard() {
   const { journeyId, delay } = useLocalSearchParams<{ journeyId?: string; delay?: string }>();
 
   const isDemo = isDemoJourneyId(journeyId);
-  const row = useJourney(journeyId ?? 'demo', userId);
+  const { row, loaded: rowLoaded, error: rowError } = useJourney(journeyId ?? 'demo', userId);
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
 
   // A cold deep link opens this sheet with no back stack — back() would throw
@@ -104,11 +105,16 @@ export function ClaimWizard() {
   }, [isDemo]);
 
   if (!journey) {
-    return (
-      <ThemedView style={[styles.container, styles.centered]}>
-        <ActivityIndicator />
-      </ThemedView>
-    );
+    if (rowError) return <DataErrorState error={rowError} title="Couldn't read this trip" />;
+    if (rowLoaded) {
+      return (
+        <MissingState
+          title="This trip isn't in your journal"
+          detail="There's nothing to claim against — it may have been removed, or the link is out of date."
+        />
+      );
+    }
+    return <LoadingState />;
   }
 
   const disruption: Disruption = isDemo

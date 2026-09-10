@@ -8,6 +8,7 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
+import { DataErrorCard } from '@/components/data-state';
 import { ThemedText } from '@/components/themed-text';
 import { WorldMap, mapColors } from '@/components/world-map';
 import { EmptyPeriodCard, PeriodButton, PeriodCard } from '@/components/world-period-card';
@@ -33,7 +34,7 @@ const clamp = (value: number, min: number, max: number) =>
  * a great-circle arc — solid once flown, dashed while still ahead. */
 export function World() {
   const { userId } = useAuth();
-  const { data: journeys } = useJourneys(userId);
+  const { data: journeys, error } = useJourneys(userId);
 
   // A journey detail can hand the tab one trip to open on (see the native
   // World for the full treatment); cleared on "All travels" or leaving.
@@ -171,7 +172,7 @@ export function World() {
     };
   });
 
-  const empty = journeys != null && all.length === 0;
+  const empty = !!error || (journeys != null && all.length === 0);
   const emptyPeriod = journeys != null && !empty && !focusedRow && rows.length === 0;
 
   return (
@@ -222,7 +223,7 @@ export function World() {
 
         <SafeAreaView style={styles.footer} edges={['bottom']} pointerEvents="box-none">
           {empty ? (
-            <EmptyCard />
+            error ? <DataErrorCard error={error} /> : <EmptyCard />
           ) : choosing ? (
             <View style={styles.periodCard}>
               <PeriodCard

@@ -5,7 +5,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActionSheetIOS,
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
+import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PrimaryButton } from '@/components/primary-button';
 import { RouteHero, cityLabel, type Schedule } from '@/components/route-hero';
@@ -117,7 +117,7 @@ export function JourneyDetail({
   const router = useRouter();
   const { userId } = useAuth();
   const isDemo = isDemoJourneyId(journeyId);
-  const row = useJourney(journeyId ?? 'demo', userId);
+  const { row, loaded: rowLoaded, error: rowError } = useJourney(journeyId ?? 'demo', userId);
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
   // The whole journal, for the trip-log facts ("3rd time in Japan").
   const { data: journal } = useJourneys(userId);
@@ -197,11 +197,22 @@ export function JourneyDetail({
 
   if (!journey) {
     return (
-      <ThemedView style={[styles.container, styles.centered]}>
+      <ThemedView style={styles.container}>
         {!embedded && <Stack.Screen options={{ title: routeTitle }} />}
-        <ActivityIndicator />
+        {rowError ? (
+          <DataErrorState error={rowError} title="Couldn't read this trip" />
+        ) : rowLoaded ? (
+          <MissingState
+            title="This trip isn't in your journal"
+            detail="It may have been removed on another device, or the link is out of date."
+          />
+        ) : (
+          <LoadingState />
+        )}
       </ThemedView>
     );
+    // Three different frames: the row is still being read, the read failed,
+    // or nothing matches the id (removed on another device, a stale link).
   }
 
   const tripAge = now - Date.parse(journey.scheduledDeparture);
@@ -920,7 +931,7 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   const theme = useTheme();
   const verdict = evaluate(journey, disruption);
   // Never set for the demo journey — there's no DB row to claim against.
-  const claim = useClaimForJourney(journey.id);
+  const { row: claim, loaded: claimLoaded } = useClaimForJourney(journey.id);
   const claimSent = !!claim && claim.status !== 'draft';
   // Frozen at mount, same as the Claims tab — overdue-ness needn't tick live.
   const [mountNow] = useState(() => Date.now());
@@ -996,14 +1007,14 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
                 </Pressable>
               )}
             </>
-          ) : (
+          ) : claimLoaded ? (
             <View style={styles.cta}>
               <PrimaryButton
                 label={claim ? 'Finish my claim →' : 'Generate my claim →'}
                 onPress={startClaim}
               />
             </View>
-          )}
+          ) : null}
         </>
       ) : (
         <>
@@ -1041,10 +1052,6 @@ const styles = StyleSheet.create({
   // Clips the SheenSweep to the card's rounded corners.
   verdictCard: {
     overflow: 'hidden',
-  },
-  centered: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   safeArea: {
     flex: 1,

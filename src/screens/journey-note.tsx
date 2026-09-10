@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -29,7 +30,7 @@ export function JourneyNote() {
   const router = useRouter();
   const theme = useTheme();
   const { userId } = useAuth();
-  const row = useJourney(journeyId ?? '', userId);
+  const { row, loaded, error } = useJourney(journeyId ?? '', userId);
   const contentRef = useRef<View | null>(null);
   const { pad: keyboardPad, onLayout: measureContent } = useKeyboardOverlap(contentRef);
 
@@ -62,6 +63,33 @@ export function JourneyNote() {
         .filter(Boolean)
         .join(' · ')
     : '';
+
+  // The editor autofocuses, so it must not mount before the stored note is
+  // in hand: a word typed into the empty frame would become the draft and
+  // shadow the real note for good (value = draft ?? row.notes).
+  if (error || !loaded || !row) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen
+          options={{
+            title: 'Trip notes',
+            headerTitleAlign: 'center',
+            headerLeft: () => <HeaderButton label="Cancel" onPress={() => router.back()} />,
+          }}
+        />
+        {error ? (
+          <DataErrorState error={error} title="Couldn't read this trip" />
+        ) : !loaded ? (
+          <LoadingState />
+        ) : (
+          <MissingState
+            title="This trip isn't in your journal"
+            detail="It may have been removed on another device, or the link is out of date."
+          />
+        )}
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>

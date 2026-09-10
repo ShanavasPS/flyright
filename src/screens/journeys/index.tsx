@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DataErrorCard, LoadingState } from '@/components/data-state';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { TripRow, timerLabel } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
@@ -102,7 +103,7 @@ function headerEyebrow(
 export function Journeys() {
   const router = useRouter();
   const { userId } = useAuth();
-  const { data: journeys } = useJourneys(userId);
+  const { data: journeys, error: journalError } = useJourneys(userId);
   const { data: claimRows } = useClaims(userId);
   const { data: disruptionRows } = useDisruptions();
 
@@ -230,7 +231,16 @@ export function Journeys() {
           </View>
         </View>
 
-        {journeys?.length ? (
+        {journalError ? (
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}>
+            <DataErrorCard error={journalError} />
+          </ScrollView>
+        ) : !journeys ? (
+          <LoadingState />
+        ) : journeys.length ? (
           <SectionList
             sections={sections}
             keyExtractor={(row) => row.id}

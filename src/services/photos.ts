@@ -4,12 +4,12 @@
  * or, for photos that arrived through sync, its Convex storage URL. */
 
 import { and, asc, eq, isNull } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { Directory, File, Paths, UploadType } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 
 import { db } from '@/db/client';
 import { tripPhotos } from '@/db/schema';
+import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import type { RemotePhoto, TripPhotoRow } from '@/services/photo-sync-plan';
 
 export type { TripPhotoRow };
@@ -33,9 +33,9 @@ function newPhotoId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** A trip's photos, oldest first. Live. */
-export function usePhotos(journeyId: string): TripPhotoRow[] {
-  const { data } = useLiveQuery(
+/** A trip's photos, oldest first. Live; undefined until the first read. */
+export function usePhotos(journeyId: string): TripPhotoRow[] | undefined {
+  const { data } = useLiveRows(
     db
       .select()
       .from(tripPhotos)
@@ -43,12 +43,12 @@ export function usePhotos(journeyId: string): TripPhotoRow[] {
       .orderBy(asc(tripPhotos.createdAt)),
     [journeyId],
   );
-  return data ?? [];
+  return data;
 }
 
-export function usePhoto(id: string): TripPhotoRow | undefined {
-  const { data } = useLiveQuery(db.select().from(tripPhotos).where(eq(tripPhotos.id, id)), [id]);
-  return data?.[0];
+/** One photo by id; `loaded` separates "still reading" from "gone". */
+export function usePhoto(id: string) {
+  return useLiveRow(db.select().from(tripPhotos).where(eq(tripPhotos.id, id)), [id]);
 }
 
 /** System camera or library UI. Resolves to [] when the traveler cancels. */

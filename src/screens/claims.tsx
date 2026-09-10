@@ -6,6 +6,7 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
+import { DataErrorCard, LoadingState } from '@/components/data-state';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -41,7 +42,7 @@ function claimsEyebrow(open: ClaimWithJourney[], closed: ClaimWithJourney[]): st
 export function Claims() {
   const router = useRouter();
   const { userId } = useAuth();
-  const { data: rows } = useClaims(userId);
+  const { data: rows, error } = useClaims(userId);
   // Frozen at mount — overdue-ness doesn't need to tick while the tab is open.
   const [now] = useState(() => Date.now());
 
@@ -63,7 +64,16 @@ export function Claims() {
             Claims
           </ThemedText>
         </View>
-        {rows?.length ? (
+        {error ? (
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}>
+            <DataErrorCard title="Couldn't read your claims" error={error} />
+          </ScrollView>
+        ) : !rows ? (
+          <LoadingState />
+        ) : rows.length ? (
           <ScrollView
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}

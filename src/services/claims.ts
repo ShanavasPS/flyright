@@ -1,10 +1,10 @@
 import { desc, eq, isNull, or } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 
 import { trackEvent } from '@/services/analytics';
 import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
 import type { Verdict } from '@/rules/types';
+import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import { canTransition, type ClaimStatus, type SentSnapshot } from '@/services/claim-status';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 
@@ -30,7 +30,7 @@ export type ClaimWithJourney = { claims: ClaimRow; journeys: typeof journeys.$in
  * join is deliberately blind to soft-deletes — removing a trip from the
  * journal shouldn't lose track of money the carrier still owes. */
 export function useClaims(currentUserId: string | null | undefined) {
-  return useLiveQuery(
+  return useLiveRows(
     db
       .select()
       .from(claims)
@@ -41,13 +41,10 @@ export function useClaims(currentUserId: string | null | undefined) {
   );
 }
 
-/** The journey's claim, or undefined while loading / when none exists. */
-export function useClaimForJourney(journeyId: string): ClaimRow | undefined {
-  const { data } = useLiveQuery(
-    db.select().from(claims).where(eq(claims.journeyId, journeyId)),
-    [journeyId],
-  );
-  return data?.[0];
+/** The journey's claim. `row` is undefined while loading and when none
+ * exists; `loaded` tells those apart. */
+export function useClaimForJourney(journeyId: string) {
+  return useLiveRow(db.select().from(claims).where(eq(claims.journeyId, journeyId)), [journeyId]);
 }
 
 /**

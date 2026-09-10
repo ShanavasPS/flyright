@@ -1,5 +1,4 @@
 import { and, desc, eq, isNull, or } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
 import migrations from '../../drizzle/migrations';
@@ -7,6 +6,7 @@ import migrations from '../../drizzle/migrations';
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import type { Journey } from '@/rules/types';
+import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
 
@@ -30,9 +30,11 @@ function visibleTo(currentUserId: string | null | undefined) {
   );
 }
 
-/** The viewer's journeys, newest first. Live — re-renders when rows change. */
+/** The viewer's journeys, newest first. Live — re-renders when rows change.
+ * `data` is undefined until the first read lands, so a screen can tell
+ * "still reading" from "no trips" instead of flashing its empty state. */
 export function useJourneys(currentUserId: string | null | undefined) {
-  return useLiveQuery(
+  return useLiveRows(
     db
       .select()
       .from(journeys)
@@ -42,13 +44,14 @@ export function useJourneys(currentUserId: string | null | undefined) {
   );
 }
 
-/** A single journey by id, or undefined while loading / when missing. */
+/** A single journey by id. `row` is undefined while loading and when the
+ * id matches nothing; `loaded` separates the two so a bad deep link can say
+ * "not found" instead of spinning. */
 export function useJourney(id: string, currentUserId: string | null | undefined) {
-  const { data } = useLiveQuery(
+  return useLiveRow(
     db.select().from(journeys).where(and(eq(journeys.id, id), visibleTo(currentUserId))),
     [id, currentUserId ?? ''],
   );
-  return data?.[0];
 }
 
 export async function addJourney(row: NewJourneyRow) {

@@ -1,6 +1,5 @@
 import { useAuth } from '@clerk/expo';
 import { useConvexAuth, useMutation, useQuery } from 'convex/react';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useRef } from 'react';
 
 import { api } from '../../convex/_generated/api';
@@ -8,6 +7,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 
 import { db } from '@/db/client';
 import { tripPhotos } from '@/db/schema';
+import { useLiveRows } from '@/services/live-rows';
 import {
   applyRemotePhoto,
   markPhotoUploaded,
@@ -27,7 +27,7 @@ export function PhotoSync() {
   const remote = useQuery(api.photos.list, isAuthenticated ? {} : 'skip');
   const push = useMutation(api.photos.push);
   const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
-  const { data: local } = useLiveQuery(db.select().from(tripPhotos));
+  const { data: local } = useLiveRows(db.select().from(tripPhotos));
   const busy = useRef(false);
 
   useEffect(() => {

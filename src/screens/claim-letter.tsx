@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
+import { DataErrorState, LoadingState } from '@/components/data-state';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -16,9 +17,12 @@ import { formatDayLabelWithYear, formatTime } from '@/services/dates';
  * from the snapshot frozen at send time, never regenerated from live data. */
 export function ClaimLetter() {
   const { journeyId } = useLocalSearchParams<{ journeyId?: string }>();
-  const claim = useClaimForJourney(journeyId ?? '');
+  const { row: claim, loaded, error } = useClaimForJourney(journeyId ?? '');
   const snapshot = parseSentSnapshot(claim?.sentSnapshot);
   const [busy, setBusy] = useState(false);
+
+  if (error) return <DataErrorState error={error} title="Couldn't read this claim" />;
+  if (!loaded) return <LoadingState />;
 
   if (!claim || !snapshot) {
     return (

@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
@@ -10,7 +11,8 @@ import { deletePhoto, usePhoto } from '@/services/photos';
 /** One trip photo, full screen on black, with close and delete controls. */
 export function PhotoViewer() {
   const { photoId } = useLocalSearchParams<{ photoId?: string }>();
-  const photo = usePhoto(photoId ?? '');
+  const { row: photo, loaded } = usePhoto(photoId ?? '');
+  const [broken, setBroken] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -30,14 +32,28 @@ export function PhotoViewer() {
 
   return (
     <View style={styles.container}>
-      {photo && (
+      {photo && !broken ? (
         <Image
           source={{ uri: photo.uri }}
           contentFit="contain"
           transition={150}
           style={styles.image}
           accessibilityLabel="Trip photo"
+          onError={() => setBroken(true)}
         />
+      ) : !loaded ? (
+        <View style={styles.centred}>
+          <ActivityIndicator color="#FFFFFF" />
+        </View>
+      ) : (
+        <View style={styles.centred}>
+          <Text style={styles.noticeTitle}>{photo ? "Couldn't load this photo" : 'Photo unavailable'}</Text>
+          <Text style={styles.notice}>
+            {photo
+              ? 'The file may still be syncing from another device. Try again in a moment.'
+              : 'It was removed from this trip.'}
+          </Text>
+        </View>
       )}
       <View style={[styles.bar, { top: insets.top + Spacing.two }]}>
         <ViewerButton
@@ -83,6 +99,23 @@ const styles = StyleSheet.create({
   },
   image: {
     flex: 1,
+  },
+  centred: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    padding: Spacing.five,
+  },
+  noticeTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: 600,
+  },
+  notice: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    textAlign: 'center',
   },
   bar: {
     position: 'absolute',
