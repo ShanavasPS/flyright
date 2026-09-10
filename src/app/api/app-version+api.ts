@@ -13,8 +13,7 @@
  * The update notice: the version the store is serving right now and the
  * release notes between the caller's version and it, so Settings can say
  * "1.0.25 is out, here is what you are missing". The store is the authority
- * on what is live — the App Store via the public lookup API, Google Play via
- * its public store page — because a release
+ * on what is live — both read from the public store pages — because a release
  * sits in review for days and announcing it early would send people to a
  * store page that still offers what they have. Lookups are cached in the
  * isolate for a while and fail soft: no answer means no notice, never a
@@ -80,18 +79,35 @@ async function latestFor(platform: Platform): Promise<LatestRelease | null> {
   return latest;
 }
 
-/** The version the App Store lists — Apple's public lookup, no auth. */
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128 Safari/537.36';
+
+/** The version the App Store lists on the app's public page.
+ *
+ * Not the iTunes lookup API: its origin answers 403 to Cloudflare's network,
+ * so from Hosting it only ever worked while Akamai held a cached copy — and
+ * that copy lives ten hours, which is how long a new release stayed
+ * unannounced. The store page comes straight from origin and embeds the
+ * "What's New" shelf as `"primarySubtitle":"Version 1.0.29","secondarySubtitle":
+ * "<release date>"` (the version-history rows carry the bare number the same
+ * way); the newest version wins and its date rides along. */
 async function appStoreLatest(): Promise<LatestRelease | null> {
-  const res = await fetch(`https://itunes.apple.com/lookup?id=${APP_STORE_ID}`, {
+  const res = await fetch(`https://apps.apple.com/us/app/id${APP_STORE_ID}`, {
+    headers: { 'user-agent': BROWSER_UA, accept: 'text/html', 'accept-language': 'en' },
     signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`App Store lookup ${res.status}`);
-  const data = (await res.json()) as {
-    results?: { version?: string; currentVersionReleaseDate?: string }[];
-  };
-  const app = data.results?.[0];
-  if (!app?.version || !isVersion(app.version)) return null;
-  return { version: app.version, releasedAt: app.currentVersionReleaseDate ?? null };
+  if (!res.ok) throw new Error(`App Store page ${res.status}`);
+  const html = await res.text();
+  let best: LatestRelease | null = null;
+  const shelf =
+    /"primarySubtitle":"(?:Version )?(\d+(?:\.\d+)+)","secondarySubtitle":"([^"]*)"/g;
+  for (const match of html.matchAll(shelf)) {
+    const version = match[1];
+    if (!isVersion(version) || (best && compareVersions(version, best.version) <= 0)) continue;
+    const at = Date.parse(match[2]);
+    best = { version, releasedAt: Number.isNaN(at) ? null : new Date(at).toISOString() };
+  }
+  return best;
 }
 
 /** The version Google Play lists on the app's store page.
@@ -106,11 +122,7 @@ async function playLatest(): Promise<LatestRelease | null> {
   const res = await fetch(
     `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}&hl=en&gl=US`,
     {
-      headers: {
-        'user-agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128 Safari/537.36',
-        accept: 'text/html',
-      },
+      headers: { 'user-agent': BROWSER_UA, accept: 'text/html' },
       signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
     },
   );

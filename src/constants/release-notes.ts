@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.30',
+    date: '2026-09-10',
+    notes: [
+      'Choose who sees a trip before you save it — your circle, your close circle, or only you — and set the default once in Settings.',
+      'Connecting flights read as one journey in My travels, with the layover marked between the legs.',
+      'The Live Activity on your Lock Screen now lasts the whole travel day and counts down on its own, even for long-haul flights.',
+      'Typing an airport code keeps it offered until you pick it, and the field names the airport it found.',
+      'Screens tell “still loading” from “nothing here yet”, and a hiccup shows a retry instead of a blank page.',
+      'Android dialogs, switches and the time picker match the app’s colours in light and dark.',
+    ],
+  },
+  {
     version: '1.0.29',
     date: '2026-09-09',
     notes: [
