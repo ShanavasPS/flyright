@@ -4,6 +4,9 @@
 # Run: maestro --device <udid> test .maestro/clerk-dev-sign-in.yaml -e EMAIL=anna+clerk_test@example.com
 # Verified on iOS 26 (2026-09-03). On the Android emulator Maestro's inputText
 # stalls in Clerk's field — type with `adb shell input text` instead.
+# Clerk prefills the field with the "Last used" address once anyone has
+# signed in on the device; typing on top of it makes an invalid identifier
+# (a@b.coma@b.com), so the field is cleared first.
 appId: com.shanavasshaji.flyright
 env:
   EMAIL: sam+clerk_test@example.com
@@ -14,6 +17,7 @@ tags:
     visible: "Enter your email"
     timeout: 20000
 - tapOn: "Enter your email"
+- eraseText: 100
 - inputText: ${EMAIL}
 - tapOn: "Continue"
 - extendedWaitUntil:

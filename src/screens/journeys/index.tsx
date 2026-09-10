@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { TripRow, timerLabel } from '@/components/trip-row';
+import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { LayoverMark } from '@/components/layover-mark';
 import { ThemedText } from '@/components/themed-text';
@@ -240,6 +241,7 @@ export function Journeys() {
             // share a single navy card; otherwise the stats card stands alone.
             ListHeaderComponent={
               <>
+                <SignedOutNoticeCard next="/" />
                 {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
                 {!!CONVEX_URL && <FollowingSection />}
               </>
@@ -273,6 +275,7 @@ export function Journeys() {
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
+            <SignedOutNoticeCard next="/" />
             <JournalHero onAdd={() => router.push('/add-flight')} />
           </ScrollView>
         )}

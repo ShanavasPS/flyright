@@ -24,6 +24,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UpdateAvailableCard } from '@/components/update-available-card';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSignedOutNotice } from '@/hooks/use-signed-out-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import {
@@ -94,18 +95,25 @@ function AccountCard() {
   const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
   const { user } = useUser();
   const hasPro = useHasPro();
+  // A session that ran out on its own: say so, instead of greeting a
+  // traveller who had an account like a stranger.
+  const signedOutNotice = useSignedOutNotice();
 
   if (!isLoaded) return <AccountCardSkeleton />;
 
   if (!isSignedIn) {
     return (
       <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="subtitle">Account</ThemedText>
+        <ThemedText type="subtitle">{signedOutNotice ? 'You were signed out' : 'Account'}</ThemedText>
         <ThemedText type="small">
-          Keep your purchases and travel history safe across devices.
+          {signedOutNotice
+            ? `Your sign-in ran out${signedOutNotice.email ? ` for ${signedOutNotice.email}` : ''}. Your trips are still on this phone — sign back in to keep syncing.`
+            : 'Keep your purchases and travel history safe across devices.'}
         </ThemedText>
         <Pressable onPress={() => router.push('/sign-in')}>
-          <ThemedText type="link">Sign in or create account</ThemedText>
+          <ThemedText type="link">
+            {signedOutNotice ? 'Sign back in' : 'Sign in or create account'}
+          </ThemedText>
         </Pressable>
       </ThemedView>
     );
