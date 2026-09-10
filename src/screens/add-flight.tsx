@@ -178,12 +178,14 @@ export function AddFlight() {
   const [seat, setSeat] = useState('');
   // Who sees the trip, and gets the "added a trip" push, the moment it is
   // saved: the Settings default, changeable here for this trip only. Shown
-  // to signed-in travelers — anonymous ones have nobody to show it to.
+  // signed out as well — the sheet then leads with sign-in, and the choice
+  // rides along on the local row until the trip syncs.
   const [audience, setAudience] = useState<TripVisibility>(getDefaultTripVisibility);
   const followers = useCircleFollowers();
-  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers);
+  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers, {
+    signInNext: '/add-flight',
+  });
   const audienceRow = (tone: 'card' | 'pass') =>
-    isSignedIn &&
     !editId && (
       <AudienceRow
         value={audience}

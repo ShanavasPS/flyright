@@ -285,7 +285,9 @@ export function ImportDocument() {
   // changeable here before they are saved and the circle hears about them.
   const [audience, setAudience] = useState<TripVisibility>(getDefaultTripVisibility);
   const followers = useCircleFollowers();
-  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers);
+  const { choose: chooseAudience, sheet: audienceSheet } = useVisibilityChooser(followers, {
+    signInNext: '/import-document',
+  });
   const changeYear = (segment: ImportedSegment) => {
     if (!segment.date) return;
     const date = segment.date;
@@ -581,13 +583,11 @@ export function ImportDocument() {
           <YearSheet request={yearRequest} today={today} onClose={() => setYearRequest(null)} />
           {audienceSheet}
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
-            {isSignedIn && (
-              <AudienceRow
-                value={audience}
-                followers={followers}
-                onPress={() => chooseAudience(audience, setAudience)}
-              />
-            )}
+            <AudienceRow
+              value={audience}
+              followers={followers}
+              onPress={() => chooseAudience(audience, setAudience)}
+            />
             <PrimaryButton
               label={
                 phase.kind === 'saving'

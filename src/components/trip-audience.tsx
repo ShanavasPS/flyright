@@ -1,5 +1,6 @@
 import { useAuth } from '@clerk/expo';
 import { useQuery } from 'convex/react';
+import { useRouter, type Href } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -29,27 +30,64 @@ export function useCircleFollowers(): Follower[] | undefined {
   return circle?.followers;
 }
 
-/** "Whole circle · Anna & Sam" — one row of the chooser. */
-function optionLabel(visibility: TripVisibility, followers: Follower[]) {
+/** "Whole circle · Anna & Sam" — one row of the chooser. Signed out there is
+ * no circle yet, so the row says when the sharing would start instead. */
+function optionLabel(visibility: TripVisibility, followers: Follower[], signedIn: boolean) {
   if (visibility === 'private') return VISIBILITY_LABEL.private;
+  if (!signedIn) return `${VISIBILITY_LABEL[visibility]} · once you sign in`;
   const people = visibility === 'close' ? followers.filter((f) => f.close) : followers;
   return `${VISIBILITY_LABEL[visibility]} · ${people.length ? watcherNames(people) : 'nobody yet'}`;
 }
 
+/** What the row says under the audience when the traveler has no account
+ * yet: the choice is kept on the trip, the sharing starts with sign-in. */
+function signedOutLine(visibility: TripVisibility) {
+  switch (visibility) {
+    case 'circle':
+      return 'Sign in to share it — people who follow you see it and get a heads-up.';
+    case 'close':
+      return 'Sign in to share it with the people you mark as close.';
+    case 'private':
+      return audienceLine('private', []);
+  }
+}
+
 /** The three-way "who sees this trip?" sheet, shared by the add-trip screens,
- * the trip menu and the circle preview. Render `sheet` once in the screen. */
-export function useVisibilityChooser(followers: Follower[] | undefined) {
+ * the trip menu and the circle preview. Render `sheet` once in the screen.
+ *
+ * Signed out, the sheet leads with sign-in: Circles is the reason to have an
+ * account, and the moment of adding a trip is when that is most obvious.
+ * `signInNext` is the screen to land back on afterwards (the caller, so a
+ * half-filled trip is still there); the audience options stay pickable
+ * because the flags are saved on the local row and sync up later. */
+export function useVisibilityChooser(
+  followers: Follower[] | undefined,
+  { signInNext }: { signInNext?: Href } = {},
+) {
+  const { isSignedIn } = useAuth();
+  const router = useRouter();
   const { show, sheet } = useChoiceSheet();
   const choose = (current: TripVisibility, onSelect: (next: TripVisibility) => void) => {
-    show(
-      `Who sees this trip? Now: ${VISIBILITY_LABEL[current]}`,
-      VISIBILITY_ORDER.map((value) => ({
-        text: optionLabel(value, followers ?? []),
-        onPress: () => {
-          if (value !== current) onSelect(value);
-        },
-      })),
-    );
+    const options = VISIBILITY_ORDER.map((value) => ({
+      text: optionLabel(value, followers ?? [], !!isSignedIn),
+      onPress: () => {
+        if (value !== current) onSelect(value);
+      },
+    }));
+    if (isSignedIn) {
+      show(`Who sees this trip? Now: ${VISIBILITY_LABEL[current]}`, options);
+      return;
+    }
+    show('Who sees this trip? Sharing needs an account', [
+      {
+        text: 'Sign in or create account',
+        onPress: () =>
+          router.push(
+            signInNext ? `/sign-in?next=${encodeURIComponent(String(signInNext))}` : '/sign-in',
+          ),
+      },
+      ...options,
+    ]);
   };
   return { choose, sheet };
 }
@@ -78,7 +116,8 @@ export function AudienceRow({
   testID?: string;
 }) {
   const theme = useTheme();
-  const line = audienceLine(value, followers ?? []);
+  const { isSignedIn } = useAuth();
+  const line = isSignedIn ? audienceLine(value, followers ?? []) : signedOutLine(value);
   const onPass = tone === 'pass';
   const primary = onPass ? WHITE : theme.text;
   const secondary = onPass ? WHITE_DIM : theme.textSecondary;
