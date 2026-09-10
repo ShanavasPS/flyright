@@ -20,7 +20,7 @@ import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass
 import { TripRow, timerLabel } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
-import { ItineraryLeg, LayoverMark } from '@/components/layover-mark';
+import { LayoverMark } from '@/components/layover-mark';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
@@ -263,13 +263,10 @@ export function Journeys() {
             )}
             renderItem={({ item, index, section }) => {
               // Two legs of one itinerary sit next to each other; the joint
-              // between them says so, and how long the wait is, and a rail
-              // beside the cards brackets the whole run as one journey.
+              // between them says so, and how long the wait is.
               const joint = connectionBetween(connections, section.data[index - 1], item);
-              const next = section.data[index + 1];
-              const joinsNext = !!next && !!connectionBetween(connections, item, next);
               return (
-                <ItineraryLeg joinsPrev={!!joint} joinsNext={joinsNext}>
+                <>
                   {joint && <LayoverMark label={connectionLabel(joint)} />}
                   <JourneyItem
                     row={item}
@@ -279,7 +276,7 @@ export function Journeys() {
                     onSelect={twoPane ? () => setSelectedId(item.id) : undefined}
                     selected={twoPane && detailId === item.id}
                   />
-                </ItineraryLeg>
+                </>
               );
             }}
           />
