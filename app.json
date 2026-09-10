@@ -165,7 +165,8 @@
           }
         }
       ],
-      "./plugins/with-pods-uuid-fix.js"
+      "./plugins/with-pods-uuid-fix.js",
+      "./plugins/with-android-theme.js"
     ],
     "experiments": {
       "typedRoutes": true,

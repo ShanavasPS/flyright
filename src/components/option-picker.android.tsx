@@ -1,7 +1,7 @@
-import { Host } from '@expo/ui';
 import { DropdownMenu, DropdownMenuItem, FilledTonalButton, Text } from '@expo/ui/jetpack-compose';
 import { useState } from 'react';
 
+import { ComposeHost } from '@/components/compose-host';
 import { useTheme } from '@/hooks/use-theme';
 
 import type { OptionPickerProps } from './option-picker';
@@ -19,7 +19,7 @@ export function OptionPicker<T extends string>({ value, options, onSelect }: Opt
   const label = options.find((option) => option.value === value)?.label ?? '';
 
   return (
-    <Host matchContents>
+    <ComposeHost matchContents>
       <DropdownMenu
         expanded={expanded}
         onDismissRequest={() => setExpanded(false)}
@@ -47,6 +47,6 @@ export function OptionPicker<T extends string>({ value, options, onSelect }: Opt
           ))}
         </DropdownMenu.Items>
       </DropdownMenu>
-    </Host>
+    </ComposeHost>
   );
 }

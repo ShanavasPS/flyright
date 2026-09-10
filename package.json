@@ -91,7 +91,10 @@
     "build-airport-timezones": "node ./scripts/build-airport-timezones.mjs"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "\\.css$": "<rootDir>/scripts/jest-css-stub.js"
+    }
   },
   "private": true
 }

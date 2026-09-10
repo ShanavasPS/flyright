@@ -1,5 +1,4 @@
 import { useAuth } from '@clerk/expo';
-import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -36,6 +35,7 @@ import {
 } from '@/components/pass-card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
+import { TimeDialog } from '@/components/time-dialog';
 import { ThemedView } from '@/components/themed-view';
 import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
 import { CARRIERS, carrierCodeForName, carrierFor } from '@/constants/carriers';
@@ -1160,26 +1160,15 @@ export function AddFlight() {
                   ))}
                 </View>
                 {timePickerFor && (
-                  <DateTimePicker
+                  <TimeDialog
                     value={
                       new Date(`${date}T${timePickerFor === 'dep' ? depClock : arrClock}:00`)
                     }
-                    mode="time"
-                    display="spinner"
-                    // iOS: compact inline spinner under the chips. Android has
-                    // no inline spinner — its "inline" fallback is a full
-                    // Material clock face that dwarfs the card, so it gets the
-                    // platform's self-contained time dialog instead.
-                    presentation={Platform.OS === 'android' ? 'dialog' : 'inline'}
-                    accentColor={theme.tint}
                     onDismiss={() => setTimePickerFor(null)}
-                    onValueChange={(_event, picked) => {
+                    onPick={(picked) => {
                       const clock = `${`${picked.getHours()}`.padStart(2, '0')}:${`${picked.getMinutes()}`.padStart(2, '0')}`;
                       if (timePickerFor === 'dep') setDepTime(clock);
                       else setArrTime(clock);
-                      // The dialog closes itself on OK — drop the open flag so
-                      // the chip doesn't stay highlighted with nothing shown.
-                      if (Platform.OS === 'android') setTimePickerFor(null);
                     }}
                   />
                 )}

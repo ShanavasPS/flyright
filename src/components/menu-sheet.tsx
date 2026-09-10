@@ -65,7 +65,8 @@ export function MenuSheet({
             style={({ pressed }) => [
               styles.row,
               styles.cancel,
-              { backgroundColor: theme.field },
+              // Not `field`: in dark it equals the card, and Cancel vanished.
+              { backgroundColor: theme.backgroundSelected },
               pressed && styles.pressed,
             ]}>
             <ThemedText type="smallBold" themeColor="heading">

@@ -12,7 +12,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { OptionPicker } from '@/components/option-picker';
 import { Avatar } from '@/components/avatar';
+import { ThemedSwitch } from '@/components/themed-switch';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UpdateAvailableCard } from '@/components/update-available-card';
@@ -223,7 +223,6 @@ function TripVisibilityRow() {
 }
 
 function PushNotificationsRow() {
-  const theme = useTheme();
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -286,13 +285,7 @@ function PushNotificationsRow() {
             Disruption alerts and claim reminders for your flights.
           </ThemedText>
         </View>
-        <Switch
-          testID="push-toggle"
-          value={enabled}
-          disabled={busy}
-          onValueChange={onToggle}
-          trackColor={{ true: theme.tint }}
-        />
+        <ThemedSwitch testID="push-toggle" value={enabled} disabled={busy} onValueChange={onToggle} />
       </View>
       <RowSeparator />
     </>
@@ -302,7 +295,6 @@ function PushNotificationsRow() {
 /** Governs the live travel-day surfaces (the updating trip notification, and
  * later the lock-screen widget) independently of alert-style pushes. */
 function TravelDayRow() {
-  const theme = useTheme();
   const [enabled, setEnabled] = useState(() => getTravelDayEnabled());
 
   const onToggle = (value: boolean) => {
@@ -321,12 +313,7 @@ function TravelDayRow() {
             A live trip card in your notifications from 24 hours before departure.
           </ThemedText>
         </View>
-        <Switch
-          testID="travel-day-toggle"
-          value={enabled}
-          onValueChange={onToggle}
-          trackColor={{ true: theme.tint }}
-        />
+        <ThemedSwitch testID="travel-day-toggle" value={enabled} onValueChange={onToggle} />
       </View>
       <RowSeparator />
     </>
