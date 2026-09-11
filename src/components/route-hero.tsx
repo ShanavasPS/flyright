@@ -154,7 +154,7 @@ export function RouteHero({
           <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
             {journey.from.code}
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
             {cityLabel(journey.from)}
           </ThemedText>
           {schedule && <ThemedText style={styles.time}>{schedule.departure}</ThemedText>}
@@ -192,7 +192,7 @@ export function RouteHero({
           <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
             {journey.to.code}
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.cityRight} numberOfLines={2}>
             {cityLabel(journey.to)}
           </ThemedText>
           {schedule && (
@@ -256,18 +256,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
+  // Columns stretch to the tallest and the clocks sit at the bottom of
+  // theirs, so a wrapped city on one side never drops its clock below the
+  // other's.
   codesRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     gap: Spacing.two,
   },
+  // Split by ratio, not by content (the journal rows' rule, see RouteLeg):
+  // the codes are always three letters, so the contrail is the same width
+  // and the plane sits in the same place whatever city is written under
+  // them — a long one wraps within its column. No minWidth on any column:
+  // Yoga uses it as the flex base before sharing out the rest, which bent
+  // the ratio wherever the floors differed.
   endpoint: {
-    flexShrink: 1,
+    flex: 1,
     gap: Spacing.half,
   },
   endpointRight: {
     alignItems: 'flex-end',
   },
+  cityRight: { textAlign: 'right' },
   code: {
     fontSize: 40,
     lineHeight: 46,
@@ -278,7 +288,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     fontWeight: 600,
-    marginTop: Spacing.one,
+    marginTop: 'auto',
+    paddingTop: Spacing.one,
   },
   timeWas: {
     textDecorationLine: 'line-through',
@@ -292,7 +303,7 @@ const styles = StyleSheet.create({
   // Label + line + label total 54pt; the -4 margin centres the plane on the
   // 46pt code line rather than on the whole endpoint column.
   contrail: {
-    flex: 1,
+    flex: 1.4,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.half,

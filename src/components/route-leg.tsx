@@ -90,12 +90,12 @@ export function RouteLeg({
       accessible
       accessibilityLabel={spoken}
       style={[styles.routeRow, compact && styles.routeRowCompact]}>
-      <View style={styles.endpoint}>
+      <View style={[styles.endpoint, compact && styles.endpointCompact]}>
         <ThemedText themeColor="heading" style={codeStyle} numberOfLines={1}>
           {leg.fromCode}
         </ThemedText>
         {!compact && (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.city} numberOfLines={1}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.city} numberOfLines={2}>
             {cityOf(leg.fromCode)}
           </ThemedText>
         )}
@@ -114,7 +114,7 @@ export function RouteLeg({
           <View style={[styles.contrail, styles.contrailCompact]}>
             <Contrail tint={theme.tint} dotColor={theme.textSecondary} size={12} />
           </View>
-          <View style={[styles.endpoint, styles.stop]}>
+          <View style={[styles.endpoint, styles.endpointCompact, styles.stop]}>
             <ThemedText themeColor="heading" style={codeStyle} numberOfLines={1}>
               {stop.code}
             </ThemedText>
@@ -143,12 +143,16 @@ export function RouteLeg({
           </ThemedText>
         )}
       </View>
-      <View style={[styles.endpoint, styles.endpointRight]}>
+      <View style={[styles.endpoint, compact && styles.endpointCompact, styles.endpointRight]}>
         <ThemedText themeColor="heading" style={codeStyle} numberOfLines={1}>
           {leg.toCode}
         </ThemedText>
         {!compact && (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.city} numberOfLines={1}>
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            style={[styles.city, styles.cityRight]}
+            numberOfLines={2}>
             {cityOf(leg.toCode)}
           </ThemedText>
         )}
@@ -300,17 +304,33 @@ function distanceLabel(leg: Leg): string | null {
 }
 
 const styles = StyleSheet.create({
+  // Columns stretch to the tallest, and each clock sits at the bottom of
+  // its column (marginTop auto), so when one city wraps to two lines the
+  // two clocks still read on one level, the way a boarding pass prints them.
   routeRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     gap: Spacing.two,
     marginTop: Spacing.half,
   },
   routeRowCompact: {
     marginTop: 0,
   },
+  // The three columns split the row by ratio, never by content: a code is
+  // always three letters and the contrail between them must be the same
+  // width and the plane in the same place whether the city under the code
+  // is "Kochi" or "Dallas-Fort Worth" — a long city wraps inside its
+  // column instead of pushing the line aside. No minWidth on the list
+  // columns: Yoga takes it as the flex base before sharing out the rest,
+  // so unequal floors bend the ratio (the hero learned this the hard way).
   endpoint: {
-    flexShrink: 1,
+    flex: 1,
+  },
+  // No city under a compact code, so the column is just wide enough for the
+  // widest clock ("12:55 PM") and the contrail takes everything else.
+  endpointCompact: {
+    flex: 0,
+    width: 56,
   },
   endpointRight: {
     alignItems: 'flex-end',
@@ -333,10 +353,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
+  cityRight: { textAlign: 'right' },
   clock: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: 600,
+    marginTop: 'auto',
   },
   clockCompact: {
     fontSize: 12,
@@ -354,8 +376,7 @@ const styles = StyleSheet.create({
   // The line is 14pt tall; the 6pt offset centres the plane on the 26pt code
   // line, and the label beneath then sits level with the cities.
   contrail: {
-    flex: 1,
-    minWidth: 56,
+    flex: 1.4,
     alignItems: 'center',
     marginTop: 6,
     gap: Spacing.half,
@@ -364,6 +385,7 @@ const styles = StyleSheet.create({
   // contrail takes the width between the codes, so a compact leg spans its
   // row edge to edge the way the journal's rows do beneath it.
   contrailCompact: {
+    flex: 1,
     minWidth: 28,
     marginTop: 3,
   },
