@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -32,11 +32,13 @@ import {
   activeJourney,
   liveContent,
   travelWindow,
+  type StagePlan,
   type TravelDayState,
   type TravelPhase,
 } from '@/services/travel-day';
 import { noteWarning, tapLight } from '@/services/haptics';
 import { getFlightFacts } from '@/services/travel-day-lifecycle';
+import { stagePlans } from '@/services/travel-day-plan';
 import { useTravelDayStates } from '@/services/travel-day-store';
 
 const SPRING = { damping: 18, stiffness: 170 } as const;
@@ -57,18 +59,20 @@ const AnimatedRect = Animated.createAnimatedComponent(Rect);
 export function useHeroTrip(
   journeys: JourneyRow[],
   now: Date,
-): { journey: JourneyRow; phase: 'reminder' | 'live'; state: TravelDayState } | null {
+): { journey: JourneyRow; phase: 'reminder' | 'live'; state: TravelDayState; plan: StagePlan } | null {
   // Selection needs every trip's real stamps: with the empty default, a
   // morning flight whose landed stamp already closed its window wins on
   // departure time, then fails the phase check below and collapses the hero
   // to plain stats while a later trip is genuinely live.
   const stateOf = useTravelDayStates();
-  const active = activeJourney(journeys, now, stateOf);
+  const planOf = useMemo(() => stagePlans(journeys), [journeys]);
+  const active = activeJourney(journeys, now, stateOf, planOf);
   if (!active) return null;
   const state = stateOf(active.id);
-  const phase: TravelPhase = travelWindow(active, state, now).phase;
+  const plan = planOf(active.id);
+  const phase: TravelPhase = travelWindow(active, state, now, plan).phase;
   if (phase !== 'reminder' && phase !== 'live') return null;
-  return { journey: active, phase, state };
+  return { journey: active, phase, state, plan };
 }
 
 /** The hero at the top of My travels. Every ordinary day it is the navy
@@ -95,10 +99,10 @@ export function HomeHero({
   const now = useNow(60_000);
   const hero = useHeroTrip(journeys, now);
   if (!hero) return <TravelStatsHeader stats={stats} />;
-  const { journey: active, phase, state } = hero;
+  const { journey: active, phase, state, plan } = hero;
 
   const facts = getFlightFacts(active.id);
-  const content = liveContent(active, state, facts, now);
+  const content = liveContent(active, state, facts, now, plan);
   const delayed = content.emphasis === 'delay';
   const statusColor = delayed ? theme.warning : theme.tint;
   // What the ticket said, when the airline has moved a clock: struck through

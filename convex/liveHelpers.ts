@@ -183,7 +183,12 @@ export async function syncCloseAccess(ctx: MutationCtx, ownerId: string, memberI
 export async function createSession(
   ctx: MutationCtx,
   journey: Doc<'journeys'>,
-  init: { stage: string | null; stamps: Record<string, string>; activityId: string | null },
+  init: {
+    stage: string | null;
+    stamps: Record<string, string>;
+    activityId: string | null;
+    plan?: string[];
+  },
 ) {
   const now = new Date().toISOString();
   const expiresAt = new Date(
@@ -202,6 +207,7 @@ export async function createSession(
     scheduledArrival: journey.scheduledArrival,
     currentStage: init.stage,
     stageTimes: init.stamps,
+    plan: init.plan,
     flightStatus: null,
     delayMinutes: null,
     gate: null,

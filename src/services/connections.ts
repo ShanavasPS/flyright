@@ -13,6 +13,7 @@ import { airportZone } from '@/services/airports';
 import { formatTime } from '@/services/dates';
 import { followerStatus, liveTimes, sessionProgress, spanLabel, tripDone } from '@/services/public-session';
 import { cityOf } from '@/services/timeline';
+import { hasLanded, type TravelStage } from '@/services/travel-day';
 
 /** The app's instants: stored strings pinned to the airport-zone table. */
 export const legInstant = instantWith(airportZone);
@@ -145,7 +146,7 @@ export function compactLiveView(
     const gap = legInstant(next.scheduledDeparture, next.fromCode) - Date.parse(arrived);
     return {
       headline: `Departs in ${spanLabel(legInstant(next.scheduledDeparture, next.fromCode) - now.getTime())}`,
-      detail: `${session.currentStage === 'landed' ? 'Landed' : 'Due to land'} ${formatTime(arrived, airportZone(session.toCode))}`,
+      detail: `${hasLanded(session.currentStage as TravelStage | null) ? 'Landed' : 'Due to land'} ${formatTime(arrived, airportZone(session.toCode))}`,
       layover: Number.isFinite(gap) && gap > 0 ? `${layoverLabel(gap)} in ${cityOf(session.toCode)}` : null,
       delayed: false,
       leg: {

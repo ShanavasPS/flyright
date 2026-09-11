@@ -53,6 +53,7 @@ import {
   pushRemindDue,
 } from '@/services/onboarding';
 import { connectionBetween, connectionLabel, connectionsInto } from '@/services/connections';
+import { hasLanded } from '@/services/travel-day';
 import { groupJourneys, travelStats } from '@/services/timeline';
 
 import { useFoldState } from '../../../modules/flyright-fold';
@@ -101,7 +102,7 @@ function headerEyebrow(
     // leave, then where the plane is. A flight still live after midnight is
     // still today's — "Flying today" beats a wrong "tomorrow".
     let label: string;
-    if (state.stage === 'landed') label = 'Landed';
+    if (hasLanded(state.stage)) label = 'Landed';
     else if (state.stage === 'departed') label = 'In the air';
     else if (today || phase === 'live') label = 'Flying today';
     else label = 'Flying tomorrow';

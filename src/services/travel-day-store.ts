@@ -23,6 +23,7 @@ import {
   rewindTo,
   undoLast,
   type FlightFacts,
+  type StageRules,
   type TravelDayState,
   type TravelStage,
 } from '@/services/travel-day';
@@ -81,18 +82,18 @@ async function writeState(journeyId: string, state: TravelDayState): Promise<voi
 export async function advanceStage(
   journeyId: string,
   target: TravelStage,
-  manualTrip = false,
+  rules: StageRules = {},
 ): Promise<void> {
   const state = await readState(journeyId);
-  const next = advance(state, target, new Date(), manualTrip);
+  const next = advance(state, target, new Date(), rules);
   if (next === state) return;
   await writeState(journeyId, next);
   Observe.logEvent('travel_day.stage_advanced', { attributes: { stage: target } });
 }
 
-export async function undoStage(journeyId: string, manualTrip = false): Promise<void> {
+export async function undoStage(journeyId: string, rules: StageRules = {}): Promise<void> {
   const state = await readState(journeyId);
-  const next = undoLast(state, manualTrip);
+  const next = undoLast(state, rules);
   if (next === state) return;
   await writeState(journeyId, next);
   Observe.logEvent('travel_day.stage_undone');
@@ -101,10 +102,10 @@ export async function undoStage(journeyId: string, manualTrip = false): Promise<
 export async function rewindStage(
   journeyId: string,
   target: TravelStage,
-  manualTrip = false,
+  rules: StageRules = {},
 ): Promise<void> {
   const state = await readState(journeyId);
-  const next = rewindTo(state, target, manualTrip);
+  const next = rewindTo(state, target, rules);
   if (next === state) return;
   await writeState(journeyId, next);
   Observe.logEvent('travel_day.stage_rewound', { attributes: { stage: target } });

@@ -128,6 +128,56 @@ describe('buildContentState on a manual (bare wall clock) row', () => {
   });
 });
 
+describe('buildContentState with a connecting leg\'s plan', () => {
+  const PLAN = ['security', 'boarded', 'departed', 'landed', 'arrival_immigration', 'bags_collected'];
+  const landedAt = '2026-09-09T03:00:00.000Z';
+
+  it('walks the arrival steps after the landing and never calls a recorded stage "Flown"', () => {
+    const now = Date.parse('2026-09-09T03:20Z');
+    const landed = buildContentState(
+      session({ plan: PLAN, currentStage: 'landed', stageTimes: { landed: landedAt } }),
+      now,
+    );
+    expect(landed.headline).toBe('Landed');
+    expect(landed.subtitle).toBe('Passport control');
+    expect(landed.compactLabel).toBe('Passport');
+    const through = buildContentState(
+      session({
+        plan: PLAN,
+        currentStage: 'arrival_immigration',
+        stageTimes: { landed: landedAt, arrival_immigration: '2026-09-09T03:15:00.000Z' },
+        baggageBelt: '4',
+      }),
+      now,
+    );
+    expect(through.headline).toBe('Landed');
+    expect(through.subtitle).toBe('Collect your bags · belt 4');
+    expect(through.compactLabel).toBe('Belt 4');
+    expect(through.progress).toBe(1);
+    expect(through.countdownKind).toBe('');
+    const done = buildContentState(
+      session({
+        plan: PLAN,
+        currentStage: 'bags_collected',
+        stageTimes: { landed: landedAt, bags_collected: '2026-09-09T03:19:00.000Z' },
+      }),
+      now,
+    );
+    expect(done.subtitle).toBe('Welcome to DOH');
+    expect(done.stageLabel).toBe('Bags collected');
+  });
+
+  it('does not offer the arrival steps while the plane is still up, and starts at security', () => {
+    const boarded = buildContentState(
+      session({ plan: PLAN, currentStage: 'boarded', stageTimes: { boarded: '2026-09-08T22:00:00.000Z' } }),
+      Date.parse('2026-09-08T22:10Z'),
+    );
+    expect(boarded.subtitle).toBe('On board · ready for pushback');
+    const waiting = buildContentState(session({ plan: PLAN }), Date.parse('2026-09-08T20:00Z'));
+    expect(waiting.subtitle).toBe('Head to security');
+  });
+});
+
 describe('shouldStartActivity (server push-to-start)', () => {
   const dep = Date.parse('2026-09-08T22:45Z'); // pinned COK 04:15
   const fresh = (over: Partial<Doc<'liveSessions'>> = {}) =>

@@ -116,7 +116,7 @@ export function FollowTrip({ token }: { token: string }) {
     );
   } else {
     const session = result;
-    const { journey, state, facts } = adaptPublicSession(session);
+    const { journey, state, facts, plan } = adaptPublicSession(session);
     const who = session.travelerName ?? 'Your traveler';
     const times = liveTimes(session);
     const { headline, detail, delayed } = followerStatus(session, now);
@@ -163,7 +163,7 @@ export function FollowTrip({ token }: { token: string }) {
           }}
         />
 
-        <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />
+        <TravelDayTimeline journey={journey} state={state} facts={facts} plan={plan} readOnly />
 
         {/* The traveller's own words and pictures from the trip. The heart
             needs an account (and a follow); on the open web page it reads

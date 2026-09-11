@@ -40,10 +40,14 @@ const FACE = 24;
 export function TripShareActions({
   journeyId,
   visibility = 'circle',
+  plan,
   onChangeAudience,
 }: {
   journeyId: string;
   visibility?: TripVisibility;
+  /** The leg's stage plan, so the session opened here shows followers the
+   * same walk the traveler sees. */
+  plan?: readonly string[];
   onChangeAudience: () => void;
 }) {
   const hidden = visibility === 'close';
@@ -94,6 +98,7 @@ export function TripShareActions({
         stage: state.stage,
         stamps: state.stamps as Record<string, string>,
         activityId: getActivityId(journeyId),
+        plan: plan ? [...plan] : undefined,
       });
       if (!token) return;
       Observe.logEvent('travel_day.shared');

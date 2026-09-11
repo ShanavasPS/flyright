@@ -39,8 +39,9 @@ export const start = mutation({
     stage: v.union(v.string(), v.null()),
     stamps: v.record(v.string(), v.string()),
     activityId: v.union(v.string(), v.null()),
+    plan: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { naturalKey, stage, stamps, activityId }) => {
+  handler: async (ctx, { naturalKey, stage, stamps, activityId, plan }) => {
     const identity = await requireIdentity(ctx);
 
     const existing = await activeSessionForKey(ctx, identity.subject, naturalKey);
@@ -50,6 +51,7 @@ export const start = mutation({
         // a safe upper bound for the eight-hour restart rule.
         await ctx.db.patch(existing._id, { activityId, activityStartedAt: new Date().toISOString() });
       }
+      if (plan && !samePlan(plan, existing.plan)) await ctx.db.patch(existing._id, { plan });
       return { token: existing.shareToken };
     }
 
@@ -58,10 +60,13 @@ export const start = mutation({
     // A private trip has no link to hand out; the client never asks, but
     // the rule is the server's to keep.
     if (journey.privateTrip) throw new Error('Trip is private');
-    const session = await createSession(ctx, journey, { stage, stamps, activityId });
+    const session = await createSession(ctx, journey, { stage, stamps, activityId, plan });
     return { token: session.shareToken };
   },
 });
+
+const samePlan = (a: readonly string[], b: readonly string[] | undefined): boolean =>
+  !!b && a.length === b.length && a.every((stage, i) => stage === b[i]);
 
 /** The traveler device pushes its local stage state. No session and no
  * circle → no-op (the trip simply isn't shared). Flight-driven stages never
@@ -72,8 +77,9 @@ export const setStage = mutation({
     stage: v.union(v.string(), v.null()),
     stamps: v.record(v.string(), v.string()),
     activityId: v.union(v.string(), v.null()),
+    plan: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { naturalKey, stage, stamps, activityId }) => {
+  handler: async (ctx, { naturalKey, stage, stamps, activityId, plan }) => {
     const identity = await requireIdentity(ctx);
     let session = await activeSessionForKey(ctx, identity.subject, naturalKey);
     if (!session) {
@@ -89,12 +95,16 @@ export const setStage = mutation({
       // status refresh backfilling actual departure/arrival — and a session
       // opened for one would be born expired.
       if (tripIsOver(journey.scheduledArrival, Date.now(), journey.toCode)) return { shared: false };
-      session = await createSession(ctx, journey, { stage: null, stamps: {}, activityId });
+      session = await createSession(ctx, journey, { stage: null, stamps: {}, activityId, plan });
     }
 
-    // Keep server-observed flight stages even if the client lags.
+    // Keep server-observed flight stages even if the client lags. Only the
+    // flight stages themselves: an arrival step is the device's own, and
+    // the device may slide back from one to an earlier one.
     const flightStage =
-      stageIndex(session.currentStage) >= stageIndex('departed') ? session.currentStage : null;
+      session.currentStage === 'departed' || session.currentStage === 'landed'
+        ? session.currentStage
+        : null;
     const nextStage = stageIndex(flightStage) > stageIndex(stage) ? flightStage : stage;
     const nextStamps = { ...stamps };
     for (const key of ['departed', 'landed'] as const) {
@@ -117,6 +127,7 @@ export const setStage = mutation({
       currentStage: nextStage,
       stageTimes: nextStamps,
       notifiedStages,
+      ...(plan && !samePlan(plan, session.plan) ? { plan } : {}),
       ...(activityId && activityId !== session.activityId
         ? { activityId, activityStartedAt: new Date().toISOString() }
         : {}),

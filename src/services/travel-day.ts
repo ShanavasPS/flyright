@@ -8,16 +8,16 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
-import { presumedFlightStage } from '../../convex/liveShared';
+import { landedOrLater, presumedFlightStage } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
 import { flightInstant, formatTime } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
 
-/** Stages the traveler advances by tapping, in order. Skipping is normal —
- * not every trip has a bag drop or an immigration desk. */
-export const TRAVELER_STAGES = [
+/** The departure-airport walk, in order. Skipping is normal — not every
+ * trip has a bag drop or an immigration desk. */
+export const AIRPORT_STAGES = [
   'at_airport',
   'checked_in',
   'bag_dropped',
@@ -29,9 +29,65 @@ export const TRAVELER_STAGES = [
 /** Stages only flight data may set. Taps can never reach these. */
 export const FLIGHT_STAGES = ['departed', 'landed'] as const;
 
-export const STAGE_ORDER = [...TRAVELER_STAGES, ...FLIGHT_STAGES] as const;
+/** What can follow a landing: passport control on arrival, the belt, and
+ * the bag re-drop a first point of entry demands before flying on. A leg
+ * carries only the ones its place in the itinerary calls for (stagePlan);
+ * a direct flight carries none and ends at 'landed' as it always has. */
+export const ARRIVAL_STAGES = ['arrival_immigration', 'bags_collected', 'bags_rechecked'] as const;
+
+/** Every stage, in the one order every plan is a subset of. Stage indexes
+ * compare across plans because of this: a connecting leg's walk is this
+ * list with rows removed, never reordered. */
+export const STAGE_ORDER = [...AIRPORT_STAGES, ...FLIGHT_STAGES, ...ARRIVAL_STAGES] as const;
+
+/** Stages the traveler advances by tapping. */
+export const TRAVELER_STAGES = [...AIRPORT_STAGES, ...ARRIVAL_STAGES] as const;
 
 export type TravelStage = (typeof STAGE_ORDER)[number];
+
+/** The stages one leg's walk shows, in STAGE_ORDER order. */
+export type StagePlan = readonly TravelStage[];
+
+/** A flight on its own: the airport walk, the flight, done at the gate. */
+export const DEFAULT_PLAN: StagePlan = [...AIRPORT_STAGES, ...FLIGHT_STAGES];
+
+/** Where a leg sits in its itinerary — everything stagePlan needs to know.
+ * Worked out by legPlace (travel-day-plan.ts) from the journal; kept as
+ * plain facts here so the model stays free of airport data. */
+export interface LegPlace {
+  /** The traveler lands at this leg's origin on an earlier leg: already
+   * checked in, bags through, airside — the airport walk is just transit
+   * security and the gate. */
+  connecting: boolean;
+  /** Another leg leaves after this one lands. */
+  onward: boolean;
+  /** Passport control comes after THIS landing: the leg crosses a border
+   * and this airport is where the trip enters — the last stop, the first
+   * airport of a country the next leg stays inside, or any US airport. */
+  entersHere: boolean;
+  /** Checked bags come off the belt after this landing: the last stop, or
+   * a point of entry that sends arrivals through customs with their bags
+   * before they fly on (the US, an international→domestic connection). */
+  bagsHere: boolean;
+}
+
+/** The walk a leg gets from its place in the itinerary. A connecting leg
+ * drops "at the airport", check-in and bag drop (all done at the first
+ * airport) and moves passport control to after the landing; the last leg
+ * ends with the bags; a US-style entry collects them and drops them again
+ * before the onward flight. */
+export function stagePlan(place: LegPlace): StagePlan {
+  const before: TravelStage[] = place.connecting ? ['security', 'boarded'] : [...AIRPORT_STAGES];
+  const after: TravelStage[] = [];
+  if (place.entersHere) after.push('arrival_immigration');
+  if (place.bagsHere) after.push('bags_collected');
+  if (place.bagsHere && place.onward) after.push('bags_rechecked');
+  return [...before, ...FLIGHT_STAGES, ...after];
+}
+
+/** Stages of the plan that come after the landing. */
+export const arrivalStepsOf = (plan: StagePlan): TravelStage[] =>
+  plan.filter((s) => stageIndex(s) > stageIndex('landed'));
 
 export const STAGE_LABELS: Record<TravelStage, string> = {
   at_airport: 'At the airport',
@@ -42,6 +98,9 @@ export const STAGE_LABELS: Record<TravelStage, string> = {
   boarded: 'On board',
   departed: 'Departed',
   landed: 'Landed',
+  arrival_immigration: 'Through immigration',
+  bags_collected: 'Bags collected',
+  bags_rechecked: 'Bags re-checked',
 };
 
 /** One-word stage labels for the tightest surfaces (the Dynamic Island's
@@ -55,6 +114,9 @@ export const STAGE_COMPACT: Record<TravelStage, string> = {
   boarded: 'Boarded',
   departed: 'In air',
   landed: 'Landed',
+  arrival_immigration: 'Passport',
+  bags_collected: 'Bags',
+  bags_rechecked: 'Bags',
 };
 
 /** Imperative labels for the tap targets ("Tap when you're…"). The flight
@@ -69,6 +131,9 @@ export const STAGE_PROMPTS: Record<TravelStage, string> = {
   boarded: "I'm on board",
   departed: "We've taken off",
   landed: "We've landed",
+  arrival_immigration: "I'm through immigration",
+  bags_collected: 'I have my bags',
+  bags_rechecked: 'Bags are re-checked',
 };
 
 /** What the traveler should do NEXT, keyed by the stage that tap will
@@ -87,6 +152,9 @@ export const NEXT_STEP_LABELS: Record<TravelStage, string> = {
   boarded: 'Go to your gate',
   departed: 'Ready for take-off',
   landed: 'Landing',
+  arrival_immigration: 'Passport control',
+  bags_collected: 'Collect your bags',
+  bags_rechecked: 'Re-check your bags',
 };
 
 /** One-word form of the next step for the Dynamic Island / status-bar chip. */
@@ -99,6 +167,9 @@ export const NEXT_STEP_COMPACT: Record<TravelStage, string> = {
   boarded: 'Gate',
   departed: 'Take-off',
   landed: 'Landing',
+  arrival_immigration: 'Passport',
+  bags_collected: 'Bags',
+  bags_rechecked: 'Bag drop',
 };
 
 export interface TravelDayState {
@@ -141,23 +212,42 @@ export const EMPTY_FACTS: FlightFacts = {
 export const stageIndex = (stage: TravelStage | null): number =>
   stage === null ? -1 : STAGE_ORDER.indexOf(stage);
 
-const isTravelerStage = (stage: TravelStage): stage is (typeof TRAVELER_STAGES)[number] =>
+export const isTravelerStage = (stage: TravelStage): stage is (typeof TRAVELER_STAGES)[number] =>
   (TRAVELER_STAGES as readonly string[]).includes(stage);
 
-/** Manual journal trips have no status feed, so the flight stages are the
- * traveler's to stamp too; tracked flights keep them data-only. */
+/** On the ground at the destination: 'landed' or any arrival step after it.
+ * Every "has this flight landed" question asks this, not `=== 'landed'`. */
+export const hasLanded = (stage: TravelStage | null): boolean => landedOrLater(stage);
+
+const isArrivalStage = (stage: TravelStage): boolean =>
+  stageIndex(stage) > stageIndex('landed');
+
+/** What the traveler may do to a trip's stages: manual journal trips have
+ * no status feed, so the flight stages are theirs to stamp too (tracked
+ * flights keep them data-only); the plan is the leg's walk (stagePlan) —
+ * a stage outside it is never offered, tapped or reached. */
+export interface StageRules {
+  manualTrip?: boolean;
+  plan?: StagePlan;
+}
+
 const travelerMaySet = (stage: TravelStage, manualTrip: boolean): boolean =>
   manualTrip || isTravelerStage(stage);
 
-/** Taps move forward only and may skip stages. On tracked flights they can
- * never pass 'boarded' or override a flight-driven stage; manual trips may
- * tap all the way to 'landed'. */
+/** Taps move forward only and may skip stages within their side of the
+ * flight. On tracked flights they can never set a flight-driven stage;
+ * manual trips may tap through 'landed'. Nobody taps an arrival step before
+ * the landing is recorded: "through immigration" while the plane is in the
+ * air is a mis-tap, not a skip. */
 export function canAdvanceTo(
   state: TravelDayState,
   target: TravelStage,
-  manualTrip = false,
+  rules: StageRules = {},
 ): boolean {
+  const { manualTrip = false, plan = DEFAULT_PLAN } = rules;
+  if (!plan.includes(target)) return false;
   if (!travelerMaySet(target, manualTrip)) return false;
+  if (isArrivalStage(target) && !hasLanded(state.stage)) return false;
   return stageIndex(target) > stageIndex(state.stage);
 }
 
@@ -165,26 +255,29 @@ export function advance(
   state: TravelDayState,
   target: TravelStage,
   now: Date,
-  manualTrip = false,
+  rules: StageRules = {},
 ): TravelDayState {
-  if (!canAdvanceTo(state, target, manualTrip)) return state;
+  if (!canAdvanceTo(state, target, rules)) return state;
   return { stage: target, stamps: { ...state.stamps, [target]: now.toISOString() } };
 }
 
-/** The step the traveler takes next: the first stage they're still allowed
- * to advance to. Stamps are forward-only, so this is simply the stage after
- * the current one, bounded by what the traveler may set — 'boarded' on
- * tracked flights, 'landed' on manual trips. Null once nothing is left. The
+/** The step the traveler takes next: the first stage of the plan they're
+ * still allowed to advance to. Stamps are forward-only, so this is simply
+ * the stage after the current one, bounded by what the traveler may set —
+ * 'boarded' on tracked flights until the landing is in, then the arrival
+ * steps; 'landed' itself on manual trips. Null once nothing is left. The
  * timeline highlights this same stage as its action row, so the lock screen
  * and the in-app stepper always point at the same thing. */
-export function nextStage(state: TravelDayState, manualTrip = false): TravelStage | null {
-  return STAGE_ORDER.find((s) => canAdvanceTo(state, s, manualTrip)) ?? null;
+export function nextStage(state: TravelDayState, rules: StageRules = {}): TravelStage | null {
+  const plan = rules.plan ?? DEFAULT_PLAN;
+  return plan.find((s) => canAdvanceTo(state, s, rules)) ?? null;
 }
 
 /** Undo the most recent stamp only — one level, and on tracked flights never
- * once the flight has departed (those stages aren't the traveler's to take
- * back; on manual trips every stamp is theirs). */
-export function undoLast(state: TravelDayState, manualTrip = false): TravelDayState {
+ * a flight-driven stage (those aren't the traveler's to take back; on manual
+ * trips every stamp is theirs). An arrival step undoes back to 'landed'. */
+export function undoLast(state: TravelDayState, rules: StageRules = {}): TravelDayState {
+  const { manualTrip = false } = rules;
   if (state.stage === null || !travelerMaySet(state.stage, manualTrip)) return state;
   const stamps = { ...state.stamps };
   delete stamps[state.stage];
@@ -194,14 +287,17 @@ export function undoLast(state: TravelDayState, manualTrip = false): TravelDaySt
 
 /** Sliding the timeline back: any earlier *stamped* stage the traveler owns
  * is a valid landing spot, and — like undo — tracked flights lock the slider
- * once the flight has departed. */
+ * once the flight has departed: the arrival steps slide among themselves,
+ * never back across the flight. */
 export function canRewindTo(
   state: TravelDayState,
   target: TravelStage,
-  manualTrip = false,
+  rules: StageRules = {},
 ): boolean {
+  const { manualTrip = false } = rules;
   if (state.stage === null || !travelerMaySet(state.stage, manualTrip)) return false;
   if (!travelerMaySet(target, manualTrip)) return false;
+  if (!manualTrip && isArrivalStage(state.stage) !== isArrivalStage(target)) return false;
   return state.stamps[target] !== undefined && stageIndex(target) < stageIndex(state.stage);
 }
 
@@ -209,9 +305,9 @@ export function canRewindTo(
 export function rewindTo(
   state: TravelDayState,
   target: TravelStage,
-  manualTrip = false,
+  rules: StageRules = {},
 ): TravelDayState {
-  if (!canRewindTo(state, target, manualTrip)) return state;
+  if (!canRewindTo(state, target, rules)) return state;
   const stamps: TravelDayState['stamps'] = {};
   for (const s of STAGE_ORDER) {
     const stamp = state.stamps[s];
@@ -262,12 +358,22 @@ const LIVE_LEAD_MS = 4 * HOUR_MS;
 /** Hard cap mirrors flight-watch's post-departure horizon. */
 const MAX_AFTER_DEPARTURE_MS = 36 * HOUR_MS;
 
+/** How long the live surfaces stay up after the landing while arrival
+ * steps are still to tap: an immigration queue and a belt can take most
+ * of this. Half an hour once the walk is done, as for a direct flight. */
+const ARRIVAL_WALK_MS = 2 * HOUR_MS;
+const AFTER_LANDING_MS = 30 * 60_000;
+
 /** Where the trip sits in its travel-day arc. Non-flights and manual rows
- * with fabricated noon times never get a live surface. */
+ * with fabricated noon times never get a live surface. The plan decides
+ * how long the window outlives the landing: a leg with arrival steps keeps
+ * its surfaces up until they're tapped (or two hours), one without closes
+ * half an hour after touchdown. */
 export function travelWindow(
   j: TravelJourney,
   state: TravelDayState,
   now: Date,
+  plan: StagePlan = DEFAULT_PLAN,
 ): TravelWindow {
   if (j.mode !== 'flight' || !hasRealTime(j)) return { phase: 'unsupported' };
   // Manual rows carry bare wall clocks: pin them to their airports before
@@ -279,9 +385,20 @@ export function travelWindow(
 
   const landed = state.stamps.landed ? Date.parse(state.stamps.landed) : NaN;
   const arrival = flightInstant(j.scheduledArrival, airportZone(j.toCode));
-  let end = Number.isNaN(landed)
-    ? (Number.isNaN(arrival) ? departure : arrival) + 6 * HOUR_MS
-    : landed + 30 * 60_000;
+  let end: number;
+  if (Number.isNaN(landed)) {
+    end = (Number.isNaN(arrival) ? departure : arrival) + 6 * HOUR_MS;
+  } else {
+    const steps = arrivalStepsOf(plan);
+    const lastStep = steps[steps.length - 1];
+    const walkDone = !lastStep || stageIndex(state.stage) >= stageIndex(lastStep);
+    if (!walkDone) {
+      end = landed + ARRIVAL_WALK_MS;
+    } else {
+      const lastStamp = state.stage ? Date.parse(state.stamps[state.stage] ?? '') : NaN;
+      end = Math.max(landed, Number.isNaN(lastStamp) ? landed : lastStamp) + AFTER_LANDING_MS;
+    }
+  }
   end = Math.min(end, departure + MAX_AFTER_DEPARTURE_MS);
   const endsAt = new Date(end);
 
@@ -301,10 +418,11 @@ export function activeJourney<T extends TravelJourney>(
   rows: T[],
   now: Date,
   stateOf: (journeyId: string) => TravelDayState = () => EMPTY_TRAVEL_DAY,
+  planOf: (journeyId: string) => StagePlan = () => DEFAULT_PLAN,
 ): T | null {
   let best: T | null = null;
   for (const row of rows) {
-    const { phase } = travelWindow(row, stateOf(row.id), now);
+    const { phase } = travelWindow(row, stateOf(row.id), now, planOf(row.id));
     if (phase !== 'reminder' && phase !== 'live') continue;
     if (
       !best ||
@@ -423,6 +541,7 @@ export function liveContent(
   state: TravelDayState,
   facts: FlightFacts,
   now: Date,
+  plan: StagePlan = DEFAULT_PLAN,
 ): LiveContent {
   const flight = j.number || j.carrier;
   const delayed = facts.delayMinutes != null && facts.delayMinutes >= 30;
@@ -431,7 +550,8 @@ export function liveContent(
   const index = stageIndex(state.stage);
   const stageLabel = state.stage ? STAGE_LABELS[state.stage] : null;
   const manualTrip = j.source === 'manual';
-  const next = nextStage(state, manualTrip);
+  const next = nextStage(state, { manualTrip, plan });
+  const landed = hasLanded(state.stage);
   const boardingOpen = !!facts.boardingTime && Date.parse(facts.boardingTime) <= now.getTime();
   const gateWord = facts.gate ? `gate ${facts.gate}` : 'your gate';
 
@@ -452,8 +572,10 @@ export function liveContent(
   // "Departed", or airline data that hasn't caught up): read the timetable
   // and say so, rather than hold "Departing now" through the flight.
   const presumed = presumedFlightStage(state.stage, departureMs, arrivalMs, now.getTime());
+  // A presumption only ever stands in for a flight stage nobody recorded.
+  const presumedOnly = presumed !== null && index < stageIndex('departed');
   let headline: string;
-  if (state.stage === 'landed') {
+  if (landed) {
     headline = 'Landed';
   } else if (state.stage === 'departed') {
     const toLanding = Number.isNaN(arrivalMs) ? null : countdownLabel(arrivalMs, now);
@@ -474,8 +596,19 @@ export function liveContent(
   // done (followers get the done-stage feed via the server's push copy) —
   // and never the countdown, which the headline already carries.
   let subtitle: string;
-  if (state.stage === 'landed') {
-    subtitle = facts.baggageBelt ? `Bags at belt ${facts.baggageBelt}` : `Welcome to ${j.toCode}`;
+  if (landed) {
+    // On the ground: the arrival steps the plan still has, in order —
+    // passport control, the belt (by number when the airport posted one),
+    // the bag re-drop — then the welcome once the walk is done.
+    if (next === 'bags_collected') {
+      subtitle = facts.baggageBelt ? `Collect your bags · belt ${facts.baggageBelt}` : NEXT_STEP_LABELS.bags_collected;
+    } else if (next) {
+      subtitle = NEXT_STEP_LABELS[next];
+    } else if (state.stage === 'landed' && facts.baggageBelt) {
+      subtitle = `Bags at belt ${facts.baggageBelt}`;
+    } else {
+      subtitle = `Welcome to ${j.toCode}`;
+    }
   } else if (state.stage === 'departed') {
     subtitle = facts.baggageBelt ? `In the air · Bags at belt ${facts.baggageBelt}` : 'In the air';
   } else if (presumed === 'landed') {
@@ -490,12 +623,13 @@ export function liveContent(
     // Boarding has opened: wherever the walk stands, the gate is the task.
     subtitle = facts.gate ? `Boarding now · Gate ${facts.gate}` : 'Boarding now';
   } else if (state.stage === null || next === null) {
-    // Before the first tap: the airport once the live window opens (T−4h),
-    // honesty before that — a lock screen saying "head to the airport" the
+    // Before the first tap: the first step of the walk once the live window
+    // opens (T−4h) — the airport, or security for a connecting leg —
+    // honesty before that: a lock screen saying "head to the airport" the
     // evening before helps nobody.
     subtitle =
       !Number.isNaN(departureMs) && now.getTime() >= departureMs - LIVE_LEAD_MS
-        ? NEXT_STEP_LABELS.at_airport
+        ? NEXT_STEP_LABELS[next ?? plan[0] ?? 'at_airport']
         : 'Nothing to do yet';
   } else if (next === 'boarded') {
     // The gate step carries the boarding time when the airline posts one.
@@ -513,10 +647,13 @@ export function liveContent(
   // (the gate code once the gate is the destination); from boarding on, the
   // stage word — and the baggage belt after landing, the last thing to find.
   let compactLabel: string;
-  if (presumed && state.stage !== presumed) {
+  if (presumedOnly) {
     compactLabel = presumed === 'landed' ? 'Flown' : 'Timetable';
   } else if (state.stage === null) {
     compactLabel = formatTime(effectiveDeparture, departureZone);
+  } else if (landed && next) {
+    compactLabel =
+      next === 'bags_collected' && facts.baggageBelt ? `Belt ${facts.baggageBelt}` : NEXT_STEP_COMPACT[next];
   } else if (state.stage === 'landed' && facts.baggageBelt) {
     compactLabel = `Belt ${facts.baggageBelt}`;
   } else if (index >= stageIndex('boarded') || next === null) {

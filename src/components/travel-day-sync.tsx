@@ -9,6 +9,7 @@ import { db } from '@/db/client';
 import { journeys, travelDay } from '@/db/schema';
 import { getActivityId } from '@/services/live-activity';
 import { useLiveRows } from '@/services/live-rows';
+import { stagePlans } from '@/services/travel-day-plan';
 import { isDirty, markTravelDaySynced, rowToState } from '@/services/travel-day-store';
 
 /** Push-only mirror of the traveler's stage state into the Convex live
@@ -22,9 +23,18 @@ export function TravelDaySync() {
   const { isAuthenticated } = useConvexAuth();
   const setStage = useMutation(api.live.setStage);
   const { data: rows } = useLiveRows(db.select().from(travelDay));
+  // Enough of every trip to tell which have flown and how the legs chain —
+  // a leg's stage plan (its place in the itinerary) travels up with its
+  // stamps so followers see the walk the traveler sees.
   const { data: trips } = useLiveRows(
     db
-      .select({ id: journeys.id, scheduledArrival: journeys.scheduledArrival, toCode: journeys.toCode })
+      .select({
+        id: journeys.id,
+        fromCode: journeys.fromCode,
+        toCode: journeys.toCode,
+        scheduledDeparture: journeys.scheduledDeparture,
+        scheduledArrival: journeys.scheduledArrival,
+      })
       .from(journeys),
   );
   const busy = useRef(false);
@@ -44,6 +54,7 @@ export function TravelDaySync() {
     });
     if (!dirty.length) return;
 
+    const planOf = stagePlans(trips);
     busy.current = true;
     void (async () => {
       try {
@@ -54,6 +65,7 @@ export function TravelDaySync() {
             stage: state.stage,
             stamps: state.stamps as Record<string, string>,
             activityId: getActivityId(row.journeyId),
+            plan: [...planOf(row.journeyId)],
           });
           await markTravelDaySynced(row);
         }

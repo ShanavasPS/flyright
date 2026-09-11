@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { SymbolView } from 'expo-symbols';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
@@ -66,7 +66,8 @@ import {
 import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
 import { shiftLabel } from '@/services/schedule-change';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
-import { travelWindow, type TravelStage } from '@/services/travel-day';
+import { DEFAULT_PLAN, travelWindow, type TravelStage } from '@/services/travel-day';
+import { stagePlanFor } from '@/services/travel-day-plan';
 import { tripFacts } from '@/services/trip-facts';
 import { visibilityChip, visibilityOf } from '@/services/trip-visibility';
 import { focusWorldOn } from '@/services/world-focus';
@@ -186,6 +187,17 @@ export function JourneyDetail({
   }, [isDemo, rowId, observedFacts]);
 
   const travelState = useTravelDay(rowId ?? '');
+  // Which stages this leg's travel day has: the whole airport walk for a
+  // flight on its own, transit security and the arrival steps for a leg of
+  // a longer itinerary — read off the journal, since the other legs decide.
+  const travelPlan = useMemo(
+    () => (row && journal ? stagePlanFor(row, journal) : DEFAULT_PLAN),
+    [row, journal],
+  );
+  const travelRules = useMemo(
+    () => ({ manualTrip: row?.source === 'manual', plan: travelPlan }),
+    [row?.source, travelPlan],
+  );
 
   // The delay cache the journeys list badges from — the status provider
   // forgets flights long before claim windows close, so a landed flight's
@@ -241,7 +253,7 @@ export function JourneyDetail({
 
   // Inside the travel window the live timeline takes over from the passive
   // "watching" copy; the verdict card still wins when there's money on it.
-  const travelWin = !isDemo && row ? travelWindow(row, travelState, new Date(now)) : null;
+  const travelWin = !isDemo && row ? travelWindow(row, travelState, new Date(now), travelPlan) : null;
   const travelPhase = travelWin?.phase ?? 'unsupported';
   const travelActive = travelPhase === 'reminder' || travelPhase === 'live';
   // Before the window the steps still show, locked, so the traveler knows
@@ -307,7 +319,12 @@ export function JourneyDetail({
     : null;
   const shareActions =
     CONVEX_URL && !isDemo && row && changeAudience && (travelActive || tripAge <= 0) ? (
-      <TripShareActions journeyId={row.id} visibility={visibilityOf(row)} onChangeAudience={changeAudience} />
+      <TripShareActions
+        journeyId={row.id}
+        visibility={visibilityOf(row)}
+        plan={travelPlan}
+        onChangeAudience={changeAudience}
+      />
     ) : undefined;
 
   // Share = the poster the World tab makes for one flight (screens/share-world),
@@ -396,6 +413,7 @@ export function JourneyDetail({
             journey={row}
             state={travelState}
             facts={getFlightFacts(row.id)}
+            plan={travelPlan}
             action={shareActions}
             locked={travelPreview}
             unlocksAt={travelWin?.startsAt}
@@ -420,17 +438,13 @@ export function JourneyDetail({
               ) : undefined
             }
             onAdvance={(stage: TravelStage) => {
-              void advanceStage(row.id, stage, row.source === 'manual').then(() =>
-                reconcileTravelDay(),
-              );
+              void advanceStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
             }}
             onRewind={(stage: TravelStage) => {
-              void rewindStage(row.id, stage, row.source === 'manual').then(() =>
-                reconcileTravelDay(),
-              );
+              void rewindStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
             }}
             onUndo={() => {
-              void undoStage(row.id, row.source === 'manual').then(() => reconcileTravelDay());
+              void undoStage(row.id, travelRules).then(() => reconcileTravelDay());
             }}
           />
         )}

@@ -35,6 +35,7 @@ import {
   type LiveContent,
   type TravelJourney,
 } from '@/services/travel-day';
+import { stagePlans } from '@/services/travel-day-plan';
 import {
   endTravelLiveUpdate,
   postTravelLiveUpdate,
@@ -173,10 +174,14 @@ async function doReconcile(): Promise<void> {
 
   await ensureChannel();
   const now = new Date();
-  const journeyRows: TravelJourney[] = await db
+  const journeyRows: (TravelJourney & { id: string })[] = await db
     .select()
     .from(journeys)
     .where(isNull(journeys.deletedAt));
+  // Each leg's walk depends on the legs around it (a connecting leg has
+  // arrival steps, a direct flight none) — and so does how long its window
+  // outlives the landing.
+  const planOf = stagePlans(journeyRows);
 
   // iOS ends every Live Activity eight hours after it starts, silently: the
   // id we remember then points at a dimmed leftover that swallows updates.
@@ -204,7 +209,8 @@ async function doReconcile(): Promise<void> {
   for (const j of journeyRows) {
     const row = byJourney.get(j.id);
     const state = rowToState(row);
-    const { phase } = travelWindow(j, state, now);
+    const plan = planOf(j.id);
+    const { phase } = travelWindow(j, state, now, plan);
 
     if (phase === 'reminder' || phase === 'live') {
       // The eight-hour cap again: an activity started at T−24h is dead before
@@ -212,7 +218,7 @@ async function doReconcile(): Promise<void> {
       // that already exists keeps updating through the reminder phase.
       if (Platform.OS === 'ios' && phase === 'reminder' && !getActivityId(j.id)) continue;
       const facts = getFlightFacts(j.id);
-      const content = liveContent(j, state, facts, now);
+      const content = liveContent(j, state, facts, now, plan);
       // Progress is bucketed to 2% so the in-flight plane creeps along on
       // each reconcile without re-posting for sub-pixel changes.
       const fingerprint = [
@@ -251,14 +257,14 @@ async function doReconcile(): Promise<void> {
     } else if (row && row.activityStartedAt && !row.endedAt) {
       // The final render lingers dimmed after the end — give it the real
       // last state ("Landed in LHR") instead of a generic goodbye.
-      await teardown(j.id, 'ended', liveContent(j, state, getFlightFacts(j.id), now));
+      await teardown(j.id, 'ended', liveContent(j, state, getFlightFacts(j.id), now, plan));
     }
   }
 
   if (Platform.OS === 'ios') {
     const keep = journeyRows
       .filter((j) => {
-        const { phase } = travelWindow(j, rowToState(byJourney.get(j.id)), now);
+        const { phase } = travelWindow(j, rowToState(byJourney.get(j.id)), now, planOf(j.id));
         return phase === 'reminder' || phase === 'live';
       })
       .map((j) => getActivityId(j.id))

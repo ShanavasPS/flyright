@@ -130,6 +130,11 @@ export default defineSchema({
     // Stage machine — same stage keys as src/services/travel-day.ts
     currentStage: v.union(v.string(), v.null()),
     stageTimes: v.record(v.string(), v.string()),
+    /** The stages this leg's walk has (the app's stagePlan) — a connecting
+     * leg skips the check-in steps and adds passport control and the bags
+     * after landing. Absent on rows from before the field: a direct
+     * flight's walk. */
+    plan: v.optional(v.array(v.string())),
 
     // Flight-driven facts (from the poll chain)
     flightStatus: v.union(v.string(), v.null()),

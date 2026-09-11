@@ -13,10 +13,31 @@ export const STAGE_ORDER = [
   'boarded',
   'departed',
   'landed',
+  // After the landing: passport control on arrival, the belt, the bag
+  // re-drop at a first point of entry. A leg carries the ones its place in
+  // the itinerary calls for (the app's stagePlan); the session's `plan`
+  // says which.
+  'arrival_immigration',
+  'bags_collected',
+  'bags_rechecked',
 ] as const;
 
 export const stageIndex = (stage: string | null): number =>
   stage === null ? -1 : STAGE_ORDER.indexOf(stage as (typeof STAGE_ORDER)[number]);
+
+const LANDED_INDEX = stageIndex('landed');
+const DEPARTED_INDEX = stageIndex('departed');
+
+/** On the ground at the destination: 'landed' or any arrival step after
+ * it. Every "has this flight landed" question asks this, not `=== 'landed'`. */
+export const landedOrLater = (stage: string | null): boolean => stageIndex(stage) >= LANDED_INDEX;
+
+/** A flight stage the traveller's device or the airline actually recorded
+ * — as opposed to one presumed from the clocks. */
+const flightStageKnown = (stage: string | null): boolean => stageIndex(stage) >= DEPARTED_INDEX;
+
+/** The walk a session shows when the device didn't say: a direct flight's. */
+export const DEFAULT_PLAN: readonly string[] = STAGE_ORDER.slice(0, LANDED_INDEX + 1);
 
 /** Every stage pushes to followers — the whole point of a circle is that
  * nobody has to text "boarded yet?". Each stage pushes at most once per
@@ -32,6 +53,9 @@ export const STAGE_PUSH_COPY: Record<string, (name: string, to: string) => strin
   boarded: (n) => `${n} is on board`,
   departed: (n, to) => `${n} is in the air to ${to}`,
   landed: (n, to) => `${n} landed in ${to}`,
+  arrival_immigration: (n) => `${n} is through immigration`,
+  bags_collected: (n) => `${n} has the bags`,
+  bags_rechecked: (n) => `${n} has re-checked the bags`,
 };
 
 const HOUR_MS = 3_600_000;
@@ -52,7 +76,8 @@ export function presumedFlightStage(
   arrivalMs: number,
   now: number,
 ): 'departed' | 'landed' | null {
-  if (stage === 'landed' || stage === 'departed') return stage;
+  if (landedOrLater(stage)) return 'landed';
+  if (stage === 'departed') return stage;
   if (!Number.isNaN(arrivalMs) && arrivalMs <= now - MINUTE_MS) return 'landed';
   if (!Number.isNaN(departureMs) && departureMs <= now - MINUTE_MS) return 'departed';
   return null;
@@ -251,6 +276,9 @@ export const STAGE_LABELS: Record<string, string> = {
   boarded: 'On board',
   departed: 'Departed',
   landed: 'Landed',
+  arrival_immigration: 'Through immigration',
+  bags_collected: 'Bags collected',
+  bags_rechecked: 'Bags re-checked',
 };
 
 /** A flight time as its own airport reads it — the clock the traveler is
@@ -282,14 +310,19 @@ function countdownBit(departureMs: number, now: number): string {
 
 /** Mirrors NEXT_STEP_LABELS / NEXT_STEP_COMPACT in src/services/travel-day.ts:
  * the traveler's own lock screen speaks in next steps, followers get the
- * done-stage copy above. Sessions are tracked flights, so the walk ends at
- * 'boarded' — flight data takes over from there. */
+ * done-stage copy above. Sessions are tracked flights, so the walk pauses
+ * at 'boarded' — flight data takes over — and resumes with the plan's
+ * arrival steps once the landing is in. */
 const NEXT_STEP_LABELS: Record<string, string> = {
+  at_airport: 'Head to the airport',
   checked_in: 'Check in',
   bag_dropped: 'Drop your bags',
   security: 'Head to security',
   immigration: 'Passport control',
   boarded: 'Go to your gate',
+  arrival_immigration: 'Passport control',
+  bags_collected: 'Collect your bags',
+  bags_rechecked: 'Re-check your bags',
 };
 const NEXT_STEP_COMPACT: Record<string, string> = {
   checked_in: 'Check in',
@@ -297,21 +330,34 @@ const NEXT_STEP_COMPACT: Record<string, string> = {
   security: 'Security',
   immigration: 'Passport',
   boarded: 'Gate',
+  arrival_immigration: 'Passport',
+  bags_collected: 'Bags',
+  bags_rechecked: 'Bag drop',
 };
 const STAGE_COMPACT: Record<string, string> = {
   boarded: 'Boarded',
   departed: 'In air',
   landed: 'Landed',
+  arrival_immigration: 'Passport',
+  bags_collected: 'Bags',
+  bags_rechecked: 'Bags',
 };
 const BOARDED_INDEX = stageIndex('boarded');
 
-/** The traveler's next tappable stage: the one after the current stage, up
- * to 'boarded'. Null before the first tap (the countdown speaks then) and
- * once boarding is done. */
-function nextStep(currentStage: string | null): string | null {
+/** The traveler's next tappable stage — mirrors nextStage in the app: the
+ * first stage of the plan after the current one that a tap may reach. Null
+ * before the first tap (the countdown speaks then), between boarding and
+ * the landing (flight data's turn), and once the walk is done. */
+function nextStep(currentStage: string | null, plan: readonly string[]): string | null {
   const index = stageIndex(currentStage);
-  if (index < 0 || index >= BOARDED_INDEX) return null;
-  return STAGE_ORDER[index + 1];
+  if (index < 0) return null;
+  for (const stage of plan) {
+    const at = stageIndex(stage);
+    if (at <= index || at === DEPARTED_INDEX || at === LANDED_INDEX) continue;
+    if (at > LANDED_INDEX && !landedOrLater(currentStage)) return null;
+    return stage;
+  }
+  return null;
 }
 
 /** Mirrors flightProgress in src/services/travel-day.ts: zero until the
@@ -358,8 +404,10 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   const delayLabel = delayed
     ? `${Math.floor(s.delayMinutes! / 60) ? `${Math.floor(s.delayMinutes! / 60)}h ` : ''}${s.delayMinutes! % 60} min late`.replace('h 0 min', 'h')
     : '';
-  const next = nextStep(s.currentStage);
+  const plan = s.plan ?? DEFAULT_PLAN;
+  const next = nextStep(s.currentStage, plan);
   const index = stageIndex(s.currentStage);
+  const landed = landedOrLater(s.currentStage);
   const gateWord = s.gate ? `gate ${s.gate}` : 'your gate';
 
   const effectiveDeparture = s.estimatedDeparture ?? s.scheduledDeparture;
@@ -368,7 +416,7 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   const presumed = presumedFlightStage(s.currentStage, departureMs, arrivalMs, now);
   const countdown = liveCountdown(presumed, departureMs, arrivalMs);
   let headline: string;
-  if (s.currentStage === 'landed') {
+  if (landed) {
     headline = 'Landed';
   } else if (s.currentStage === 'departed') {
     const toLanding = Number.isNaN(arrivalMs) ? null : countdownBit(arrivalMs, now);
@@ -386,8 +434,16 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   }
 
   let subtitle: string;
-  if (s.currentStage === 'landed') {
-    subtitle = s.baggageBelt ? `Bags at belt ${s.baggageBelt}` : `Welcome to ${s.toCode}`;
+  if (landed) {
+    if (next === 'bags_collected') {
+      subtitle = s.baggageBelt ? `Collect your bags · belt ${s.baggageBelt}` : NEXT_STEP_LABELS.bags_collected;
+    } else if (next) {
+      subtitle = NEXT_STEP_LABELS[next];
+    } else if (s.currentStage === 'landed' && s.baggageBelt) {
+      subtitle = `Bags at belt ${s.baggageBelt}`;
+    } else {
+      subtitle = `Welcome to ${s.toCode}`;
+    }
   } else if (s.currentStage === 'departed') {
     subtitle = s.baggageBelt ? `In the air · Bags at belt ${s.baggageBelt}` : 'In the air';
   } else if (presumed === 'landed') {
@@ -397,10 +453,11 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   } else if (s.currentStage === 'boarded') {
     subtitle = 'On board · ready for pushback';
   } else if (next === null) {
-    // Before the first tap: the airport once the live window opens (T−4h).
+    // Before the first tap: the walk's first step once the live window
+    // opens (T−4h) — the airport, or security for a connecting leg.
     subtitle =
       !Number.isNaN(departureMs) && now >= departureMs - 4 * HOUR_MS
-        ? 'Head to the airport'
+        ? (NEXT_STEP_LABELS[plan[0] ?? 'at_airport'] ?? 'Head to the airport')
         : 'Nothing to do yet';
   } else if (next === 'boarded') {
     // The session has no boarding time or check-in desk, so those
@@ -412,9 +469,11 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
 
   let compactLabel: string;
-  if (presumed && s.currentStage !== presumed) compactLabel = presumed === 'landed' ? 'Flown' : 'Timetable';
+  if (presumed && !flightStageKnown(s.currentStage)) compactLabel = presumed === 'landed' ? 'Flown' : 'Timetable';
   else if (s.currentStage === null) compactLabel = fmtTime(effectiveDeparture, s.fromCode);
-  else if (s.currentStage === 'landed' && s.baggageBelt) compactLabel = `Belt ${s.baggageBelt}`;
+  else if (landed && next) {
+    compactLabel = next === 'bags_collected' && s.baggageBelt ? `Belt ${s.baggageBelt}` : NEXT_STEP_COMPACT[next];
+  } else if (s.currentStage === 'landed' && s.baggageBelt) compactLabel = `Belt ${s.baggageBelt}`;
   else if (index >= BOARDED_INDEX || next === null) compactLabel = STAGE_COMPACT[s.currentStage] ?? '';
   else if (next === 'boarded') compactLabel = s.gate ? `G${s.gate}` : NEXT_STEP_COMPACT.boarded;
   else compactLabel = NEXT_STEP_COMPACT[next];
@@ -450,6 +509,10 @@ export interface PublicSession {
   scheduledArrival: string;
   currentStage: string | null;
   stageTimes: Record<string, string>;
+  /** The stages this leg's walk has (the app's stagePlan), as the device
+   * reported them; absent on sessions from before the field — a direct
+   * flight's walk then. */
+  plan?: string[];
   flightStatus: string | null;
   delayMinutes: number | null;
   gate: string | null;
@@ -480,6 +543,7 @@ export function toPublicSession(
     scheduledArrival: s.scheduledArrival,
     currentStage: s.currentStage,
     stageTimes: s.stageTimes,
+    plan: s.plan,
     flightStatus: s.flightStatus,
     delayMinutes: s.delayMinutes,
     gate: s.gate,

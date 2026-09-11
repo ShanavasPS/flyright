@@ -11,11 +11,14 @@ import {
   EMPTY_FACTS,
   STAGE_LABELS,
   flightProgress,
+  hasLanded,
   type FlightFacts,
+  type StagePlan,
   type TravelDayState,
   type TravelJourney,
   type TravelStage,
 } from '@/services/travel-day';
+import { planFromSession } from '@/services/travel-day-plan';
 
 /** Adapt the whitelisted Convex session into the shapes the shared timeline
  * renders — one source of truth for stage visuals on every surface that
@@ -25,8 +28,11 @@ export function adaptPublicSession(s: PublicSession): {
   journey: TravelJourney;
   state: TravelDayState;
   facts: FlightFacts;
+  /** The walk the traveler's device reported for this leg. */
+  plan: StagePlan;
 } {
   return {
+    plan: planFromSession(s.plan),
     journey: {
       id: '',
       mode: 'flight',
@@ -137,16 +143,21 @@ export function followerStatus(
     return line ? line[0]!.toUpperCase() + line.slice(1) : null;
   };
 
-  if (stage === 'landed') {
+  if (hasLanded(stage)) {
     const at = s.actualArrival ?? times.arrival;
+    // Past the landing the arrival steps are the news — "Through
+    // immigration", "Bags collected" — until then the belt or terminal.
     return {
       delayed: false,
       headline: `Landed ${formatTime(at, airportZone(s.toCode))}`,
-      detail: s.baggageBelt
-        ? `Bags at belt ${s.baggageBelt}`
-        : s.terminal
-          ? `Terminal ${s.terminal}`
-          : null,
+      detail:
+        stage !== 'landed'
+          ? STAGE_LABELS[stage!]
+          : s.baggageBelt
+            ? `Bags at belt ${s.baggageBelt}`
+            : s.terminal
+              ? `Terminal ${s.terminal}`
+              : null,
     };
   }
 
@@ -272,7 +283,7 @@ export const travellerEyebrow = (
   s: Parameters<typeof presumedStage>[0],
   now: Date,
 ): string =>
-  s.currentStage === 'landed'
+  hasLanded(s.currentStage as TravelStage | null)
     ? `${name} has landed`
     : tripDone(s, now)
       ? `${name}'s trip`

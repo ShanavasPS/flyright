@@ -10,7 +10,9 @@ import {
   canRewindTo,
   flightProgress,
   liveContent,
+  nextStage,
   rewindTo,
+  stagePlan,
   travelWindow,
   undoLast,
   type FlightFacts,
@@ -19,6 +21,7 @@ import {
 } from '@/services/travel-day';
 
 const NOW = new Date('2026-08-24T12:00:00Z');
+const MANUAL = { manualTrip: true };
 
 function journey(overrides: Partial<TravelJourney> = {}): TravelJourney {
   return {
@@ -68,9 +71,9 @@ describe('advance / canAdvanceTo', () => {
 
   it('manual trips may tap departed and landed (no status feed to do it)', () => {
     let state = advance(EMPTY_TRAVEL_DAY, 'boarded', NOW);
-    expect(canAdvanceTo(state, 'departed', true)).toBe(true);
-    state = advance(state, 'departed', NOW, true);
-    state = advance(state, 'landed', NOW, true);
+    expect(canAdvanceTo(state, 'departed', MANUAL)).toBe(true);
+    state = advance(state, 'departed', NOW, MANUAL);
+    state = advance(state, 'landed', NOW, MANUAL);
     expect(state.stage).toBe('landed');
     expect(state.stamps.landed).toBe(NOW.toISOString());
   });
@@ -98,7 +101,7 @@ describe('undoLast', () => {
     };
     expect(undoLast(departed)).toBe(departed);
     // Manual trips own every stamp, so the undo works there.
-    expect(undoLast(departed, true).stage).toBe('boarded');
+    expect(undoLast(departed, MANUAL).stage).toBe('boarded');
   });
 });
 
@@ -141,7 +144,7 @@ describe('rewindTo / canRewindTo', () => {
     };
     expect(canRewindTo(departed, 'at_airport')).toBe(false);
     expect(rewindTo(departed, 'at_airport')).toBe(departed);
-    const rewound = rewindTo(departed, 'at_airport', true);
+    const rewound = rewindTo(departed, 'at_airport', MANUAL);
     expect(rewound.stage).toBe('at_airport');
     expect(rewound.stamps.departed).toBeUndefined();
   });
@@ -349,10 +352,10 @@ describe('liveContent', () => {
     ).toBeCloseTo(0.5);
     // A manual trip's own take-off stamp anchors the start.
     const manualAir = advance(
-      advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, true),
+      advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, MANUAL),
       'departed',
       new Date('2026-08-25T08:00Z'),
-      true,
+      MANUAL,
     );
     expect(
       flightProgress(journey({ source: 'manual' }), manualAir, EMPTY_FACTS, new Date('2026-08-25T09:17:30Z')),
@@ -438,11 +441,11 @@ describe('liveContent', () => {
 
   it('manual trips walk the next step through take-off', () => {
     const manual = journey({ source: 'manual', number: '' });
-    const boarded = advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, true);
+    const boarded = advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, MANUAL);
     expect(liveContent(manual, boarded, EMPTY_FACTS, liveNow).subtitle).toBe(
       'On board · ready for pushback',
     );
-    const departed = advance(boarded, 'departed', liveNow, true);
+    const departed = advance(boarded, 'departed', liveNow, MANUAL);
     expect(liveContent(manual, departed, EMPTY_FACTS, liveNow).compactLabel).toBe('In air');
   });
 
@@ -509,5 +512,125 @@ describe('liveContent', () => {
     expect(liveContent(journey(), landed, facts({ baggageBelt: '7' }), liveNow).subtitle).toBe(
       'Bags at belt 7',
     );
+  });
+});
+
+describe('stage plans (connecting legs)', () => {
+  const liveNow = new Date('2026-08-25T05:00Z');
+  // A leg that connects off another and ends the trip: transit security,
+  // the gate, the flight, then passport control and the bags.
+  const LAST_LEG = stagePlan({ connecting: true, onward: false, entersHere: true, bagsHere: true });
+  // A US first point of entry with a domestic leg to follow.
+  const ENTRY_LEG = stagePlan({ connecting: false, onward: true, entersHere: true, bagsHere: true });
+  const rules = { plan: LAST_LEG };
+
+  it('never offers a stage the plan does not have', () => {
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'at_airport', rules)).toBe(false);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'checked_in', rules)).toBe(false);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'immigration', rules)).toBe(false);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'security', rules)).toBe(true);
+    expect(nextStage(EMPTY_TRAVEL_DAY, rules)).toBe('security');
+    // A direct flight has no arrival steps to reach.
+    const landed = applyFlightFacts(EMPTY_TRAVEL_DAY, facts({ actualArrival: '2026-08-25T10:40Z' }));
+    expect(canAdvanceTo(landed, 'arrival_immigration')).toBe(false);
+    expect(nextStage(landed)).toBeNull();
+  });
+
+  it('keeps the arrival steps locked until the landing is in', () => {
+    const boarded = advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, rules);
+    expect(canAdvanceTo(boarded, 'arrival_immigration', rules)).toBe(false);
+    expect(nextStage(boarded, rules)).toBeNull();
+    const landed = applyFlightFacts(boarded, facts({ actualArrival: '2026-08-25T10:40Z' }));
+    expect(nextStage(landed, rules)).toBe('arrival_immigration');
+    const through = advance(landed, 'arrival_immigration', liveNow, rules);
+    expect(through.stage).toBe('arrival_immigration');
+    expect(nextStage(through, rules)).toBe('bags_collected');
+    const bags = advance(through, 'bags_collected', liveNow, rules);
+    expect(nextStage(bags, rules)).toBeNull();
+    // Skipping passport control straight to the belt is a skip, like any other.
+    expect(advance(landed, 'bags_collected', liveNow, rules).stage).toBe('bags_collected');
+    // Manual trips stamp the landing themselves first.
+    const manualBoarded = advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, { ...rules, manualTrip: true });
+    expect(canAdvanceTo(manualBoarded, 'arrival_immigration', { ...rules, manualTrip: true })).toBe(false);
+    const manualLanded = advance(
+      advance(manualBoarded, 'departed', liveNow, { ...rules, manualTrip: true }),
+      'landed',
+      liveNow,
+      { ...rules, manualTrip: true },
+    );
+    expect(nextStage(manualLanded, { ...rules, manualTrip: true })).toBe('arrival_immigration');
+  });
+
+  it('a lagging landing never demotes an arrival step', () => {
+    const landed = applyFlightFacts(EMPTY_TRAVEL_DAY, facts({ actualArrival: '2026-08-25T10:40Z' }));
+    const through = advance(landed, 'arrival_immigration', liveNow, rules);
+    expect(applyFlightFacts(through, facts({ actualArrival: '2026-08-25T10:40Z' }))).toEqual(through);
+  });
+
+  it('undo and rewind stay on the ground side of the flight', () => {
+    const landed = applyFlightFacts(
+      advance(EMPTY_TRAVEL_DAY, 'security', liveNow, rules),
+      facts({ actualArrival: '2026-08-25T10:40Z' }),
+    );
+    const walked = advance(landed, 'arrival_immigration', liveNow, rules);
+    const bags = advance(walked, 'bags_collected', liveNow, rules);
+    expect(undoLast(bags, rules).stage).toBe('arrival_immigration');
+    expect(undoLast(walked, rules).stage).toBe('landed');
+    expect(canRewindTo(bags, 'arrival_immigration', rules)).toBe(true);
+    // Never back across the flight on a tracked trip…
+    expect(canRewindTo(bags, 'security', rules)).toBe(false);
+    // …a manual trip owns every stamp.
+    expect(canRewindTo(bags, 'security', { ...rules, manualTrip: true })).toBe(true);
+  });
+
+  it('holds the live window open while arrival steps remain', () => {
+    const j = journey(); // lands 2026-08-25T10:35Z
+    const landed: TravelDayState = { stage: 'landed', stamps: { landed: '2026-08-25T10:40Z' } };
+    // A direct flight lets go half an hour after touchdown…
+    expect(travelWindow(j, landed, new Date('2026-08-25T11:30Z')).phase).toBe('ended');
+    // …a leg with passport control and bags ahead keeps its surfaces up.
+    expect(travelWindow(j, landed, new Date('2026-08-25T11:30Z'), LAST_LEG).phase).toBe('live');
+    expect(travelWindow(j, landed, new Date('2026-08-25T12:45Z'), LAST_LEG).phase).toBe('ended');
+    // Done with the bags: half an hour more, then gone.
+    const done: TravelDayState = {
+      stage: 'bags_collected',
+      stamps: { landed: '2026-08-25T10:40Z', bags_collected: '2026-08-25T11:20Z' },
+    };
+    expect(travelWindow(j, done, new Date('2026-08-25T11:45Z'), LAST_LEG).phase).toBe('live');
+    expect(travelWindow(j, done, new Date('2026-08-25T11:55Z'), LAST_LEG).phase).toBe('ended');
+  });
+
+  it('speaks the arrival steps on the live surfaces', () => {
+    const j = journey();
+    const landedAt = new Date('2026-08-25T10:50Z');
+    const landed = applyFlightFacts(EMPTY_TRAVEL_DAY, facts({ actualArrival: '2026-08-25T10:40Z' }));
+    const down = liveContent(j, landed, EMPTY_FACTS, landedAt, LAST_LEG);
+    expect(down.headline).toBe('Landed');
+    expect(down.subtitle).toBe('Passport control');
+    expect(down.compactLabel).toBe('Passport');
+    expect(down.progress).toBe(1);
+    const through = advance(landed, 'arrival_immigration', landedAt, rules);
+    expect(liveContent(j, through, EMPTY_FACTS, landedAt, LAST_LEG).subtitle).toBe('Collect your bags');
+    const belt = liveContent(j, through, facts({ baggageBelt: '7' }), landedAt, LAST_LEG);
+    expect(belt.subtitle).toBe('Collect your bags · belt 7');
+    expect(belt.compactLabel).toBe('Belt 7');
+    // The headline stays "Landed" even when the airline's estimate is later
+    // than the real touchdown — a recorded stage is never second-guessed.
+    expect(
+      liveContent(j, through, facts({ estimatedArrival: '2026-08-25T11:30Z' }), landedAt, LAST_LEG).headline,
+    ).toBe('Landed');
+    const bags = advance(through, 'bags_collected', landedAt, rules);
+    const doneWith = liveContent(j, bags, facts({ baggageBelt: '7' }), landedAt, LAST_LEG);
+    expect(doneWith.subtitle).toBe('Welcome to LHR');
+    expect(doneWith.compactLabel).toBe('Bags');
+    // A first point of entry: the bags go back in for the onward flight.
+    const entryRules = { plan: ENTRY_LEG };
+    const collected = advance(advance(landed, 'arrival_immigration', landedAt, entryRules), 'bags_collected', landedAt, entryRules);
+    const recheck = liveContent(j, collected, EMPTY_FACTS, landedAt, ENTRY_LEG);
+    expect(recheck.subtitle).toBe('Re-check your bags');
+    expect(recheck.compactLabel).toBe('Bag drop');
+    // A connecting leg's first step is security, not the airport.
+    const waiting = liveContent(j, EMPTY_TRAVEL_DAY, EMPTY_FACTS, liveNow, LAST_LEG);
+    expect(waiting.subtitle).toBe('Head to security');
   });
 });

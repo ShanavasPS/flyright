@@ -10,6 +10,7 @@
  */
 
 import { airportZone, flightDay, flightInstant } from './airportZones';
+import { landedOrLater } from './liveShared';
 
 /** Room for a sentence or two — a caption, not a post. */
 export const UPDATE_TEXT_MAX = 200;
@@ -58,7 +59,7 @@ export function placeFor(
   stage: string | null,
   now: number,
 ): string | null {
-  if (stage === 'landed') return trip.toCode;
+  if (landedOrLater(stage)) return trip.toCode;
   if (stage === 'departed') return null;
   if (stage) return trip.fromCode;
   const dep = flightInstant(trip.scheduledDeparture, trip.fromCode);

@@ -21,15 +21,18 @@ import { airportZone } from '@/services/airports';
 import { formatDayLabel, formatTime } from '@/services/dates';
 import { tapLight, tapMedium } from '@/services/haptics';
 import {
+  DEFAULT_PLAN,
   FLIGHT_STAGES,
   STAGE_LABELS,
-  STAGE_ORDER,
   STAGE_PROMPTS,
   nextStage as nextStageOf,
   canAdvanceTo,
   canRewindTo,
+  hasLanded,
+  isTravelerStage,
   stageIndex,
   type FlightFacts,
+  type StagePlan,
   type TravelDayState,
   type TravelJourney,
   type TravelStage,
@@ -49,6 +52,9 @@ const STAGE_ICONS: Record<TravelStage, SymbolViewProps['name']> = {
   boarded: { ios: 'airplane', android: 'flight', web: 'flight' },
   departed: { ios: 'airplane.departure', android: 'flight_takeoff', web: 'flight_takeoff' },
   landed: { ios: 'airplane.arrival', android: 'flight_land', web: 'flight_land' },
+  arrival_immigration: { ios: 'person.text.rectangle.fill', android: 'badge', web: 'badge' },
+  bags_collected: { ios: 'suitcase.rolling.fill', android: 'luggage', web: 'luggage' },
+  bags_rechecked: { ios: 'suitcase.fill', android: 'luggage', web: 'luggage' },
 };
 
 const CHECK: SymbolViewProps['name'] = { ios: 'checkmark', android: 'check', web: 'check' };
@@ -71,10 +77,12 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type NodeState = 'done' | 'current' | 'next' | 'open' | 'auto' | 'skipped' | 'locked';
 
-/** The travel-day walk: flight facts up top, then the eight stages as a
- * vertical stepper whose single status column sits on the RIGHT — label and
- * caption on the left, one node per stage on a rail. A tinted fill and a
- * thumb spring down the rail to the current stage; tapping ahead advances,
+/** The travel-day walk: flight facts up top, then the leg's stages (its
+ * plan — the full airport walk for a flight on its own, transit security
+ * and the gate plus the arrival steps for a connecting leg) as a vertical
+ * stepper whose single status column sits on the RIGHT — label and caption
+ * on the left, one node per stage on a rail. A tinted fill and a thumb
+ * spring down the rail to the current stage; tapping ahead advances,
  * tapping an earlier stamped stage slides back to it. Flight-driven rows are
  * never tappable, `readOnly` renders the same view for followers, and
  * `locked` shows the steps before the travel window opens. */
@@ -82,6 +90,7 @@ export function TravelDayTimeline({
   journey,
   state,
   facts,
+  plan = DEFAULT_PLAN,
   readOnly = false,
   locked = false,
   unlocksAt,
@@ -95,6 +104,8 @@ export function TravelDayTimeline({
   journey: TravelJourney;
   state: TravelDayState;
   facts: FlightFacts;
+  /** The stages this leg's walk has (stagePlan / stagePlanFor). */
+  plan?: StagePlan;
   readOnly?: boolean;
   /** Pre-window preview: every stage shown but disabled. */
   locked?: boolean;
@@ -123,6 +134,7 @@ export function TravelDayTimeline({
   // Journal trips have no status feed, so the traveler stamps departed/landed
   // too; tracked flights keep those data-only (and say so on the row).
   const manualTrip = journey.source === 'manual';
+  const rules = { manualTrip, plan };
 
   const chips: { label: string; value: string; tone?: 'danger' }[] = [];
   if (!locked) {
@@ -135,22 +147,25 @@ export function TravelDayTimeline({
     if (facts.boardingTime) {
       chips.push({ label: 'Boarding', value: formatTime(facts.boardingTime, departureZone) });
     }
-    if (state.stage === 'landed' && facts.baggageBelt) {
+    if (hasLanded(state.stage) && facts.baggageBelt) {
       chips.push({ label: 'Baggage', value: facts.baggageBelt });
     }
   }
 
   // The one tap that's usually next: the first un-stamped tappable stage.
-  const nextStage = interactive ? nextStageOf(state, manualTrip) : null;
+  const nextStage = interactive ? nextStageOf(state, rules) : null;
 
   // Each row reports its center Y (relative to the stages container); the
   // rail spans first-to-last center and the fill/thumb aim at the current
   // one, so the slider stays true through font scaling and label wraps.
   const [centers, setCenters] = useState<(number | undefined)[]>([]);
-  const measured = STAGE_ORDER.every((_, i) => centers[i] !== undefined);
+  const measured = plan.every((_, i) => centers[i] !== undefined);
   const railTop = measured ? centers[0]! : 0;
-  const railHeight = measured ? centers[STAGE_ORDER.length - 1]! - centers[0]! : 0;
-  const target = measured && currentIndex >= 0 ? centers[currentIndex]! : railTop;
+  const railHeight = measured ? centers[plan.length - 1]! - centers[0]! : 0;
+  // The thumb sits on the current stage's row — or, for a stage the plan
+  // doesn't show (stamped before the walk changed), the last row before it.
+  const currentRow = plan.findLastIndex((s) => stageIndex(s) <= currentIndex);
+  const target = measured && currentRow >= 0 ? centers[currentRow]! : railTop;
 
   const fillHeight = useSharedValue(0);
   const thumbY = useSharedValue(0);
@@ -257,12 +272,12 @@ export function TravelDayTimeline({
             )}
           </>
         )}
-        {STAGE_ORDER.map((stage, index) => {
+        {plan.map((stage, index) => {
           const stamp = state.stamps[stage];
           const isCurrent = !locked && stage === state.stage;
           const reached = !locked && stamp !== undefined;
-          const advanceable = interactive && !!onAdvance && canAdvanceTo(state, stage, manualTrip);
-          const rewindable = interactive && !!onRewind && canRewindTo(state, stage, manualTrip);
+          const advanceable = interactive && !!onAdvance && canAdvanceTo(state, stage, rules);
+          const rewindable = interactive && !!onRewind && canRewindTo(state, stage, rules);
           const tappable = advanceable || rewindable;
           const isNext = stage === nextStage;
           const skipped = !locked && !reached && stageIndex(stage) < currentIndex;
@@ -298,18 +313,14 @@ export function TravelDayTimeline({
                   : theme.textSecondary;
 
           const caption = reached
-            ? formatTime(stamp, stage === 'landed' ? arrivalZone : departureZone)
+            ? formatTime(stamp, hasLanded(stage) ? arrivalZone : departureZone)
             : skipped
               ? 'Skipped'
               : autoStamped && !readOnly
                 ? 'Fills in from live flight data'
                 : null;
 
-          const showUndo =
-            isCurrent &&
-            interactive &&
-            !!onUndo &&
-            (manualTrip || stageIndex(stage) < STAGE_ORDER.indexOf('departed'));
+          const showUndo = isCurrent && interactive && !!onUndo && (manualTrip || isTravelerStage(stage));
 
           const onRowLayout = (e: LayoutChangeEvent) => {
             const { y, height } = e.nativeEvent.layout;

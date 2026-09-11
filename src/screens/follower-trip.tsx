@@ -19,6 +19,7 @@ import { airportZone, getAirport } from '@/services/airports';
 import { flightInstant, formatTime, tripDateTitle } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
 import { adaptPublicSession, travellerEyebrow, tripDone } from '@/services/public-session';
+import { hasLanded, type TravelStage } from '@/services/travel-day';
 
 /**
  * One trip of somebody whose circle you're in — everything a follower may
@@ -110,8 +111,8 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
 
         {session ? (
           (() => {
-            const { journey, state, facts } = adaptPublicSession(session);
-            return <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />;
+            const { journey, state, facts, plan } = adaptPublicSession(session);
+            return <TravelDayTimeline journey={journey} state={state} facts={facts} plan={plan} readOnly />;
           })()
         ) : null}
 
@@ -132,7 +133,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           {session
             ? tripDone(session, now)
-              ? session.currentStage === 'landed'
+              ? hasLanded(session.currentStage as TravelStage | null)
                 ? `${owner.name} has landed. Only ${owner.name} can change this trip.`
                 : // Over by the timetable with no landing recorded: say what
                   // the follower is looking at rather than promise nudges
