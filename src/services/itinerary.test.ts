@@ -13,6 +13,8 @@ import {
   GOIBIBO_CONFIRMATION_PDFBOX,
   GOIBIBO_CONFIRMATION_PDFKIT,
   INDIGO_EMAIL_SCREENSHOT,
+  LUFTHANSA_CONFIRMATION_PDFBOX,
+  LUFTHANSA_CONFIRMATION_PDFKIT,
   FINNAIR_RECEIPT,
   DELTA_CONFIRMATION_PDFKIT,
   QATAR_RECEIPT_PDFBOX,
@@ -363,6 +365,29 @@ describe('extractItinerary — a screenshot of an IndiGo itinerary email', () =>
     const segments = extractSegmentsFromText(INDIGO_EMAIL_SCREENSHOT[0].text, TODAY_2026);
     expect(segments.map((s) => s.flight)).toEqual(['6E388', '6E379']);
     expect(segments.some((s) => s.date === '2020-09-25' || s.depTime === '16:25')).toBe(false);
+  });
+});
+
+describe('extractItinerary — Lufthansa booking confirmation', () => {
+  // No barcode. Each leg is headed "Sat. 06 February 2021: Bangalore –
+  // Frankfurt" (a colon after the year), the first heading sits a whole
+  // "Important Notice" paragraph above its row, the row prints the
+  // departure clock BEFORE the flight number and the arrival on the next
+  // line, and the second heading opens page two — nearer the first leg's
+  // arrival than the second leg's own row, which read both legs as one.
+  // Android's reader sets the numbers with a non-breaking space.
+  const LEGS = [
+    { flight: 'LH755', date: '2021-02-06', from: 'BLR', to: 'FRA', dep: '03:35', arr: '09:35' },
+    { flight: 'LH848', date: '2021-02-06', from: 'FRA', to: 'HEL', dep: '10:45', arr: '14:10' },
+  ];
+
+  it.each([
+    ['PDFKit order', LUFTHANSA_CONFIRMATION_PDFKIT],
+    ['PDFBox order', LUFTHANSA_CONFIRMATION_PDFBOX],
+  ])('finds both legs with their own clocks and the printed year in %s', (_label, pages) => {
+    expect(summary(pages)).toEqual(LEGS);
+    const { segments } = extractItinerary(pages, TODAY);
+    expect(segments.every((s) => s.pnr === 'Q00ABC')).toBe(true);
   });
 });
 

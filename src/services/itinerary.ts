@@ -235,6 +235,11 @@ function routeSummary(text: string): [string, string][] | null {
 }
 
 const WINDOW_BACK = 320;
+/** How far above its row a leg's date heading may sit when nothing nearer
+ * dates the leg — Lufthansa puts an "Important Notice" paragraph between
+ * "Sat. 06 February 2021: Bangalore – Frankfurt" and the row. The date
+ * only: the airports still come from the ordinary window. */
+const DATE_HEADING_REACH = 640;
 /** How far above the first flight number the leg table's column headers
  * are looked for. */
 const HEADER_REACH = 900;
@@ -302,17 +307,21 @@ const DATE_PATTERNS: {
   // unless an apostrophe marks it as a year, which nothing else has.
   {
     re: new RegExp(
-      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|['’]\\d{2}|\\d{2}(?![ \\t]?[A-Za-z]{3}))(?![\\d:])`,
+      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(?:(\\d{4})(?!\\d)|(['’]\\d{2}|\\d{2}(?![ \\t]?[A-Za-z]{3}))(?![\\d:]))`,
       'g',
     ),
     build: (m, _today, text) => {
       const month = monthNumber(m[3]);
       if (!month) return null;
-      const digits = m[4].replace(/\D/g, '');
+      // A four-digit year may be followed by a colon ("Sat. 06 February
+      // 2021: Bangalore – Frankfurt"); two digits before a colon are a
+      // clock's hours.
+      const printed = m[4] ?? m[5];
+      const digits = printed.replace(/\D/g, '');
       // Two digits with a month name on the next line are a strip's next
       // column, not a year ("06 Jun 06\nJun 07 Jun"); a city or anything
       // else there ("04 Oct 20\nMangalore") leaves them a year.
-      if (digits.length === 2 && !/['’]/.test(m[4])) {
+      if (digits.length === 2 && !/['’]/.test(printed)) {
         const following = /^\s*([A-Za-z]{3,9})\b/.exec(text.slice(m.index + m[0].length));
         if (following && monthNumber(following[1])) return null;
       }
@@ -737,8 +746,12 @@ function dayOfYear(iso: string): number {
 /** The text half of extractItinerary, on its own — what a document with no
  * boarding-pass code is read from. Exported for the tests. */
 export function extractSegmentsFromText(text: string, today = new Date()): ImportedSegment[] {
-  return segmentsFromText(text, today);
+  return segmentsFromText(plainSpaces(text), today);
 }
+
+/** The non-breaking and narrow spaces a PDF sets between a code and its
+ * number ("LH\u00a0755"), as the plain space every pattern here expects. */
+const plainSpaces = (text: string): string => text.replace(/[\u00a0\u202f\u2007]/g, ' ');
 
 function segmentsFromText(text: string, today: Date): ImportedSegment[] {
   const dates = findDates(text, today);
@@ -766,7 +779,29 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     const from = Math.max(prevEnd, consumedEnd, anchor.index - WINDOW_BACK);
     const to = Math.min(nextStart, anchor.end + WINDOW_FORWARD);
 
-    const nearby = dates.filter((d) => d.index >= from && d.end <= to);
+    // A date after this leg's clocks that sits much nearer the next leg's
+    // row than this one's is the next leg's heading ("Sat. 06 February
+    // 2021: Frankfurt – Helsinki" over its row, as Lufthansa prints it),
+    // not this leg's arrival day — taking it left that leg with no date at
+    // all. Measured from this leg's last clock, so a date row under the
+    // clocks (Etihad's "06 Jun 2026 Airbus A321 06 Jun 2026") stays here.
+    const next = anchors[i + 1];
+    const nextRowStart = next
+      ? Math.min(next.index, ...times.filter((t) => t.end <= next.index && !text.slice(t.end, next.index).includes('\n')).map((t) => t.index))
+      : text.length;
+    let nearby = dates.filter((d) => {
+      if (d.index < from || d.end > to) return false;
+      if (!next || d.index < anchor.end) return true;
+      const lastClock = times.filter((t) => t.index >= anchor.end && t.end <= d.index).pop();
+      const mine = d.index - (lastClock?.end ?? anchor.end);
+      const theirs = nextRowStart - d.end;
+      return !(theirs >= 0 && theirs * 2 < mine);
+    });
+    if (!nearby.length) {
+      const headingFrom = Math.max(prevEnd, consumedEnd, anchor.index - DATE_HEADING_REACH);
+      const heading = dates.filter((d) => d.index >= headingFrom && d.end <= anchor.index).pop();
+      if (heading) nearby = [heading];
+    }
     if (!nearby.length) return; // a flight-number-shaped token with no date around it is not a leg
     columns ??= clockColumns(text.slice(Math.max(0, anchor.index - HEADER_REACH), anchor.index));
     const distance = (d: Mark<string>) =>
@@ -803,9 +838,20 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
         if (onRow.length) clocks = [onRow[onRow.length - 1], ...clocks];
       }
     }
+    // A row that prints the departure clock before the flight number
+    // ("03:35 h  Bangalore (BLR)  LH 755", as Lufthansa lays it out): the
+    // clock on the number's own line is the departure, the next one the
+    // arrival — else the leg after this one loses its clock to this one.
+    const onLine = times.filter(
+      (t) => t.index >= from && t.end <= anchor.index && !text.slice(t.end, anchor.index).includes('\n'),
+    );
     if (columns && clocks.length >= 3) {
       clocks = clocks.slice(0, 3);
       ({ dep: depClock, arr: arrClock } = threeClocks(clocks, columns));
+    } else if (!columns && onLine.length) {
+      depClock = onLine[onLine.length - 1];
+      arrClock = clocks[0];
+      clocks = [depClock, ...clocks.slice(0, 1)];
     } else {
       // A closing column the row leaves blank — or, as Emirates prints it,
       // filled and first: the departure follows.
@@ -933,7 +979,7 @@ function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[
  * One thing no barcode carries is the year — BCBP dates are a bare day of
  * the year (see bcbp.resolveFlightDate). */
 export function extractItinerary(pages: DocumentPage[], today = new Date()): ItineraryExtraction {
-  const text = pages.map((p) => p.text).join('\n');
+  const text = plainSpaces(pages.map((p) => p.text).join('\n'));
   const barcodes = pages.flatMap((p) => p.barcodes);
   const barcodeLegs = segmentsFromBarcodes(barcodes, today);
   const ticketNumbers = distinct(
