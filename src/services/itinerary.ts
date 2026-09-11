@@ -112,6 +112,9 @@ const NOT_AN_AIRLINE = new Set([
 
 /** Aircraft types ("Airbus A321", "Boeing 737") look like designators. */
 const AIRCRAFT_CONTEXT = /(AIRBUS|BOEING|EMBRAER|BOMBARDIER|AIRCRAFT|EQUIPMENT|ATR)\W*$/i;
+/** The airframes a table prints bare, in a column of their own ("6E 388
+ * (A320)"): read as a designator, "A320" is Aegean flight 20. */
+const AIRFRAME = /^(?:A3(?:18|19|20|21|30|40|50|80)|A2[01]N|B7(?:37|47|57|67|77|87)|B3[89]M|B77[WL]|E1(?:70|75|90|95)|E2(?:90|95))$/;
 
 /** Dates that are about the ticket, not the trip. */
 const NOT_A_TRAVEL_DATE =
@@ -130,7 +133,99 @@ const NOT_A_CLOCK = /(DURATION|TRAVEL TIME|FLIGHT TIME|FLYING TIME|TOTAL|LAYOVER
  * swallow a departure clock. */
 const CHECK_IN_FIRST = /\bflight\b[^\n]*\bcheck-?in(?:\s+at)?\b[^\n]*\bdeparture\b/i;
 
+type ClockColumn = 'departs' | 'closes' | 'arrives';
+
+const CLOCK_COLUMN_WORDS: [ClockColumn, RegExp][] = [
+  // Stems, not words — a recogniser reads "Departa" and "Arrives Vla" —
+  // but capitalised, as a column header is and the prose above a table
+  // ("the best time to arrive for your journey") is not.
+  ['departs', /\b(?:Depart|DEPART)\w{0,4}/g],
+  ['arrives', /\b(?:Arriv|ARRIV)\w{0,4}/g],
+  ['closes', /\b(?:(?:Last|LAST)\s+[Cc]heck-?in|(?:Check|CHECK)-?[Ii]n\s+(?:at|AT|closes|CLOSES)|Counter|COUNTER|Bag\s*[Dd]rop|BAG\s*DROP)\b/g],
+];
+
+/** The order a leg table prints its clocks in, read off the column headers
+ * above the first leg — departure and arrival, plus the closing time
+ * (counter, bag drop, last check-in) some tables put between or beside
+ * them: IndiGo prints "Departs · Counter/Bag drop closes · Arrives",
+ * Emirates "Check-in at · Departure", Amadeus "Departure · Arrival · Last
+ * check-in". Null unless a closing column is named — without one the first
+ * two clocks after the flight number are departure and arrival, as ever.
+ * A column the header doesn't name goes last. */
+function clockColumns(head: string): ClockColumn[] | null {
+  const found: { col: ClockColumn; index: number }[] = [];
+  for (const [col, re] of CLOCK_COLUMN_WORDS) {
+    let last = -1;
+    for (const m of head.matchAll(re)) last = m.index;
+    if (last >= 0) found.push({ col, index: last });
+  }
+  if (!found.some((f) => f.col === 'closes')) return null;
+  const cols = found.sort((a, b) => a.index - b.index).map((f) => f.col);
+  for (const col of ['departs', 'arrives'] as const) if (!cols.includes(col)) cols.push(col);
+  return cols;
+}
+
+/** The longest a counter or bag drop closes before a departure — Emirates
+ * asks for check-in four hours ahead on some routes. */
+const CLOSING_LEAD_MINUTES = 5 * 60;
+
+const minutesOf = (clock: string): number => Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3));
+
+/** Minutes from one clock to a later one, across midnight if need be. */
+const minutesUntil = (from: string, to: string): number =>
+  (minutesOf(to) - minutesOf(from) + 24 * 60) % (24 * 60);
+
+/** A row's three clocks as departure and arrival. The headers' order is
+ * tried first and kept when it reads sensibly — the closing time a few
+ * hours at most before the departure; that keeps an overnight arrival's
+ * small-hours clock where the page put it. A recogniser reading wrapped
+ * cells returns them band by band, so headers and cells alike can come
+ * out shuffled; when the header order makes no sense, the clocks are told
+ * apart by value instead — closing, then departure, then arrival — with
+ * the earliest read as the arrival only when it is too far ahead of the
+ * middle one to be a closing time. */
+function threeClocks(
+  clocks: Mark<string>[],
+  columns: ClockColumn[],
+): { dep: Mark<string>; arr: Mark<string> } {
+  const byHeader = {
+    close: clocks[columns.indexOf('closes')],
+    dep: clocks[columns.indexOf('departs')],
+    arr: clocks[columns.indexOf('arrives')],
+  };
+  const lead = minutesUntil(byHeader.close.value, byHeader.dep.value);
+  if (lead > 0 && lead <= CLOSING_LEAD_MINUTES) return { dep: byHeader.dep, arr: byHeader.arr };
+  const [a, b, c] = [...clocks].sort((x, y) => minutesOf(x.value) - minutesOf(y.value));
+  if (minutesOf(b.value) - minutesOf(a.value) <= CLOSING_LEAD_MINUTES) return { dep: b, arr: c };
+  return { dep: c, arr: a };
+}
+
+const ROUTE_PAIR_RE = /\b([A-Z]{3})\s*(?:→|->|—|–|-|>|\/|to)\s*([A-Z]{3})\b/g;
+
+/** The routes a document lists on their own, in flying order and joined
+ * into one journey — a seats or baggage table headed "IXE → BLR", "BLR →
+ * TRV". Null unless at least two chain. */
+function routeSummary(text: string): [string, string][] | null {
+  const pairs: [string, string][] = [];
+  for (const m of text.matchAll(ROUTE_PAIR_RE)) {
+    if (!isValidIata(m[1]) || !isValidIata(m[2]) || m[1] === m[2]) continue;
+    if (airportRank(m[1]) < 1 || airportRank(m[2]) < 1) continue;
+    if (pairs.some(([a, b]) => a === m[1] && b === m[2])) continue;
+    pairs.push([m[1], m[2]]);
+  }
+  if (pairs.length < 2) return null;
+  for (let i = 1; i < pairs.length; i++) if (pairs[i - 1][1] !== pairs[i][0]) return null;
+  return pairs;
+}
+
 const WINDOW_BACK = 320;
+/** How far above the first flight number the leg table's column headers
+ * are looked for. */
+const HEADER_REACH = 900;
+/** A clock this close before the flight number, with no date between, is
+ * on the flight's own row — the departure of a table that prints it left
+ * of the number. */
+const ROW_CLOCK_REACH = 48;
 const WINDOW_FORWARD = 420;
 /** Two dates this close after an anchor are departure and arrival days. */
 const ARRIVAL_DATE_REACH = 170;
@@ -180,7 +275,7 @@ function weekdayNumber(name: string | undefined): number | null {
 
 const DATE_PATTERNS: {
   re: RegExp;
-  build: (m: RegExpExecArray, today: Date) => string | null;
+  build: (m: RegExpExecArray, today: Date, text: string) => string | null;
   /** The pattern carries no year; build guessed the nearest one. */
   yearless?: true;
 }[] = [
@@ -191,13 +286,20 @@ const DATE_PATTERNS: {
   // unless an apostrophe marks it as a year, which nothing else has.
   {
     re: new RegExp(
-      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|['’]\\d{2}|\\d{2}(?!\\s?[A-Za-z]{3}))(?![\\d:])`,
+      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|['’]\\d{2}|\\d{2}(?![ \\t]?[A-Za-z]{3}))(?![\\d:])`,
       'g',
     ),
-    build: (m) => {
+    build: (m, _today, text) => {
       const month = monthNumber(m[3]);
       if (!month) return null;
       const digits = m[4].replace(/\D/g, '');
+      // Two digits with a month name on the next line are a strip's next
+      // column, not a year ("06 Jun 06\nJun 07 Jun"); a city or anything
+      // else there ("04 Oct 20\nMangalore") leaves them a year.
+      if (digits.length === 2 && !/['’]/.test(m[4])) {
+        const following = /^\s*([A-Za-z]{3,9})\b/.exec(text.slice(m.index + m[0].length));
+        if (following && monthNumber(following[1])) return null;
+      }
       const year = digits.length === 4 ? Number(digits) : 2000 + Number(digits);
       return isoDate(year, month, Number(m[2]));
     },
@@ -277,11 +379,14 @@ function findDates(text: string, today: Date): Mark<string>[] {
     re.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text))) {
-      const value = build(m, today);
+      const value = build(m, today, text);
       if (!value) continue;
       // Overlapping hits from a looser pattern lose to the earlier, tighter one.
       if (marks.some((k) => m!.index < k.end && m!.index + m![0].length > k.index)) continue;
       if (NOT_A_TRAVEL_DATE.test(text.slice(Math.max(0, m.index - 24), m.index))) continue;
+      // A clock with seconds right after the day ("25 Sep 20 16:25:59
+      // (UTC)") is a system's booking or issue stamp; no timetable has one.
+      if (/^[\s,]{0,3}\d{1,2}:\d{2}:\d{2}/.test(text.slice(m.index + m[0].length))) continue;
       marks.push({ index: m.index, end: m.index + m[0].length, value, ...(yearless ? { yearless } : {}) });
     }
   }
@@ -317,8 +422,10 @@ function findTimes(text: string): Mark<string>[] {
     // A bare "4pm" is a time; a bare "4" is not — but "12 am" in prose is rare
     // enough to accept.
     if (NOT_A_CLOCK.test(text.slice(Math.max(0, m.index - 28), m.index))) continue;
-    // Part of an ISO timestamp or a date ("2025-10-08 11:59" is fine; ":30:00" seconds are not).
+    // Part of an ISO timestamp or a date ("2025-10-08 11:59" is fine; ":30:00" seconds are not),
+    // or a stamp with seconds ("16:25:59"): a system's clock, never a flight's.
     if (text[m.index - 1] === ':') continue;
+    if (/^:\d{2}/.test(text.slice(m.index + m[0].length))) continue;
     marks.push({ index: m.index, end: m.index + m[0].length, value: `${pad2(hours)}:${pad2(minutes)}` });
   }
   return marks;
@@ -333,12 +440,41 @@ interface Anchor {
   flight: string;
 }
 
+/** Glyph pairs a text recogniser swaps, either way: a screenshot of an
+ * IndiGo itinerary reads "GE 388" or "SE 388" for 6E 388. */
+const OCR_TWINS = new Set(['0O', '1I', '2Z', '5S', '6G', '6S', '8B']);
+const ocrTwins = (a: string, b: string): boolean => OCR_TWINS.has(a + b) || OCR_TWINS.has(b + a);
+
+/** The one carrier a document names, when it names exactly one — the
+ * airline's own confirmation, an OTA's single-carrier booking. Null for a
+ * page with several (a codeshare receipt) or none. */
+function soleNamedCarrier(text: string): string | null {
+  const present = Object.entries(CARRIERS).filter(([, { name }]) =>
+    new RegExp(`\\b${escapeRegExp(name)}\\b`, 'i').test(text),
+  );
+  return present.length === 1 ? present[0][0] : null;
+}
+
+/** A designator prefix one recogniser slip away from the document's only
+ * named airline is that airline's — unless the prefix's own airline is
+ * named too. "SE 388" on a page that says IndiGo and nothing of XL
+ * Airways is 6E 388. */
+function foldOcrPrefix(prefix: string, sole: string | null): string {
+  if (!sole || prefix === sole || prefix.length !== sole.length) return prefix;
+  for (let i = 0; i < prefix.length; i++) {
+    if (prefix[i] === sole[i]) continue;
+    if (!ocrTwins(prefix[i], sole[i])) return prefix;
+  }
+  return sole;
+}
+
 function findDesignators(text: string): Anchor[] {
   const anchors: Anchor[] = [];
+  const sole = soleNamedCarrier(text);
   DESIGNATOR_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = DESIGNATOR_RE.exec(text))) {
-    const prefix = m[1];
+    const prefix = foldOcrPrefix(m[1], sole);
     const known = prefix in CARRIERS;
     // Letter-digit codes (U2, W6) only when we know the carrier — otherwise
     // "A321" and "B737" become Aegean and some airline B7.
@@ -350,6 +486,7 @@ function findDesignators(text: string): Anchor[] {
     const after = text.slice(matchEnd, matchEnd + 2);
     if (/[$€£#]\s?$/.test(before) || /^[:.]\d/.test(after) || /^[-/]\d/.test(after)) continue;
     if (AIRCRAFT_CONTEXT.test(before)) continue;
+    if (!m[2] && AIRFRAME.test(m[0])) continue;
     // "1A/9L9QY8": a GDS-prefixed booking reference, not a flight.
     if (/\/$/.test(before)) continue;
     anchors.push({ index: m.index, end: matchEnd, flight: `${prefix}${Number(m[3])}` });
@@ -552,7 +689,7 @@ const SEAT_RE = /\bseat\s*(?:no\.?|number|assignment)?\s*:?\s*(\d{1,3}\s?[A-K])\
 /** A "Seat" column header with its value on a later row, first on its line
  * ("Seat  Status  Arrival\n29K  Confirmed"), one row of other columns
  * allowed between. */
-const SEAT_COLUMN_RE = /\bseat\b[^\n]*\n(?:[^\n]*\n)?[ \t]*(\d{1,3}[A-K])\b/i;
+const SEAT_COLUMN_RE = /\bseat\b[^\n]*\n(?:[^\n]*\n){0,2}?[ \t]*(\d{1,3}[A-K])\b/i;
 /** The same column read off a sorted row, where the seat is the row's last
  * token ("1. Doe Jane, Adult EF2QKI EF2QKI 24A"). */
 const SEAT_ROW_END_RE = /\bseat\b[^\n]*\n(?:[^\n]*\n)?[^\n]*\s(\d{1,3}[A-K])[ \t]*(?=\n|$)/i;
@@ -595,6 +732,10 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
 
   const times = findTimes(text);
   const pnr = findPnr(text);
+  // The table's column headers sit above its first leg — not above the
+  // first flight-shaped token on the page, which on a screenshot can be
+  // the phone's own status bar.
+  let columns: ClockColumn[] | null | undefined;
 
   const segments: ImportedSegment[] = [];
   // Where the previous leg's reading ended: the end of the last date or
@@ -611,6 +752,7 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
 
     const nearby = dates.filter((d) => d.index >= from && d.end <= to);
     if (!nearby.length) return; // a flight-number-shaped token with no date around it is not a leg
+    columns ??= clockColumns(text.slice(Math.max(0, anchor.index - HEADER_REACH), anchor.index));
     const distance = (d: Mark<string>) =>
       d.index >= anchor.end ? d.index - anchor.end : anchor.index - d.end + 1; // after wins ties
     const departure = nearby.reduce((best, d) => (distance(d) < distance(best) ? d : best));
@@ -628,11 +770,41 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     const tail = text.slice(anchor.end, to);
 
     let clocks = times.filter((t) => t.index >= anchor.end && t.end <= to);
-    if (CHECK_IN_FIRST.test(text.slice(from, anchor.index))) clocks = clocks.slice(1);
-    const depTime = clocks[0]?.value ?? null;
-    const arrTime = clocks[1]?.value ?? null;
+    let depClock: Mark<string> | undefined;
+    let arrClock: Mark<string> | undefined;
+    if (columns) {
+      // A table whose departure column sits left of the flight number puts
+      // that clock just before it; take it onto the row when the clocks
+      // after the number don't make three.
+      if (clocks.length < 3) {
+        const onRow = times.filter(
+          (t) =>
+            t.index >= from &&
+            t.end <= anchor.index &&
+            anchor.index - t.end <= ROW_CLOCK_REACH &&
+            !dates.some((d) => d.index >= t.end && d.end <= anchor.index),
+        );
+        if (onRow.length) clocks = [onRow[onRow.length - 1], ...clocks];
+      }
+    }
+    if (columns && clocks.length >= 3) {
+      clocks = clocks.slice(0, 3);
+      ({ dep: depClock, arr: arrClock } = threeClocks(clocks, columns));
+    } else {
+      // A closing column the row leaves blank — or, as Emirates prints it,
+      // filled and first: the departure follows.
+      if (CHECK_IN_FIRST.test(text.slice(from, anchor.index))) clocks = clocks.slice(1);
+      depClock = clocks[0];
+      arrClock = clocks[1];
+    }
+    const depTime = depClock?.value ?? null;
+    const arrTime = arrClock?.value ?? null;
     if (!arrivalDate) arrivalDate = depTime && arrTime && arrTime < depTime ? nextDay(departure.value) : departure.value;
-    consumedEnd = Math.max(departure.end, arrival?.end ?? 0, clocks[1]?.end ?? clocks[0]?.end ?? 0);
+    consumedEnd = Math.max(
+      departure.end,
+      arrival?.end ?? 0,
+      ...(columns ? clocks.map((c) => c.end) : [arrClock?.end ?? depClock?.end ?? 0]),
+    );
 
     const airports = findAirports(window);
     const seatMatch = SEAT_RE.exec(tail) ?? SEAT_COLUMN_RE.exec(tail) ?? SEAT_ROW_END_RE.exec(tail);
@@ -661,6 +833,16 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     seen.add(s.key);
     return true;
   });
+  // A page that lists its routes as a chain, one per flight found, has
+  // said where each leg goes better than the leg blocks could: a code
+  // set over a city the table doesn't know reads as no route, and the
+  // chain printed under the last leg reads as that leg's.
+  const summary = routeSummary(text);
+  if (summary && summary.length === once.length) {
+    once.forEach((s, i) => {
+      [s.fromCode, s.toCode] = summary[i];
+    });
+  }
   // A summary strip prints the flight numbers in one row under a row of
   // dates, and proximity hands the first number the row's last date — a
   // leg a day off, with no clock to its name. It yields to the full

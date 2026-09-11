@@ -12,6 +12,7 @@ import {
   ETIHAD_RECEIPT_PDFKIT,
   GOIBIBO_CONFIRMATION_PDFBOX,
   GOIBIBO_CONFIRMATION_PDFKIT,
+  INDIGO_EMAIL_SCREENSHOT,
   FINNAIR_RECEIPT,
   DELTA_CONFIRMATION_PDFKIT,
   QATAR_RECEIPT_PDFBOX,
@@ -331,6 +332,36 @@ describe('extractItinerary — Goibibo booking confirmation', () => {
     const [first] = extractSegmentsFromText(GOIBIBO_CONFIRMATION_PDFKIT[0].text, TODAY);
     expect(first.flight).toBe('6E6273');
     expect([first.depTime, first.arrTime]).toEqual(['10:00', '11:20']);
+  });
+});
+
+describe('extractItinerary — a screenshot of an IndiGo itinerary email', () => {
+  // OCR of a phone screenshot: the status bar and the booking stamp (with
+  // seconds) are flight-shaped noise, the table's wrapped cells come out
+  // band by band so neither the header words nor a row's three clocks
+  // are in column order, "6E" reads as "SE" once (a real carrier, but not
+  // one the page names), the aircraft column prints "(A320)", and the
+  // year appears only as "04 Oct 20" with a city on the next line. The
+  // header names a "Counter/Bag drop closes" column, so each row's three
+  // clocks are told apart by value, and the routes are the chain listed
+  // under the table.
+  const TODAY_2026 = new Date(2026, 8, 11, 12);
+
+  it('finds both legs, the printed year, and the right clocks around the closing column', () => {
+    const { segments, boardingPassBarcodes } = extractItinerary(INDIGO_EMAIL_SCREENSHOT, TODAY_2026);
+    expect(boardingPassBarcodes).toBe(0);
+    expect(summary(INDIGO_EMAIL_SCREENSHOT, TODAY_2026)).toEqual([
+      { flight: '6E388', date: '2020-10-04', from: 'IXE', to: 'BLR', dep: '13:40', arr: '14:45' },
+      { flight: '6E379', date: '2020-10-04', from: 'BLR', to: 'TRV', dep: '16:10', arr: '17:30' },
+    ]);
+    expect(segments.every((s) => s.pnr === 'K7PQ2N' && s.arrivalDate === '2020-10-04')).toBe(true);
+    expect(segments.find((s) => s.flight === '6E379')!.seat).toBe('20A');
+  });
+
+  it('never makes a leg of the status bar, the booking stamp or the aircraft type', () => {
+    const segments = extractSegmentsFromText(INDIGO_EMAIL_SCREENSHOT[0].text, TODAY_2026);
+    expect(segments.map((s) => s.flight)).toEqual(['6E388', '6E379']);
+    expect(segments.some((s) => s.date === '2020-09-25' || s.depTime === '16:25')).toBe(false);
   });
 });
 

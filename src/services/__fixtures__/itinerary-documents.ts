@@ -1640,3 +1640,129 @@ for all major operators`,
     barcodes: [],
   },
 ];
+
+/** A screenshot of an IndiGo itinerary email as the app's iOS reader
+ * returns it (Vision on the simulator, banded into rows the way the
+ * module does it): the phone's status bar on top, the booking stamp with
+ * seconds, a leg table whose wrapped cells land in different bands — the
+ * header reads "Counter/Bag drop" above "Departa", the first leg's
+ * closing time lands between its departure and arrival — "SE 388" for
+ * 6E 388, the aircraft type "(A320)" in its own column, the year only as
+ * "04 Oct 20" with a city on the next line, and the routes listed as a
+ * chain under the table. */
+export const INDIGO_EMAIL_SCREENSHOT: DocumentPage[] = [
+  {
+    text: `18:57
+B * Ve Il © 15%
+IndiGo
+PNR/Booking Ref.: K7PQ2N|
+Status
+Date of Booking*
+Payment Status
+CONFIRMED
+25 Sep 20 16:25:59 (UTC)
+Approved
+Booking Date refiects n UTC (Universal Time Coordinated), all other timings mentioned are as per Local Time
+IndiGo Passenger(s)
+Check-in now
+Flight Status
+1. Ms. Doe Jane
+IndiGo Flight(s)
+Flight
+From
+Number
+Counter/Bag drop
+Date
+(Terminal)
+Departa (Alrcraft
+closes
+To (Terminal)
+Arrives Vla
+type)
+SE 388
+04 Oct 20
+Mangalore
+13:40
+(A320)
+12:40
+Bengaluru (T1)
+14:45
+6E 379
+Thiruvananthapuram
+04 Oct 20
+Bengaluru (T1) 16:10
+(A320)
+15:10
+(T1)
+17:30
+Seats and Additional Services
+IXE
+→ BLR
+BLR → TRV
+Passenger name
+Seat Services Purchased
+Seat
+Services Purchased
+Ms. Doe Jane
+20A
+20A
+Tips for a hassle-free travel experience
+Mandatory health
+120 min before
+60 min before
+25 min before
+declaration and web
+departure
+departure
+departure
+check-in
+Reach the airport to allow
+Drop your bags and proceed
+Boarding gate closes.
+Declare your health status
+voursell sutticient time tot
+for boarding.
+and check-in online 48
+necossary proceoures
+hotre to 60 min hatore
+flight departure.
+Travel and Baggage Information
+IXE
+BLR
+BLR → TRV
+• Fare Type: Regular Fare
+• Fare Type: Regular Fare
+• Airport counters close 60 minutes prior to the scheduled
+• Airport counters close 60 minutes prior to the scheduled
+departure time.
+departure time.
+• Boarding gates close 25 minutes prior to the scheduled
+• Boarding gates close 25 minutes prior to the scheduled
+debarure timel
+departure timne
+• BAGGAGE INFORMATION:
+• BAGGAGE INFORMATION:
+• Check-in Baggage: 20 Kg per parson (One piece only).
+• Check-in Baggage: 20 Kg per parson (One piece only).
+Additional charges will apply for excess baggage.
+Adaitional charges will apply for excess baggage.
+• Disclaimer: 15kg per person (1 piece only) effective Oct 1st,
+• Disclaimer: 15kg per person (1 piece onty) effective Oct 1st,
+2020. For Double or MultiSeats bookings, extra 10 kg.
+2020. For Double or MultiSeats bookings, extra 10 kg
+Additional charoes may son y for excers osdonde. Note: rot
+Additional charges may apply for excess baggage. Note: For
+bookings made between May 21 to Sept 30, 2020 (inclusive)
+bookings made between May 21 to Sept 30, 2020 (inclusive)
+for travel up to Nov 24, 2020, the allowance will be 20kg (1
+for travel up to Nov 24, 2020, the allowance will be 20kg (1
+piece only) instead of 15kg.
+piece only) instead of 15kg.
+• Hand Baggage: One personal item like small laptop bag,
+• Hand Baggage: One personal itern like small laptop bag,
+Reply
+Forward
+99+`,
+    barcodes: [],
+  },
+];
