@@ -1,0 +1,26 @@
+FlyRight 1.0.31 — a feature release on top of 1.0.30. No new permissions, no new purchases, no change to the account model. The store name and subtitle change with this version ("FlyRight: Flight Tracker" / "Travel buddy & delay claims") to reflect that the app is a travel-day companion first; the compensation features are unchanged.
+
+NEW SINCE 1.0.30:
+
+1) Trip updates: from inside one of their own trips a traveller can share a photo or a short line. Only people who already follow that traveller see it — on the traveller's card on the People tab, on the traveller's page and on the live trip page. Updates are limited to the trip's own window (departure day until 24 hours after landing) and can be removed by the author. Because followers can now see content another user posted, every person's page carries Block and Report (the "…" menu on the page): blocking hides the two users from each other everywhere, reporting sends the item to us for review. Both are in the demo account's reach on any followed person's page.
+
+2) Free accounts may now be followed by up to three people (was one). The home screen lists up to three people's flights with a "See all" row for the rest. Nothing sold changed.
+
+3) The app icon badge counts unread support replies plus new people activity, and the People tab marks who is new since the last visit. Badges clear by looking.
+
+4) Ticket import reads more layouts (Lufthansa two-leg confirmations, IndiGo and Goibibo confirmations, including a screenshot of the confirmation email). A landing on the following calendar day shows a "+1" on its clock.
+
+5) On a connecting itinerary the second leg's travel-day steps skip the second check-in, put passport control and baggage after the final landing, and add the US re-check at the first US airport.
+
+6) A followed trip leaves every screen two hours after landing.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- Trip updates: My travels -> open any upcoming or recent trip -> "Share an update" on the trip page (visible on the trip's travel day and the day after). Followers see it on the People tab.
+- Block / Report: People tab -> any person -> "…" menu on their page.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.30: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos or updates, and push for flight status, claim deadlines and trip updates from people the user follows. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
