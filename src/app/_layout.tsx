@@ -3,6 +3,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
+import { AttentionProvider } from "@/components/attention-provider";
 import { DeferredLinks } from "@/components/deferred-link-router";
 import { DocumentShareRouter } from "@/components/document-share-router";
 import { IdentitySync } from "@/components/identity-sync";
@@ -199,6 +200,7 @@ function RootLayout() {
         <StatusBar style="auto" />
         <QueryClientProvider client={queryClient}>
           <VersionGate>
+          <AttentionProvider cloud={!!convex}>
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               {/* Full screen, not a sheet: the flow hosts a camera viewfinder,
@@ -401,6 +403,7 @@ function RootLayout() {
                 options={{ title: "Invitation", headerBackButtonDisplayMode: "minimal" }}
               />
             </Stack>
+          </AttentionProvider>
           </VersionGate>
         </QueryClientProvider>
       </ThemeProvider>

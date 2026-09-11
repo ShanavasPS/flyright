@@ -500,12 +500,14 @@ export const inbound = internalMutation({
 
 export const notifyReply = internalAction({
   args: { userId: v.string(), threadId: v.id('supportThreads'), body: v.string() },
-  handler: async (_ctx, { userId, threadId, body }) => {
+  handler: async (ctx, { userId, threadId, body }) => {
+    const badge = await ctx.runQuery(internal.attention.badgeFor, { userId });
     await sendFollowerPush(
       [userId],
       'FlyRight support replied',
       body,
       `https://getflyright.com/messages/${threadId}`,
+      badge,
     );
   },
 });

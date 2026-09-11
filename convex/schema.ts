@@ -311,6 +311,18 @@ export default defineSchema({
     .index('by_from_status', ['fromUserId', 'status'])
     .index('by_pair', ['fromUserId', 'toUserId']),
 
+  /** When each side of the People tab was last on screen — the line under
+   * which its rows are "seen". A follower who joined, a request that came
+   * in, an ask that was allowed after the stamp counts on the People tab's
+   * badge and the app icon until that side is looked at (attention.ts). One
+   * row per user, created on the first look; a user with no row has seen
+   * nothing, so their first follower badges the way a first message would. */
+  peopleSeen: defineTable({
+    userId: v.string(),
+    followersSeenAt: v.union(v.string(), v.null()),
+    followingSeenAt: v.union(v.string(), v.null()),
+  }).index('by_user', ['userId']),
+
   /** Server-side mirror of the RevenueCat 'Owed Pro' entitlement, fed by the
    * RC webhook (http.ts /rc-webhook) — the client's SDK state can't be
    * trusted for server-enforced limits like the free circle size. One row per

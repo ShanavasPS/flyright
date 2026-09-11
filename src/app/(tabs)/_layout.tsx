@@ -2,6 +2,7 @@ import { usePathname } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
+import { useAttention } from '@/components/attention-provider';
 import { Colors } from '@/constants/theme';
 import { useAppVersion } from '@/hooks/use-app-version';
 
@@ -32,6 +33,10 @@ export default function TabsLayout() {
   // A newer build on the store puts a count on Settings, the way iOS marks
   // its own Settings for a software update — the row inside explains it.
   const { update } = useAppVersion();
+  // Arrivals on the People tab not yet looked at: a new follower, a
+  // request, an ask allowed. Clears when the side they're on is opened —
+  // the segment inside keeps counting what still needs an answer.
+  const { people } = useAttention();
 
   return (
     <NativeTabs
@@ -62,6 +67,9 @@ export default function TabsLayout() {
 
       <NativeTabs.Trigger name="(people)">
         <NativeTabs.Trigger.Label>People</NativeTabs.Trigger.Label>
+        {people > 0 && (
+          <NativeTabs.Trigger.Badge>{people > 99 ? '99+' : String(people)}</NativeTabs.Trigger.Badge>
+        )}
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/people.png')}
           renderingMode="template"

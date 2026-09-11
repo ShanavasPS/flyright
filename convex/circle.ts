@@ -3,6 +3,7 @@ import { ConvexError, v } from 'convex/values';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { after, allowedAt, peopleSeenFor, unseenPeople } from './attentionHelpers';
 import { maySee } from './audience';
 import { CIRCLE_FULL, MAX_PENDING_REQUESTS, searchKey } from './circleShared';
 import { isPro } from './entitlements';
@@ -918,6 +919,14 @@ export const list = query({
     const me = identity.subject;
     const now = Date.now();
 
+    // When each side was last looked at. A row newer than its side's stamp
+    // is `fresh` — "New" on the page, and counted in `unseen` for the
+    // badges (attentionHelpers.unseenPeople, the same rule). Null: never
+    // looked, so everything is new.
+    const seen = await peopleSeenFor(ctx, me);
+    const followersSeenAt = seen?.followersSeenAt ?? null;
+    const followingSeenAt = seen?.followingSeenAt ?? null;
+
     const myFollows = await ctx.db
       .query('follows')
       .withIndex('by_follower', (q) => q.eq('followerId', me))
@@ -950,6 +959,8 @@ export const list = query({
         since: row.createdAt,
         /** They follow me too — otherwise the row offers "Share back". */
         followsMe: !!(await areSharing(ctx, me, row.ownerId)),
+        /** They allowed my ask to follow them since I last looked here. */
+        fresh: after(await allowedAt(ctx, row.ownerId, me), followingSeenAt),
         live,
         next,
       });
@@ -976,6 +987,8 @@ export const list = query({
         ...(await personCard(ctx, row.memberId)),
         close: !!row.close,
         since: row.createdAt,
+        /** Joined since I last looked at Followers. */
+        fresh: after(row.createdAt, followersSeenAt),
         /** I follow them too — otherwise the row offers "Follow back"... */
         following: !!mine,
         /** ...or shows the ask already out, with its id to withdraw it. */
@@ -990,19 +1003,25 @@ export const list = query({
     // `blocked`: an invitation someone tried to accept while the inviter's
     // circle was full. On the inviter's row it says who is waiting for a
     // seat; on the invitee's, why "Follow" didn't take.
-    type RequestCard = { id: Id<'circleRequests'>; since: string; blocked: boolean } & Awaited<
-      ReturnType<typeof personCard>
-    >;
+    type RequestCard = {
+      id: Id<'circleRequests'>;
+      since: string;
+      blocked: boolean;
+      fresh: boolean;
+    } & Awaited<ReturnType<typeof personCard>>;
     const incoming: RequestCard[] = [];
     const followRequests: RequestCard[] = [];
     for (const r of toMe) {
+      const follow = kindOf(r) === 'follow';
       const card = {
         id: r._id,
         since: r.createdAt,
         blocked: !!r.blockedAt,
+        // Arrived since I last looked at the side it is answered on.
+        fresh: after(r.createdAt, follow ? followersSeenAt : followingSeenAt),
         ...(await personCard(ctx, r.fromUserId)),
       };
-      (kindOf(r) === 'follow' ? followRequests : incoming).push(card);
+      (follow ? followRequests : incoming).push(card);
     }
     // Mine: invitations out (a seat held open in Followers) and asks out to
     // people who don't follow me, so they'd have no row to show it on.
@@ -1013,6 +1032,9 @@ export const list = query({
         id: r._id,
         since: r.createdAt,
         blocked: !!r.blockedAt,
+        // Mine, so never news — except an invitation someone tried to
+        // accept while my circle was full, which lands on Followers.
+        fresh: after(r.blockedAt, followersSeenAt),
         ...(await personCard(ctx, r.toUserId)),
       };
       if (kindOf(r) === 'invite') outgoing.push(card);
@@ -1036,6 +1058,10 @@ export const list = query({
       outgoing,
       asked,
       full: await circleFull(ctx, me),
+      /** How much of each side is fresh — the same count the People tab's
+       * badge shows, so the page marks a side seen exactly when the badge
+       * would want it to. */
+      unseen: await unseenPeople(ctx, me),
     };
   },
 });

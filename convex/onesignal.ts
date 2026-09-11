@@ -12,12 +12,21 @@ function config() {
   return { appId, auth };
 }
 
-/** Push to specific users by Clerk id (IdentitySync sets external_id). */
+/** Push to specific users by Clerk id (IdentitySync sets external_id).
+ *
+ * `badge`: the count to leave on the iOS app icon — the receiver's whole
+ * unseen inbox (attention.badgeFor), so it lands even while the app is
+ * closed, the way a mail app's does. Set, not incremented: the client owns
+ * the same number and rewrites it on every foreground, so the two never
+ * drift apart. Omitted for pushes that aren't about an inbox item, which
+ * leaves whatever count is showing alone. Android launchers badge from the
+ * notification itself, so nothing to send there. */
 export async function sendFollowerPush(
   externalIds: string[],
   heading: string,
   body: string,
   url: string,
+  badge?: number,
 ): Promise<void> {
   const cfg = config();
   if (!cfg || externalIds.length === 0) return;
@@ -31,6 +40,7 @@ export async function sendFollowerPush(
       headings: { en: heading },
       contents: { en: body },
       data: { url },
+      ...(badge == null ? {} : { ios_badgeType: 'SetTo', ios_badgeCount: badge }),
     }),
   });
   const text = (await res.text()).slice(0, 300);

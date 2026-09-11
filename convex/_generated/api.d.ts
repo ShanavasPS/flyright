@@ -9,6 +9,8 @@
  */
 
 import type * as airportZones from "../airportZones.js";
+import type * as attention from "../attention.js";
+import type * as attentionHelpers from "../attentionHelpers.js";
 import type * as audience from "../audience.js";
 import type * as carriersShared from "../carriersShared.js";
 import type * as circle from "../circle.js";
@@ -49,6 +51,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   airportZones: typeof airportZones;
+  attention: typeof attention;
+  attentionHelpers: typeof attentionHelpers;
   audience: typeof audience;
   carriersShared: typeof carriersShared;
   circle: typeof circle;

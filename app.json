@@ -20,6 +20,7 @@
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "OneSignal_disable_badge_clearing": true,
         "UISupportedInterfaceOrientations": [
           "UIInterfaceOrientationPortrait"
         ],

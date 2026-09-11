@@ -3,9 +3,9 @@ import { useMutation, useQuery } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import * as Clipboard from 'expo-clipboard';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -153,6 +153,26 @@ function circleEyebrow(data: CircleList | null | undefined): string {
   return parts.join(' · ') || 'Your circle';
 }
 
+/** Which side opens first: the one with something new on it — a request
+ * to answer, or an arrival not yet looked at. Following wins a tie; it is
+ * where the trips are. */
+function defaultTab(data: CircleList): Tab {
+  const followersNews = data.followRequests.length + data.unseen.followers;
+  const followingNews = data.incoming.length + data.unseen.following;
+  return followersNews && !followingNews ? 'followers' : 'following';
+}
+
+/** The rows that are news right now — someone who joined, someone who
+ * allowed my ask — by row key, so the "New" mark can outlive the server's
+ * "seen" stamp for as long as the page stays open. Requests aren't marked:
+ * their answer chips already say they are waiting. */
+function freshRowKeys(data: CircleList): Set<string> {
+  const keys = new Set<string>();
+  for (const p of data.followers) if (p.fresh) keys.add(`follower:${p.userId}`);
+  for (const p of data.following) if (p.fresh) keys.add(`following:${p.userId}`);
+  return keys;
+}
+
 /** Whether the People tab has anything to show under tabs at all. */
 function circleEmpty(data: CircleList): boolean {
   return (
@@ -203,6 +223,8 @@ export function People() {
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
   const invite = useInvite(!!data?.full);
   const proLocked = useProLocked();
+  const focused = useIsFocused();
+  const markSeen = useMutation(api.attention.markPeopleSeen);
   // Null until the data is in: the tab with something waiting on it opens
   // first, and that choice is pinned (below) the moment it is made — a
   // request answered must not flip the page under the thumb that answered it.
@@ -216,6 +238,27 @@ export function People() {
     setHonoured(wanted);
     if (wanted === 'following' || wanted === 'followers') setPicked(wanted);
   }
+
+  // Looking at a side is seeing it: while this page is on screen, whatever
+  // is fresh on the side showing is marked seen on the server — which
+  // clears it from the People tab's badge and the app icon. Re-runs on
+  // every data change, so something that arrives while the page is open is
+  // seen too, and is a no-op once nothing is fresh.
+  useEffect(() => {
+    if (!focused || !data) return;
+    const side = picked ?? defaultTab(data);
+    if (data.unseen[side] > 0) void markSeen({ side });
+  }, [focused, data, picked, markSeen]);
+
+  // The "New" marks for this visit: taken from the first data seen while
+  // the page is on screen, and kept until it is left — the server's "seen"
+  // stamp moves the moment the side is looked at, and a mark that vanished
+  // as the eye reached it would be no mark at all.
+  // Set during render, like `picked` above.
+  const [freshKeys, setFreshKeys] = useState<Set<string> | null>(null);
+  if (!focused && freshKeys) setFreshKeys(null);
+  if (focused && data && !freshKeys) setFreshKeys(freshRowKeys(data));
+  const isFresh = (key: string) => !!freshKeys?.has(key);
 
   let tabs: React.ReactNode = null;
   let body: React.ReactNode;
@@ -252,9 +295,7 @@ export function People() {
       </>
     );
   } else {
-    const tab: Tab =
-      picked ??
-      (data.followRequests.length && !data.incoming.length ? 'followers' : 'following');
+    const tab: Tab = picked ?? defaultTab(data);
     // Derived once, from the first data, then owned by the user's taps. A
     // set during render (not in an effect) re-runs this render with the
     // pinned value and nothing else.
@@ -267,17 +308,22 @@ export function People() {
           setPicked(t);
         }}
         tabs={[
+          // Waiting on an answer, plus arrivals not yet looked at — the
+          // latter by the server's word, so it drops once the side is seen.
           {
             key: 'following',
             label: 'Following',
             count: data.following.length,
-            badge: data.incoming.length,
+            badge: data.incoming.length + data.following.filter((p) => p.fresh).length,
           },
           {
             key: 'followers',
             label: 'Followers',
             count: data.followers.length,
-            badge: data.followRequests.length,
+            badge:
+              data.followRequests.length +
+              data.followers.filter((p) => p.fresh).length +
+              data.outgoing.filter((r) => r.fresh).length,
           },
         ]}
       />
@@ -313,9 +359,9 @@ export function People() {
       case 'followRequest':
         return <FollowRequestRow request={item.request} />;
       case 'following':
-        return <FollowingRow person={item.person} />;
+        return <FollowingRow person={item.person} fresh={isFresh(item.key)} />;
       case 'follower':
-        return <FollowerRow person={item.person} />;
+        return <FollowerRow person={item.person} fresh={isFresh(item.key)} />;
       case 'pending':
         return <PendingRow request={item.request} kind={item.kind} />;
       case 'note':
@@ -573,7 +619,7 @@ function CircleHero({
 /** Someone whose trips I follow. Live trip → a mini night-sky pass that opens
  * it; otherwise a sheen row with the next flight (or nothing) as the status
  * line. Long-press (or tap, when not live) for mute/leave. */
-function FollowingRow({ person }: { person: Following }) {
+function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const now = useNow();
@@ -630,9 +676,12 @@ function FollowingRow({ person }: { person: Following }) {
         <View style={styles.row}>
           <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
           <View style={styles.rowBody}>
-            <ThemedText themeColor="heading" numberOfLines={1}>
-              {person.name}
-            </ThemedText>
+            <View style={styles.nameLine}>
+              <ThemedText themeColor="heading" numberOfLines={1} style={styles.name}>
+                {person.name}
+              </ThemedText>
+              {fresh && <NewMark />}
+            </View>
             {next ? (
               <ThemedText type="small" numberOfLines={2} style={{ color: theme.tint }}>
                 {formatDayLabel(next.scheduledDeparture, airportZone(next.fromCode))}
@@ -693,7 +742,7 @@ function FollowingRow({ person }: { person: Following }) {
  * sends them a request (their trips are theirs to share — it is not
  * granted here), and while it is out the chip reads "Requested", tap to
  * withdraw. Someone who already invited me is followed on the spot. */
-function FollowerRow({ person }: { person: Follower }) {
+function FollowerRow({ person, fresh }: { person: Follower; fresh: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const ask = useMutation(api.circle.askToFollow);
@@ -731,9 +780,12 @@ function FollowerRow({ person }: { person: Follower }) {
       <SheenCard style={styles.rowCard}>
         <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
         <View style={styles.rowBody}>
-          <ThemedText themeColor="heading" numberOfLines={1}>
-            {person.name}
-          </ThemedText>
+          <View style={styles.nameLine}>
+            <ThemedText themeColor="heading" numberOfLines={1} style={styles.name}>
+              {person.name}
+            </ThemedText>
+            {fresh && <NewMark />}
+          </View>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
             {person.close ? 'Close circle · ' : ''}
             {person.following ? 'You follow each other' : `Since ${formatDayLabel(person.since)}`}
@@ -769,6 +821,21 @@ function FollowerRow({ person }: { person: Follower }) {
 
 /** The one action a row carries, on its right: filled for the thing to do,
  * quiet for a state that is waiting on someone else. */
+/** "New" beside a name: someone who joined, or allowed my ask, since the
+ * side they are on was last looked at. Instagram's "New" section header,
+ * per row — the list is sorted by next flight, not arrival, so a section
+ * would have to break that order. */
+function NewMark() {
+  const theme = useTheme();
+  return (
+    <View style={[styles.newMark, { backgroundColor: theme.tint }]} accessibilityLabel="New">
+      <ThemedText type="smallBold" style={styles.newMarkText}>
+        New
+      </ThemedText>
+    </View>
+  );
+}
+
 function RowChip({
   label,
   accessibilityLabel,
@@ -1161,6 +1228,24 @@ const styles = StyleSheet.create({
   rowBody: {
     flex: 1,
     gap: Spacing.half,
+  },
+  nameLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  name: {
+    flexShrink: 1,
+  },
+  newMark: {
+    borderRadius: 999,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 1,
+  },
+  newMarkText: {
+    color: '#ffffff',
+    fontSize: 11,
+    lineHeight: 14,
   },
   nextCard: {
     gap: Spacing.two,

@@ -116,7 +116,14 @@ export const notifyRequest = internalAction({
         body: `Your circle is full — free accounts share trips with ${FREE_CIRCLE_LABEL}. Pro lets your whole family follow.`,
       },
     }[kind];
-    await sendFollowerPush([copy.to], copy.title, copy.body, 'https://getflyright.com/people');
+    const badge = await ctx.runQuery(internal.attention.badgeFor, { userId: copy.to });
+    await sendFollowerPush(
+      [copy.to],
+      copy.title,
+      copy.body,
+      'https://getflyright.com/people',
+      badge,
+    );
   },
 });
 
