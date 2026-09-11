@@ -8,7 +8,7 @@ import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
+import { CIRCLE_FULL, FREE_CIRCLE_LABEL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
@@ -59,19 +59,21 @@ export function AddPerson() {
   const circle = useQuery(api.circle.list);
 
   // The cap, said before the invitations go out rather than after they
-  // can't be honoured: a free account seats one follower, and several
-  // invitations out at once are a race for that seat — the losers hear
+  // can't be honoured: a free account seats FREE_CIRCLE_SIZE followers, and
+  // more invitations out than seats are a race for them — the losers hear
   // "circle is full" when they say yes, and this sheet is the only place
   // that could have warned the sender.
   let capNote: string | null = null;
   if (proLocked && circle) {
-    const seat = FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`;
+    const seat = FREE_CIRCLE_LABEL;
     const out = circle.outgoing.length;
     const followerCount = circle.followers.length;
-    if (followerCount >= FREE_CIRCLE_SIZE) {
+    const seatsLeft = FREE_CIRCLE_SIZE - followerCount;
+    if (seatsLeft <= 0) {
       capNote = `Your free circle is full — ${seat} can follow your trips. Pro lets your whole family follow.`;
-    } else if (out > 0) {
-      capNote = `Free accounts share trips with ${seat}. ${out === 1 ? 'One invitation is' : `${out} invitations are`} already out — whoever accepts first takes the seat. Pro lets your whole family follow.`;
+    } else if (out >= seatsLeft) {
+      // More promises out than seats: whoever answers last finds no room.
+      capNote = `Free accounts share trips with ${seat}. ${out === 1 ? 'One invitation is' : `${out} invitations are`} already out for ${seatsLeft === 1 ? 'the last seat' : `${seatsLeft} seats`} — whoever accepts first takes ${seatsLeft === 1 ? 'it' : 'them'}. Pro lets your whole family follow.`;
     } else {
       capNote = `Free accounts share trips with ${seat}. Pro lets your whole family follow.`;
     }
@@ -94,7 +96,7 @@ export function AddPerson() {
       setError(
         e instanceof ConvexError && e.data === CIRCLE_FULL
           ? proLocked
-            ? `Free accounts share with ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`}. Pro lets your whole family follow.`
+            ? `Free accounts share with ${FREE_CIRCLE_LABEL}. Pro lets your whole family follow.`
             : 'Your Pro purchase is still syncing — try again in a moment.'
           : `Couldn't send that invitation. Check your connection and try again.`,
       );
@@ -217,7 +219,7 @@ export function AddPerson() {
         {capNote && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Free accounts share with one person. See FlyRight Pro"
+            accessibilityLabel={`Free accounts share with ${FREE_CIRCLE_LABEL}. See FlyRight Pro`}
             testID="add-person-cap-note"
             onPress={() => router.push({ pathname: '/paywall', params: { next: '/people' } })}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.capNote}>

@@ -11,7 +11,7 @@ import {
   materializeCircleFollows,
   profileFor,
 } from './liveHelpers';
-import { FREE_CIRCLE_SIZE } from './circleShared';
+import { FREE_CIRCLE_LABEL } from './circleShared';
 import { sendFollowerPush } from './onesignal';
 import { tripsAddedCopy } from './pushCopy';
 
@@ -113,7 +113,7 @@ export const notifyRequest = internalAction({
       blocked: {
         to: r.fromUserId,
         title: `${r.toName} tried to follow you`,
-        body: `Your circle is full — free accounts share trips with ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`}. Pro lets your whole family follow.`,
+        body: `Your circle is full — free accounts share trips with ${FREE_CIRCLE_LABEL}. Pro lets your whole family follow.`,
       },
     }[kind];
     await sendFollowerPush([copy.to], copy.title, copy.body, 'https://getflyright.com/people');

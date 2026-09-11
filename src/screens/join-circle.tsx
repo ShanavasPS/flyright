@@ -8,7 +8,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import { CIRCLE_FULL } from '../../convex/circleShared';
+import { CIRCLE_FULL, FREE_CIRCLE_LABEL } from '../../convex/circleShared';
 
 import { AppHandoff } from '@/components/app-handoff';
 import { Avatar } from '@/components/avatar';
@@ -223,8 +223,8 @@ export function JoinCircle({ token }: { token: string }) {
       action = (
         <>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-            {name}&apos;s circle is full for now. Free accounts share with one person; {name} can
-            add more people with FlyRight Pro.
+            {name}&apos;s circle is full for now. Free accounts share with {FREE_CIRCLE_LABEL};{' '}
+            {name} can add more people with FlyRight Pro.
             {isAuthenticated
               ? ` ${name} has been told you tried — the invitation waits in People until there's room.`
               : ''}

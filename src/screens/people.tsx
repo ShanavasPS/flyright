@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import { CIRCLE_FULL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
+import { CIRCLE_FULL, FREE_CIRCLE_LABEL } from '../../convex/circleShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
@@ -1031,7 +1031,7 @@ function InviteRow({ locked, onInvite }: { locked: boolean; onInvite: () => void
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
             {locked
-              ? `Free includes ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`} — Pro has no limit`
+              ? `Free includes ${FREE_CIRCLE_LABEL} — Pro has no limit`
               : 'Search FlyRight by name or email, or share a link'}
           </ThemedText>
         </View>
