@@ -1,0 +1,112 @@
+=== PAGE 1 ===
+Passenger: Doe Jane Doe Mr (ADT)
+Booking ref:
+1A/7ECSE0
+QR/7ECSE0
+Ticket number: 157 2100000002  Itinerary Printing Office:
+QATAR AIRWAYS DIGITAL, DIGITAL OFFICE,
+MUMBAI
+Telephone: 91 22 40916000
+Date: 10Jan2026
+_
+ELECTRONIC TICKET RECEIPT
+Qatar Airways may request additional payment verification for itineraries paid for with credit cards
+_
+From  To  Flight  Departure  Arrival  Last check-in
+KOCHI KOCHI  DOHA HAMAD  QR517  04:05  06:10
+INTERNATIONAL  INTERNATIONAL  18Jan2026  18Jan2026
+Terminal: 3
+Class: BCLASSIC, R   Operated by: QATAR AIRWAYS
+Cabin: Business   Marketed by: QATAR AIRWAYS
+Baggage (4): 40K  Booking status (1): OK  NVA (3): 31Mar2026
+Fare basis: RJHQUCRE   Frequent flyer number: 500000002  Duration: 04:35
+Seat: 03F
+Special Service Request   DOCS - PASSENGER/CREW PRIMARY TRAVEL DOCUMENT INFO - CONFIRMED
+_
+DOHA HAMAD  HELSINKI HELSINKI  QR6122  08:05  14:15
+INTERNATIONAL  VANTAA  18Jan2026  18Jan2026
+Class: BCLASSIC, R   Operated by: FINNAIR
+Cabin: Business   Marketed by: QATAR AIRWAYS
+Baggage (4): 40K  Booking status (1): OK  NVA (3): 31Mar2026
+Fare basis: RJHQUCRE   Frequent flyer number: 500000002  Duration: 07:10
+Seat:
+Special Service Request   DOCS - PASSENGER/CREW PRIMARY TRAVEL DOCUMENT INFO - CONFIRMED
+_
+HELSINKI HELSINKI VANTAA DOHA HAMAD  QR6121  16:00  23:45
+INTERNATIONAL  25Jan2026  25Jan2026
+Class: ECLASSIC, O   Operated by: FINNAIR
+Cabin: Economy  Marketed by: QATAR AIRWAYS  NVB (2): 22Jan2026
+Baggage (4): 25K  Booking status (1): OK  NVA (3): 18May2026
+Fare basis: OJHQUCRE   Frequent flyer number: 500000002  Duration: 06:45
+Seat:
+Special Service Request   DOCS - PASSENGER/CREW PRIMARY TRAVEL DOCUMENT INFO - CONFIRMED
+_
+DOHA HAMAD  KOCHI KOCHI  QR514  01:50  08:35
+INTERNATIONAL  INTERNATIONAL  26Jan2026  26Jan2026
+Terminal: 3
+=== PAGE 2 ===
+Class: ECLASSIC, O   Operated by: QATAR AIRWAYS
+Cabin: Economy  Marketed by: QATAR AIRWAYS  NVB (2): 22Jan2026
+Baggage (4): 25K  Booking status (1): OK  NVA (3): 18May2026
+Fare basis: OJHQUCRE   Frequent flyer number: 500000002  Duration: 04:15
+Seat: 19K
+Special Service Request   DOCS - PASSENGER/CREW PRIMARY TRAVEL DOCUMENT INFO - CONFIRMED
+_
+(1) OK = Confirmed (2) NVB = Not valid before (3) NVA = Not valid after (4) Each passenger can check in a specific amount of baggage at no extra
+cost as indicated on the column baggage. For more information on baggage rules and restrictions on Qatar Airways flights, please visit
+qatarairways.com/en/baggage.html
+_
+PAYMENT DETAILS  FARE DETAILS
+Fare Calculation: COK QR X/DOH QR HEL Q COKHEL20.00  Fare:  INR 71770
+539.13QR X/DOH QR COK Q HELCOK20.00
+217.93NUC797.06END ROE90.037717
+Form of payment:  EXT  Taxes:  INR 673IN
+Endorsements: /C1-2 NON END/CHNG FEE PER RULE/  INR 23586K3
+CHARGEABLE SEAT T AND C APPLY /C3-4 NON END/  INR 1274P2
+CHNG PENALTIES AS PER RULE  INR 2964G4
+INR 270PZ
+INR 2964QA
+INR 494R9
+INR 658DQ
+INR 1292FI
+INR 95XU
+Carrier Imposed Fees:  INR 54404YQ
+INR 4858YR
+Total Amount:  INR 165302
+__
+_
+The carriage of certain hazardous materials, like aerosols, fireworks, and flammable liquids, aboard the aircraft is forbidden. If you do
+not understand these restrictions, further information may be obtained from your airline.
+_
+LEGAL AND PASSENGER NOTICES
+_
+ELECTRONIC TICKET
+Fare rules and fees
+•Depending on the fare rules, an additional payment may apply if you modify or cancel your booking.
+•To avoid no-show fees, make sure you change or cancel your booking at least 3 hours before departure.
+•When modifying a journey that includes a combination of fare types, the most restrictive fare rules will apply.
+•Local tax(es) and levies may be collected at the airport, where applicable.
+•Depending on the card issuer, additional transaction fees may apply.
+•Additional information may need to be submitted to verify the identity of the cardholder
+Before you fly
+•Carry the required travel documents, including a copy of this confirmation
+•Ensure that you follow the relevant immigration and health requirements
+=== PAGE 3 ===
+Baggage allowance
+•Learn more about Qatar Airways baggage allowance, rules and restrictions at https://www.qatarairways.com/en/baggage.html
+•If your itinerary includes a flight that is operated by a partner airline (code-share or interline), the baggage rules of the Most
+Significant Carrier (MSC) apply in accordance with the regulations of the International Air Transport Association (IATA). As baggage
+requirements may vary for each flight, you will find the most accurate details on the ticket.
+•When travelling to or from the USA or Canada, the baggage rules for the flight at the beginning of the itinerary will apply throughout
+the journey, regardless of stopovers, and transit.
+•The carriage of certain hazardous materials, like aerosols, fireworks, and flammable liquids, aboard the aircraft is forbidden. If you do
+not understand these restrictions, further information may be obtained from operating airline
+Check-in
+•Aim to arrive at the airport at least three hours before departure
+•Online check-in for Qatar Airways operated flights is available up to 48 hours before departure and up to 24 hours before departure
+to USA
+Data Protection Notice
+Your personal data will be processed in accordance with the applicable carrier's privacy policy and, if your booking is made via a
+reservation system provider ("GDS"), with its privacy policy. These are available at https://www.iatatravelcentre.com/privacy.htm or
+from the carrier or GDS directly. You should read this documentation, which applies to your booking and specifies, for example, how
+your personal data is collected, stored, used, disclosed and transferred.

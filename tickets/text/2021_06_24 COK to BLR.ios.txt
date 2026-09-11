@@ -1,0 +1,81 @@
+=== PAGE 1 ===
+BOARDING  PASS
+Mr Jane Doe  PNR  C1DJMS
+Depart  Arrive
+Cochin International Airport  Kempegowda International Airport
+(COK)  (BLR)
+Boarding Time  Flight No
+20.40 hrs, 24 Jun 21  I5 992
+Departure Time  Seat No
+21.20 hrs, 24 Jun 21  6F
+Gate  Zone
+-  3
+Add Ons  Sequence
+HFL  4
+3 steps for your seamless airport experience
+Check-in counters close 45 min before departure | Boarding gates close 20 min before departure
+We may change our schedule, cancel, terminate, divert or reschedule any flight we reasonably consider justified by circumstances beyond our control or for commercial or safety reasons.
+Frisking of person and checking of hand baggage is mandatory for all passengers. Passengers are requested to co-operate with security staff.
+Passengers are required to wear masks properly and maintain social distancing norms at all times during their travel. Passengers who do not adhere to protocols despite advice by crew or staff may be de-boarded
+and/or subject to legal action.
+All India domestic flights are operated by AirAsia India Limited, a joint venture between Tata Sons Private Limited & AirAsia Investment Limited.
+Airline Copy
+Mr Jane Doe
+Departure Time  Flight No  Depart  Arrive  Seat No  Zone No  Sequence
+21.20 hrs, 24 Jun 21I5 992  Cochin International  Kempegowda  6F  3  4
+Airport (COK)  International Airport
+(BLR)
+=== PAGE 2 ===
+BOARDING  PASS
+Ms Joan Roe  PNR  C1DJMS
+Depart  Arrive
+Cochin International Airport  Kempegowda International Airport
+(COK)  (BLR)
+Boarding Time  Flight No
+20.40 hrs, 24 Jun 21  I5 992
+Departure Time  Seat No
+21.20 hrs, 24 Jun 21  6E
+Gate  Zone
+-  3
+Add Ons  Sequence
+HFL  5
+3 steps for your seamless airport experience
+Check-in counters close 45 min before departure | Boarding gates close 20 min before departure
+We may change our schedule, cancel, terminate, divert or reschedule any flight we reasonably consider justified by circumstances beyond our control or for commercial or safety reasons.
+Frisking of person and checking of hand baggage is mandatory for all passengers. Passengers are requested to co-operate with security staff.
+Passengers are required to wear masks properly and maintain social distancing norms at all times during their travel. Passengers who do not adhere to protocols despite advice by crew or staff may be de-boarded
+and/or subject to legal action.
+All India domestic flights are operated by AirAsia India Limited, a joint venture between Tata Sons Private Limited & AirAsia Investment Limited.
+Airline Copy
+Ms Joan Roe
+Departure Time  Flight No  Depart  Arrive  Seat No  Zone No  Sequence
+21.20 hrs, 24 Jun 21I5 992  Cochin International  Kempegowda  6E  3  5
+Airport (COK)  International Airport
+(BLR)
+=== PAGE 3 ===
+BOARDING  PASS
+Ms Salma Jane  PNR  C1DJMS
+Depart  Arrive
+Cochin International Airport  Kempegowda International Airport
+(COK)  (BLR)
+Boarding Time  Flight No
+20.40 hrs, 24 Jun 21  I5 992
+Departure Time  Seat No
+21.20 hrs, 24 Jun 21  6D
+Gate  Zone
+-  3
+Add Ons  Sequence
+HFL  6
+3 steps for your seamless airport experience
+Check-in counters close 45 min before departure | Boarding gates close 20 min before departure
+We may change our schedule, cancel, terminate, divert or reschedule any flight we reasonably consider justified by circumstances beyond our control or for commercial or safety reasons.
+Frisking of person and checking of hand baggage is mandatory for all passengers. Passengers are requested to co-operate with security staff.
+Passengers are required to wear masks properly and maintain social distancing norms at all times during their travel. Passengers who do not adhere to protocols despite advice by crew or staff may be de-boarded
+and/or subject to legal action.
+All India domestic flights are operated by AirAsia India Limited, a joint venture between Tata Sons Private Limited & AirAsia Investment Limited.
+Airline Copy
+Ms Salma Jane
+Departure Time  Flight No  Depart  Arrive  Seat No  Zone No  Sequence
+21.20 hrs, 24 Jun 21I5 992  Cochin International  Kempegowda  6D  3  6
+Airport (COK)  International Airport
+(BLR)
