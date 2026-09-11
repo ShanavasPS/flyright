@@ -86,6 +86,10 @@ export function RouteMap({
       ]}>
       {!frame ? null : useSdk ? (
         <MapView
+          // One map per route: `initialRegion` is honoured on mount only, so
+          // a map instance carried from one journey to the next would keep
+          // the old window and show none of the new route.
+          key={route.key}
           style={styles.map}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
           initialRegion={frame.region}

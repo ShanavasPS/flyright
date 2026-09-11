@@ -31,6 +31,7 @@ import { LogBox, Platform } from "react-native";
 // stuck on the pre-hydration light theme while screens go dark.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useOrientationPolicy } from "@/hooks/use-orientation-policy";
+import { useSymbolFont } from "@/hooks/use-symbol-font";
 
 import { ErrorScreen } from "@/components/error-screen";
 import { NotificationRouter } from "@/components/notification-router";
@@ -151,6 +152,8 @@ function navTheme(scheme: "light" | "dark") {
 function RootLayout() {
   const colorScheme = useColorScheme();
   const { success: dbReady, error: dbError } = useDbReady();
+  // Android's icon font, before any icon mounts (see the hook).
+  const symbolFontReady = useSymbolFont();
   useOrientationPolicy();
   // $screen_view on every route change (no-op on web / without a Layers key).
   useAnalyticsScreenTracking();
@@ -179,7 +182,7 @@ function RootLayout() {
     // fresh start — the screen says so, and reports the failure to Observe.
     return <ErrorScreen error={dbError} title="Couldn't open your journal" />;
   }
-  if (!dbReady) {
+  if (!dbReady || !symbolFontReady) {
     return null; // splash screen keeps covering this frame
   }
 
