@@ -12,7 +12,7 @@ import { landedOrLater, presumedFlightStage } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
-import { flightInstant, formatTime } from '@/services/dates';
+import { dayOffset, dayOffsetMark, flightInstant, formatTime } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
 
 /** The departure-airport walk, in order. Skipping is normal — not every
@@ -667,6 +667,13 @@ export function liveContent(
   const timeOf = (iso: string | null, zone: string | null) =>
     iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso, zone) : null;
   const countdown = liveCountdown(presumed, departureMs, arrivalMs);
+  // "⁺¹" on a landing that reads on the next day's page — the surfaces
+  // name the departure day only, and the widget shows this string as is.
+  const effectiveArrival = facts.estimatedArrival ?? j.scheduledArrival;
+  const arrClock = timeOf(effectiveArrival, arrivalZone);
+  const arrTime = arrClock
+    ? arrClock + dayOffsetMark(dayOffset(effectiveDeparture, departureZone, effectiveArrival, arrivalZone))
+    : null;
 
   return {
     title: `${flight} · ${routeLabel(j)}`,
@@ -676,7 +683,7 @@ export function liveContent(
     toCode: j.toCode,
     flightLabel: flight,
     depTime: timeOf(facts.estimatedDeparture ?? j.scheduledDeparture, departureZone),
-    arrTime: timeOf(facts.estimatedArrival ?? j.scheduledArrival, arrivalZone),
+    arrTime,
     progress: flightProgress(j, state, facts, now),
     stageIndex: index,
     stageLabel,

@@ -43,7 +43,9 @@ import { airportZone, countryName, getAirport } from '@/services/airports';
 import { NEXT_STATUSES, parseSentSnapshot } from '@/services/claim-status';
 import { useClaimForJourney } from '@/services/claims';
 import {
+  dayOffset,
   editedLabel,
+  formatDayLabel,
   formatDayLabelWithYear,
   formatTime,
   tripDateTitle,
@@ -285,6 +287,9 @@ export function JourneyDetail({
       )
     : null;
   const moved = movedMinutes ? shiftLabel(movedMinutes) : null;
+  // The header names the departure day; a landing on another day is
+  // marked on its clock and spelled out under it.
+  const landsDaysLater = dayOffset(journey.scheduledDeparture, departureZone, journey.scheduledArrival, arrivalZone);
   const schedule: Schedule | null =
     journey.scheduledDeparture === journey.scheduledArrival
       ? journey.scheduledDeparture.endsWith('T12:00:00')
@@ -299,6 +304,8 @@ export function JourneyDetail({
       : {
           departure: formatTime(journey.scheduledDeparture, departureZone),
           arrival: formatTime(journey.scheduledArrival, arrivalZone),
+          arrivalDayOffset: landsDaysLater,
+          arrivalDay: landsDaysLater ? formatDayLabel(journey.scheduledArrival, arrivalZone) : null,
           departureWas,
           arrivalWas,
           moved,

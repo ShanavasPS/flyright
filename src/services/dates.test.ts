@@ -1,6 +1,9 @@
 import {
   wallClock,
   countdown,
+  dayOffset,
+  dayOffsetMark,
+  dayOffsetSpoken,
   flightInstant,
   flightDay,
   formatDayLabel,
@@ -240,5 +243,33 @@ describe('bare wall clocks never touch the phone zone', () => {
     expect(tripDateTitle('2025-09-09T04:15:00', new Date('2026-09-09T12:00:00Z'), 'Asia/Kolkata')).toBe(
       formatDayLabelWithYear('2025-09-09T04:15:00'),
     );
+  });
+});
+
+describe('dayOffset', () => {
+  it('counts calendar days in the airports’ own zones, not elapsed hours', () => {
+    // Las Vegas 23:59 → Dallas 04:34 next morning: +1 though it's 2h35 in the air.
+    expect(dayOffset('2025-10-09T06:59Z', 'America/Los_Angeles', '2025-10-09T09:34Z', 'America/Chicago')).toBe(1);
+    // Kochi 04:15 → Doha 06:05, seven hours' flying, same day both ends.
+    expect(dayOffset('2026-07-24T22:45Z', 'Asia/Kolkata', '2026-07-25T03:05Z', 'Asia/Qatar')).toBe(0);
+    // Doha 19:40 → Kochi 02:45: the small hours of the next day.
+    expect(dayOffset('2026-08-02T16:40Z', 'Asia/Qatar', '2026-08-02T21:15Z', 'Asia/Kolkata')).toBe(1);
+    // Apia → Los Angeles across the dateline lands the day before.
+    expect(dayOffset('2026-03-10T11:30Z', 'Pacific/Apia', '2026-03-10T19:30Z', 'America/Los_Angeles')).toBe(-1);
+    // A journal entry's bare wall clocks read as written.
+    expect(dayOffset('2026-09-09T04:15:00', 'Asia/Kolkata', '2026-09-10T02:45:00', 'Asia/Qatar')).toBe(1);
+    expect(dayOffset('nonsense', null, '2026-09-10T02:45:00', null)).toBeNull();
+  });
+
+  it('marks the clock the way a timetable does, and says it for a screen reader', () => {
+    expect(dayOffsetMark(0)).toBe('');
+    expect(dayOffsetMark(null)).toBe('');
+    expect(dayOffsetMark(1)).toBe('⁺¹');
+    expect(dayOffsetMark(2)).toBe('⁺²');
+    expect(dayOffsetMark(-1)).toBe('⁻¹');
+    expect(dayOffsetSpoken(1)).toBe('arrives next day');
+    expect(dayOffsetSpoken(-1)).toBe('arrives the day before');
+    expect(dayOffsetSpoken(2)).toBe('arrives 2 days later');
+    expect(dayOffsetSpoken(0)).toBeNull();
   });
 });

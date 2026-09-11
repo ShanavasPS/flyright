@@ -249,6 +249,50 @@ export function flightDay(iso: string, zone: string | null | undefined): string 
   return Number.isNaN(date.getTime()) ? iso.slice(0, 10) : zonedDay(date, zone);
 }
 
+/** How many calendar days after the departure the flight lands, in the
+ * airports' own calendars: a 23:59 Las Vegas departure landing 04:34 in
+ * Dallas is +1, a seven-hour flight leaving Kochi at 04:15 is 0, and the
+ * eastbound dateline hop from Apia that lands the day before is −1. Judged
+ * by local dates, not elapsed hours — "+1" on a ticket means the arrival
+ * clock reads on the next day's page. Null when either time can't be
+ * placed on a day. */
+export function dayOffset(
+  departureIso: string,
+  fromZone: string | null | undefined,
+  arrivalIso: string,
+  toZone: string | null | undefined,
+): number | null {
+  const depDay = flightDay(departureIso, fromZone);
+  const arrDay = flightDay(arrivalIso, toZone);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(depDay) || !/^\d{4}-\d{2}-\d{2}$/.test(arrDay)) return null;
+  const ms = Date.UTC(+arrDay.slice(0, 4), +arrDay.slice(5, 7) - 1, +arrDay.slice(8, 10)) -
+    Date.UTC(+depDay.slice(0, 4), +depDay.slice(5, 7) - 1, +depDay.slice(8, 10));
+  return Math.round(ms / 86_400_000);
+}
+
+const SUPERSCRIPT: Record<string, string> = {
+  '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+};
+
+/** The "+1" a timetable sets after an arrival clock that lands the next
+ * day, as superscript glyphs ("⁺¹") so it hangs off the clock the way
+ * Google Flights and the airlines' own tables print it, in any font and
+ * in a plain string — a lock-screen widget renders it unchanged. Empty
+ * for a same-day landing or an unknown offset. */
+export function dayOffsetMark(offset: number | null): string {
+  if (!offset) return '';
+  const sign = offset > 0 ? '⁺' : '⁻';
+  return sign + String(Math.abs(offset)).split('').map((d) => SUPERSCRIPT[d] ?? d).join('');
+}
+
+/** The same fact for a screen reader: "arrives next day". */
+export function dayOffsetSpoken(offset: number | null): string | null {
+  if (!offset) return null;
+  if (offset === 1) return 'arrives next day';
+  if (offset === -1) return 'arrives the day before';
+  return offset > 0 ? `arrives ${offset} days later` : `arrives ${-offset} days earlier`;
+}
+
 /** A flight time as an instant for arithmetic: zoned strings parse as they
  * are; a bare wall clock is pinned to the airport's zone first, so "04:15 at
  * COK" is the same moment on a phone in Doha as on one in Kochi. Without a

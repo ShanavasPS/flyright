@@ -1,7 +1,7 @@
 /** Pure helpers for the travel-day live sessions — no ctx, no I/O.
  * Stage keys mirror src/services/travel-day.ts exactly; rename together. */
 
-import { airportZone, flightInstant } from './airportZones';
+import { airportZone, flightDay, flightInstant } from './airportZones';
 import type { Doc } from './_generated/dataModel';
 
 export const STAGE_ORDER = [
@@ -300,6 +300,19 @@ const fmtTime = (iso: string | null, iata: string | null): string => {
   return zone ? clock : `${clock} UTC`;
 };
 
+/** Mirrors dayOffsetMark in src/services/dates.ts: "⁺¹" after an arrival
+ * clock that reads on the day after the departure, by the airports' own
+ * calendars. */
+function dayOffsetMark(departure: string, fromCode: string, arrival: string, toCode: string): string {
+  const dep = flightDay(departure, fromCode);
+  const arr = flightDay(arrival, toCode);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dep) || !/^\d{4}-\d{2}-\d{2}$/.test(arr)) return '';
+  const days = Math.round((Date.parse(`${arr}T12:00Z`) - Date.parse(`${dep}T12:00Z`)) / 86_400_000);
+  if (!days) return '';
+  const digits = String(Math.abs(days)).replace(/\d/g, (d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[Number(d)]);
+  return (days > 0 ? '⁺' : '⁻') + digits;
+}
+
 /** "Departs in 2h" / "in 75 min" / "now" — mirrors countdownLabel in
  * src/services/travel-day.ts, and is timezone-free (unlike clock times). */
 function countdownBit(departureMs: number, now: number): string {
@@ -493,7 +506,11 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
     delayLabel,
     emphasis: delayed ? 'delay' : s.gate ? 'gate' : 'none',
     depTime: fmtTime(effectiveDeparture, s.fromCode),
-    arrTime: fmtTime(s.estimatedArrival ?? s.scheduledArrival, s.toCode),
+    arrTime: (() => {
+      const arrival = s.estimatedArrival ?? s.scheduledArrival;
+      const clock = fmtTime(arrival, s.toCode);
+      return clock ? clock + dayOffsetMark(effectiveDeparture, s.fromCode, arrival, s.toCode) : clock;
+    })(),
   };
 }
 

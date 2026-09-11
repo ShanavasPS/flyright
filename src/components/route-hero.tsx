@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
-import { flightInstant } from '@/services/dates';
+import { dayOffsetMark, dayOffsetSpoken, flightInstant } from '@/services/dates';
 import { spanLabel } from '@/services/public-session';
 import { blockMinutes } from '@/services/timeline';
 
@@ -31,6 +31,11 @@ export interface HeroJourney {
 export interface Schedule {
   departure: string;
   arrival: string | null;
+  /** Calendar days the landing is after the departure (dayOffset): the
+   * "⁺¹" on the arrival clock, and the day spelled out under it. */
+  arrivalDayOffset?: number | null;
+  /** "Sat, Oct 3" — the arrival day, when it isn't the departure's. */
+  arrivalDay?: string | null;
   departureWas: string | null;
   arrivalWas: string | null;
   /** "55 min later", once the airline has moved the flight. A struck-through
@@ -159,6 +164,13 @@ export function RouteHero({
           </ThemedText>
           {schedule && <ThemedText style={styles.time}>{schedule.departure}</ThemedText>}
           {schedule?.departureWas && <MovedFrom clock={schedule.departureWas} />}
+          {/* A blank line keeps the two clocks level when the arrival
+              column carries its day under its clock. */}
+          {!!schedule?.arrivalDay && (
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              {' '}
+            </ThemedText>
+          )}
         </View>
         <View style={styles.contrail}>
           {/* A blank keeps the line centred on the codes when the lookup
@@ -196,9 +208,29 @@ export function RouteHero({
             {cityLabel(journey.to)}
           </ThemedText>
           {schedule && (
-            <ThemedText style={styles.time}>{schedule.arrival ?? ' '}</ThemedText>
+            <ThemedText
+              style={styles.time}
+              accessibilityLabel={
+                schedule.arrival
+                  ? [schedule.arrival, dayOffsetSpoken(schedule.arrivalDayOffset ?? null)].filter(Boolean).join(', ')
+                  : undefined
+              }>
+              {schedule.arrival ?? ' '}
+              {!!schedule.arrival && !!schedule.arrivalDayOffset && (
+                <ThemedText themeColor="textSecondary" style={styles.time}>
+                  {dayOffsetMark(schedule.arrivalDayOffset)}
+                </ThemedText>
+              )}
+            </ThemedText>
           )}
           {schedule?.arrivalWas && <MovedFrom clock={schedule.arrivalWas} />}
+          {/* The header names the departure day only; a landing on another
+              day says which under its clock — the ⁺¹ already says it's later. */}
+          {!!schedule?.arrivalDay && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.cityRight} numberOfLines={1}>
+              {schedule.arrivalDay}
+            </ThemedText>
+          )}
         </View>
       </View>
     </View>

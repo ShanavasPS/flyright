@@ -178,6 +178,23 @@ describe('buildContentState with a connecting leg\'s plan', () => {
   });
 });
 
+describe('buildContentState marks a next-day landing', () => {
+  it('appends "⁺¹" to the arrival clock when the landing reads on the next day', () => {
+    // Doha 19:40 → Kochi 02:45 next morning (a QR516).
+    const s = session({
+      fromCode: 'DOH',
+      toCode: 'COK',
+      scheduledDeparture: '2026-08-02T16:40:00.000Z',
+      scheduledArrival: '2026-08-02T21:15:00.000Z',
+    });
+    const state = buildContentState(s, Date.parse('2026-08-02T12:00Z'));
+    expect(state.arrTime).toBe('02:45⁺¹');
+    expect(state.depTime).toBe('19:40');
+    // The manual COK → DOH row of the other tests lands the same day.
+    expect(buildContentState(session(), Date.parse('2026-09-08T20:00Z')).arrTime).toBe('06:05');
+  });
+});
+
 describe('shouldStartActivity (server push-to-start)', () => {
   const dep = Date.parse('2026-09-08T22:45Z'); // pinned COK 04:15
   const fresh = (over: Partial<Doc<'liveSessions'>> = {}) =>

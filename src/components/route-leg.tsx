@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
-import { formatTime } from '@/services/dates';
+import { dayOffset, dayOffsetMark, dayOffsetSpoken, formatTime } from '@/services/dates';
 import { blockMinutes, cityOf } from '@/services/timeline';
 
 /** The least a leg needs to be drawn: the two codes and the two clocks. */
@@ -57,7 +57,7 @@ export function RouteLeg({
   via?: { code: string; layover: string | null }[];
 }) {
   const theme = useTheme();
-  const { dep, arr } = clocks(leg);
+  const { dep, arr, nextDay } = clocks(leg);
   const depWas =
     !compact && leg.ticketedDeparture
       ? formatTime(leg.ticketedDeparture, airportZone(leg.fromCode))
@@ -79,6 +79,7 @@ export function RouteLeg({
     'to',
     leg.toCode,
     arr,
+    dayOffsetSpoken(nextDay),
   ]
     .filter(Boolean)
     .join(' ');
@@ -160,6 +161,14 @@ export function RouteLeg({
         {(dep || arr) && (
           <ThemedText themeColor="heading" style={clockStyle} numberOfLines={1}>
             {arr ?? ' '}
+            {/* "⁺¹" hangs off a clock that reads on the next day's page, as
+                the timetables print it — the row names only the departure
+                day, so without it a 2:45 AM landing reads as before take-off. */}
+            {!!arr && !!nextDay && (
+              <ThemedText themeColor="textSecondary" style={clockStyle}>
+                {dayOffsetMark(nextDay)}
+              </ThemedText>
+            )}
           </ThemedText>
         )}
         {arrWas && <Was clock={arrWas} />}
@@ -263,15 +272,16 @@ export function Contrail({
  * on the times themselves rather than on the leg's source, which a trip
  * shared with a follower doesn't carry: two identical clocks are the same
  * non-fact whoever wrote them down. */
-export function clocks(leg: Leg): { dep: string | null; arr: string | null } {
+export function clocks(leg: Leg): { dep: string | null; arr: string | null; nextDay: number | null } {
   const { departure: dep, arrival: arr } = leg;
   if (dep === arr) {
-    if (dep.endsWith('T12:00:00')) return { dep: null, arr: null };
-    return { dep: formatTime(dep, airportZone(leg.fromCode)), arr: null };
+    if (dep.endsWith('T12:00:00')) return { dep: null, arr: null, nextDay: null };
+    return { dep: formatTime(dep, airportZone(leg.fromCode)), arr: null, nextDay: null };
   }
   return {
     dep: formatTime(dep, airportZone(leg.fromCode)),
     arr: formatTime(arr, airportZone(leg.toCode)),
+    nextDay: dayOffset(dep, airportZone(leg.fromCode), arr, airportZone(leg.toCode)),
   };
 }
 

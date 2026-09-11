@@ -52,6 +52,7 @@ import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
 import { withYear } from '@/services/year-choice';
 import {
+  dayOffset,
   formatDayLabel,
   formatDayLabelWithYear,
   formatTime,
@@ -1231,6 +1232,16 @@ export function AddFlight() {
                     arrTime={
                       flight.scheduledArrival
                         ? formatTime(flight.scheduledArrival, airportZone(flight.to.code))
+                        : null
+                    }
+                    arrDayOffset={
+                      flight.scheduledDeparture && flight.scheduledArrival
+                        ? dayOffset(
+                            flight.scheduledDeparture,
+                            airportZone(flight.from.code),
+                            flight.scheduledArrival,
+                            airportZone(flight.to.code),
+                          )
                         : null
                     }
                     delayed={!flight.landed && (flight.delayMinutes ?? 0) > 0}

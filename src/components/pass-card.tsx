@@ -10,6 +10,7 @@ import {
   WHITE_FAINT,
 } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
+import { dayOffsetMark, dayOffsetSpoken } from '@/services/dates';
 
 /** Amber for delay accents on the night sky — same value the travel-day
  * banner and the Live Activity use. */
@@ -54,18 +55,22 @@ export function PassRouteRow({
   toCode,
   depTime,
   arrTime,
+  arrDayOffset = null,
   delayed = false,
 }: {
   fromCode: string;
   toCode: string;
   depTime?: string | null;
   arrTime?: string | null;
+  /** Calendar days the landing is after the departure (dayOffset) — the
+   * "⁺¹" on the arrival clock, since the card names only the departure day. */
+  arrDayOffset?: number | null;
   delayed?: boolean;
 }) {
   return (
     <View
       accessible
-      accessibilityLabel={`${fromCode} → ${toCode}`}
+      accessibilityLabel={[`${fromCode} → ${toCode}`, dayOffsetSpoken(arrDayOffset)].filter(Boolean).join(', ')}
       style={styles.routeRow}>
       <View style={styles.endpoint}>
         <Text style={styles.code} numberOfLines={1}>
@@ -89,7 +94,12 @@ export function PassRouteRow({
         <Text style={styles.code} numberOfLines={1}>
           {toCode}
         </Text>
-        {!!arrTime && <Text style={styles.codeTime}>{arrTime}</Text>}
+        {!!arrTime && (
+          <Text style={styles.codeTime}>
+            {arrTime}
+            {!!arrDayOffset && <Text style={styles.codeTimeOffset}>{dayOffsetMark(arrDayOffset)}</Text>}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -184,6 +194,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontVariant: ['tabular-nums'],
+  },
+  codeTimeOffset: {
+    color: WHITE_FAINT,
   },
   routePath: {
     flex: 1,

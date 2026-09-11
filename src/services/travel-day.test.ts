@@ -634,3 +634,30 @@ describe('stage plans (connecting legs)', () => {
     expect(waiting.subtitle).toBe('Head to security');
   });
 });
+
+describe('next-day landings', () => {
+  it('hangs "⁺¹" off the arrival clock the surfaces show, by the airports’ own calendars', () => {
+    // Doha 19:40 → Kochi 02:45 the next morning.
+    const overnight = journey({
+      fromCode: 'DOH',
+      toCode: 'COK',
+      scheduledDeparture: '2026-08-02T16:40Z',
+      scheduledArrival: '2026-08-02T21:15Z',
+    });
+    const c = liveContent(overnight, EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date('2026-08-02T12:00Z'));
+    expect(c.arrTime).toBe(`${formatTime('2026-08-02T21:15Z', 'Asia/Kolkata')}⁺¹`);
+    expect(c.depTime).toBe(formatTime('2026-08-02T16:40Z', 'Asia/Qatar'));
+    // A same-day landing carries no mark, however long the flight.
+    expect(liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date('2026-08-24T12:00Z')).arrTime).toBe(
+      formatTime('2026-08-25T10:35Z', 'Europe/London'),
+    );
+    // The airline's estimate moves the landing across midnight: the mark follows it.
+    const late = liveContent(
+      journey({ scheduledDeparture: '2026-08-25T20:00Z', scheduledArrival: '2026-08-25T22:35Z' }),
+      EMPTY_TRAVEL_DAY,
+      facts({ estimatedArrival: '2026-08-25T23:30Z' }),
+      new Date('2026-08-25T12:00Z'),
+    );
+    expect(late.arrTime).toMatch(/⁺¹$/);
+  });
+});

@@ -29,7 +29,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
-import { flightDay, formatDayLabel, formatTime, localDateString, zonedTimestamp } from '@/services/dates';
+import { dayOffset, flightDay, formatDayLabel, formatTime, localDateString, zonedTimestamp } from '@/services/dates';
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
@@ -646,6 +646,10 @@ function SegmentCard({
   const schedule = legSchedule(segment, flight);
   const depTime = schedule.departure ? formatTime(schedule.departure, airportZone(fromCode)) : null;
   const arrTime = schedule.arrival ? formatTime(schedule.arrival, airportZone(toCode)) : null;
+  const arrDayOffset =
+    schedule.departure && schedule.arrival
+      ? dayOffset(schedule.departure, airportZone(fromCode), schedule.arrival, airportZone(toCode))
+      : null;
   const date = segment.date ?? flight?.date;
   const thisYear = date ? date.slice(0, 4) === `${today.getFullYear()}` : true;
   const carrier = segment.flight ? carrierFor(segment.flight) : null;
@@ -757,6 +761,7 @@ function SegmentCard({
             toCode={toCode}
             depTime={depTime}
             arrTime={arrTime}
+            arrDayOffset={arrDayOffset}
             delayed={!!flight && !flight.landed && (flight.delayMinutes ?? 0) > 0}
           />
         ) : (
