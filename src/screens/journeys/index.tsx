@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DataErrorCard, LoadingState } from '@/components/data-state';
+import { DataErrorCard } from '@/components/data-state';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { TripRow, timerLabel } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
@@ -24,6 +24,7 @@ import { LayoverMark } from '@/components/layover-mark';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FollowingSection } from '@/components/following-section';
+import { JournalSkeleton } from '@/components/journal-skeleton';
 import { HomeHero, useHeroTrip } from '@/components/travel-day-banner';
 import {
   COBALT,
@@ -60,6 +61,23 @@ import { useFoldState } from '../../../modules/flyright-fold';
  * card padding) and how far each card behind it peeks out. */
 const GHOST_CARD_HEIGHT = 40 + 2 * Spacing.three;
 const GHOST_PEEK = 10;
+
+/** How long the home screen waits for Clerk to restore the session before
+ * reading the journal as whoever it can see. Session restore is a cache
+ * read (well under a second); the cap only matters when the client can't
+ * reach Clerk at all. */
+const AUTH_SETTLE_CAP_MS = 4000;
+
+/** True once Clerk reports loaded, or once the cap has passed without it. */
+function useAuthSettled(authLoaded: boolean) {
+  const [capped, setCapped] = useState(false);
+  useEffect(() => {
+    if (authLoaded) return;
+    const timer = setTimeout(() => setCapped(true), AUTH_SETTLE_CAP_MS);
+    return () => clearTimeout(timer);
+  }, [authLoaded]);
+  return authLoaded || capped;
+}
 
 /** The context line above the title — the next departure when one is booked
  * (the thing a traveller actually wants at a glance), today's date otherwise.
@@ -102,10 +120,17 @@ function headerEyebrow(
 
 export function Journeys() {
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId, isLoaded: authLoaded } = useAuth();
   const { data: journeys, error: journalError } = useJourneys(userId);
   const { data: claimRows } = useClaims(userId);
   const { data: disruptionRows } = useDisruptions();
+  // The journal is filtered by the viewer, and on a cold start Clerk takes a
+  // moment to restore who that is. Until then the read runs as "anonymous"
+  // and honestly finds nothing — which used to paint "Add your first flight"
+  // over a full journal for a second. Wait for the session, with a cap so a
+  // signed-out phone with no network isn't left on the skeleton if Clerk
+  // never settles.
+  const authSettled = useAuthSettled(authLoaded);
 
   // First launch decides once the journal has loaded: a brand-new user (no
   // rows, intro never shown) gets the onboarding pages; a user whose journal
@@ -113,7 +138,7 @@ export function Journeys() {
   // The iOS tracking prompt comes after the intro — onboarding itself asks
   // on the way out; everyone else (already introduced or waived) is asked
   // here, which is an instant no-op once the one-shot prompt has been answered.
-  const loaded = journeys != null;
+  const loaded = authSettled && journeys != null;
   useEffect(() => {
     if (!loaded) return;
     if (onboardingSeen()) {
@@ -193,7 +218,7 @@ export function Journeys() {
   // the hinge. Tabletop wins when both could apply (a fold rotated to a
   // horizontal hinge is a tabletop, not a book).
   const { width: windowWidth } = useWindowDimensions();
-  const twoPane = !tabletopHinge && windowWidth >= TwoPaneMinWidth && !!journeys?.length;
+  const twoPane = !tabletopHinge && windowWidth >= TwoPaneMinWidth && loaded && !!journeys?.length;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const bookHinge =
     fold.orientation === 'vertical' && fold.isSeparating ? fold.hingeBounds : null;
@@ -238,8 +263,8 @@ export function Journeys() {
             showsVerticalScrollIndicator={false}>
             <DataErrorCard error={journalError} />
           </ScrollView>
-        ) : !journeys ? (
-          <LoadingState />
+        ) : !loaded ? (
+          <JournalSkeleton />
         ) : journeys.length ? (
           <SectionList
             sections={sections}

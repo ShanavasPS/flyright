@@ -1,0 +1,68 @@
+# Seeds a SIGNED-IN journal from a clean install: skip the intro, sign the
+# Clerk DEV test user in from Settings, add one flight. The point is what
+# happens on the NEXT cold start — a signed-in journal used to flash "Add
+# your first flight" until Clerk restored the session (screens/journeys +
+# services/live-rows). Capture that with scripts/cold-start-frames.sh after
+# this flow; the flow itself only sets the state up.
+# Run: maestro --device <udid> test .maestro/signed-in-journal.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Sign in or create account"
+    timeout: 10000
+- tapOn: "Sign in or create account"
+- runFlow: clerk-dev-sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: "contact-support"
+    timeout: 30000
+- tapOn: "My travels"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 10000
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+- tapOn: "AY1331 or LH873"
+- inputText: "AY1331"
+- extendedWaitUntil:
+    visible: ".*Search this flight.*"
+    timeout: 5000
+- tapOn: ".*Search this flight.*"
+- extendedWaitUntil:
+    visible: ".*Yesterday.*"
+    timeout: 5000
+- tapOn: ".*Yesterday.*"
+- extendedWaitUntil:
+    visible: ".*Save to My travels.*"
+    timeout: 15000
+- tapOn: ".*Save to My travels.*"
+- extendedWaitUntil:
+    visible: ".*AY1331.*"
+    timeout: 15000
+- takeScreenshot: .maestro/out/signed-in-journal
