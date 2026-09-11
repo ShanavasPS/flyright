@@ -532,9 +532,13 @@ function findDates(text: string, today: Date): Mark<string>[] {
   return marks.sort((a, b) => a.index - b.index).map(({ index, end, value }) => ({ index, end, value }));
 }
 
-/** "04:15", "4:15 pm", and "21.20 hrs" — the dotted form only with an
- * hours word after it, or every decimal on the page is a clock. */
-const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s?([AaPp])\.?[Mm]\.?(?![A-Za-z])|\b(\d{1,2}):(\d{2})\b(?!\s?[AaPp]\.?[Mm])|\b(\d{1,2})\.(\d{2})\s?(?:hrs|hr|h)\b/g;
+/** "04:15", "4:15 pm", "21.20 hrs" (the dotted form only with an hours
+ * word after it, or every decimal on the page is a clock) — and the two
+ * shapes a recogniser makes of a clock in a screenshot: "16-10", and a
+ * bare "1730" alone on its line, taken as a clock only when it can't be a
+ * year. */
+const TIME_RE =
+  /\b(\d{1,2})(?::(\d{2}))?\s?([AaPp])\.?[Mm]\.?(?![A-Za-z])|\b(\d{1,2}):(\d{2})\b(?!\s?[AaPp]\.?[Mm])|\b(\d{1,2})\.(\d{2})\s?(?:hrs|hr|h)\b|(?:^|[^\d-])(\d{1,2})-(\d{2})(?![\d-])|(?:^|\n)[ \t]*(\d{2})(\d{2})[ \t]*(?=\n|$)/g;
 
 function findTimes(text: string): Mark<string>[] {
   const marks: Mark<string>[] = [];
@@ -549,19 +553,33 @@ function findTimes(text: string): Mark<string>[] {
     } else if (m[4]) {
       hours = Number(m[4]);
       minutes = Number(m[5]);
-    } else {
+    } else if (m[6]) {
       hours = Number(m[6]);
       minutes = Number(m[7]);
+    } else if (m[8]) {
+      hours = Number(m[8]);
+      minutes = Number(m[9]);
+    } else {
+      // A four-digit line: "1730" is half past five, "2020" is a year.
+      const asNumber = Number(m[10] + m[11]);
+      if (asNumber >= 1900 && asNumber <= 2099) continue;
+      hours = Number(m[10]);
+      minutes = Number(m[11]);
     }
     if (hours > 23 || minutes > 59) continue;
+    // The hyphen and bare forms match from the character before the clock;
+    // the mark must start at the digits.
+    const offset = m[0].search(/\d/);
+    const index = m.index + offset;
     // A bare "4pm" is a time; a bare "4" is not — but "12 am" in prose is rare
     // enough to accept.
-    if (NOT_A_CLOCK.test(text.slice(Math.max(0, m.index - 28), m.index))) continue;
+    if (NOT_A_CLOCK.test(text.slice(Math.max(0, index - 28), index))) continue;
     // Part of an ISO timestamp or a date ("2025-10-08 11:59" is fine; ":30:00" seconds are not),
     // or a stamp with seconds ("16:25:59"): a system's clock, never a flight's.
-    if (text[m.index - 1] === ':') continue;
-    if (/^:\d{2}/.test(text.slice(m.index + m[0].length))) continue;
-    marks.push({ index: m.index, end: m.index + m[0].length, value: `${pad2(hours)}:${pad2(minutes)}` });
+    if (text[index - 1] === ':') continue;
+    const end = m.index + m[0].length;
+    if (/^:\d{2}/.test(text.slice(end))) continue;
+    marks.push({ index, end, value: `${pad2(hours)}:${pad2(minutes)}` });
   }
   return marks;
 }
