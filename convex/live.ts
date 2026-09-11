@@ -16,7 +16,14 @@ import {
 } from './liveHelpers';
 import { personCard } from './circle';
 import { onwardLegs } from './itinerary';
-import { preferredSession, stageIndex, NOTIFY_STAGES, toPublicSession, tripIsOver } from './liveShared';
+import {
+  preferredSession,
+  stageIndex,
+  NOTIFY_STAGES,
+  stillLive,
+  toPublicSession,
+  tripIsOver,
+} from './liveShared';
 import { blockedBetween } from './safetyHelpers';
 import { latestUpdate, updatesFor } from './updates';
 
@@ -387,6 +394,12 @@ export const following = query({
           q.eq('ownerId', session.userId).eq('memberId', identity.subject),
         )
         .unique();
+      const onward = await onwardLegs(ctx, session.userId, session, !!seat?.close);
+      // Two hours after it lands — recorded or by the timetable — the trip
+      // leaves the home screen. The same gate the People tab pass goes
+      // through (circle.liveCard), applied here so an installed app whose
+      // own onHomeScreen predates the rule lets go at the same moment.
+      if (!stillLive(session, Date.now(), onward)) continue;
       // The traveller as the People tab shows them — name, photo, Pro — so
       // the home screen can draw the very same pass.
       const owner = await personCard(ctx, session.userId);
@@ -402,7 +415,7 @@ export const following = query({
           await travelerName(ctx, session.userId),
           await followerCount(ctx, session._id),
         ),
-        onward: await onwardLegs(ctx, session.userId, session, !!seat?.close),
+        onward,
         // The traveller's latest word from the trip, for the pass to show
         // beside the flight — the rest is on their page.
         update: await latestUpdate(ctx, session.userId, session.naturalKey, identity.subject),
