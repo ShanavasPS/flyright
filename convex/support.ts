@@ -477,23 +477,16 @@ export const inbound = internalMutation({
     // write to the plus-address. Only an authenticated message from the
     // inbox (aligned DKIM/DMARC per the receiver) becomes FlyRight's reply;
     // everything else is filed as the traveler's side, never pushed as ours.
-    // TODO(remove once the Worker build with fromHeader/authResults is
-    // deployed): a payload without either field comes from the previous
-    // Worker, which trusted the envelope alone. Keep that behaviour so a
-    // Convex deploy ahead of the Worker deploy doesn't drop real replies.
-    const legacyWorker = args.fromHeader === undefined && args.authResults === undefined;
-    if (legacyWorker && sender === inbox) {
-      console.warn('[support-inbound] legacy Worker payload — sender not authenticated; redeploy workers/support-mail');
-    }
-    const fromSupport = legacyWorker
-      ? sender === inbox
-      : isSupportReply({
-          envelopeFrom: args.from,
-          headerFrom: args.fromHeader,
-          authResults: args.authResults,
-          inbox,
-        });
-    if (sender === inbox && !fromSupport) {
+    const fromSupport = isSupportReply({
+      envelopeFrom: args.from,
+      headerFrom: args.fromHeader,
+      authResults: args.authResults,
+      inbox,
+    });
+    // Claims to be the inbox on either line but didn't prove it: dropped,
+    // not filed on the traveler's side — a forged "from FlyRight" has no
+    // honest place in the thread at all.
+    if (!fromSupport && (sender === inbox || bareAddress(args.fromHeader ?? '') === inbox)) {
       console.warn(`[support-inbound] unauthenticated mail claiming to be the inbox on ${t._id}`);
       return 'unverified-sender' as const;
     }

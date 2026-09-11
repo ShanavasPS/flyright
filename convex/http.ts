@@ -162,10 +162,8 @@ http.route({
     const outcome = await ctx.runMutation(internal.support.inbound, {
       token: body.token,
       from: body.from,
-      // Absent (older Worker) stays undefined; present-but-empty becomes null.
-      fromHeader: body.fromHeader === undefined ? undefined : typeof body.fromHeader === 'string' ? body.fromHeader : null,
-      authResults:
-        body.authResults === undefined ? undefined : typeof body.authResults === 'string' ? body.authResults : null,
+      fromHeader: typeof body.fromHeader === 'string' ? body.fromHeader : null,
+      authResults: typeof body.authResults === 'string' ? body.authResults : null,
       subject: typeof body.subject === 'string' ? body.subject : '',
       text: typeof body.text === 'string' ? body.text : '',
       emailId: typeof body.emailId === 'string' ? body.emailId : null,
