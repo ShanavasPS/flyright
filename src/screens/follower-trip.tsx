@@ -1,4 +1,4 @@
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { RouteMap } from '@/components/route-map';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { UpdatesCard } from '@/components/trip-updates';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { airportZone, getAirport } from '@/services/airports';
@@ -40,6 +41,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
     ownerId,
     journeyId: journeyId as Id<'journeys'>,
   });
+  const react = useMutation(api.updates.react);
 
   // The header carries WHEN, exactly as the traveller's own trip screen
   // does — the route is in big type right below it either way.
@@ -61,7 +63,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
       </Card>
     );
   } else {
-    const { owner, trip, session } = result;
+    const { owner, trip, session, updates } = result;
     body = (
       <>
         {/* The same inset the traveller sees on their own trip. It opens
@@ -112,6 +114,17 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             return <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />;
           })()
         ) : null}
+
+        {/* What they shared from this trip — kept on the trip for good, so
+            a flown trip reads as the small set of postcards it was. */}
+        {updates && updates.length > 0 && (
+          <UpdatesCard
+            eyebrow={`From ${owner.name}`}
+            updates={updates}
+            now={now}
+            onReact={(updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })}
+          />
+        )}
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           {session

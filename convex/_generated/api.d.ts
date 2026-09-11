@@ -37,6 +37,8 @@ import type * as providerFetch from "../providerFetch.js";
 import type * as providerShared from "../providerShared.js";
 import type * as pushCopy from "../pushCopy.js";
 import type * as support from "../support.js";
+import type * as updates from "../updates.js";
+import type * as updatesShared from "../updatesShared.js";
 import type * as users from "../users.js";
 
 import type {
@@ -75,6 +77,8 @@ declare const fullApi: ApiFromModules<{
   providerShared: typeof providerShared;
   pushCopy: typeof pushCopy;
   support: typeof support;
+  updates: typeof updates;
+  updatesShared: typeof updatesShared;
   users: typeof users;
 }>;
 

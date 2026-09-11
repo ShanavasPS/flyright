@@ -20,6 +20,8 @@ import {
   syncCloseAccess,
 } from './liveHelpers';
 import { preferredSession, stillLive, toPublicSession } from './liveShared';
+import { latestUpdate, updatesFor } from './updates';
+import { updateWindowOpen } from './updatesShared';
 
 /** Find My-style circles: who follows my trips, whose trips I follow.
  * Invites are personal links (getflyright.com/i/<token>); accepting one adds
@@ -379,6 +381,8 @@ async function travelOf(
   ownerId: string,
   seesHidden: boolean,
   session: Doc<'liveSessions'> | null,
+  /** Who is reading — their own heart on an update is theirs to see. */
+  viewerId: string | null,
 ) {
   const now = Date.now();
   const upcoming: Doc<'journeys'>[] = [];
@@ -416,10 +420,22 @@ async function travelOf(
   upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
   past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
   const shownPast = past.slice(0, PAST_TRIPS_SHOWN);
+  // What the traveller has shared from the trip they are on: the live leg,
+  // or — the morning after landing, when the pass has already let the trip
+  // go — the most recent leg still inside its update window. Every update
+  // on a trip stays on that trip's own page; this is the one block the
+  // person page leads with.
+  const current =
+    (session && [...upcoming, ...past].find((j) => j.naturalKey === session.naturalKey)) ??
+    [...past, ...upcoming].find((j) => updateWindowOpen(j, now));
+  const updates = current ? await updatesFor(ctx, ownerId, current.naturalKey, viewerId) : [];
   return {
     liveJourneyId,
     upcoming: upcoming.map(publicTrip),
     past: shownPast.map(publicTrip),
+    /** The trip the updates below belong to (listed above, or the live one). */
+    updatesJourneyId: current && updates.length ? current._id : null,
+    updates,
     // Totals count every trip; the lists above hold what I may open.
     ahead: upcoming.length + hiddenAhead,
     flown: past.length + hiddenFlown,
@@ -443,6 +459,7 @@ async function liveCard(
   session: Doc<'liveSessions'> | null,
   name: string | null,
   seesHidden: boolean,
+  viewerId: string | null,
 ) {
   if (!session) return null;
   const onward = await onwardLegs(ctx, session.userId, session, seesHidden);
@@ -457,6 +474,8 @@ async function liveCard(
     token: session.shareToken,
     session: toPublicSession(session, name, follows.length),
     onward,
+    /** The traveller's latest word from this leg, for the pass. */
+    update: await latestUpdate(ctx, session.userId, session.naturalKey, viewerId),
   };
 }
 
@@ -490,12 +509,13 @@ export const person = query({
 
     if (theirs) {
       const session = await liveFor(ctx, me, userId);
-      const live = await liveCard(ctx, session, who.name, !!theirs.close);
+      const live = await liveCard(ctx, session, who.name, !!theirs.close, me);
       const { hiddenAhead: _a, hiddenFlown: _f, hiddenIds: _h, keys: _k, ...travel } = await travelOf(
         ctx,
         userId,
         !!theirs.close,
         live ? session : null,
+        me,
       );
       return {
         ...who,
@@ -528,6 +548,8 @@ export const person = query({
       liveJourneyId: null,
       upcoming: [],
       past: [],
+      updatesJourneyId: null,
+      updates: [],
       ahead: 0,
       flown: 0,
     };
@@ -572,14 +594,14 @@ export const previewMe = query({
     }
 
     const who = await personCard(ctx, me);
-    const live = await liveCard(ctx, session, who.name, seesHidden);
+    const live = await liveCard(ctx, session, who.name, seesHidden, me);
     return {
       ...who,
       member,
       close: seesHidden,
       followers,
       live,
-      ...(await travelOf(ctx, me, seesHidden, live ? session : null)),
+      ...(await travelOf(ctx, me, seesHidden, live ? session : null, me)),
     };
   },
 });
@@ -617,6 +639,7 @@ export const trip = query({
     return {
       owner: who,
       trip: publicTrip(journey),
+      updates: await updatesFor(ctx, ownerId, journey.naturalKey, me),
       token: liveHere?.shareToken ?? null,
       session: liveHere
         ? toPublicSession(
@@ -853,7 +876,7 @@ export const list = query({
         const session = await ctx.db.get(f.sessionId);
         if (session && session.status === 'active') active.push(session);
       }
-      const live = await liveCard(ctx, preferredSession(active), owner.name, !!row.close);
+      const live = await liveCard(ctx, preferredSession(active), owner.name, !!row.close, me);
 
       const next = live ? null : await nextTrip(ctx, row.ownerId, !!row.close, now);
       following.push({

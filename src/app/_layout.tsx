@@ -251,6 +251,17 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* "Share an update" — a photo and a line from inside a trip,
+                for the people following it. The same card modal as the
+                notes editor, for the same keyboard reason. */}
+              <Stack.Screen
+                name="trip-update"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
               {/* A newer FlyRight on the store: the Update button and every
                 release note between this build and it. A card modal, not a
                 sheet — the notes scroll, and a ScrollView inside a formSheet

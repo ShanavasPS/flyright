@@ -73,7 +73,40 @@ export default defineSchema({
     deletedAt: v.union(v.string(), v.null()),
   })
     .index('by_user', ['userId'])
-    .index('by_user_photo', ['userId', 'photoId']),
+    .index('by_user_photo', ['userId', 'photoId'])
+    .index('by_storage', ['storageId']),
+
+  /** What the traveller shares from inside a trip: a photo, a line, or both,
+   * for the people who follow them (see updatesShared.ts for the window a
+   * trip takes them in). Server-authoritative — there is no local mirror,
+   * because an update exists to be read by somebody else. The image is the
+   * same stored file the traveller's journal photo points at (photoId), so
+   * neither row's delete may free bytes the other still shows
+   * (see photos.push / updates.remove). Reactions are the followers who
+   * tapped the heart, listed on the row: a circle is a handful of people,
+   * not an audience. */
+  tripUpdates: defineTable({
+    userId: v.string(),
+    /** The journey's natural key (journeys.naturalKey). */
+    journeyKey: v.string(),
+    text: v.string(),
+    storageId: v.union(v.id('_storage'), v.null()),
+    /** The journal photo (tripPhotos.photoId) filed with the same bytes. */
+    photoId: v.union(v.string(), v.null()),
+    width: v.union(v.number(), v.null()),
+    height: v.union(v.number(), v.null()),
+    /** The travel-day stage the traveller was at when they posted (same keys
+     * as liveSessions.currentStage), and the airport it happened at — null
+     * in the air. Snapshotted at post time: the context of the moment, not
+     * of whenever it is read. */
+    stage: v.union(v.string(), v.null()),
+    place: v.union(v.string(), v.null()),
+    reactedBy: v.array(v.string()),
+    createdAt: v.string(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_key', ['userId', 'journeyKey'])
+    .index('by_storage', ['storageId']),
 
   /** One live travel-day session per shared trip. Standalone with a
    * denormalized flight snapshot: the public token query must never join

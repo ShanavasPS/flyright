@@ -6,6 +6,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { AppHandoff } from '@/components/app-handoff';
@@ -15,6 +16,7 @@ import { RouteLeg } from '@/components/route-leg';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { UpdatesCard } from '@/components/trip-updates';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
@@ -38,6 +40,7 @@ export function FollowTrip({ token }: { token: string }) {
   const { isSignedIn } = useAuth();
   const result = useQuery(api.live.byToken, { token });
   const follow = useMutation(api.live.follow);
+  const react = useMutation(api.updates.react);
   const now = useNow();
   const theme = useTheme();
   const [followed, setFollowed] = useState(false);
@@ -161,6 +164,22 @@ export function FollowTrip({ token }: { token: string }) {
         />
 
         <TravelDayTimeline journey={journey} state={state} facts={facts} readOnly />
+
+        {/* The traveller's own words and pictures from the trip. The heart
+            needs an account (and a follow); on the open web page it reads
+            only. */}
+        {session.updates && session.updates.length > 0 && (
+          <UpdatesCard
+            eyebrow={`From ${who}`}
+            updates={session.updates}
+            now={now}
+            onReact={
+              isSignedIn && (followed || session.viewerFollows)
+                ? (updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })
+                : undefined
+            }
+          />
+        )}
 
         {isSignedIn && Platform.OS !== 'web' ? (
           followed || session.viewerFollows ? (

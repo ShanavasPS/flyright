@@ -22,6 +22,7 @@ import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/compon
 import { PrimaryButton } from '@/components/primary-button';
 import { RouteHero, cityLabel, type Schedule } from '@/components/route-hero';
 import { RouteMap } from '@/components/route-map';
+import { OwnUpdatesCard } from '@/components/own-updates-card';
 import { IconBadge, SheenSweep } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -433,6 +434,12 @@ export function JourneyDetail({
             }}
           />
         )}
+
+        {/* What the traveller shares with the people following this trip,
+            and the row to share more — from the day they fly until a day
+            after landing. Under the travel day, above the verdict: the
+            trip's own news before the airline's. */}
+        {CONVEX_URL && !isDemo && row && <OwnUpdatesCard row={row} travel={travelState} now={new Date(now)} />}
 
         {disruption ? (
           <VerdictCard journey={journey} disruption={disruption} />

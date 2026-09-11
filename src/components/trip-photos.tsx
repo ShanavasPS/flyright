@@ -107,7 +107,7 @@ export function TripPhotos({
 
 /** Camera or library. iOS gets the native action sheet; Android the alert
  * with buttons that the trip menu already uses. */
-function showPhotoSourceMenu(onPick: (source: 'camera' | 'library') => void) {
+export function showPhotoSourceMenu(onPick: (source: 'camera' | 'library') => void) {
   if (Platform.OS === 'ios') {
     ActionSheetIOS.showActionSheetWithOptions(
       { options: ['Take photo', 'Choose from library', 'Cancel'], cancelButtonIndex: 2 },

@@ -17,6 +17,7 @@ import {
 import { personCard } from './circle';
 import { onwardLegs } from './itinerary';
 import { preferredSession, stageIndex, NOTIFY_STAGES, toPublicSession, tripIsOver } from './liveShared';
+import { latestUpdate, updatesFor } from './updates';
 
 /** Travel-day live sessions: the traveler's device is the only writer of
  * stage state; followers and the public token page read reactively. All
@@ -307,6 +308,7 @@ export const byToken = query({
         await followerCount(ctx, session._id),
       ),
       viewerFollows,
+      updates: await updatesFor(ctx, session.userId, session.naturalKey, identity?.subject ?? null),
     };
   },
 });
@@ -386,6 +388,9 @@ export const following = query({
           await followerCount(ctx, session._id),
         ),
         onward: await onwardLegs(ctx, session.userId, session, !!seat?.close),
+        // The traveller's latest word from the trip, for the pass to show
+        // beside the flight — the rest is on their page.
+        update: await latestUpdate(ctx, session.userId, session.naturalKey, identity.subject),
       });
     }
     return out;

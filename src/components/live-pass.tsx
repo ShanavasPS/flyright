@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PublicSession } from '../../convex/liveShared';
@@ -10,6 +11,7 @@ import { COBALT, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { compactLiveView } from '@/services/connections';
 import { tripDone } from '@/services/public-session';
+import { agoLabel, captionOf, type TripUpdate } from '@/services/trip-updates';
 
 export const NAVY = '#0C1B36';
 export const LIVE_GREEN = '#2FD68C';
@@ -41,6 +43,7 @@ export function LivePass({
   person,
   session,
   onward,
+  update,
   now,
   onPress,
   testID,
@@ -48,6 +51,10 @@ export function LivePass({
   person: { name: string; imageUrl: string | null; pro?: boolean };
   session: PublicSession;
   onward: OnwardLegLike[];
+  /** The traveller's latest word from the trip, if they have posted one:
+   * its line takes the quiet slot under the flight facts, its photo the
+   * corner. The rest of what they shared is on their page. */
+  update?: { latest: TripUpdate; count: number } | null;
   now: Date;
   onPress?: () => void;
   testID?: string;
@@ -58,6 +65,8 @@ export function LivePass({
   const { headline, delayed, progress, connecting } = view;
   const detail = [view.detail, view.layover].filter(Boolean).join(' · ') || null;
   const when = clocks(view.leg);
+  const latest = update?.latest ?? null;
+  const caption = latest ? captionOf(latest) : null;
 
   return (
     <Pressable
@@ -92,7 +101,24 @@ export function LivePass({
                 {detail}
               </Text>
             )}
+            {/* In their own words, with how long ago: the one line that
+                makes the pass theirs rather than the airline's. */}
+            {latest && caption && (
+              <Text style={styles.caption} numberOfLines={1}>
+                {latest.text ? `“${caption}”` : caption} · {agoLabel(latest.createdAt, now)}
+              </Text>
+            )}
           </View>
+          {latest?.photoUrl && (
+            <Image
+              source={{ uri: latest.photoUrl }}
+              recyclingKey={latest.updateId}
+              contentFit="cover"
+              transition={150}
+              accessibilityIgnoresInvertColors
+              style={styles.thumb}
+            />
+          )}
           {/* The pill means "updating now"; once down, the bold "Landed
               8:55 AM" line already says everything, so nothing sits beside
               it. */}
@@ -172,6 +198,19 @@ const styles = StyleSheet.create({
   },
   delayed: {
     color: AMBER,
+  },
+  caption: {
+    color: WHITE,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 500,
+    opacity: 0.85,
+  },
+  thumb: {
+    width: 44,
+    height: 44,
+    borderRadius: Spacing.two + 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   pill: {
     flexDirection: 'row',

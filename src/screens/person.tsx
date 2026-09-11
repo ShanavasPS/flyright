@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { CIRCLE_FULL } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
@@ -50,6 +51,7 @@ export function Person({ userId }: { userId: string }) {
   const shareBack = useMutation(api.circle.shareBack);
   const askToFollow = useMutation(api.circle.askToFollow);
   const cancelRequest = useMutation(api.circle.cancelRequest);
+  const react = useMutation(api.updates.react);
   const proLocked = useProLocked();
   const [busy, setBusy] = useState<'theirs' | 'mine' | null>(null);
   const { show: showSheet, sheet } = useChoiceSheet();
@@ -262,6 +264,7 @@ export function Person({ userId }: { userId: string }) {
             showStats={false}
             onOpenWorld={openWorld}
             onOpenTrip={openTrip}
+            onReact={(updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })}
           />
         )}
       </>

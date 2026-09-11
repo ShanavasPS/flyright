@@ -1,6 +1,8 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 
+import { storageInUse } from './updates';
+
 /** Row shape the client pushes — like journeys.push, no userId: the server
  * stamps identity.subject so nobody can write into another account. */
 const photoRow = v.object({
@@ -44,7 +46,10 @@ export const push = mutation({
 
       if (row.deletedAt) {
         const stored = row.storageId ?? existing?.storageId ?? null;
-        if (stored) await ctx.storage.delete(stored).catch(() => {});
+        // A photo posted as a trip update shares its file with the update;
+        // taking it out of the journal must not blank what followers see.
+        if (stored && !(await storageInUse(ctx, stored, { photo: existing?._id })))
+          await ctx.storage.delete(stored).catch(() => {});
         const tombstone = { ...row, storageId: null };
         if (!existing) await ctx.db.insert('tripPhotos', { ...tombstone, userId: identity.subject });
         else if (row.updatedAt > existing.updatedAt || existing.storageId)
@@ -56,7 +61,11 @@ export const push = mutation({
         await ctx.db.insert('tripPhotos', { ...row, userId: identity.subject });
       } else if (row.updatedAt > existing.updatedAt) {
         // A newer version replacing an older upload frees the old bytes.
-        if (existing.storageId && existing.storageId !== row.storageId)
+        if (
+          existing.storageId &&
+          existing.storageId !== row.storageId &&
+          !(await storageInUse(ctx, existing.storageId, { photo: existing._id }))
+        )
           await ctx.storage.delete(existing.storageId).catch(() => {});
         await ctx.db.patch(existing._id, row);
       }

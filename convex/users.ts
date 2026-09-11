@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import type { Id } from './_generated/dataModel';
 import { internalMutation, mutation, type MutationCtx } from './_generated/server';
 import { firstNameKey, searchKey } from './circleShared';
 
@@ -107,6 +108,27 @@ export const purge = internalMutation({
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .unique();
     if (profile) await ctx.db.delete(profile._id);
+
+    // Their journal photos and trip updates, and the stored files behind
+    // them (the two share bytes; once both rows are gone nothing does).
+    const photos = await ctx.db
+      .query('tripPhotos')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    const updates = await ctx.db
+      .query('tripUpdates')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    const files = new Set<Id<'_storage'>>();
+    for (const p of photos) {
+      if (p.storageId) files.add(p.storageId);
+      await ctx.db.delete(p._id);
+    }
+    for (const u of updates) {
+      if (u.storageId) files.add(u.storageId);
+      await ctx.db.delete(u._id);
+    }
+    for (const file of files) await ctx.storage.delete(file).catch(() => {});
 
     const entitlement = await ctx.db
       .query('entitlements')

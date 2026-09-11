@@ -30,12 +30,13 @@ export function FollowingSection() {
       <ThemedText type="smallBold" themeColor="textSecondary" style={styles.title}>
         Following
       </ThemedText>
-      {shown.map(({ sessionId, session, onward, ownerId, owner }) => (
+      {shown.map(({ sessionId, session, onward, ownerId, owner, update }) => (
         <LivePass
           key={sessionId}
           person={owner}
           session={session}
           onward={onward}
+          update={update}
           now={now}
           // The pass is a glance; the person's page is where the whole
           // journey — every leg, the layovers between — is laid out.

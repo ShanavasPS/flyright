@@ -600,6 +600,7 @@ function FollowingRow({ person }: { person: Following }) {
         person={person}
         session={live.session}
         onward={live.onward ?? []}
+        update={live.update}
         now={now}
         onPress={actions}
       />

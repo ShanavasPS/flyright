@@ -19,7 +19,10 @@ export function usePhoto(_id: string): TripPhotoRow | undefined {
   return undefined;
 }
 
-export async function pickImages(_source: 'camera' | 'library'): Promise<PickedImage[]> {
+export async function pickImages(
+  _source: 'camera' | 'library',
+  _options?: { limit?: number },
+): Promise<PickedImage[]> {
   throw new Error('Photos are not supported on web yet.');
 }
 
@@ -27,9 +30,19 @@ export async function importPhotos(
   _journeyId: string,
   _userId: string | null | undefined,
   _picked: PickedImage[],
-): Promise<void> {
+): Promise<string[]> {
   throw new Error('Photos are not supported on web yet.');
 }
+
+export async function photoById(_id: string): Promise<TripPhotoRow | undefined> {
+  return undefined;
+}
+
+export async function uploadPhoto(_row: TripPhotoRow, _uploadUrl: string): Promise<string> {
+  throw new Error('Photos are not supported on web yet.');
+}
+
+export async function markPhotoUploaded(_id: string, _storageId: string): Promise<void> {}
 
 export async function deletePhoto(_id: string): Promise<void> {
   throw new Error('Photos are not supported on web yet.');

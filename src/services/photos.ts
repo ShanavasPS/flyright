@@ -51,8 +51,12 @@ export function usePhoto(id: string) {
   return useLiveRow(db.select().from(tripPhotos).where(eq(tripPhotos.id, id)), [id]);
 }
 
-/** System camera or library UI. Resolves to [] when the traveler cancels. */
-export async function pickImages(source: 'camera' | 'library'): Promise<PickedImage[]> {
+/** System camera or library UI. Resolves to [] when the traveler cancels.
+ * `limit` caps a library pick; 1 makes it a single choice. */
+export async function pickImages(
+  source: 'camera' | 'library',
+  { limit = 10 }: { limit?: number } = {},
+): Promise<PickedImage[]> {
   let result: ImagePicker.ImagePickerResult;
   if (source === 'camera') {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -63,8 +67,8 @@ export async function pickImages(source: 'camera' | 'library'): Promise<PickedIm
     if (!permission.granted) throw new PhotoPermissionError('library');
     result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: 10,
+      allowsMultipleSelection: limit > 1,
+      selectionLimit: limit,
       quality: 0.8,
     });
   }
@@ -77,17 +81,20 @@ export async function pickImages(source: 'camera' | 'library'): Promise<PickedIm
 }
 
 /** Copies each picked image into the document directory and records a row
- * for it. The row is dirty (syncedAt null) so the sync uploads it. */
+ * for it. The row is dirty (syncedAt null) so the sync uploads it. Resolves
+ * to the new rows' ids, in the order picked. */
 export async function importPhotos(
   journeyId: string,
   userId: string | null | undefined,
   picked: PickedImage[],
-): Promise<void> {
-  if (!picked.length) return;
+): Promise<string[]> {
+  const ids: string[] = [];
+  if (!picked.length) return ids;
   const dir = photoDir();
   if (!dir.exists) dir.create({ intermediates: true });
   for (const image of picked) {
     const id = newPhotoId();
+    ids.push(id);
     const target = new File(dir, `${id}.jpg`);
     await new File(image.uri).copy(target);
     const now = new Date().toISOString();
@@ -103,6 +110,13 @@ export async function importPhotos(
       updatedAt: now,
     });
   }
+  return ids;
+}
+
+/** One photo row by id, read once. */
+export async function photoById(id: string): Promise<TripPhotoRow | undefined> {
+  const [row] = await db.select().from(tripPhotos).where(eq(tripPhotos.id, id));
+  return row;
 }
 
 /** Soft delete: the row stays as a tombstone so the sync removes the stored

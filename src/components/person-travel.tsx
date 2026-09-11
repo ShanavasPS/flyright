@@ -8,6 +8,7 @@ import { RouteLeg } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { TripRow } from '@/components/trip-row';
+import { UpdatesCard } from '@/components/trip-updates';
 import { mapColors } from '@/components/world-map';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -15,6 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 import type { PublicSession } from '../../convex/liveShared';
 
 import type { RouteSource } from '@/services/geo';
+import type { TripUpdate } from '@/services/trip-updates';
 import { cityOf } from '@/services/timeline';
 import { layoverLabel } from '../../convex/itineraryShared';
 
@@ -70,6 +72,10 @@ export type PersonTravelData = {
   liveJourneyId: string | null;
   upcoming: PersonTrip[];
   past: PersonTrip[];
+  /** What they shared from the trip they are on (or just finished), and
+   * which listed trip it belongs to. Absent on payloads from before updates. */
+  updates?: TripUpdate[];
+  updatesJourneyId?: string | null;
   ahead: number;
   flown: number;
 };
@@ -100,6 +106,7 @@ export function PersonTravel({
   now,
   onOpenWorld,
   onOpenTrip,
+  onReact,
   badgeFor,
   dimFor,
   afterUpcoming,
@@ -113,6 +120,8 @@ export function PersonTravel({
   showStats?: boolean;
   onOpenWorld?: () => void;
   onOpenTrip?: (journeyId: string) => void;
+  /** A follower's heart on an update; absent on the owner's own preview. */
+  onReact?: (updateId: string) => void;
   badgeFor?: (journeyId: string) => React.ReactNode;
   /** Rows to fade — the preview's "this member isn't shown this one". */
   dimFor?: (journeyId: string) => boolean;
@@ -265,6 +274,14 @@ export function PersonTravel({
             </Fragment>
           );
         })}
+
+      {/* Their own words and pictures from the trip under way — under the
+          legs of it, so the flight facts come first and the traveller's
+          voice follows; or, the morning after, in place of the pass that
+          has already let the trip go. */}
+      {p.updates && p.updates.length > 0 && (
+        <UpdatesCard eyebrow={`From ${name}`} updates={p.updates} now={now} onReact={onReact} />
+      )}
 
       <Section label="Upcoming" />
       {upcoming.length ? (

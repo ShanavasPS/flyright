@@ -1,0 +1,46 @@
+# Trip updates: on a trip inside its update window (the day it flies until a
+# day after it lands) the detail shows "Your updates" with a "Share an update"
+# row; the composer takes a line (and optionally a photo), shows where the
+# traveller is and who will see it, and the posted update lists under the row
+# with its context and age. Followers see the same update on the traveller's
+# person page, trip page and shared link ("From <name>", with a heart) — that
+# side needs a second signed-in user, see convex/updates.ts.
+#
+# Needs a SIGNED-IN Clerk dev user (.maestro/clerk-dev-sign-in.yaml) and a
+# journal row of theirs whose departure day is today or yesterday, passed as
+# JOURNEY_ID. A trip marked "Only me" shows no row at all.
+#
+# Run: maestro --device <device> test -e JOURNEY_ID=AY1331-2026-09-10 .maestro/trip-update.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright:///journey/${JOURNEY_ID}"
+- extendedWaitUntil:
+    visible: "Trip options"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: share-update
+    direction: DOWN
+    timeout: 15000
+    visibilityPercentage: 80
+- tapOn:
+    id: share-update
+- extendedWaitUntil:
+    visible: "Share an update"
+    timeout: 10000
+# The two lines the app fills in itself: where they are, and who sees it.
+- assertVisible: "To your.*"
+- inputText: "Gate 31, boarding soon"
+- takeScreenshot: ${SHOTS}/trip-update-composer
+- tapOn: "Post"
+# The row's accessibility label joins the words with their context, so the
+# exact caption never matches on its own.
+- extendedWaitUntil:
+    visible: ".*boarding soon.*"
+    timeout: 30000
+- assertVisible: ".*(ago|just now).*"
+- takeScreenshot: ${SHOTS}/trip-update-posted
