@@ -355,7 +355,8 @@ describe('extractItinerary — a screenshot of an IndiGo itinerary email', () =>
       { flight: '6E379', date: '2020-10-04', from: 'BLR', to: 'TRV', dep: '16:10', arr: '17:30' },
     ]);
     expect(segments.every((s) => s.pnr === 'K7PQ2N' && s.arrivalDate === '2020-10-04')).toBe(true);
-    expect(segments.find((s) => s.flight === '6E379')!.seat).toBe('20A');
+    // The seats are a table of their own under the legs, one per route.
+    expect(segments.map((s) => s.seat)).toEqual(['20A', '20A']);
   });
 
   it('never makes a leg of the status bar, the booking stamp or the aircraft type', () => {

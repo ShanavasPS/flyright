@@ -200,6 +200,22 @@ function threeClocks(
   return { dep: c, arr: a };
 }
 
+/** Seats printed as a table of their own after the legs, one column per
+ * route ("IXE → BLR  Seat 20A · BLR → TRV  Seat 20A"): the seats after
+ * the last "Seat" heading, in order. Null when there are none. */
+function seatTable(text: string): string[] | null {
+  let last = -1;
+  for (const m of text.matchAll(/\b(?:Seat|SEAT)\b/g)) last = m.index;
+  if (last < 0) return null;
+  const seats: string[] = [];
+  for (const m of text.slice(last, last + SEAT_TABLE_REACH).matchAll(/\b(\d{1,3}[A-K])\b/g)) {
+    const seat = normalizeSeat(m[1]);
+    if (seat) seats.push(seat);
+  }
+  return seats.length ? seats : null;
+}
+const SEAT_TABLE_REACH = 160;
+
 const ROUTE_PAIR_RE = /\b([A-Z]{3})\s*(?:→|->|—|–|-|>|\/|to)\s*([A-Z]{3})\b/g;
 
 /** The routes a document lists on their own, in flying order and joined
@@ -841,6 +857,14 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
   if (summary && summary.length === once.length) {
     once.forEach((s, i) => {
       [s.fromCode, s.toCode] = summary[i];
+    });
+  }
+  // Likewise a seat table under the legs, one seat per flight found, seats
+  // the legs whose own block printed none.
+  const seats = seatTable(text);
+  if (seats && seats.length === once.length) {
+    once.forEach((s, i) => {
+      s.seat ??= seats[i];
     });
   }
   // A summary strip prints the flight numbers in one row under a row of
