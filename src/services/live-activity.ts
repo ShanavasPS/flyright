@@ -12,7 +12,7 @@
  * FlyRightLiveActivity.swift — change them together. */
 
 import * as Application from 'expo-application';
-import { getRandomValues } from 'expo-crypto';
+import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
 import Storage from 'expo-sqlite/kv-store';
@@ -89,11 +89,16 @@ function contentState(content: LiveContent) {
 
 /** 128 bits from the platform CSPRNG, base36. The id is the only credential
  * the update proxy (/api/live-activity) sees, so it must not be predictable
- * — Hermes's Math.random is a plain xorshift. A dev client built before
- * expo-crypto was linked falls back rather than losing the lock screen. */
+ * — Hermes's Math.random is a plain xorshift. Looked up optionally, not
+ * imported: a dev client built before expo-crypto was linked has no
+ * native module, and expo-crypto's own import throws at load, which would
+ * take the whole app down rather than one lock screen. */
+const ExpoCrypto = requireOptionalNativeModule<{ getRandomValues(array: Uint8Array): Uint8Array }>('ExpoCrypto');
+
 function randomSuffix(): string {
   try {
-    const bytes = getRandomValues(new Uint8Array(16));
+    if (!ExpoCrypto) throw new Error('expo-crypto not linked');
+    const bytes = ExpoCrypto.getRandomValues(new Uint8Array(16));
     return Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('');
   } catch {
     return `${Math.random().toString(36).slice(2, 12)}${Math.random().toString(36).slice(2, 12)}`;
