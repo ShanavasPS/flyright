@@ -13,16 +13,20 @@
       "en-US": {
         "title": "FlyRight: Flight Tracker",
         "subtitle": "Travel buddy & delay claims",
-        "description": "FlyRight watches your flights and tells you the moment a delay or cancellation makes you eligible for airline compensation — and exactly how much you are owed.\n\nAdd a flight in seconds. FlyRight tracks it and applies EU261 air passenger rights to every disruption. If your delayed or cancelled flight qualifies, you get a clear verdict — up to €600 per passenger — and a ready-to-send claim letter.\n\n• Track your flights with live status\n• Instant EU261 compensation verdicts\n• See exactly how much you are owed\n• Generate a ready-to-send claim letter\n• Deadline reminders so you never miss a claim window\n• No account needed — sign in only to keep purchases across devices\n\nDelayed three hours or more, cancelled last minute, or denied boarding on an EU flight? Airlines owe you real money. FlyRight makes sure you collect it.\n\nPrivacy policy: https://getflyright.com/privacy\nTerms of Use (EULA): https://getflyright.com/terms",
+        "description": "FlyRight is the app you open on the day you fly — and the one that stands up for you when the flight goes wrong.\n\nTRAVEL DAY, LIVE\nAdd a flight with just the flight number, scan your boarding pass, or share the airline's confirmation PDF and every leg imports on its own. From then on FlyRight follows the day for you: check-in opens, gate assigned, boarding, pushback, layover time, landing. A Live Activity keeps the countdown on your Lock Screen and in the Dynamic Island, so you never open the app just to check.\n\nPEOPLE WHO FLY WITH YOU\nFollow friends and family and see their travel day live — no more \"did you land?\" texts. You choose who sees each trip: everyone following you, your close circle, or only you.\n\nYOUR TRAVEL JOURNAL\nEvery flight becomes a page: notes, a rating, seat and booking reference, photos. Share a moment from inside a trip with the people following you.\n\nTHE WORLD YOU'VE FLOWN\nA map of every route, kilometres flown, records and places — with a poster you can share.\n\nWHEN THE FLIGHT GOES WRONG\nBecause FlyRight is already tracking your flight, you know the moment a delay or cancellation qualifies under EU261 — and how much: up to €600 per passenger. A clear verdict, a ready-to-send claim, and deadline reminders so you never miss a claim window.\n\nWHAT YOU GET\n• Live flight status with gate, delay and layover tracking\n• Lock Screen Live Activity with the countdown to your next step\n• Boarding-pass scanner and airline PDF import\n• Follow people and share your travel day\n• Trip journal with photos and notes\n• World map, travel stats and shareable posters\n• Instant EU261 compensation verdicts and claim guidance\n• No account needed — sign in only to keep your travels across devices\n\nOwed Pro adds compensation claims, early warning when your inbound aircraft is running late, and room for more people to follow you. Everything else is free.\n\nPrivacy policy: https://getflyright.com/privacy\nTerms of Use (EULA): https://getflyright.com/terms",
         "keywords": [
-          "flight delay",
-          "compensation",
           "eu261",
-          "claim",
-          "refund",
+          "compensation",
+          "cancelled",
           "airline",
-          "flight tracker",
-          "cancelled"
+          "trip",
+          "journal",
+          "layover",
+          "boarding pass",
+          "status",
+          "map",
+          "friends",
+          "refund"
         ],
         "supportUrl": "https://flyright.expo.app/support",
         "privacyPolicyUrl": "https://flyright.expo.app/privacy",
@@ -41,7 +45,8 @@
             "store/apple/screenshot/en-US/APP_IPHONE_65/appstore-65-06.png"
           ]
         },
-        "releaseNotes": "The biggest FlyRight update yet:\n\n• Scan your boarding pass — point the camera at any pass and the flight is added instantly.\n• World map — every journey you've flown, drawn as flight routes on a zoomable globe-style map.\n• Earlier delay warnings — FlyRight watches your aircraft's inbound rotation and can flag a likely delay before departure.\n• Apple Watch — your travel day now appears in the Smart Stack on your wrist.\n• Redesigned Add flight with a proper calendar and boarding-pass styling.\n• Claim tracking — record airline replies (acknowledged, paid, rejected) and re-read the exact claim email you sent.\n• Save past flights straight to My travels, smarter airport search, side-by-side layout on iPad, and lots of polish and fixes."
+        "releaseNotes": "The biggest FlyRight update yet:\n\n• Scan your boarding pass — point the camera at any pass and the flight is added instantly.\n• World map — every journey you've flown, drawn as flight routes on a zoomable globe-style map.\n• Earlier delay warnings — FlyRight watches your aircraft's inbound rotation and can flag a likely delay before departure.\n• Apple Watch — your travel day now appears in the Smart Stack on your wrist.\n• Redesigned Add flight with a proper calendar and boarding-pass styling.\n• Claim tracking — record airline replies (acknowledged, paid, rejected) and re-read the exact claim email you sent.\n• Save past flights straight to My travels, smarter airport search, side-by-side layout on iPad, and lots of polish and fixes.",
+        "promotionalText": "Your travel buddy on the day you fly. Live flight tracking, people who follow your trip, a journal, and what you are owed when it goes wrong."
       }
     },
     "advisory": {

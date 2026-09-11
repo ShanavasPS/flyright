@@ -1,21 +1,3 @@
-# Google Play store listing (en-US)
-
-Paste each block below directly into Play Console → Grow → Store presence →
-Main store listing. Plain text only: no `\n` escapes, no `•` bullets, no em
-dashes. Google flagged the previous full description as "text that can't be
-read or understood", which is almost always caused by pasting the JSON-escaped
-string from store.config.json (literal `\n\n` sequences) into the field.
-
-## App name (max 30 chars)
-
-FlyRight: Flight Tracker
-
-## Short description (max 80 chars)
-
-Your travel buddy on the day you fly, and your advocate for delay claims.
-
-## Full description (max 4000 chars)
-
 FlyRight is the app you open on the day you fly, and the one that stands up for you when the flight goes wrong.
 
 TRAVEL DAY, LIVE
