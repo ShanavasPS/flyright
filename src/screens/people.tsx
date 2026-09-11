@@ -3,7 +3,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import * as Clipboard from 'expo-clipboard';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import {
@@ -207,6 +207,15 @@ export function People() {
   // first, and that choice is pinned (below) the moment it is made — a
   // request answered must not flip the page under the thumb that answered it.
   const [picked, setPicked] = useState<Tab | null>(null);
+  // "See all" on the home screen lands on a named tab. Honoured each time
+  // the param changes — so a later hand-off still switches a page already
+  // open — with the same set-during-render the default below uses.
+  const { tab: wanted } = useLocalSearchParams<{ tab?: string }>();
+  const [honoured, setHonoured] = useState<string | undefined>(undefined);
+  if (wanted !== honoured) {
+    setHonoured(wanted);
+    if (wanted === 'following' || wanted === 'followers') setPicked(wanted);
+  }
 
   let tabs: React.ReactNode = null;
   let body: React.ReactNode;
