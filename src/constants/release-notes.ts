@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.31',
+    date: '2026-09-11',
+    notes: [
+      'Share a photo or a line from inside a trip — the people following you see it on your pass, on your page and on the live trip link.',
+      'Free accounts now seat three followers, and My travels shows three people’s flights with See all for the rest.',
+      'The app icon counts what is waiting for you, and the People tab marks who is new since you last looked.',
+      'Airline confirmations from Lufthansa, IndiGo and Goibibo import every leg — even from a screenshot of the email — and a landing on the next day wears a ⁺¹ on its clock.',
+      'A connecting flight walks its own travel day: no second check-in, passport control and bags after landing, and the US re-check at the first airport.',
+      'Anyone can be blocked or reported from their page, and a followed trip lets go two hours after landing on every screen.',
+    ],
+  },
+  {
     version: '1.0.30',
     date: '2026-09-10',
     notes: [

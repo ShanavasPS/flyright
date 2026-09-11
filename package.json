@@ -1,7 +1,7 @@
 {
   "name": "flyright",
   "main": "expo-router/entry",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "dependencies": {
     "@clerk/expo": "^4.3.0",
     "@expo-google-fonts/material-symbols": "^0.4.47",
