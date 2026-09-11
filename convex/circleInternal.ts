@@ -11,6 +11,7 @@ import {
   materializeCircleFollows,
   profileFor,
 } from './liveHelpers';
+import { FREE_CIRCLE_SIZE } from './circleShared';
 import { sendFollowerPush } from './onesignal';
 import { tripsAddedCopy } from './pushCopy';
 
@@ -70,6 +71,8 @@ export const requestPush = internalQuery({
  * the invitee when it is sent, one back to the sender when it is accepted.
  * A follow request ('follow' kind — "Follow back" on a follower row): one to
  * the person whose trips are asked for, one back to the asker once allowed.
+ * And 'blocked': the invitee tried to accept but the inviter's circle is
+ * full — one push to the inviter, ever, per invitation.
  * All open the People tab, which is where the request lives either way. */
 export const notifyRequest = internalAction({
   args: {
@@ -79,6 +82,7 @@ export const notifyRequest = internalAction({
       v.literal('accepted'),
       v.literal('asked'),
       v.literal('allowed'),
+      v.literal('blocked'),
     ),
   },
   handler: async (ctx, { requestId, kind }) => {
@@ -104,6 +108,12 @@ export const notifyRequest = internalAction({
         to: r.fromUserId,
         title: `${r.toName} now shares their trips with you`,
         body: `You'll get a heads-up the day before each of ${r.toName}'s flights and updates on travel day.`,
+      },
+      // Sent once per invitation (circle.noteBlockedAttempt), to the inviter.
+      blocked: {
+        to: r.fromUserId,
+        title: `${r.toName} tried to follow you`,
+        body: `Your circle is full — free accounts share trips with ${FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`}. Pro lets your whole family follow.`,
       },
     }[kind];
     await sendFollowerPush([copy.to], copy.title, copy.body, 'https://getflyright.com/people');

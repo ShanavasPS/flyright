@@ -877,11 +877,19 @@ function RequestRow({ request }: { request: Incoming }) {
   const answer = async (accept: boolean) => {
     setBusy(true);
     try {
-      await respond({ requestId: request.id, accept });
+      const r = await respond({ requestId: request.id, accept });
+      // Their circle filled up while the invitation sat here (they invited
+      // more people than a free account seats); it stays pending, and the
+      // server has told them — once — that I tried.
+      if (r.status === 'full') {
+        Alert.alert(
+          `${request.name}'s circle is full`,
+          `${request.name} has been told you tried. The invitation stays here until they make room — FlyRight Pro lets their whole family follow.`,
+        );
+        return;
+      }
       if (accept) trackEvent('circle_joined');
     } catch (e) {
-      // Their circle filled up while the invitation sat here; it stays
-      // pending, so nothing is lost by saying so and leaving it.
       Alert.alert(
         e instanceof ConvexError && e.data === CIRCLE_FULL
           ? `${request.name}'s circle is full`
@@ -903,7 +911,9 @@ function RequestRow({ request }: { request: Incoming }) {
           {request.name}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-          Invited you to follow their trips
+          {request.blocked
+            ? 'Invited you — their circle is full for now'
+            : 'Invited you to follow their trips'}
         </ThemedText>
       </View>
       <View style={styles.answerRow}>
@@ -944,18 +954,37 @@ function RequestRow({ request }: { request: Incoming }) {
  * held open in Followers, an ask to follow a seat I'm waiting for in
  * Following. Tap to take it back. */
 function PendingRow({ request, kind }: { request: Outgoing; kind: 'invite' | 'follow' }) {
+  const router = useRouter();
+  const proLocked = useProLocked();
   const cancel = useMutation(api.circle.cancelRequest);
   const verb = kind === 'invite' ? 'Invited' : 'Asked to follow';
+  // They said yes and found no seat: the row says so, and the sheet offers
+  // the fix instead of a withdrawal that would only lose them.
+  const blocked = kind === 'invite' && request.blocked;
 
   const actions = () =>
-    Alert.alert(request.name, `${verb} ${formatDayLabel(request.since)}. Not answered yet.`, [
-      {
-        text: kind === 'invite' ? 'Withdraw invitation' : 'Withdraw request',
-        style: 'destructive',
-        onPress: () => void cancel({ requestId: request.id }),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    Alert.alert(
+      request.name,
+      blocked
+        ? `${request.name} tried to follow your trips, but your circle is full. The invitation waits until you make room.`
+        : `${verb} ${formatDayLabel(request.since)}. Not answered yet.`,
+      [
+        ...(blocked && proLocked
+          ? [
+              {
+                text: 'Add your whole family with Pro',
+                onPress: () => router.push({ pathname: '/paywall', params: { next: '/people' } }),
+              },
+            ]
+          : []),
+        {
+          text: kind === 'invite' ? 'Withdraw invitation' : 'Withdraw request',
+          style: 'destructive' as const,
+          onPress: () => void cancel({ requestId: request.id }),
+        },
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
+    );
 
   return (
     <Pressable
@@ -969,7 +998,7 @@ function PendingRow({ request, kind }: { request: Outgoing; kind: 'invite' | 'fo
             {request.name}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {verb} — waiting for them
+            {blocked ? 'Tried to follow you — your circle is full' : `${verb} — waiting for them`}
           </ThemedText>
         </View>
       </SheenCard>

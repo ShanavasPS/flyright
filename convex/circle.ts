@@ -301,10 +301,18 @@ export const respondToRequest = mutation({
     if (request.status !== 'pending') return { status: request.status };
 
     if (accept) {
-      // Throws CIRCLE_FULL if the circle being joined filled up meanwhile
-      // (the sender's for an invitation, mine for a follow request); the
-      // request stays pending so it can be answered again later.
       const follow = kindOf(request) === 'follow';
+      // An invitation whose sender's circle filled up meanwhile (they invited
+      // several people; someone else said yes first) can't be accepted. It
+      // stays pending so it can be answered once there's room — and the
+      // sender is told, once, that this person tried. Returned rather than
+      // thrown: a throw would roll the note back with everything else.
+      if (!follow && (await circleFull(ctx, request.fromUserId))) {
+        await noteBlockedAttempt(ctx, request);
+        return { status: 'full' as const };
+      }
+      // Throws CIRCLE_FULL if my own circle is full for a follow request —
+      // I'm the one tapping, so I see it directly.
       if (follow) await join(ctx, identity.subject, request.fromUserId);
       else await join(ctx, request.fromUserId, identity.subject);
       await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
@@ -317,6 +325,62 @@ export const respondToRequest = mutation({
       respondedAt: new Date().toISOString(),
     });
     return { status: accept ? ('accepted' as const) : ('declined' as const) };
+  },
+});
+
+/** "<name> tried to follow you, but your circle is full": the one push an
+ * inviter gets about a seat they promised and can't give. Once per row —
+ * `blockedAt` remembers it, so a second, third, tenth tap on the same
+ * invitation says nothing more. */
+async function noteBlockedAttempt(ctx: MutationCtx, request: Doc<'circleRequests'>) {
+  if (request.blockedAt) return;
+  await ctx.db.patch(request._id, { blockedAt: new Date().toISOString() });
+  await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
+    requestId: request._id,
+    kind: 'blocked',
+  });
+}
+
+/** The invite-link twin of the blocked accept above. A link has no request
+ * row, so the attempt is written as one: a pending invitation from the
+ * owner to the caller, already marked blocked. That gives the owner the row
+ * ("tried to join — your circle is full") and the one push, and keeps the
+ * caller's intent — the invitation waits in their People tab and can be
+ * accepted the moment the owner makes room. No 'invited' push is sent for
+ * it: the owner already reached out, the link was the invitation.
+ *
+ * The join-circle screen calls this when it shows the "circle is full"
+ * state to a signed-in traveller; a link opened anonymously names nobody
+ * and notes nothing. Idempotent per owner+caller. */
+export const noteFullInvite = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const identity = await requireIdentity(ctx);
+    const me = identity.subject;
+    const invite = await ctx.db
+      .query('circleInvites')
+      .withIndex('by_token', (q) => q.eq('token', token))
+      .unique();
+    if (!inviteUsable(invite)) return;
+    const ownerId = invite!.ownerId;
+    if (ownerId === me) return;
+    if (await areSharing(ctx, ownerId, me)) return;
+    if (!(await circleFull(ctx, ownerId))) return;
+
+    let request = await pendingRequest(ctx, ownerId, me, 'invite');
+    if (!request) {
+      if ((await pendingOutstanding(ctx, ownerId)) >= MAX_PENDING_REQUESTS) return;
+      const requestId = await ctx.db.insert('circleRequests', {
+        fromUserId: ownerId,
+        toUserId: me,
+        kind: 'invite',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        respondedAt: null,
+      });
+      request = (await ctx.db.get(requestId))!;
+    }
+    await noteBlockedAttempt(ctx, request);
   },
 });
 
@@ -923,13 +987,21 @@ export const list = query({
     // Invitations to follow someone (answer → Following) and asks to follow
     // me (answer → Followers), kept apart because each is answered on the
     // tab it changes. Older clients only know the first list.
-    type RequestCard = { id: Id<'circleRequests'>; since: string } & Awaited<
+    // `blocked`: an invitation someone tried to accept while the inviter's
+    // circle was full. On the inviter's row it says who is waiting for a
+    // seat; on the invitee's, why "Follow" didn't take.
+    type RequestCard = { id: Id<'circleRequests'>; since: string; blocked: boolean } & Awaited<
       ReturnType<typeof personCard>
     >;
     const incoming: RequestCard[] = [];
     const followRequests: RequestCard[] = [];
     for (const r of toMe) {
-      const card = { id: r._id, since: r.createdAt, ...(await personCard(ctx, r.fromUserId)) };
+      const card = {
+        id: r._id,
+        since: r.createdAt,
+        blocked: !!r.blockedAt,
+        ...(await personCard(ctx, r.fromUserId)),
+      };
       (kindOf(r) === 'follow' ? followRequests : incoming).push(card);
     }
     // Mine: invitations out (a seat held open in Followers) and asks out to
@@ -937,7 +1009,12 @@ export const list = query({
     const outgoing: RequestCard[] = [];
     const asked: RequestCard[] = [];
     for (const r of fromMe) {
-      const card = { id: r._id, since: r.createdAt, ...(await personCard(ctx, r.toUserId)) };
+      const card = {
+        id: r._id,
+        since: r.createdAt,
+        blocked: !!r.blockedAt,
+        ...(await personCard(ctx, r.toUserId)),
+      };
       if (kindOf(r) === 'invite') outgoing.push(card);
       else if (!followers.some((f) => f.userId === r.toUserId)) asked.push(card);
     }

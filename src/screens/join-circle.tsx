@@ -33,6 +33,7 @@ export function JoinCircle({ token }: { token: string }) {
   const { isAuthenticated } = useConvexAuth();
   const invite = useQuery(api.circle.inviteByToken, { token });
   const accept = useMutation(api.circle.accept);
+  const noteFullInvite = useMutation(api.circle.noteFullInvite);
   const shareBack = useMutation(api.circle.shareBack);
   const [busy, setBusy] = useState(false);
   const [joined, setJoined] = useState<{ ownerId: string; sharingBack: boolean } | null>(null);
@@ -51,6 +52,21 @@ export function JoinCircle({ token }: { token: string }) {
   // invite's uses, so a re-entrant effect must not double-tap it.
   const redeeming = useRef(false);
   const proLocked = useProLocked();
+
+  // Landing on "circle is full" with an account is an attempt the owner
+  // should hear about — once. The server writes it as a waiting invitation
+  // (see circle.noteFullInvite), so the tap isn't lost either: it sits in
+  // People until the owner makes room. Anonymous visitors name nobody.
+  const noted = useRef(false);
+  const shownFull =
+    isAuthenticated && !!invite && !('gone' in invite) && invite.relation === 'none' && (invite.full || ownerFull);
+  useEffect(() => {
+    if (!shownFull || noted.current) return;
+    noted.current = true;
+    noteFullInvite({ token }).catch(() => {
+      // Best effort: the owner's row and push are a courtesy, not the follow.
+    });
+  }, [shownFull, noteFullInvite, token]);
 
   // Back to the People tab, wherever this page was pushed from.
   const done = useCallback(() => router.replace('/(tabs)/(people)/people'), [router]);
@@ -209,6 +225,9 @@ export function JoinCircle({ token }: { token: string }) {
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             {name}&apos;s circle is full for now. Free accounts share with one person; {name} can
             add more people with FlyRight Pro.
+            {isAuthenticated
+              ? ` ${name} has been told you tried — the invitation waits in People until there's room.`
+              : ''}
           </ThemedText>
           <PrimaryButton label="Open People" onPress={done} />
         </>

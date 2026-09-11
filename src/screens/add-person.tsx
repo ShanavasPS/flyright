@@ -55,6 +55,27 @@ export function AddPerson() {
   const insets = useSafeAreaInsets();
   const requestFollow = useMutation(api.circle.requestFollow);
   const createInvite = useMutation(api.circle.createInvite);
+  // Same subscription the People tab holds, so this costs nothing extra.
+  const circle = useQuery(api.circle.list);
+
+  // The cap, said before the invitations go out rather than after they
+  // can't be honoured: a free account seats one follower, and several
+  // invitations out at once are a race for that seat — the losers hear
+  // "circle is full" when they say yes, and this sheet is the only place
+  // that could have warned the sender.
+  let capNote: string | null = null;
+  if (proLocked && circle) {
+    const seat = FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`;
+    const out = circle.outgoing.length;
+    const followerCount = circle.followers.length;
+    if (followerCount >= FREE_CIRCLE_SIZE) {
+      capNote = `Your free circle is full — ${seat} can follow your trips. Pro lets your whole family follow.`;
+    } else if (out > 0) {
+      capNote = `Free accounts share trips with ${seat}. ${out === 1 ? 'One invitation is' : `${out} invitations are`} already out — whoever accepts first takes the seat. Pro lets your whole family follow.`;
+    } else {
+      capNote = `Free accounts share trips with ${seat}. Pro lets your whole family follow.`;
+    }
+  }
 
   // Only search once there's something worth matching whole; 'skip' keeps
   // the empty box from asking the server anything at all.
@@ -193,6 +214,17 @@ export function AddPerson() {
           same constraint claim-wizard and add-flight carry). Whole-name
           matching keeps the list short enough that it never needs one. */}
       <View style={styles.results}>
+        {capNote && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Free accounts share with one person. See FlyRight Pro"
+            testID="add-person-cap-note"
+            onPress={() => router.push({ pathname: '/paywall', params: { next: '/people' } })}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.capNote}>
+              {capNote}
+            </ThemedText>
+          </Pressable>
+        )}
         {found}
         {error && (
           <ThemedText type="small" style={[styles.empty, { color: theme.danger }]}>
@@ -356,6 +388,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: Spacing.two,
     paddingTop: Spacing.two,
+  },
+  capNote: {
+    textAlign: 'center',
+    paddingHorizontal: Spacing.two,
   },
   rowCard: {
     flexDirection: 'row',

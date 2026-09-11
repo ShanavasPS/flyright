@@ -302,6 +302,10 @@ export default defineSchema({
     status: v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined')),
     createdAt: v.string(),
     respondedAt: v.union(v.string(), v.null()),
+    /** When the invitee first tried to accept an invitation and found the
+     * inviter's circle full. Set once per row — the inviter is told about
+     * the attempt exactly once, however many times the tap is repeated. */
+    blockedAt: v.optional(v.union(v.string(), v.null())),
   })
     .index('by_to_status', ['toUserId', 'status'])
     .index('by_from_status', ['fromUserId', 'status'])
