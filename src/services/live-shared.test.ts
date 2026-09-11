@@ -7,6 +7,7 @@ import {
   nextPollDelayMs,
   sessionExpiryFor,
   shouldStartActivity,
+  stillLive,
 } from '../../convex/liveShared';
 import type { Doc } from '../../convex/_generated/dataModel';
 
@@ -157,6 +158,30 @@ describe('shouldStartActivity (server push-to-start)', () => {
     const s = fresh({ activityStartedAt: attempted });
     expect(shouldStartActivity(s, dep - 3 * 3_600_000)).toBe(false);
     expect(shouldStartActivity(s, dep - 4 * 3_600_000 + ACTIVITY_LIFETIME_MS)).toBe(true);
+  });
+});
+
+describe('stillLive', () => {
+  // Due to land 06:05 in Doha = 03:05Z.
+  it('keeps a trip live until two hours after it lands, recorded or by the timetable', () => {
+    expect(stillLive(session(), Date.parse('2026-09-09T00:00Z'))).toBe(true);
+    expect(stillLive(session(), Date.parse('2026-09-09T05:00Z'))).toBe(true);
+    expect(stillLive(session(), Date.parse('2026-09-09T05:10Z'))).toBe(false);
+    const landed = session({ currentStage: 'landed', stageTimes: { landed: '2026-09-09T03:30:00.000Z' } });
+    expect(stillLive(landed, Date.parse('2026-09-09T05:20Z'))).toBe(true);
+    expect(stillLive(landed, Date.parse('2026-09-09T05:40Z'))).toBe(false);
+  });
+  it('stays live while a connecting leg is still to leave', () => {
+    expect(
+      stillLive(session(), Date.parse('2026-09-09T06:00Z'), [
+        { scheduledDeparture: '2026-09-09T06:00:00.000Z', fromCode: 'DOH' },
+      ]),
+    ).toBe(false);
+    expect(
+      stillLive(session(), Date.parse('2026-09-09T06:00Z'), [
+        { scheduledDeparture: '2026-09-09T08:00:00.000Z', fromCode: 'DOH' },
+      ]),
+    ).toBe(true);
   });
 });
 

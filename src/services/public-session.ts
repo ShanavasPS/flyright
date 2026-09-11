@@ -1,5 +1,9 @@
-import { instantWith } from '../../convex/itineraryShared';
-import { presumedFlightStage, type PublicSession } from '../../convex/liveShared';
+import {
+  LIVE_AFTER_LANDING_MS,
+  presumedFlightStage,
+  stillLive,
+  type PublicSession,
+} from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { flightInstant, formatTime } from '@/services/dates';
@@ -244,17 +248,12 @@ export function spanLabel(ms: number): string {
   return `${Math.round(ms / 86_400_000)}d`;
 }
 
-/** How long a landed trip stays at the top of a follower's home screen. Long
- * enough to see the belt and know they are through, short enough that
- * yesterday's flight is not the first thing on today's screen. The People
- * tab keeps the pass until the session closes (48h), which is where you go
- * to look somebody up. */
-export const HOME_AFTER_LANDING_MS = 2 * 60 * 60_000;
+/** How long a landed trip stays a live card — see LIVE_AFTER_LANDING_MS. */
+export const HOME_AFTER_LANDING_MS = LIVE_AFTER_LANDING_MS;
 
-/** Whether a followed live trip still belongs on the home screen: always
- * until it lands, then for HOME_AFTER_LANDING_MS past the landing stamp
- * (the stage time the traveller's device or the poller recorded, else the
- * airline's actual arrival). */
+/** Whether a followed live trip still belongs on the home screen — the
+ * server's stillLive rule, which also decides what the People tab and the
+ * person's page lead with, so the three surfaces let go together. */
 export function onHomeScreen(
   s: Pick<PublicSession, 'stageTimes'> & Parameters<typeof presumedStage>[0],
   now: Date,
@@ -262,18 +261,7 @@ export function onHomeScreen(
    * the row simply becomes the next leg. */
   onward: { scheduledDeparture: string; fromCode: string }[] = [],
 ): boolean {
-  if (!tripDone(s, now)) return true;
-  const instant = instantWith(airportZone);
-  if (onward.some((leg) => instant(leg.scheduledDeparture, leg.fromCode) > now.getTime())) return true;
-  // A trip nobody recorded landing leaves on the timetable's clock, so a
-  // manual trip the traveller never tapped through isn't the first thing on
-  // a follower's screen for the two days its session stays open.
-  const landedAt =
-    s.currentStage === 'landed'
-      ? Date.parse(s.stageTimes?.landed ?? s.actualArrival ?? '')
-      : flightInstant(liveTimes(s).arrival, airportZone(s.toCode));
-  if (Number.isNaN(landedAt)) return true;
-  return now.getTime() - landedAt < HOME_AFTER_LANDING_MS;
+  return stillLive(s, now.getTime(), onward);
 }
 
 /** "Sam is flying" / "Sam has landed" — the eyebrow over a follower's trip.

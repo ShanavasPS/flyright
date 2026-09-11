@@ -19,7 +19,7 @@ import {
   severCircle,
   syncCloseAccess,
 } from './liveHelpers';
-import { preferredSession, toPublicSession } from './liveShared';
+import { preferredSession, stillLive, toPublicSession } from './liveShared';
 
 /** Find My-style circles: who follows my trips, whose trips I follow.
  * Invites are personal links (getflyright.com/i/<token>); accepting one adds
@@ -445,6 +445,10 @@ async function liveCard(
   seesHidden: boolean,
 ) {
   if (!session) return null;
+  const onward = await onwardLegs(ctx, session.userId, session, seesHidden);
+  // Two hours after it lands — recorded or by the timetable — the trip is
+  // history: no card, and the leg files under Flown like any other.
+  if (!stillLive(session, Date.now(), onward)) return null;
   const follows = await ctx.db
     .query('follows')
     .withIndex('by_session', (q) => q.eq('sessionId', session._id))
@@ -452,7 +456,7 @@ async function liveCard(
   return {
     token: session.shareToken,
     session: toPublicSession(session, name, follows.length),
-    onward: await onwardLegs(ctx, session.userId, session, seesHidden),
+    onward,
   };
 }
 
@@ -486,11 +490,12 @@ export const person = query({
 
     if (theirs) {
       const session = await liveFor(ctx, me, userId);
+      const live = await liveCard(ctx, session, who.name, !!theirs.close);
       const { hiddenAhead: _a, hiddenFlown: _f, hiddenIds: _h, keys: _k, ...travel } = await travelOf(
         ctx,
         userId,
         !!theirs.close,
-        session,
+        live ? session : null,
       );
       return {
         ...who,
@@ -504,7 +509,7 @@ export const person = query({
         since: theirs.createdAt,
         followsMeSince: mine?.createdAt ?? null,
         asked,
-        live: await liveCard(ctx, session, who.name, !!theirs.close),
+        live,
         ...travel,
       };
     }
@@ -567,13 +572,14 @@ export const previewMe = query({
     }
 
     const who = await personCard(ctx, me);
+    const live = await liveCard(ctx, session, who.name, seesHidden);
     return {
       ...who,
       member,
       close: seesHidden,
       followers,
-      live: await liveCard(ctx, session, who.name, seesHidden),
-      ...(await travelOf(ctx, me, seesHidden, session)),
+      live,
+      ...(await travelOf(ctx, me, seesHidden, live ? session : null)),
     };
   },
 });
@@ -847,19 +853,7 @@ export const list = query({
         const session = await ctx.db.get(f.sessionId);
         if (session && session.status === 'active') active.push(session);
       }
-      const session = preferredSession(active);
-      let live = null;
-      if (session) {
-        const follows = await ctx.db
-          .query('follows')
-          .withIndex('by_session', (q) => q.eq('sessionId', session._id))
-          .collect();
-        live = {
-          token: session.shareToken,
-          session: toPublicSession(session, owner.name, follows.length),
-          onward: await onwardLegs(ctx, row.ownerId, session, !!row.close),
-        };
-      }
+      const live = await liveCard(ctx, preferredSession(active), owner.name, !!row.close);
 
       const next = live ? null : await nextTrip(ctx, row.ownerId, !!row.close, now);
       following.push({

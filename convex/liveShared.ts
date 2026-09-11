@@ -77,6 +77,51 @@ export function preferredSession<
   );
 }
 
+/** How long a trip stays a live card after it lands — long enough to see
+ * the belt and know they are through, short enough that yesterday's flight
+ * is not what a follower opens the app to. The same two hours for a trip
+ * only the timetable says has landed. The session itself stays open longer
+ * (SESSION_TTL_MS) so a late stage or belt still reaches followers; the
+ * card just stops leading with it. */
+export const LIVE_AFTER_LANDING_MS = 2 * HOUR_MS;
+
+/** Whether a session still belongs on a follower's live surfaces — the home
+ * row, the People tab pass, the live card on the person's page: always
+ * until it lands (recorded or presumed), then for LIVE_AFTER_LANDING_MS past
+ * the landing stamp (the traveller's device or the poller), else the
+ * airline's actual arrival, else the timetable's. Connecting legs still to
+ * leave keep the journey live: the card simply becomes the next leg. */
+export function stillLive(
+  s: {
+    fromCode: string;
+    toCode: string;
+    currentStage: string | null;
+    stageTimes: Record<string, string>;
+    scheduledDeparture: string;
+    scheduledArrival: string;
+    estimatedDeparture: string | null;
+    actualDeparture: string | null;
+    estimatedArrival: string | null;
+    actualArrival: string | null;
+  },
+  now: number,
+  onward: { scheduledDeparture: string; fromCode: string }[] = [],
+): boolean {
+  const departure = flightInstant(
+    s.actualDeparture ?? s.estimatedDeparture ?? s.scheduledDeparture,
+    s.fromCode,
+  );
+  const arrival = flightInstant(s.actualArrival ?? s.estimatedArrival ?? s.scheduledArrival, s.toCode);
+  if (presumedFlightStage(s.currentStage, departure, arrival, now) !== 'landed') return true;
+  if (onward.some((leg) => flightInstant(leg.scheduledDeparture, leg.fromCode) > now)) return true;
+  const landedAt =
+    s.currentStage === 'landed'
+      ? Date.parse(s.stageTimes.landed ?? s.actualArrival ?? '')
+      : arrival;
+  if (Number.isNaN(landedAt)) return true;
+  return now - landedAt < LIVE_AFTER_LANDING_MS;
+}
+
 /** A session lives until 48 h past scheduled arrival; after that the trip is
  * history rather than a travel day. Both the expiry stamp and the "is this
  * still worth a session" check read this, so they can't drift apart. */
