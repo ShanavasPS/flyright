@@ -1,8 +1,8 @@
 import { instantWith } from '../../convex/itineraryShared';
-import type { PublicSession } from '../../convex/liveShared';
+import { presumedFlightStage, type PublicSession } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
-import { formatTime } from '@/services/dates';
+import { flightInstant, formatTime } from '@/services/dates';
 import {
   EMPTY_FACTS,
   STAGE_LABELS,
@@ -128,7 +128,10 @@ export function followerStatus(
   const times = liveTimes(s);
   const delayed = s.delayMinutes != null && s.delayMinutes >= 30;
   const late = delayed ? `${s.delayMinutes} min late` : null;
-  const join = (parts: (string | null)[]) => parts.filter(Boolean).join(' · ') || null;
+  const join = (parts: (string | null)[]) => {
+    const line = parts.filter(Boolean).join(' · ');
+    return line ? line[0]!.toUpperCase() + line.slice(1) : null;
+  };
 
   if (stage === 'landed') {
     const at = s.actualArrival ?? times.arrival;
@@ -144,7 +147,7 @@ export function followerStatus(
   }
 
   if (stage === 'departed') {
-    const left = Date.parse(times.arrival) - now.getTime();
+    const left = flightInstant(times.arrival, airportZone(s.toCode)) - now.getTime();
     const headline = Number.isNaN(left)
       ? 'In the air'
       : left <= 60_000
@@ -153,7 +156,35 @@ export function followerStatus(
     return { headline, detail: join(['In the air', late]), delayed };
   }
 
-  const left = Date.parse(times.departure) - now.getTime();
+  // Nothing recorded past the departure: a manual trip nobody polls and the
+  // traveller never tapped through, or a tracked flight the airline hasn't
+  // confirmed yet. The clock has still moved, so read the timetable and say
+  // so — "Due to land in 2h", then "Flown" — instead of holding "Departing
+  // now" for the two days the session stays open.
+  // The last stage the traveller did record ("On board") stays in the
+  // detail, so a reader can see how far the trip was followed.
+  const presumed = presumedStage(s, now);
+  const lastSeen = stage ? STAGE_LABELS[stage] : null;
+  if (presumed === 'landed') {
+    return {
+      delayed: false,
+      headline: 'Flown',
+      detail: join([
+        lastSeen,
+        `due to land ${formatTime(times.arrival, airportZone(s.toCode))}, going by the timetable`,
+      ]),
+    };
+  }
+  if (presumed === 'departed') {
+    const left = flightInstant(times.arrival, airportZone(s.toCode)) - now.getTime();
+    return {
+      headline: left <= 60_000 ? 'Due to land about now' : `Due to land in ${spanLabel(left)}`,
+      detail: join([lastSeen, 'going by the timetable', late]),
+      delayed,
+    };
+  }
+
+  const left = flightInstant(times.departure, airportZone(s.fromCode)) - now.getTime();
   const headline = Number.isNaN(left)
     ? `Departs ${formatTime(times.departure, airportZone(s.fromCode))}`
     : left <= 60_000
@@ -165,6 +196,40 @@ export function followerStatus(
     delayed,
   };
 }
+
+/** presumedFlightStage over a public session's clocks, pinned to their
+ * airports (manual sessions carry bare wall clocks). */
+export function presumedStage(
+  s: Pick<
+    PublicSession,
+    | 'fromCode'
+    | 'toCode'
+    | 'currentStage'
+    | 'scheduledDeparture'
+    | 'scheduledArrival'
+    | 'estimatedDeparture'
+    | 'actualDeparture'
+    | 'estimatedArrival'
+    | 'actualArrival'
+  >,
+  now: Date,
+): 'departed' | 'landed' | null {
+  const times = liveTimes(s);
+  return presumedFlightStage(
+    s.currentStage,
+    flightInstant(times.departure, airportZone(s.fromCode)),
+    flightInstant(times.arrival, airportZone(s.toCode)),
+    now.getTime(),
+  );
+}
+
+/** True once the trip is over as far as anyone can tell: the traveller's
+ * device or the airline said landed, or the timetable's arrival has passed
+ * with nothing recorded since. Surfaces that swap a live look for a done
+ * one (the dot's colour, the eyebrow, leaving the home screen) key on this
+ * rather than on the recorded stage alone. */
+export const tripDone = (s: Parameters<typeof presumedStage>[0], now: Date): boolean =>
+  presumedStage(s, now) === 'landed';
 
 /** "45m" / "2h 15m" / "3h" / "3d" — a positive span, rounded to the minute
  * below a day (the follower is refreshing) and to the day above it. */
@@ -191,20 +256,36 @@ export const HOME_AFTER_LANDING_MS = 2 * 60 * 60_000;
  * (the stage time the traveller's device or the poller recorded, else the
  * airline's actual arrival). */
 export function onHomeScreen(
-  s: Pick<PublicSession, 'currentStage' | 'stageTimes' | 'actualArrival'>,
+  s: Pick<PublicSession, 'stageTimes'> & Parameters<typeof presumedStage>[0],
   now: Date,
   /** Connecting legs still to leave keep the journey on the home screen:
    * the row simply becomes the next leg. */
   onward: { scheduledDeparture: string; fromCode: string }[] = [],
 ): boolean {
-  if (s.currentStage !== 'landed') return true;
+  if (!tripDone(s, now)) return true;
   const instant = instantWith(airportZone);
   if (onward.some((leg) => instant(leg.scheduledDeparture, leg.fromCode) > now.getTime())) return true;
-  const landedAt = Date.parse(s.stageTimes?.landed ?? s.actualArrival ?? '');
+  // A trip nobody recorded landing leaves on the timetable's clock, so a
+  // manual trip the traveller never tapped through isn't the first thing on
+  // a follower's screen for the two days its session stays open.
+  const landedAt =
+    s.currentStage === 'landed'
+      ? Date.parse(s.stageTimes?.landed ?? s.actualArrival ?? '')
+      : flightInstant(liveTimes(s).arrival, airportZone(s.toCode));
   if (Number.isNaN(landedAt)) return true;
   return now.getTime() - landedAt < HOME_AFTER_LANDING_MS;
 }
 
-/** "Sam is flying" / "Sam has landed" — the eyebrow over a follower's trip. */
-export const travellerEyebrow = (name: string, s: Pick<PublicSession, 'currentStage'>): string =>
-  s.currentStage === 'landed' ? `${name} has landed` : `${name} is flying`;
+/** "Sam is flying" / "Sam has landed" — the eyebrow over a follower's trip.
+ * A trip over by the timetable alone is just "Sam's trip": nobody said
+ * they landed, so the eyebrow doesn't either. */
+export const travellerEyebrow = (
+  name: string,
+  s: Parameters<typeof presumedStage>[0],
+  now: Date,
+): string =>
+  s.currentStage === 'landed'
+    ? `${name} has landed`
+    : tripDone(s, now)
+      ? `${name}'s trip`
+      : `${name} is flying`;

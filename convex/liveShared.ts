@@ -37,6 +37,27 @@ export const STAGE_PUSH_COPY: Record<string, (name: string, to: string) => strin
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 
+/** Where the flight is by the clocks alone, for a session with no stage
+ * past the airport recorded — a manual trip nobody polls and the traveller
+ * never tapped through, or a tracked flight the airline hasn't confirmed
+ * yet: 'departed' once the (estimated) departure is a minute gone, 'landed'
+ * once the (estimated) arrival is, null while it is still to leave. A
+ * recorded departed/landed stage wins over any guess. A minute past
+ * departure is "departing now", not yet a presumption. One rule for the
+ * traveller's card, the Live Activity and every follower surface, so no
+ * screen holds "Departing now" for the two days a session stays open. */
+export function presumedFlightStage(
+  stage: string | null,
+  departureMs: number,
+  arrivalMs: number,
+  now: number,
+): 'departed' | 'landed' | null {
+  if (stage === 'landed' || stage === 'departed') return stage;
+  if (!Number.isNaN(arrivalMs) && arrivalMs <= now - MINUTE_MS) return 'landed';
+  if (!Number.isNaN(departureMs) && departureMs <= now - MINUTE_MS) return 'departed';
+  return null;
+}
+
 /** Of a traveller's active sessions, the one a follower should be shown:
  * a leg still in the air or still to leave beats one that has landed (the
  * landed leg of a connection stays active for two days while the next leg
@@ -252,14 +273,14 @@ function nextStep(currentStage: string | null): string | null {
  * flight has departed, time-based between departure and estimated arrival
  * (held just inside both ends), 1 once landed. */
 export function flightProgress(s: Doc<'liveSessions'>, now: number): number {
-  const index = stageIndex(s.currentStage);
-  if (index < stageIndex('departed')) return 0;
-  if (s.currentStage === 'landed') return 1;
   const departed = flightInstant(
     s.actualDeparture ?? s.stageTimes.departed ?? s.estimatedDeparture ?? s.scheduledDeparture,
     s.fromCode,
   );
   const arrives = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
+  const stage = presumedFlightStage(s.currentStage, departed, arrives, now);
+  if (stageIndex(stage) < stageIndex('departed')) return 0;
+  if (stage === 'landed') return 1;
   if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
   return Math.min(0.97, Math.max(0.03, (now - departed) / (arrives - departed)));
 }
@@ -299,13 +320,19 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   const effectiveDeparture = s.estimatedDeparture ?? s.scheduledDeparture;
   const departureMs = flightInstant(effectiveDeparture, s.fromCode);
   const arrivalMs = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
-  const countdown = liveCountdown(s.currentStage, departureMs, arrivalMs);
+  const presumed = presumedFlightStage(s.currentStage, departureMs, arrivalMs, now);
+  const countdown = liveCountdown(presumed, departureMs, arrivalMs);
   let headline: string;
   if (s.currentStage === 'landed') {
     headline = 'Landed';
   } else if (s.currentStage === 'departed') {
     const toLanding = Number.isNaN(arrivalMs) ? null : countdownBit(arrivalMs, now);
     headline = toLanding === null ? 'In the air' : toLanding === 'now' ? 'Landing now' : `Lands ${toLanding}`;
+  } else if (presumed === 'landed') {
+    headline = 'Flown';
+  } else if (presumed === 'departed') {
+    const toLanding = countdownBit(arrivalMs, now);
+    headline = toLanding === 'now' ? 'Due to land about now' : `Due to land ${toLanding}`;
   } else if (Number.isNaN(departureMs)) {
     headline = `Departs ${fmtTime(effectiveDeparture, s.fromCode)}`;
   } else {
@@ -318,6 +345,10 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
     subtitle = s.baggageBelt ? `Bags at belt ${s.baggageBelt}` : `Welcome to ${s.toCode}`;
   } else if (s.currentStage === 'departed') {
     subtitle = s.baggageBelt ? `In the air · Bags at belt ${s.baggageBelt}` : 'In the air';
+  } else if (presumed === 'landed') {
+    subtitle = `Due to land ${fmtTime(s.estimatedArrival ?? s.scheduledArrival, s.toCode)} · going by the timetable`;
+  } else if (presumed === 'departed') {
+    subtitle = 'Going by the timetable';
   } else if (s.currentStage === 'boarded') {
     subtitle = 'On board · ready for pushback';
   } else if (next === null) {
@@ -336,7 +367,8 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   if (delayLabel) subtitle = `${delayLabel} · ${subtitle}`;
 
   let compactLabel: string;
-  if (s.currentStage === null) compactLabel = fmtTime(effectiveDeparture, s.fromCode);
+  if (presumed && s.currentStage !== presumed) compactLabel = presumed === 'landed' ? 'Flown' : 'Timetable';
+  else if (s.currentStage === null) compactLabel = fmtTime(effectiveDeparture, s.fromCode);
   else if (s.currentStage === 'landed' && s.baggageBelt) compactLabel = `Belt ${s.baggageBelt}`;
   else if (index >= BOARDED_INDEX || next === null) compactLabel = STAGE_COMPACT[s.currentStage] ?? '';
   else if (next === 'boarded') compactLabel = s.gate ? `G${s.gate}` : NEXT_STEP_COMPACT.boarded;

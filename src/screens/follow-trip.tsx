@@ -123,7 +123,7 @@ export function FollowTrip({ token }: { token: string }) {
           <AirlineLogo number={session.number} carrier={session.carrier} size={48} />
           <View style={styles.titleBlock}>
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-              {travellerEyebrow(who, session)}
+              {travellerEyebrow(who, session, now)}
             </ThemedText>
             {/* The traveller's hero, read from the other end: the one time
                 fact the follower opened this page for as the title — "Departs

@@ -99,6 +99,28 @@ describe('buildContentState on a manual (bare wall clock) row', () => {
     expect(flightProgress(s, now)).toBeCloseTo(0.5, 2);
   });
 
+  it('reads the timetable once the departure is gone with no stage recorded', () => {
+    // Nothing tapped, nothing polled: half-way by the clocks.
+    const halfway = Date.parse('2026-09-09T00:55Z');
+    const aloft = buildContentState(session(), halfway);
+    expect(aloft.headline).toBe('Due to land in 2h');
+    expect(aloft.subtitle).toBe('Going by the timetable');
+    expect(aloft.compactLabel).toBe('Timetable');
+    expect(aloft.countdownKind).toBe('arrival');
+    expect(aloft.countdownEnd).toBe(Date.parse('2026-09-09T03:05Z'));
+    expect(flightProgress(session(), halfway)).toBeCloseTo(0.5, 2);
+    // Past the due arrival: flown, no countdown, plane at the end.
+    const after = Date.parse('2026-09-09T05:00Z');
+    const flown = buildContentState(session(), after);
+    expect(flown.headline).toBe('Flown');
+    expect(flown.subtitle).toBe('Due to land 06:05 · going by the timetable');
+    expect(flown.compactLabel).toBe('Flown');
+    expect(flown.countdownKind).toBe('');
+    expect(flightProgress(session(), after)).toBe(1);
+    // A minute past take-off is still "now", not a presumption.
+    expect(buildContentState(session(), Date.parse('2026-09-08T22:45:30Z')).headline).toBe('Departing now');
+  });
+
   it('poll cadence reads the pinned departure — 10-minute polls around the real take-off', () => {
     const tenMinutesBefore = Date.parse('2026-09-08T22:35Z');
     expect(nextPollDelayMs(session(), tenMinutesBefore)).toBe(10 * 60_000);

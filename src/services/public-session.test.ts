@@ -1,4 +1,12 @@
-import { followerStatus, liveTimes, movedClocks, onHomeScreen, spanLabel } from './public-session';
+import {
+  followerStatus,
+  liveTimes,
+  movedClocks,
+  onHomeScreen,
+  presumedStage,
+  spanLabel,
+  travellerEyebrow,
+} from './public-session';
 
 const now = new Date('2026-09-09T05:00:00Z');
 const base = {
@@ -70,6 +78,53 @@ describe('followerStatus', () => {
       followerStatus({ ...base, currentStage: 'landed', terminal: '2' }, now).detail,
     ).toBe('Terminal 2');
   });
+  it('reads the timetable once the departure has gone with nothing recorded', () => {
+    // Biswas's manual COK→TUC trip: no flight number to poll, no taps, and
+    // bare wall clocks — the row sat on "Departing now" for two days.
+    const manual = {
+      ...base,
+      fromCode: 'COK',
+      toCode: 'TUC',
+      scheduledDeparture: '2026-09-10T12:00:00',
+      scheduledArrival: '2026-09-11T07:00:00',
+    };
+    // 12:00 at COK is 06:30Z; a minute either side is still "now".
+    expect(followerStatus(manual, new Date('2026-09-10T06:30:30Z')).headline).toBe('Departing now');
+    // 07:00 at TUC is 10:00Z; two hours before, presumed in the air.
+    expect(followerStatus(manual, new Date('2026-09-11T08:00:00Z'))).toEqual({
+      headline: 'Due to land in 2h',
+      detail: 'Going by the timetable',
+      delayed: false,
+    });
+    expect(
+      followerStatus({ ...manual, currentStage: 'boarded' }, new Date('2026-09-11T08:00:00Z')).detail,
+    ).toBe('On board · going by the timetable');
+    // The day after: flown, with the due time so the reader knows what it was.
+    const flown = followerStatus(manual, new Date('2026-09-11T12:00:00Z'));
+    expect(flown.headline).toBe('Flown');
+    expect(flown.detail).toMatch(/^Due to land .*going by the timetable$/);
+  });
+});
+
+describe('presumedStage', () => {
+  it('never second-guesses a recorded stage past the airport', () => {
+    expect(presumedStage({ ...base, currentStage: 'departed' }, new Date('2026-09-12T00:00:00Z'))).toBe('departed');
+    expect(presumedStage({ ...base, currentStage: 'landed' }, now)).toBe('landed');
+  });
+  it('follows the clocks the airline now says', () => {
+    expect(presumedStage(base, now)).toBeNull();
+    expect(presumedStage(base, new Date('2026-09-09T06:02:00Z'))).toBe('departed');
+    expect(presumedStage({ ...base, estimatedDeparture: '2026-09-09T06:30:00Z' }, new Date('2026-09-09T06:02:00Z'))).toBeNull();
+    expect(presumedStage(base, new Date('2026-09-09T09:17:00Z'))).toBe('landed');
+  });
+});
+
+describe('travellerEyebrow', () => {
+  it("says 'is flying' until landed, and neither once only the timetable says so", () => {
+    expect(travellerEyebrow('Sam', base, now)).toBe('Sam is flying');
+    expect(travellerEyebrow('Sam', { ...base, currentStage: 'landed' }, now)).toBe('Sam has landed');
+    expect(travellerEyebrow('Sam', base, new Date('2026-09-09T12:00:00Z'))).toBe("Sam's trip");
+  });
 });
 
 describe('liveTimes', () => {
@@ -97,22 +152,34 @@ describe('movedClocks', () => {
 
 describe('onHomeScreen', () => {
   const at = (iso: string) => new Date(iso);
+  const stamped = { ...base, stageTimes: {} as Record<string, string> };
   it('keeps a trip on the home screen until it lands', () => {
-    expect(onHomeScreen({ currentStage: null, stageTimes: {}, actualArrival: null }, now)).toBe(true);
-    expect(onHomeScreen({ currentStage: 'departed', stageTimes: {}, actualArrival: null }, now)).toBe(true);
+    expect(onHomeScreen(stamped, now)).toBe(true);
+    expect(onHomeScreen({ ...stamped, currentStage: 'departed' }, at('2026-09-09T20:00:00Z'))).toBe(true);
   });
   it('lets a landed trip go two hours after the landing stamp', () => {
-    const landed = { currentStage: 'landed', stageTimes: { landed: '2026-09-09T05:00:00Z' }, actualArrival: null };
+    const landed = { ...stamped, currentStage: 'landed', stageTimes: { landed: '2026-09-09T05:00:00Z' } };
     expect(onHomeScreen(landed, at('2026-09-09T06:59:00Z'))).toBe(true);
     expect(onHomeScreen(landed, at('2026-09-09T07:01:00Z'))).toBe(false);
   });
   it("falls back to the airline's actual arrival, and stays when neither is known", () => {
     expect(
       onHomeScreen(
-        { currentStage: 'landed', stageTimes: {}, actualArrival: '2026-09-09T05:00:00Z' },
+        { ...stamped, currentStage: 'landed', actualArrival: '2026-09-09T05:00:00Z' },
         at('2026-09-09T08:00:00Z'),
       ),
     ).toBe(false);
-    expect(onHomeScreen({ currentStage: 'landed', stageTimes: {}, actualArrival: null }, now)).toBe(true);
+    expect(onHomeScreen({ ...stamped, currentStage: 'landed' }, now)).toBe(true);
+  });
+  it('lets a trip nobody recorded landing go two hours after the timetable arrival', () => {
+    // Scheduled arrival 09:15Z with no stage at all.
+    expect(onHomeScreen(stamped, at('2026-09-09T11:00:00Z'))).toBe(true);
+    expect(onHomeScreen(stamped, at('2026-09-09T11:20:00Z'))).toBe(false);
+    // ...unless a connecting leg is still to leave.
+    expect(
+      onHomeScreen(stamped, at('2026-09-09T11:20:00Z'), [
+        { scheduledDeparture: '2026-09-09T13:00:00Z', fromCode: 'LHR' },
+      ]),
+    ).toBe(true);
   });
 });

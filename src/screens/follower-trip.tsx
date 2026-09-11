@@ -17,7 +17,7 @@ import { useNow } from '@/hooks/use-now';
 import { airportZone, getAirport } from '@/services/airports';
 import { flightInstant, formatTime, tripDateTitle } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
-import { adaptPublicSession, travellerEyebrow } from '@/services/public-session';
+import { adaptPublicSession, travellerEyebrow, tripDone } from '@/services/public-session';
 
 /**
  * One trip of somebody whose circle you're in — everything a follower may
@@ -89,7 +89,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             you came to be reading it. */}
         <View style={styles.heroBlock}>
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-            {session ? travellerEyebrow(owner.name, session) : `${owner.name}'s trip`}
+            {session ? travellerEyebrow(owner.name, session, now) : `${owner.name}'s trip`}
           </ThemedText>
           <RouteHero
             journey={{
@@ -115,7 +115,14 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           {session
-            ? `You'll get a nudge at every step until ${owner.name} lands.`
+            ? tripDone(session, now)
+              ? session.currentStage === 'landed'
+                ? `${owner.name} has landed. Only ${owner.name} can change this trip.`
+                : // Over by the timetable with no landing recorded: say what
+                  // the follower is looking at rather than promise nudges
+                  // for a trip that is done.
+                  `The timetable says this flight has landed, but ${owner.name} didn't record it. Only ${owner.name} can change this trip.`
+              : `You'll get a nudge at every step until ${owner.name} lands.`
             : flightInstant(trip.scheduledDeparture, airportZone(trip.fromCode)) - now.getTime() >
                 DAY_MS
               ? `Live updates start the day before ${owner.name} flies. Only ${owner.name} can change this trip.`

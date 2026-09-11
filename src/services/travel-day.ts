@@ -8,6 +8,8 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
+import { presumedFlightStage } from '../../convex/liveShared';
+
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
 import { flightInstant, formatTime } from '@/services/dates';
@@ -397,9 +399,6 @@ export function flightProgress(
   facts: FlightFacts,
   now: Date,
 ): number {
-  const index = stageIndex(state.stage);
-  if (index < stageIndex('departed')) return 0;
-  if (state.stage === 'landed') return 1;
   const departed = flightInstant(
     facts.actualDeparture ??
       state.stamps.departed ??
@@ -408,6 +407,12 @@ export function flightProgress(
     airportZone(j.fromCode),
   );
   const arrives = flightInstant(facts.estimatedArrival ?? j.scheduledArrival, airportZone(j.toCode));
+  // With nothing recorded past the airport, the plane still moves by the
+  // timetable once the departure is gone — a line with the plane parked at
+  // the origin under "Due to land in 2h" contradicts itself.
+  const stage = presumedFlightStage(state.stage, departed, arrives, now.getTime());
+  if (stageIndex(stage) < stageIndex('departed')) return 0;
+  if (stage === 'landed') return 1;
   if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
   const fraction = (now.getTime() - departed) / (arrives - departed);
   return Math.min(0.97, Math.max(0.03, fraction));
@@ -443,12 +448,21 @@ export function liveContent(
   const departureZone = airportZone(j.fromCode);
   const arrivalZone = airportZone(j.toCode);
   const arrivalMs = flightInstant(facts.estimatedArrival ?? j.scheduledArrival, arrivalZone);
+  // Past the departure with nothing recorded (a manual trip's untapped
+  // "Departed", or airline data that hasn't caught up): read the timetable
+  // and say so, rather than hold "Departing now" through the flight.
+  const presumed = presumedFlightStage(state.stage, departureMs, arrivalMs, now.getTime());
   let headline: string;
   if (state.stage === 'landed') {
     headline = 'Landed';
   } else if (state.stage === 'departed') {
     const toLanding = Number.isNaN(arrivalMs) ? null : countdownLabel(arrivalMs, now);
     headline = toLanding === null ? 'In the air' : toLanding === 'now' ? 'Landing now' : `Lands ${toLanding}`;
+  } else if (presumed === 'landed') {
+    headline = 'Flown';
+  } else if (presumed === 'departed') {
+    const toLanding = countdownLabel(arrivalMs, now);
+    headline = toLanding === 'now' ? 'Due to land about now' : `Due to land ${toLanding}`;
   } else if (Number.isNaN(departureMs)) {
     headline = `Departs ${formatTime(effectiveDeparture, departureZone)}`;
   } else {
@@ -464,6 +478,12 @@ export function liveContent(
     subtitle = facts.baggageBelt ? `Bags at belt ${facts.baggageBelt}` : `Welcome to ${j.toCode}`;
   } else if (state.stage === 'departed') {
     subtitle = facts.baggageBelt ? `In the air · Bags at belt ${facts.baggageBelt}` : 'In the air';
+  } else if (presumed === 'landed') {
+    // A manual trip keeps its own "Landed" tap; a tracked one lands when
+    // the airline says so. Either way the line says what this reading is.
+    subtitle = `Due to land ${formatTime(facts.estimatedArrival ?? j.scheduledArrival, arrivalZone)} · going by the timetable`;
+  } else if (presumed === 'departed') {
+    subtitle = 'Going by the timetable';
   } else if (state.stage === 'boarded') {
     subtitle = 'On board · ready for pushback';
   } else if (boardingOpen) {
@@ -493,7 +513,9 @@ export function liveContent(
   // (the gate code once the gate is the destination); from boarding on, the
   // stage word — and the baggage belt after landing, the last thing to find.
   let compactLabel: string;
-  if (state.stage === null) {
+  if (presumed && state.stage !== presumed) {
+    compactLabel = presumed === 'landed' ? 'Flown' : 'Timetable';
+  } else if (state.stage === null) {
     compactLabel = formatTime(effectiveDeparture, departureZone);
   } else if (state.stage === 'landed' && facts.baggageBelt) {
     compactLabel = `Belt ${facts.baggageBelt}`;
@@ -507,7 +529,7 @@ export function liveContent(
 
   const timeOf = (iso: string | null, zone: string | null) =>
     iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso, zone) : null;
-  const countdown = liveCountdown(state.stage, departureMs, arrivalMs);
+  const countdown = liveCountdown(presumed, departureMs, arrivalMs);
 
   return {
     title: `${flight} · ${routeLabel(j)}`,

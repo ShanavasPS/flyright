@@ -33,6 +33,7 @@ import {
   movedClocks,
   sessionProgress,
   spanLabel,
+  tripDone,
 } from '@/services/public-session';
 
 /** Tall enough to read a long-haul arc, short enough that the trips below
@@ -131,7 +132,7 @@ export function PersonTravel({
   );
   // The blue belongs to what the follower should look at now: the live leg
   // until it lands, then the leg that leaves next.
-  const landed = p.live?.session.currentStage === 'landed';
+  const landed = !!p.live && tripDone(p.live.session, now);
   // Legs of the same journey already flown before the live one — the block
   // reads top to bottom as the trip happened: landed, landed, live, next.
   const priorLegs: PersonTrip[] = [];
@@ -311,7 +312,7 @@ function LiveNow({
   // "LANDED 8:55 AM" — the one fact a follower is here for, in the card's
   // own voice. Blue while there is travelling left in it (amber once late),
   // black once landed so the eye moves on to the leg that departs next.
-  const landed = session.currentStage === 'landed';
+  const landed = tripDone(session, now);
   const labelColor = landed ? theme.heading : delayed ? theme.warning : theme.tint;
 
   return (

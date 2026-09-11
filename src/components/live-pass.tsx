@@ -9,6 +9,7 @@ import { Contrail, clocks } from '@/components/route-leg';
 import { COBALT, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { compactLiveView } from '@/services/connections';
+import { tripDone } from '@/services/public-session';
 
 export const NAVY = '#0C1B36';
 export const LIVE_GREEN = '#2FD68C';
@@ -95,7 +96,7 @@ export function LivePass({
           {/* The pill means "updating now"; once down, the bold "Landed
               8:55 AM" line already says everything, so nothing sits beside
               it. */}
-          {session.currentStage !== 'landed' && <LivePill />}
+          {!tripDone(session, now) && <LivePill />}
         </View>
         <View style={styles.route}>
           <View>

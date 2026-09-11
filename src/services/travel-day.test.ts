@@ -280,6 +280,29 @@ describe('liveContent', () => {
     ).toBe('Departing now');
   });
 
+  it('reads the timetable once the departure is gone with nothing recorded', () => {
+    // A manual trip whose "Departed" was never tapped: no more "Departing
+    // now" through the flight; the plane and the countdown follow the clocks.
+    const manual = journey({ source: 'manual', number: '' });
+    const aloft = liveContent(manual, EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date('2026-08-25T09:17:30Z'));
+    expect(aloft.headline).toBe('Due to land in 78 min');
+    expect(aloft.subtitle).toBe('Going by the timetable');
+    expect(aloft.compactLabel).toBe('Timetable');
+    expect(aloft.countdownKind).toBe('arrival');
+    expect(aloft.progress).toBeCloseTo(0.5);
+    const flown = liveContent(manual, EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date('2026-08-25T12:00Z'));
+    expect(flown.headline).toBe('Flown');
+    expect(flown.subtitle).toMatch(/^Due to land .* · going by the timetable$/);
+    expect(flown.compactLabel).toBe('Flown');
+    expect(flown.countdownKind).toBeNull();
+    expect(flown.progress).toBe(1);
+    // A recorded stage past the airport is never second-guessed.
+    const boarded = advance(EMPTY_TRAVEL_DAY, 'boarded', new Date('2026-08-25T07:30Z'));
+    expect(liveContent(journey(), boarded, EMPTY_FACTS, new Date('2026-08-25T09:00Z')).headline).toBe(
+      'Due to land in 2h',
+    );
+  });
+
   it('headline counts to the estimated departure when the airline posts one', () => {
     const c = liveContent(
       journey(),

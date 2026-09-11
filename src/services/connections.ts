@@ -11,7 +11,7 @@ import type { PublicSession } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatTime } from '@/services/dates';
-import { followerStatus, liveTimes, sessionProgress, spanLabel } from '@/services/public-session';
+import { followerStatus, liveTimes, sessionProgress, spanLabel, tripDone } from '@/services/public-session';
 import { cityOf } from '@/services/timeline';
 
 /** The app's instants: stored strings pinned to the airport-zone table. */
@@ -139,13 +139,13 @@ export function compactLiveView(
   now: Date,
 ): CompactLiveView {
   const next = onward[0];
-  const landed = session.currentStage === 'landed';
+  const landed = tripDone(session, now);
   if (landed && next && legInstant(next.scheduledDeparture, next.fromCode) > now.getTime()) {
     const arrived = liveTimes(session).arrival;
     const gap = legInstant(next.scheduledDeparture, next.fromCode) - Date.parse(arrived);
     return {
       headline: `Departs in ${spanLabel(legInstant(next.scheduledDeparture, next.fromCode) - now.getTime())}`,
-      detail: `Landed ${formatTime(arrived, airportZone(session.toCode))}`,
+      detail: `${session.currentStage === 'landed' ? 'Landed' : 'Due to land'} ${formatTime(arrived, airportZone(session.toCode))}`,
       layover: Number.isFinite(gap) && gap > 0 ? `${layoverLabel(gap)} in ${cityOf(session.toCode)}` : null,
       delayed: false,
       leg: {
