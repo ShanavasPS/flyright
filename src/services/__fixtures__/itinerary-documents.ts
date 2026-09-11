@@ -1478,3 +1478,165 @@ Legal and guest notices`,
     barcodes: [],
   },
 ];
+
+/** Goibibo (Indian OTA) booking confirmation: two IndiGo legs, the year
+ * printed once in the heading ("SUN, 11 OCT '20"), each leg headed by its
+ * codes in big type over the city names, flight numbers hyphenated
+ * ("6E-6273"), no barcode — iOS text order. */
+export const GOIBIBO_CONFIRMATION_PDFKIT: DocumentPage[] = [
+  {
+    text: `Booking Id: GOFLD0000000000000000000
+Confirmed
+SUN, 11 OCT '20 THIRUVANATHAPURAM TO MANGALORE 8h 30m
+TRV
+THIRUVANATHAPURAM
+1h 20m
+BLR
+BENGALURU
+Indigo Airlines
+6E-6273
+10:00 hrs, 11 Oct
+Economy
+11:20 hrs, 11 Oct
+Trivandrum International
+Airport
+Terminal 1
+Kempegowda
+International Airport
+Terminal 1
+PASSENGER NAME PNR
+E-TICKET NO. SEAT
+1. Doe Jane, Adult 7QK2AB
+7QK2AB 24A
+Change of Planes. 6h 5m layover in Bengaluru (BLR)
+BLR
+BENGALURU
+1h 5m
+IXE
+MANGALORE
+Indigo Airlines
+6E-181
+17:25 hrs, 11 Oct
+Economy
+18:30 hrs, 11 Oct
+Kempegowda
+International Airport
+Terminal 1
+Mangalore
+International Airport
+PASSENGER NAME PNR
+E-TICKET NO. SEAT
+1. Doe Jane, Adult 7QK2AB
+7QK2AB 21A
+IMPORTANT INFORMATION
+• Web Check-in : Web Check-in is now a mandatory step for your air travel. For a hassle-free Web Check-in on Goibibo, please click`,
+    barcodes: [],
+  },
+  {
+    text: `Here
+• Check-in Time : Passenger to report 2 hours before departure. Check-in procedure and baggage drop will close 1 hour before departure.
+• Valid ID proof needed : Please carry a valid Passport and Visa (mandatory for international travel). Passport should have at least 6
+months of validity at the time of travel
+• DGCA passenger charter : Please refer to passenger charter by clicking Here
+• Beware of fraudsters : Please do not share your personal banking and security details like passwords, CVV, etc. with any third person
+or party claiming to represent Goibibo. For any query, please reach out to Goibibo on our official customer care number.
+• You have paid: INR 5,210
+• Gosafe-certified Airport Cabs : Enjoy smooth airport transfers in sanitized cabs with trained drivers. No waiting and no surge pricing!
+Book : here
+BAGGAGE INFORMATION
+Type Sector Cabin Check-in
+Adult TRV-BLR 1 Piece (Laptop or Ladies
+handbag)
+Adult BLR-IXE 1 Piece (Laptop or Ladies
+handbag)
+20 Kgs
+20 Kgs
+CANCELLATION AND DATE CHANGE CHARGES
+All charges below are per Pax and per Segment in INR
+TRV-BLR,BLR-IXE Cancellation Charges
+TRV-BLR,BLR-IXE Date Change Charges
+Type Condition Airline Goibibo
+Adult 3 days - 365 days 3000 300
+2 hrs - 3 days 3500 300
+0 hrs - 2 hrs Non-Refundable
+Type Condition Airline Goibibo
+Adult 3 days - 365 days 2500 300
+2 hrs - 3 days 3000 300
+0 hrs - 2 hrs Non-Changeable
+24x7 CUSTOMER SUPPORT
+Gibibo Support
+Airline Support
+Tel 0124-6280407
+Indigo Airlines 9910383838`,
+    barcodes: [],
+  },
+  {
+    text: `for all major operators`,
+    barcodes: [],
+  },
+];
+
+/** The same Goibibo confirmation in Android (PDFBox sorted) order: the two
+ * codes of a leg share a line ("TRV BLR"), and the passenger row ends
+ * with the seat. */
+export const GOIBIBO_CONFIRMATION_PDFBOX: DocumentPage[] = [
+  {
+    text: `Booking Id: GOFLD0000000000000000000
+Confirmed
+SUN, 11 OCT '20 THIRUVANATHAPURAM TO MANGALORE 8h 30m
+TRV BLR
+1h 20m
+Indigo Airlines THIRUVANATHAPURAM BENGALURU
+6E-6273
+10:00 hrs, 11 Oct Economy 11:20 hrs, 11 Oct
+Trivandrum International Kempegowda 
+Airport International Airport
+Terminal 1 Terminal 1
+ 
+PASSENGER NAME PNR E-TICKET NO. SEAT
+1. Doe Jane, Adult 7QK2AB 7QK2AB 24A
+ 
+Change of Planes. 6h 5m layover in Bengaluru (BLR)
+BLR IXE
+Indigo Airlines BENGALURU 1h 5m MANGALORE
+6E-181
+17:25 hrs, 11 Oct Economy 18:30 hrs, 11 Oct
+Kempegowda Mangalore 
+International Airport International Airport
+Terminal 1
+ 
+PASSENGER NAME PNR E-TICKET NO. SEAT
+1. Doe Jane, Adult 7QK2AB 7QK2AB 21A
+ 
+IMPORTANT INFORMATION
+• Web Check-in : Web Check-in is now a mandatory step for your air travel. For a hassle-free Web Check-in on Goibibo, please click 
+Here
+• Check-in Time : Passenger to report 2 hours before departure. Check-in procedure and baggage drop will close 1 hour before departure.
+• Valid ID proof needed : Please carry a valid Passport and Visa (mandatory for international travel). Passport should have at least 6 
+months of validity at the time of travel
+• DGCA passenger charter : Please refer to passenger charter by clicking Here
+• Beware of fraudsters : Please do not share your personal banking and security details like passwords, CVV, etc. with any third person 
+or party claiming to represent Goibibo. For any query, please reach out to Goibibo on our official customer care number.
+• You have paid: INR 5,210 
+• Gosafe-certified Airport Cabs : Enjoy smooth airport transfers in sanitized cabs with trained drivers. No waiting and no surge pricing! 
+Book : here
+BAGGAGE INFORMATION
+Type Sector Cabin Check-in
+Adult TRV-BLR 1 Piece (Laptop or Ladies 20 Kgs
+handbag)
+Adult BLR-IXE 1 Piece (Laptop or Ladies 20 Kgs
+handbag)
+CANCELLATION AND DATE CHANGE CHARGES
+All charges below are per Pax and per Segment in INR
+TRV-BLR,BLR-IXE Cancellation Charges TRV-BLR,BLR-IXE Date Change Charges
+Type Condition Airline Goibibo Type Condition Airline Goibibo
+Adult 3 days - 365 days 3000 300 Adult 3 days - 365 days 2500 300
+2 hrs - 3 days 3500 300 2 hrs - 3 days 3000 300
+0 hrs - 2 hrs Non-Refundable 0 hrs - 2 hrs Non-Changeable
+24x7 CUSTOMER SUPPORT
+Gibibo Support Airline Support
+Tel 0124-6280407 Indigo Airlines 9910383838
+for all major operators`,
+    barcodes: [],
+  },
+];

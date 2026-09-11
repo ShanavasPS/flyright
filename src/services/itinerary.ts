@@ -124,8 +124,11 @@ const NOT_A_CLOCK = /(DURATION|TRAVEL TIME|FLIGHT TIME|FLYING TIME|TOTAL|LAYOVER
  * Check-in at  Departure", as Emirates prints it): the first clock after
  * the flight number says when to be at the airport, not when the plane
  * leaves. Amadeus puts "Last check-in" after the arrival, where the parser
- * never looks. */
-const CHECK_IN_FIRST = /check-?in(?:\s+at)?\b[^\n]*\bdeparture\b/i;
+ * never looks. It is a header row, on one line, above the flight number —
+ * tested on the text before the anchor only, so the small print that
+ * follows a leg ("Check-in … will close 1 hour before departure") can't
+ * swallow a departure clock. */
+const CHECK_IN_FIRST = /\bflight\b[^\n]*\bcheck-?in(?:\s+at)?\b[^\n]*\bdeparture\b/i;
 
 const WINDOW_BACK = 320;
 const WINDOW_FORWARD = 420;
@@ -178,20 +181,24 @@ function weekdayNumber(name: string | undefined): number | null {
 const DATE_PATTERNS: {
   re: RegExp;
   build: (m: RegExpExecArray, today: Date) => string | null;
+  /** The pattern carries no year; build guessed the nearest one. */
+  yearless?: true;
 }[] = [
-  // 25Jul2026 · 25 Jul 2026 · 25-Jul-26 · 4 October 2025 (optional weekday
-  // before). A two-digit "year" that a month name follows is the next
-  // column's day ("06 Jun 06 Jun 07 Jun" is a summary strip of three dates,
-  // not June 2006) and is left to the yearless pattern below.
+  // 25Jul2026 · 25 Jul 2026 · 25-Jul-26 · 4 October 2025 · 11 OCT '20
+  // (optional weekday before). A two-digit "year" that a month name follows
+  // is the next column's day ("06 Jun 06 Jun 07 Jun" is a summary strip of
+  // three dates, not June 2006) and is left to the yearless pattern below —
+  // unless an apostrophe marks it as a year, which nothing else has.
   {
     re: new RegExp(
-      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|\\d{2}(?!\\s?[A-Za-z]{3}))(?![\\d:])`,
+      `(?:\\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\\.?,?\\s+)?\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\.?[\\s,-]{0,2}(\\d{4}|['’]\\d{2}|\\d{2}(?!\\s?[A-Za-z]{3}))(?![\\d:])`,
       'g',
     ),
     build: (m) => {
       const month = monthNumber(m[3]);
       if (!month) return null;
-      const year = m[4].length === 4 ? Number(m[4]) : 2000 + Number(m[4]);
+      const digits = m[4].replace(/\D/g, '');
+      const year = digits.length === 4 ? Number(digits) : 2000 + Number(digits);
       return isoDate(year, month, Number(m[2]));
     },
   },
@@ -227,6 +234,7 @@ const DATE_PATTERNS: {
   // Wed, October 1 · Sat, Oct 4 · WED, OCT 1 — a weekday, but no year
   {
     re: /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?,?\s+([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?![\s,]*\d{4})/gi,
+    yearless: true,
     build: (m, today) => {
       const month = monthNumber(m[2]);
       if (!month) return null;
@@ -235,7 +243,8 @@ const DATE_PATTERNS: {
   },
   // Sat 4 Oct · Sat, 4 October
   {
-    re: /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?,?\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\b(?![\s,-]*\d{2,4})/gi,
+    re: /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?,?\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\b(?![\s,-]*['’]?\d{2,4})/gi,
+    yearless: true,
     build: (m, today) => {
       const month = monthNumber(m[3]);
       if (!month) return null;
@@ -250,9 +259,10 @@ const DATE_PATTERNS: {
   // next date of a strip ("06 Jun 07 Jun"), whose day is not one either.
   {
     re: new RegExp(
-      `\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\b(?![\\s,-]{0,2}(?:\\d{4}(?![\\d:])|\\d{2}(?![\\d:]|\\s?[A-Za-z]{3})))`,
+      `\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s-]?(${MONTH_NAME})\\b(?![\\s,-]{0,2}(?:\\d{4}(?![\\d:])|['’]\\d{2}|\\d{2}(?![\\d:]|\\s?[A-Za-z]{3})))`,
       'g',
     ),
+    yearless: true,
     build: (m, today) => {
       const month = monthNumber(m[2]);
       if (!month) return null;
@@ -262,8 +272,8 @@ const DATE_PATTERNS: {
 ];
 
 function findDates(text: string, today: Date): Mark<string>[] {
-  const marks: Mark<string>[] = [];
-  for (const { re, build } of DATE_PATTERNS) {
+  const marks: (Mark<string> & { yearless?: true })[] = [];
+  for (const { re, build, yearless } of DATE_PATTERNS) {
     re.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text))) {
@@ -272,10 +282,19 @@ function findDates(text: string, today: Date): Mark<string>[] {
       // Overlapping hits from a looser pattern lose to the earlier, tighter one.
       if (marks.some((k) => m!.index < k.end && m!.index + m![0].length > k.index)) continue;
       if (NOT_A_TRAVEL_DATE.test(text.slice(Math.max(0, m.index - 24), m.index))) continue;
-      marks.push({ index: m.index, end: m.index + m[0].length, value });
+      marks.push({ index: m.index, end: m.index + m[0].length, value, ...(yearless ? { yearless } : {}) });
     }
   }
-  return marks.sort((a, b) => a.index - b.index);
+  // A document that prints the year once, in its heading ("SUN, 11 OCT
+  // '20"), and then only "11 Oct" beside every clock: the printed year
+  // wins over the nearest-year guess for each day it names.
+  const printed = new Map<string, string>();
+  for (const k of marks) if (!k.yearless) printed.set(k.value.slice(5), k.value);
+  for (const k of marks) {
+    const dated = k.yearless ? printed.get(k.value.slice(5)) : undefined;
+    if (dated) k.value = dated;
+  }
+  return marks.sort((a, b) => a.index - b.index).map(({ index, end, value }) => ({ index, end, value }));
 }
 
 const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s?([AaPp])\.?[Mm]\.?(?![A-Za-z])|\b(\d{1,2}):(\d{2})\b(?!\s?[AaPp]\.?[Mm])/g;
@@ -305,7 +324,8 @@ function findTimes(text: string): Mark<string>[] {
   return marks;
 }
 
-const DESIGNATOR_RE = /\b([A-Z]{2}|[A-Z]\d|\d[A-Z])( ?)(\d{1,4})\b/g;
+/** "QR517", "QR 517", and the hyphenated "6E-6273" Indian OTAs print. */
+const DESIGNATOR_RE = /\b([A-Z]{2}|[A-Z]\d|\d[A-Z])( ?|-)(\d{1,4})\b/g;
 
 interface Anchor {
   index: number;
@@ -409,6 +429,15 @@ function airportsIn(window: string): string[] {
   }
   if (distinct(parenthesized).length >= 2) return distinct(parenthesized);
 
+  // A code printed big over its city, the way an OTA confirmation heads
+  // each leg ("TRV" / "THIRUVANATHAPURAM" … "BLR" / "BENGALURU"): the code
+  // is a whole line on its own, or the two codes of a leg share one line.
+  const lines: string[] = [];
+  for (const m of window.matchAll(/(?:^|\n)[ \t]*([A-Z]{3})(?:[ \t]+([A-Z]{3}))?[ \t]*(?=\n|$)/g)) {
+    for (const code of [m[1], m[2]]) if (code && isValidIata(code) && large(code)) lines.push(code);
+  }
+  if (distinct(lines).length >= 2) return distinct(lines);
+
   const pairs: string[] = [];
   for (const m of window.matchAll(/\b([A-Z]{3})\s*(?:-|–|—|→|>|\/|to)\s*([A-Z]{3})\b/g)) {
     if (isValidIata(m[1]) && isValidIata(m[2]) && large(m[1]) && large(m[2])) pairs.push(m[1], m[2]);
@@ -477,7 +506,7 @@ function distinct<T>(items: T[]): T[] {
 
 const PNR_LABEL_RE =
   /(?:booking\s+(?:ref(?:erence)?|code|number)|confirmation\s+(?:#|no\.?|number|code)?|reservation\s+(?:code|number)|record\s+locator|PNR|locator|reference)\s*:?\s*#?/gi;
-const PNR_REACH = 48;
+const PNR_REACH = 72;
 
 /** The booking reference: the first record-locator-shaped token after a
  * label. Sorted layouts can drop another column between the two
@@ -524,6 +553,9 @@ const SEAT_RE = /\bseat\s*(?:no\.?|number|assignment)?\s*:?\s*(\d{1,3}\s?[A-K])\
  * ("Seat  Status  Arrival\n29K  Confirmed"), one row of other columns
  * allowed between. */
 const SEAT_COLUMN_RE = /\bseat\b[^\n]*\n(?:[^\n]*\n)?[ \t]*(\d{1,3}[A-K])\b/i;
+/** The same column read off a sorted row, where the seat is the row's last
+ * token ("1. Doe Jane, Adult EF2QKI EF2QKI 24A"). */
+const SEAT_ROW_END_RE = /\bseat\b[^\n]*\n(?:[^\n]*\n)?[^\n]*\s(\d{1,3}[A-K])[ \t]*(?=\n|$)/i;
 
 function normalizeSeat(seat: string | null | undefined): string | null {
   if (!seat) return null;
@@ -596,14 +628,14 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     const tail = text.slice(anchor.end, to);
 
     let clocks = times.filter((t) => t.index >= anchor.end && t.end <= to);
-    if (CHECK_IN_FIRST.test(window)) clocks = clocks.slice(1);
+    if (CHECK_IN_FIRST.test(text.slice(from, anchor.index))) clocks = clocks.slice(1);
     const depTime = clocks[0]?.value ?? null;
     const arrTime = clocks[1]?.value ?? null;
     if (!arrivalDate) arrivalDate = depTime && arrTime && arrTime < depTime ? nextDay(departure.value) : departure.value;
     consumedEnd = Math.max(departure.end, arrival?.end ?? 0, clocks[1]?.end ?? clocks[0]?.end ?? 0);
 
     const airports = findAirports(window);
-    const seatMatch = SEAT_RE.exec(tail) ?? SEAT_COLUMN_RE.exec(tail);
+    const seatMatch = SEAT_RE.exec(tail) ?? SEAT_COLUMN_RE.exec(tail) ?? SEAT_ROW_END_RE.exec(tail);
     const operatedBy = findOperator(tail, anchor.flight.match(/^([A-Z]{2}|[A-Z]\d|\d[A-Z])/)?.[1] ?? null);
 
     segments.push({

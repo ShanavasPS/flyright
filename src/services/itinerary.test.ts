@@ -10,6 +10,8 @@ import {
   EMIRATES_RECEIPT_PDFKIT,
   ETIHAD_RECEIPT_PDFBOX,
   ETIHAD_RECEIPT_PDFKIT,
+  GOIBIBO_CONFIRMATION_PDFBOX,
+  GOIBIBO_CONFIRMATION_PDFKIT,
   FINNAIR_RECEIPT,
   DELTA_CONFIRMATION_PDFKIT,
   QATAR_RECEIPT_PDFBOX,
@@ -290,6 +292,45 @@ describe('extractItinerary — Etihad e-ticket receipt', () => {
     expect(segments.map((s) => s.seat)).toEqual([null, '21H', '9F']);
     expect(segments.find((s) => s.flight === 'EY42')!.arrivalDate).toBe('2026-06-07');
     expect(segments.every((s) => s.pnr === '3ZQTPV')).toBe(true);
+  });
+});
+
+describe('extractItinerary — Goibibo booking confirmation', () => {
+  // An Indian OTA's confirmation: no barcode, hyphenated IndiGo flight
+  // numbers ("6E-6273"), the year printed only in the heading ("SUN, 11
+  // OCT '20") with every clock dated "11 Oct" alone, and each leg headed by
+  // its airport codes in big type over the city names — codes the page
+  // never parenthesises or pairs with an arrow.
+  const LEGS = [
+    { flight: '6E6273', date: '2020-10-11', from: 'TRV', to: 'BLR', dep: '10:00', arr: '11:20' },
+    { flight: '6E181', date: '2020-10-11', from: 'BLR', to: 'IXE', dep: '17:25', arr: '18:30' },
+  ];
+
+  it.each([
+    ['PDFKit order', GOIBIBO_CONFIRMATION_PDFKIT],
+    ['PDFBox order', GOIBIBO_CONFIRMATION_PDFBOX],
+  ])('finds both legs, in the printed year, in %s', (_label, pages) => {
+    // Read six years on: the nearest 11 October is a Sunday too, so only
+    // the heading's '20 tells the legs apart from a trip this autumn.
+    expect(summary(pages)).toEqual(LEGS);
+  });
+
+  it.each([
+    ['PDFKit order', GOIBIBO_CONFIRMATION_PDFKIT],
+    ['PDFBox order', GOIBIBO_CONFIRMATION_PDFBOX],
+  ])('reads the PNR off its column and a seat per leg in %s', (_label, pages) => {
+    const { segments, boardingPassBarcodes, ticketNumbers } = extractItinerary(pages, TODAY);
+    expect(boardingPassBarcodes).toBe(0);
+    expect(ticketNumbers).toEqual([]);
+    expect(segments.map((s) => s.seat)).toEqual(['24A', '21A']);
+    expect(segments.every((s) => s.pnr === '7QK2AB')).toBe(true);
+    expect(segments.every((s) => s.arrivalDate === '2020-10-11')).toBe(true);
+  });
+
+  it('keeps the hyphen out of the flight number and the layover out of the clocks', () => {
+    const [first] = extractSegmentsFromText(GOIBIBO_CONFIRMATION_PDFKIT[0].text, TODAY);
+    expect(first.flight).toBe('6E6273');
+    expect([first.depTime, first.arrTime]).toEqual(['10:00', '11:20']);
   });
 });
 
