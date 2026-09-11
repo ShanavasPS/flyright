@@ -33,6 +33,12 @@ export default {
         const payload = JSON.stringify({
           token,
           from: message.from,
+          // The visible From and the receiver's SPF/DKIM/DMARC verdict travel
+          // with the body: Convex only files a message as FlyRight's own
+          // reply when the inbox's domain is authenticated, so a forged From
+          // (or a stolen thread token) can't impersonate support in the app.
+          fromHeader: decodeWords(message.headers.get('from') || ''),
+          authResults: message.headers.get('authentication-results') || '',
           subject: decodeWords(message.headers.get('subject') || ''),
           text,
           emailId: message.headers.get('message-id'),

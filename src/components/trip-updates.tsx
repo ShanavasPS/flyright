@@ -29,6 +29,7 @@ export function UpdatesCard({
   updates,
   now,
   onReact,
+  onReport,
   onRemove,
   action,
   emptyText,
@@ -39,6 +40,8 @@ export function UpdatesCard({
   now: Date;
   /** A follower's heart. Absent on the owner's own view and on the web. */
   onReact?: (updateId: string) => void;
+  /** Someone else's update: long press offers to report it. */
+  onReport?: (updateId: string) => void;
   /** The owner's take-down; its presence makes this the owner's view. */
   onRemove?: (updateId: string) => void;
   /** The owner's "Share an update" row, above the list. */
@@ -63,7 +66,7 @@ export function UpdatesCard({
       {updates.map((update, i) => (
         <Fragment key={update.updateId}>
           {(i > 0 || action) && <View style={[styles.divider, { backgroundColor: theme.hairline }]} />}
-          <UpdateRow update={update} now={now} onReact={onReact} onRemove={onRemove} />
+          <UpdateRow update={update} now={now} onReact={onReact} onReport={onReport} onRemove={onRemove} />
         </Fragment>
       ))}
     </Card>
@@ -74,11 +77,14 @@ function UpdateRow({
   update,
   now,
   onReact,
+  onReport,
   onRemove,
 }: {
   update: TripUpdate | OwnUpdate;
   now: Date;
   onReact?: (updateId: string) => void;
+  /** Someone else's update: long press offers to report it. */
+  onReport?: (updateId: string) => void;
   onRemove?: (updateId: string) => void;
 }) {
   const theme = useTheme();
@@ -86,22 +92,29 @@ function UpdateRow({
   const meta = [context, agoLabel(update.createdAt, now)].filter(Boolean).join(' · ');
   const own = 'reactedBy' in update ? update : null;
 
-  const confirmRemove = () => {
-    if (!onRemove) return;
-    Alert.alert('Take this update down?', 'The people following you will no longer see it.', [
-      { text: 'Keep', style: 'cancel' },
-      { text: 'Take down', style: 'destructive', onPress: () => onRemove(update.updateId) },
-    ]);
+  const onLongPress = () => {
+    if (onRemove) {
+      Alert.alert('Take this update down?', 'The people following you will no longer see it.', [
+        { text: 'Keep', style: 'cancel' },
+        { text: 'Take down', style: 'destructive', onPress: () => onRemove(update.updateId) },
+      ]);
+    } else if (onReport) {
+      Alert.alert('Report this update?', 'Tell us what is wrong with it. The person who posted it will not know.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Report', style: 'destructive', onPress: () => onReport(update.updateId) },
+      ]);
+    }
   };
+  const longPressable = !!onRemove || !!onReport;
 
   return (
     <Pressable
       accessibilityLabel={`${captionOf(update)}, ${meta}`}
-      accessibilityHint={onRemove ? 'Long press to take down' : undefined}
-      disabled={!onRemove}
-      onLongPress={confirmRemove}
+      accessibilityHint={onRemove ? 'Long press to take down' : onReport ? 'Long press to report' : undefined}
+      disabled={!longPressable}
+      onLongPress={onLongPress}
       delayLongPress={400}
-      style={({ pressed }) => [styles.row, pressed && onRemove && styles.pressed]}>
+      style={({ pressed }) => [styles.row, pressed && longPressable && styles.pressed]}>
       {update.photoUrl && (
         <Image
           source={{ uri: update.photoUrl }}

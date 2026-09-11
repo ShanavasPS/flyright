@@ -11,6 +11,7 @@ import {
   type MutationCtx,
 } from './_generated/server';
 import { sendFollowerPush } from './onesignal';
+import { bareAddress, isSupportReply } from './supportShared';
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -54,7 +55,7 @@ type SendResult = { ok: boolean; emailId: string | null; error: string | null };
 
 /** One Cloudflare Email Sending call. Sends to the verified inbox are free;
  * anything else needs the paid plan (see SUPPORT_RELAY above). */
-async function sendEmail(input: {
+export async function sendEmail(input: {
   to: string;
   replyTo: string;
   subject: string;
@@ -117,8 +118,12 @@ function subjectFor(body: string) {
  * mail client's address normalization. */
 function newToken() {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  // 24 chars × log2(36) ≈ 124 bits from the platform CSPRNG — the token is
+  // the only thing standing between a stranger and a traveler's thread.
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
   let out = '';
-  for (let i = 0; i < 20; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (const b of bytes) out += alphabet[b % alphabet.length];
   return out;
 }
 
@@ -436,7 +441,12 @@ export function stripQuoted(text: string): string {
 export const inbound = internalMutation({
   args: {
     token: v.string(),
+    /** Envelope sender (SMTP MAIL FROM). */
     from: v.string(),
+    /** The visible `From:` header, as the reader would see it. */
+    fromHeader: v.optional(v.union(v.string(), v.null())),
+    /** The receiver's `Authentication-Results:` header (SPF/DKIM/DMARC). */
+    authResults: v.optional(v.union(v.string(), v.null())),
     subject: v.string(),
     text: v.string(),
     emailId: v.union(v.string(), v.null()),
@@ -459,11 +469,34 @@ export const inbound = internalMutation({
     }
 
     const inbox = (process.env.SUPPORT_INBOX ?? '').toLowerCase();
-    const sender = args.from.toLowerCase().match(/[^\s<>"]+@[^\s<>"]+/)?.[0] ?? '';
+    const sender = bareAddress(args.from);
     // Our own notification/relay emails can echo back through the plus-address
     // — they're already in the thread.
     if (sender === supportFrom().toLowerCase()) return 'own-send' as const;
-    const fromSupport = sender === inbox;
+    // A From address is forgeable, and whoever holds the thread token can
+    // write to the plus-address. Only an authenticated message from the
+    // inbox (aligned DKIM/DMARC per the receiver) becomes FlyRight's reply;
+    // everything else is filed as the traveler's side, never pushed as ours.
+    // TODO(remove once the Worker build with fromHeader/authResults is
+    // deployed): a payload without either field comes from the previous
+    // Worker, which trusted the envelope alone. Keep that behaviour so a
+    // Convex deploy ahead of the Worker deploy doesn't drop real replies.
+    const legacyWorker = args.fromHeader === undefined && args.authResults === undefined;
+    if (legacyWorker && sender === inbox) {
+      console.warn('[support-inbound] legacy Worker payload — sender not authenticated; redeploy workers/support-mail');
+    }
+    const fromSupport = legacyWorker
+      ? sender === inbox
+      : isSupportReply({
+          envelopeFrom: args.from,
+          headerFrom: args.fromHeader,
+          authResults: args.authResults,
+          inbox,
+        });
+    if (sender === inbox && !fromSupport) {
+      console.warn(`[support-inbound] unauthenticated mail claiming to be the inbox on ${t._id}`);
+      return 'unverified-sender' as const;
+    }
     const body = stripQuoted(args.text).slice(0, MAX_LENGTH);
     if (!body) return 'empty' as const;
 

@@ -107,6 +107,7 @@ export function PersonTravel({
   onOpenWorld,
   onOpenTrip,
   onReact,
+  onReport,
   badgeFor,
   dimFor,
   afterUpcoming,
@@ -122,6 +123,8 @@ export function PersonTravel({
   onOpenTrip?: (journeyId: string) => void;
   /** A follower's heart on an update; absent on the owner's own preview. */
   onReact?: (updateId: string) => void;
+  /** Long-press on one of their updates → the report sheet. */
+  onReport?: (updateId: string) => void;
   badgeFor?: (journeyId: string) => React.ReactNode;
   /** Rows to fade — the preview's "this member isn't shown this one". */
   dimFor?: (journeyId: string) => boolean;
@@ -280,7 +283,7 @@ export function PersonTravel({
           voice follows; or, the morning after, in place of the pass that
           has already let the trip go. */}
       {p.updates && p.updates.length > 0 && (
-        <UpdatesCard eyebrow={`From ${name}`} updates={p.updates} now={now} onReact={onReact} />
+        <UpdatesCard eyebrow={`From ${name}`} updates={p.updates} now={now} onReact={onReact} onReport={onReport} />
       )}
 
       <Section label="Upcoming" />

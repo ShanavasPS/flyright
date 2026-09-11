@@ -12,6 +12,7 @@
  * FlyRightLiveActivity.swift — change them together. */
 
 import * as Application from 'expo-application';
+import { getRandomValues } from 'expo-crypto';
 import { Platform } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
 import Storage from 'expo-sqlite/kv-store';
@@ -86,12 +87,23 @@ function contentState(content: LiveContent) {
   };
 }
 
+/** 128 bits from the platform CSPRNG, base36. The id is the only credential
+ * the update proxy (/api/live-activity) sees, so it must not be predictable
+ * — Hermes's Math.random is a plain xorshift. A dev client built before
+ * expo-crypto was linked falls back rather than losing the lock screen. */
+function randomSuffix(): string {
+  try {
+    const bytes = getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('');
+  } catch {
+    return `${Math.random().toString(36).slice(2, 12)}${Math.random().toString(36).slice(2, 12)}`;
+  }
+}
+
 /** Start (or no-op if already started) the journey's Live Activity. */
 export function startTravelActivity(journey: TravelJourney, content: LiveContent): void {
   if (!supported() || getActivityId(journey.id)) return;
-  const activityId = `${journey.id}~${Math.random().toString(36).slice(2, 10)}${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
+  const activityId = `${journey.id}~${randomSuffix()}`;
   OneSignal.LiveActivities.startDefault(
     activityId,
     // Route and flight designator are immutable for the activity's lifetime,

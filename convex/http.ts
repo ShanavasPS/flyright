@@ -142,7 +142,15 @@ http.route({
     if (request.headers.get('authorization') !== `Bearer ${secret}`) {
       return new Response('unauthorized', { status: 401 });
     }
-    let body: { token?: string; from?: string; subject?: string; text?: string; emailId?: string | null };
+    let body: {
+      token?: string;
+      from?: string;
+      fromHeader?: string | null;
+      authResults?: string | null;
+      subject?: string;
+      text?: string;
+      emailId?: string | null;
+    };
     try {
       body = await request.json();
     } catch {
@@ -154,6 +162,10 @@ http.route({
     const outcome = await ctx.runMutation(internal.support.inbound, {
       token: body.token,
       from: body.from,
+      // Absent (older Worker) stays undefined; present-but-empty becomes null.
+      fromHeader: body.fromHeader === undefined ? undefined : typeof body.fromHeader === 'string' ? body.fromHeader : null,
+      authResults:
+        body.authResults === undefined ? undefined : typeof body.authResults === 'string' ? body.authResults : null,
       subject: typeof body.subject === 'string' ? body.subject : '',
       text: typeof body.text === 'string' ? body.text : '',
       emailId: typeof body.emailId === 'string' ? body.emailId : null,

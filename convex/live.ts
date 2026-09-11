@@ -17,6 +17,7 @@ import {
 import { personCard } from './circle';
 import { onwardLegs } from './itinerary';
 import { preferredSession, stageIndex, NOTIFY_STAGES, toPublicSession, tripIsOver } from './liveShared';
+import { blockedBetween } from './safetyHelpers';
 import { latestUpdate, updatesFor } from './updates';
 
 /** Travel-day live sessions: the traveler's device is the only writer of
@@ -181,6 +182,7 @@ export const follow = mutation({
       .unique();
     if (!session || session.status !== 'active') throw new Error('Link expired');
     if (session.userId === identity.subject) throw new Error('Own session');
+    if (await blockedBetween(ctx, session.userId, identity.subject)) throw new Error('Link expired');
 
     // A close-circle trip's link doesn't follow the trip: it offers to
     // follow the traveler instead (their circle invite), and only close
@@ -266,6 +268,8 @@ export const byToken = query({
       .unique();
     if (!session || session.status !== 'active') return { gone: true as const };
     const identity = await ctx.auth.getUserIdentity();
+    // Blocked either way: the link is expired as far as this viewer is told.
+    if (identity && (await blockedBetween(ctx, session.userId, identity.subject))) return { gone: true as const };
     // A close-circle trip shows outsiders the traveler, never the flight:
     // the page becomes an invitation to follow them (see live.follow).
     const journey = await journeyForKey(ctx, session.userId, session.naturalKey);

@@ -264,6 +264,17 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* Report a person or one of their updates: reason, a line,
+                send — and an offer to block on the way out. Same card modal
+                as the composer; the details field wants the keyboard room. */}
+              <Stack.Screen
+                name="report"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
               {/* A newer FlyRight on the store: the Update button and every
                 release note between this build and it. A card modal, not a
                 sheet — the notes scroll, and a ScrollView inside a formSheet

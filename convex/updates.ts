@@ -5,6 +5,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/s
 import { maySee } from './audience';
 import { activeSessionForKey, journeyForKey, travelerName } from './liveHelpers';
 import { stageIndex } from './liveShared';
+import { blockedBetween } from './safetyHelpers';
 import { placeFor, UPDATE_TEXT_MAX, updateWindowOpen } from './updatesShared';
 
 /** Trip updates: what a traveller shares from inside a trip, for the people
@@ -201,6 +202,7 @@ export const react = mutation({
 });
 
 async function maySeeUpdate(ctx: MutationCtx, row: Doc<'tripUpdates'>, viewerId: string) {
+  if (await blockedBetween(ctx, row.userId, viewerId)) return false;
   const journey = await journeyForKey(ctx, row.userId, row.journeyKey);
   if (!journey) return false;
   const seat = await ctx.db

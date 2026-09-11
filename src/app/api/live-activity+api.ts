@@ -7,11 +7,24 @@
  * ONESIGNAL_APP_ID — falls back to the public EXPO_PUBLIC_ONESIGNAL_APP_ID)
  * in the hosting environment.
  *
- * Deliberately unauthenticated like /api/flight-status: activity ids carry a
- * random suffix minted on-device (see services/live-activity.ts), so they
- * aren't guessable from a flight number. The travel-day sharing backend
- * (phase 3) moves this behind authenticated Convex functions.
+ * No account stands behind this call — signed-out travelers get a lock
+ * screen too — so the activity id is the credential: a 128-bit value minted
+ * on-device from the platform CSPRNG (see services/live-activity.ts), never
+ * shown anywhere. What the route adds is a refusal to be a free relay for
+ * our OneSignal key: every call is metered in Convex per activity (lifetime,
+ * count, pacing) and per address per day (convex/liveActivityMeter.ts), and
+ * the content is bounded (only the widget's keys, short strings). Metering
+ * outages fail open like the lookup gate — a dead lock screen is a worse
+ * failure than an unmetered minute.
  */
+
+import { api } from '../../../convex/_generated/api';
+import { clientAddressHash, convex } from '@/server/lookup-gate';
+
+/** Widget strings are one line each; anything longer is not a flight status. */
+const MAX_STRING = 120;
+const MAX_ACTIVITY_ID = 96;
+const MAX_BODY_BYTES = 4096;
 
 /** Only the keys the widget renders may pass through. */
 const STATE_KEYS = [
@@ -44,21 +57,48 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await request.json().catch(() => null);
+  const raw = await request.text().catch(() => '');
+  if (raw.length > MAX_BODY_BYTES) return Response.json({ error: 'body too large' }, { status: 413 });
+  let body: { activityId?: unknown; event?: unknown; contentState?: Record<string, unknown> } | null = null;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    body = null;
+  }
   const activityId = typeof body?.activityId === 'string' ? body.activityId : '';
   const event = body?.event;
-  if (!activityId || (event !== 'update' && event !== 'end')) {
+  if (
+    !activityId ||
+    activityId.length > MAX_ACTIVITY_ID ||
+    !/^[A-Za-z0-9~_-]+$/.test(activityId) ||
+    (event !== 'update' && event !== 'end')
+  ) {
     return Response.json({ error: 'activityId and event (update|end) are required' }, { status: 400 });
   }
 
   const eventUpdates: Record<string, unknown> = {};
   for (const key of STATE_KEYS) {
-    if (body?.contentState?.[key] !== undefined) eventUpdates[key] = body.contentState[key];
+    const value = body?.contentState?.[key];
+    if (value === undefined) continue;
+    if (typeof value === 'string') {
+      if (value.length > MAX_STRING) return Response.json({ error: `${key} too long` }, { status: 400 });
+      eventUpdates[key] = value;
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      eventUpdates[key] = value;
+    } else {
+      return Response.json({ error: `${key} must be a string or number` }, { status: 400 });
+    }
   }
   if (Object.keys(eventUpdates).length === 0) {
     // Ends need the final state too — empty content is what the widget
     // renders while the activity lingers dimmed after ending.
     return Response.json({ error: 'contentState is required' }, { status: 400 });
+  }
+
+  const verdict = await meter(request, activityId, event);
+  if (!verdict.allowed) {
+    console.warn('[live-activity] refused', verdict.reason);
+    return Response.json({ error: 'rate limited', reason: verdict.reason }, { status: 429 });
   }
 
   const upstream = await fetch(
@@ -92,4 +132,31 @@ export async function POST(request: Request) {
     return Response.json({ error: 'upstream error' }, { status: 502 });
   }
   return Response.json({ ok: true });
+}
+
+/** One Convex round trip that charges the activity and the address. Fails
+ * open when metering is not configured or unreachable (dev without a
+ * deployment, an outage) — the lookup gate makes the same call. */
+async function meter(
+  request: Request,
+  activityId: string,
+  event: 'update' | 'end',
+): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  const secret = process.env.LOOKUP_QUOTA_SECRET;
+  const client = convex();
+  if (!secret || !client) {
+    if (process.env.NODE_ENV === 'production') console.warn('[live-activity] metering not configured');
+    return { allowed: true };
+  }
+  try {
+    return await client.mutation(api.liveActivityMeter.permit, {
+      secret,
+      activityId,
+      address: await clientAddressHash(request),
+      event,
+    });
+  } catch (error) {
+    console.warn('[live-activity] metering unreachable, proceeding unmetered', error);
+    return { allowed: true };
+  }
 }

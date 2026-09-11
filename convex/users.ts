@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
-import { internalMutation, mutation, type MutationCtx } from './_generated/server';
+import { internalMutation, mutation, query, type MutationCtx } from './_generated/server';
 import { firstNameKey, searchKey } from './circleShared';
 
 /** One writer for the profile mirror, so the webhook and the client's own
@@ -136,6 +136,37 @@ export const purge = internalMutation({
       .unique();
     if (entitlement) await ctx.db.delete(entitlement._id);
 
+    // Support conversations: the thread row carries their reply address and
+    // every message they wrote. The human inbox keeps its own copy of the
+    // emails; nothing here is needed to answer them, and after deletion
+    // there is no app to answer into.
+    const threads = await ctx.db
+      .query('supportThreads')
+      .withIndex('by_user_last', (q) => q.eq('userId', userId))
+      .collect();
+    for (const thread of threads) {
+      const messages = await ctx.db
+        .query('supportMessages')
+        .withIndex('by_thread', (q) => q.eq('threadId', thread._id))
+        .collect();
+      for (const m of messages) await ctx.db.delete(m._id);
+      await ctx.db.delete(thread._id);
+    }
+
+    // Badge bookkeeping and the daily lookup meter (keys `user:<id>:<day>`).
+    const seen = await ctx.db
+      .query('peopleSeen')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const row of seen) await ctx.db.delete(row._id);
+    for (const prefix of [`user:${userId}:`, `search:${userId}:`]) {
+      const quota = await ctx.db
+        .query('lookupQuota')
+        .withIndex('by_key', (q) => q.gte('key', prefix).lt('key', `${prefix.slice(0, -1)};`))
+        .collect();
+      for (const row of quota) await ctx.db.delete(row._id);
+    }
+
     return rows.length;
   },
 });
@@ -203,5 +234,34 @@ export const backfillSearchFirst = internalMutation({
       patched++;
     }
     return { patched };
+  },
+});
+
+/** Settings → "Let people find me by email". Signed-in only; the row is
+ * created by the profile sync, so a missing row simply reads as the default. */
+export const myDiscoverability = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_user', (q) => q.eq('userId', identity.subject))
+      .unique();
+    return { byEmail: profile?.discoverableByEmail ?? true };
+  },
+});
+
+export const setDiscoverableByEmail = mutation({
+  args: { byEmail: v.boolean() },
+  handler: async (ctx, { byEmail }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_user', (q) => q.eq('userId', identity.subject))
+      .unique();
+    if (!profile) throw new Error('No profile yet');
+    await ctx.db.patch(profile._id, { discoverableByEmail: byEmail });
   },
 });

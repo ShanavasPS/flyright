@@ -167,7 +167,8 @@
         }
       ],
       "./plugins/with-pods-uuid-fix.js",
-      "./plugins/with-android-theme.js"
+      "./plugins/with-android-theme.js",
+      "./plugins/with-android-no-backup.js"
     ],
     "experiments": {
       "typedRoutes": true,

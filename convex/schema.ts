@@ -276,6 +276,11 @@ export default defineSchema({
     searchName: v.optional(v.union(v.string(), v.null())),
     /** The first word of searchName — see circleShared.firstNameKey. */
     searchFirst: v.optional(v.union(v.string(), v.null())),
+    /** Whether "add someone" may find this person by their email address
+     * (Settings → "Let people find me by email"). Absent = yes. A name
+     * search is unaffected: a first name is what family types, and it
+     * confirms nothing about an address. */
+    discoverableByEmail: v.optional(v.boolean()),
   })
     .index('by_user', ['userId'])
     .index('by_email', ['email'])
@@ -310,6 +315,36 @@ export default defineSchema({
     .index('by_to_status', ['toUserId', 'status'])
     .index('by_from_status', ['fromUserId', 'status'])
     .index('by_pair', ['fromUserId', 'toUserId']),
+
+  /** One person shutting another out, entirely: no circle either way, no
+   * requests, no search hits, no share page, no updates — and the blocked
+   * person is never told. The row outlives every other relation between
+   * the two (severed on insert) and is the first thing `join` checks. */
+  blocks: defineTable({
+    blockerId: v.string(),
+    blockedId: v.string(),
+    createdAt: v.string(),
+  })
+    .index('by_blocker_blocked', ['blockerId', 'blockedId'])
+    .index('by_blocked', ['blockedId']),
+
+  /** A traveler flagging a person or one of their trip updates. Filed here
+   * and mailed to the support inbox (safety.ts); `status` is for the humans
+   * working the queue. `snapshot` keeps what was reported as it stood, since
+   * the author can take an update down before anyone looks. */
+  reports: defineTable({
+    reporterId: v.string(),
+    targetUserId: v.string(),
+    updateId: v.union(v.id('tripUpdates'), v.null()),
+    reason: v.string(),
+    details: v.string(),
+    snapshot: v.union(v.string(), v.null()),
+    status: v.union(v.literal('open'), v.literal('closed')),
+    createdAt: v.string(),
+    deliveredAt: v.union(v.string(), v.null()),
+  })
+    .index('by_reporter_created', ['reporterId', 'createdAt'])
+    .index('by_status', ['status']),
 
   /** When each side of the People tab was last on screen — the line under
    * which its rows are "seen". A follower who joined, a request that came
@@ -348,6 +383,21 @@ export default defineSchema({
     count: v.number(),
     updatedAt: v.string(),
   }).index('by_key', ['key']),
+
+  /** Abuse meter for the on-device Live Activity proxy (/api/live-activity),
+   * which has no account behind it because signed-out travelers get a lock
+   * screen too. One row per activity (`act:<activityId>`: lifetime, update
+   * count, pacing) and one per address per UTC day (`addr:<hash>:<day>`).
+   * See liveActivityMeter.ts; rows are swept two days after their last use. */
+  liveActivityMeter: defineTable({
+    key: v.string(),
+    count: v.number(),
+    /** Epoch ms of the first and latest permitted call. */
+    firstAt: v.number(),
+    lastAt: v.number(),
+  })
+    .index('by_key', ['key'])
+    .index('by_last', ['lastAt']),
 
   /** Shared cache of provider answers, keyed `<FLIGHT>:<YYYY-MM-DD>`, so the
    * same question is bought once however many callers ask it — two travellers

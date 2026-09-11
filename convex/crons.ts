@@ -14,4 +14,7 @@ crons.interval('close expired live sessions', { hours: 1 }, internal.liveInterna
 // compliance job — see provider.prune.
 crons.interval('prune cached flight facts', { hours: 6 }, internal.provider.prune, {});
 
+// The Live Activity proxy's abuse meter only needs a day of history.
+crons.interval('prune live activity meter', { hours: 12 }, internal.liveActivityMeter.prune, {});
+
 export default crons;

@@ -1,4 +1,5 @@
 import { useAuth, useUser } from '@clerk/expo';
+import { useMutation, useQuery } from 'convex/react';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
@@ -15,6 +16,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { api } from '../../convex/_generated/api';
 
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { OptionPicker } from '@/components/option-picker';
@@ -196,6 +199,42 @@ const VISIBILITY_OPTIONS: { value: TripVisibility; label: string }[] = VISIBILIT
  * Existing trips keep whatever their menu says — this is a default, not a
  * bulk switch, so nobody's followers lose a trip they already got a push
  * about. Needs the circle backend to mean anything. */
+/** Settings → "Let people find me by email": whether "add someone" matches
+ * this account by address. A name search still works; the address is the
+ * one thing a stranger could try in bulk. Signed-in only (there is no
+ * profile to find otherwise); the server holds the value. */
+function DiscoverableRow() {
+  const { isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
+  const settings = useQuery(api.users.myDiscoverability, isSignedIn ? {} : 'skip');
+  const setDiscoverable = useMutation(api.users.setDiscoverableByEmail);
+  const [pending, setPending] = useState<boolean | null>(null);
+
+  if (!CONVEX_URL || !isSignedIn || Platform.OS === 'web') return null;
+  const value = pending ?? settings?.byEmail ?? true;
+
+  const onToggle = (byEmail: boolean) => {
+    setPending(byEmail);
+    setDiscoverable({ byEmail })
+      .catch(() => {})
+      .finally(() => setPending(null));
+  };
+
+  return (
+    <>
+      <View style={styles.row}>
+        <View style={styles.rowLabel}>
+          <ThemedText>Let people find me by email</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Off: only your invite links and a search for your name reach you.
+          </ThemedText>
+        </View>
+        <ThemedSwitch testID="discoverable-toggle" value={value} disabled={settings === undefined} onValueChange={onToggle} />
+      </View>
+      <RowSeparator />
+    </>
+  );
+}
+
 function TripVisibilityRow() {
   const [visibility, setVisibility] = useState(getDefaultTripVisibility);
 
@@ -379,6 +418,7 @@ export function Settings() {
           <PushNotificationsRow />
           <TravelDayRow />
           <TripVisibilityRow />
+          <DiscoverableRow />
 
           <AppearanceRow />
 
@@ -432,6 +472,24 @@ export function Settings() {
             <SupportUnreadBadge />
             {chevron}
           </Pressable>
+
+          {isSignedIn && (
+            <>
+              <RowSeparator />
+              <Pressable
+                testID="blocked-people"
+                onPress={() => router.push('/blocked')}
+                style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+                <View style={styles.rowLabel}>
+                  <ThemedText>Blocked people</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    People who can&apos;t find you or follow your trips.
+                  </ThemedText>
+                </View>
+                {chevron}
+              </Pressable>
+            </>
+          )}
         </ThemedView>
 
         {pro && activeSubscriptions.length > 1 && (

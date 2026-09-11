@@ -5,7 +5,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { after, allowedAt, peopleSeenFor, unseenPeople } from './attentionHelpers';
 import { maySee } from './audience';
-import { CIRCLE_FULL, MAX_PENDING_REQUESTS, searchKey } from './circleShared';
+import { CIRCLE_FULL, MAX_PENDING_REQUESTS, MAX_SEARCHES_PER_DAY, SEARCH_LIMIT, searchKey } from './circleShared';
 import { isPro } from './entitlements';
 import { onwardLegs } from './itinerary';
 import {
@@ -21,6 +21,7 @@ import {
   syncCloseAccess,
 } from './liveHelpers';
 import { preferredSession, stillLive, toPublicSession } from './liveShared';
+import { blockedBetween, blockedSet, recentlyDeclined } from './safetyHelpers';
 import { latestUpdate, updatesFor } from './updates';
 import { updateWindowOpen } from './updatesShared';
 
@@ -70,8 +71,10 @@ export const inviteByToken = query({
       .withIndex('by_token', (q) => q.eq('token', token))
       .unique();
     if (!inviteUsable(invite)) return { gone: true as const };
-    const owner = await personCard(ctx, invite!.ownerId);
     const identity = await ctx.auth.getUserIdentity();
+    // A blocked person holding the link sees an expired one.
+    if (identity && (await blockedBetween(ctx, invite!.ownerId, identity.subject))) return { gone: true as const };
+    const owner = await personCard(ctx, invite!.ownerId);
     let relation: 'self' | 'member' | 'none' = 'none';
     if (identity?.subject === invite!.ownerId) relation = 'self';
     else if (identity) {
@@ -114,6 +117,23 @@ async function pendingRequest(
   return rows.find((r) => kindOf(r) === kind) ?? null;
 }
 
+/** One search off today's allowance; false once it is spent. Rows share
+ * the lookupQuota table under `search:<userId>:<day>`. */
+async function spendSearch(ctx: MutationCtx, me: string): Promise<boolean> {
+  const day = new Date().toISOString().slice(0, 10);
+  const key = `search:${me}:${day}`;
+  const row = await ctx.db
+    .query('lookupQuota')
+    .withIndex('by_key', (q) => q.eq('key', key))
+    .unique();
+  const used = row?.count ?? 0;
+  if (used >= MAX_SEARCHES_PER_DAY) return false;
+  const updatedAt = new Date().toISOString();
+  if (row) await ctx.db.patch(row._id, { count: used + 1, updatedAt });
+  else await ctx.db.insert('lookupQuota', { key, day, count: 1, updatedAt });
+  return true;
+}
+
 async function pendingOutstanding(ctx: QueryCtx | MutationCtx, me: string) {
   const outstanding = await ctx.db
     .query('circleRequests')
@@ -136,60 +156,82 @@ async function areSharing(ctx: QueryCtx | MutationCtx, ownerId: string, memberId
  * profile whose sign-in provider filed "Tamanna Irshad" as the first name.
  * Answers with a name and a photo only — never an address, not even the one
  * that was typed, and never a hint that some other query would have matched. */
+export const searchPeople = mutation({
+  args: { q: v.string() },
+  handler: async (ctx, { q }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    // A mutation rather than a query so each search can be counted: an
+    // exact-address match is a yes/no about whether that address has an
+    // account, and a daily ceiling keeps a list of addresses from being
+    // run through it. Far above what typing a few names costs.
+    if (!(await spendSearch(ctx, identity.subject))) throw new ConvexError(SEARCH_LIMIT);
+    return await findPeopleFor(ctx, identity.subject, q);
+  },
+});
+
+/** The unmetered query builds up to 1.0.30 call. Same filters (blocks,
+ * discoverability), no daily ceiling — retire once those builds are gone. */
 export const findPeople = query({
   args: { q: v.string() },
   handler: async (ctx, { q }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
-    const key = searchKey(q);
-    if (!key) return [];
-    const me = identity.subject;
-
-    let hits: Doc<'profiles'>[];
-    if (key.includes('@')) {
-      hits = await ctx.db
-        .query('profiles')
-        .withIndex('by_email', (p) => p.eq('email', key))
-        .take(10);
-    } else {
-      const whole = await ctx.db
-        .query('profiles')
-        .withIndex('by_search_name', (p) => p.eq('searchName', key))
-        .take(10);
-      const first = key.includes(' ')
-        ? []
-        : await ctx.db
-            .query('profiles')
-            .withIndex('by_search_first', (p) => p.eq('searchFirst', key))
-            .take(10);
-      const seen = new Set<string>();
-      hits = [...whole, ...first].filter((p) => !seen.has(p.userId) && seen.add(p.userId));
-    }
-
-    const people = [];
-    for (const hit of hits) {
-      if (hit.userId === me) continue;
-      // 'sharing' = they already follow my trips; 'invited' = my invitation
-      // is out; 'incoming' = theirs is, and the People tab is where they
-      // answer it.
-      const relation = (await areSharing(ctx, me, hit.userId))
-        ? ('sharing' as const)
-        : (await pendingRequest(ctx, me, hit.userId))
-          ? ('invited' as const)
-          : (await pendingRequest(ctx, hit.userId, me))
-            ? ('incoming' as const)
-            : ('none' as const);
-      people.push({
-        userId: hit.userId,
-        name: hit.name,
-        imageUrl: hit.imageUrl ?? null,
-        pro: await isPro(ctx, hit.userId),
-        relation,
-      });
-    }
-    return people;
+    return await findPeopleFor(ctx, identity.subject, q);
   },
 });
+
+async function findPeopleFor(ctx: QueryCtx | MutationCtx, me: string, q: string) {
+  const key = searchKey(q);
+  if (!key) return [];
+
+  let hits: Doc<'profiles'>[];
+  if (key.includes('@')) {
+    hits = (
+      await ctx.db
+        .query('profiles')
+        .withIndex('by_email', (p) => p.eq('email', key))
+        .take(10)
+    ).filter((p) => p.discoverableByEmail !== false);
+  } else {
+    const whole = await ctx.db
+      .query('profiles')
+      .withIndex('by_search_name', (p) => p.eq('searchName', key))
+      .take(10);
+    const first = key.includes(' ')
+      ? []
+      : await ctx.db
+          .query('profiles')
+          .withIndex('by_search_first', (p) => p.eq('searchFirst', key))
+          .take(10);
+    const seen = new Set<string>();
+    hits = [...whole, ...first].filter((p) => !seen.has(p.userId) && seen.add(p.userId));
+  }
+
+  const hidden = await blockedSet(ctx, me);
+  const people = [];
+  for (const hit of hits) {
+    if (hit.userId === me || hidden.has(hit.userId)) continue;
+    // 'sharing' = they already follow my trips; 'invited' = my invitation
+    // is out; 'incoming' = theirs is, and the People tab is where they
+    // answer it.
+    const relation = (await areSharing(ctx, me, hit.userId))
+      ? ('sharing' as const)
+      : (await pendingRequest(ctx, me, hit.userId))
+        ? ('invited' as const)
+        : (await pendingRequest(ctx, hit.userId, me))
+          ? ('incoming' as const)
+          : ('none' as const);
+    people.push({
+      userId: hit.userId,
+      name: hit.name,
+      imageUrl: hit.imageUrl ?? null,
+      pro: await isPro(ctx, hit.userId),
+      relation,
+    });
+  }
+  return people;
+}
 
 /** Invite someone who already has the app: same offer as the link, carried
  * by a push and a row in their People tab. Idempotent per pair — a second
@@ -206,6 +248,12 @@ export const requestFollow = mutation({
 
     const existing = await pendingRequest(ctx, me, userId);
     if (existing) return { status: 'pending' as const };
+    // A block in either direction, or a "no" given in the last month, looks
+    // exactly like an unanswered invitation from here: nothing is written,
+    // nobody is pushed, and the other person is never told why.
+    if ((await blockedBetween(ctx, me, userId)) || (await recentlyDeclined(ctx, me, userId, 'invite'))) {
+      return { status: 'pending' as const };
+    }
     // The cap is on people who follow me, and an invitation is a promise of
     // a seat — refuse it here rather than at the far end, where it would be
     // the invitee who hits the wall.
@@ -258,6 +306,11 @@ export const askToFollow = mutation({
     const profile = await profileFor(ctx, userId);
     if (!profile) throw new Error('No such person');
     if (await areSharing(ctx, userId, me)) return { status: 'following' as const };
+    // Blocked either way, or declined within the month: same silent
+    // "pending" as requestFollow, for the same reason.
+    if ((await blockedBetween(ctx, me, userId)) || (await recentlyDeclined(ctx, me, userId, 'follow'))) {
+      return { status: 'pending' as const };
+    }
 
     const invitation = await pendingRequest(ctx, userId, me, 'invite');
     if (invitation) {
@@ -562,6 +615,7 @@ export const person = query({
     if (!identity) return null;
     const me = identity.subject;
     if (userId === me) return { gone: true as const };
+    if (await blockedBetween(ctx, me, userId)) return { gone: true as const };
 
     const theirs = await areSharing(ctx, userId, me);
     const mine = await areSharing(ctx, me, userId);
@@ -723,6 +777,8 @@ export const trip = query({
 });
 
 async function join(ctx: MutationCtx, ownerId: string, memberId: string) {
+  // Every door leads here; a block in either direction keeps it shut.
+  if (await blockedBetween(ctx, ownerId, memberId)) throw new Error('Not available');
   const existing = await ctx.db
     .query('circle')
     .withIndex('by_owner_member', (q) => q.eq('ownerId', ownerId).eq('memberId', memberId))
@@ -776,6 +832,8 @@ export const accept = mutation({
     if (!inviteUsable(invite)) throw new Error('Invite expired');
     const ownerId = invite!.ownerId;
     if (ownerId === identity.subject) throw new Error('Own invite');
+    // A blocked person holding the link sees an expired one.
+    if (await blockedBetween(ctx, ownerId, identity.subject)) throw new Error('Invite expired');
 
     await join(ctx, ownerId, identity.subject);
     await ctx.db.patch(invite!._id, { uses: invite!.uses + 1 });

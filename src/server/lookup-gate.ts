@@ -137,6 +137,12 @@ function clientAddress(request: Request): string {
   );
 }
 
+/** The caller's address, hashed — what the meters key on. Shared with the
+ * Live Activity proxy so both routes see one client the same way. */
+export async function clientAddressHash(request: Request): Promise<string> {
+  return hashed(clientAddress(request));
+}
+
 /** Addresses are keyed by hash so the quota table never stores raw IPs. */
 async function hashed(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
@@ -247,7 +253,7 @@ function unverifiedSubject(token: string): string | null {
 
 let convexClient: ConvexHttpClient | null | undefined;
 
-function convex(): ConvexHttpClient | null {
+export function convex(): ConvexHttpClient | null {
   if (convexClient !== undefined) return convexClient;
   const url = process.env.EXPO_PUBLIC_CONVEX_URL;
   convexClient = url ? new ConvexHttpClient(url) : null;

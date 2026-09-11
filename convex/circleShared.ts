@@ -35,3 +35,10 @@ export function firstNameKey(value: string | null | undefined): string | null {
 /** Pending invitations one account may have out at a time — a cap on how
  * much push a stranger can generate, well above what anyone's circle needs. */
 export const MAX_PENDING_REQUESTS = 20;
+
+/** "Add someone" searches one account may run per UTC day, and the
+ * ConvexError data thrown past it. An exact-address search answers whether
+ * that address has an account; the ceiling is what keeps that from being
+ * asked about a list. Typing a family's names costs a few dozen. */
+export const MAX_SEARCHES_PER_DAY = 200;
+export const SEARCH_LIMIT = 'search_limit';

@@ -3,12 +3,12 @@ import { useMutation, useQuery } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import { CIRCLE_FULL, FREE_CIRCLE_LABEL, FREE_CIRCLE_SIZE } from '../../convex/circleShared';
+import { CIRCLE_FULL, FREE_CIRCLE_LABEL, FREE_CIRCLE_SIZE, SEARCH_LIMIT } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
@@ -79,10 +79,37 @@ export function AddPerson() {
     }
   }
 
-  // Only search once there's something worth matching whole; 'skip' keeps
-  // the empty box from asking the server anything at all.
+  // Only search once there's something worth matching whole, and a beat
+  // after the last keystroke: each search is a counted mutation (see
+  // circle.findPeople), so the box asks once per pause, not per letter.
   const term = query.trim();
-  const results = useQuery(api.circle.findPeople, term.length >= 2 ? { q: term } : 'skip');
+  const findPeople = useMutation(api.circle.searchPeople);
+  // Answers are kept with the term they answer, so a stale reply for an
+  // earlier term never shows under the current one — and the box reads as
+  // "searching" (undefined) until the current term has its own answer.
+  const [answer, setAnswer] = useState<{ term: string; people: Person[] } | null>(null);
+  const results = term.length >= 2 && answer?.term === term ? answer.people : undefined;
+  const latest = useRef('');
+  useEffect(() => {
+    latest.current = term;
+    if (term.length < 2) return;
+    const handle = setTimeout(() => {
+      findPeople({ q: term })
+        .then((people) => {
+          if (latest.current === term) setAnswer({ term, people });
+        })
+        .catch((e) => {
+          if (latest.current !== term) return;
+          setAnswer({ term, people: [] });
+          setError(
+            e instanceof ConvexError && e.data === SEARCH_LIMIT
+              ? "That's a lot of searching for one day — send a link instead."
+              : 'Could not search right now. Check your connection and try again.',
+          );
+        });
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [term, findPeople]);
 
   const onInvite = async (person: Person) => {
     setBusy(person.userId);

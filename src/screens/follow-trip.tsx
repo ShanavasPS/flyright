@@ -178,6 +178,11 @@ export function FollowTrip({ token }: { token: string }) {
                 ? (updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })
                 : undefined
             }
+            onReport={
+              isSignedIn && Platform.OS !== 'web'
+                ? (updateId) => router.push({ pathname: '/report', params: { name: who, updateId } })
+                : undefined
+            }
           />
         )}
 

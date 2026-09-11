@@ -123,6 +123,9 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             updates={updates}
             now={now}
             onReact={(updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })}
+            onReport={(updateId) =>
+              router.push({ pathname: '/report', params: { userId: ownerId, name: owner.name, updateId } })
+            }
           />
         )}
 

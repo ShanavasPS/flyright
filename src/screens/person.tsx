@@ -52,6 +52,7 @@ export function Person({ userId }: { userId: string }) {
   const askToFollow = useMutation(api.circle.askToFollow);
   const cancelRequest = useMutation(api.circle.cancelRequest);
   const react = useMutation(api.updates.react);
+  const block = useMutation(api.safety.block);
   const proLocked = useProLocked();
   const [busy, setBusy] = useState<'theirs' | 'mine' | null>(null);
   const { show: showSheet, sheet } = useChoiceSheet();
@@ -162,6 +163,33 @@ export function Person({ userId }: { userId: string }) {
       router.push({ pathname: '/preview', params: { memberId: userId } });
     };
 
+    // ── Safety ──────────────────────────────────────────────────────────
+    const onReport = (updateId?: string) =>
+      router.push({ pathname: '/report', params: { userId, name: p.name, ...(updateId ? { updateId } : {}) } });
+    const onBlock = () =>
+      Alert.alert(
+        `Block ${p.name}?`,
+        `You'll leave each other's circles. ${p.name} won't be able to find you, follow your trips, or open your links — and won't be told. You can unblock from Settings.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: () => {
+              trackEvent('person_blocked', { from: 'person' });
+              void block({ userId })
+                .then(() => router.back())
+                .catch(() => failed(`Couldn't block ${p.name}`));
+            },
+          },
+        ],
+      );
+    const onMore = () =>
+      showSheet(p.name, [
+        { text: `Report ${p.name}`, onPress: () => onReport() },
+        { text: `Block ${p.name}`, destructive: true, onPress: onBlock },
+      ]);
+
     // One line on the connection. Dates only where they add something.
     let relation: string;
     if (p.theyShare && p.iShare) relation = 'You follow each other';
@@ -254,6 +282,23 @@ export function Person({ userId }: { userId: string }) {
               />
             </Pressable>
           )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`More about ${p.name}: report or block`}
+            onPress={onMore}
+            testID="person-more"
+            style={({ pressed }) => [
+              styles.iconButton,
+              { backgroundColor: theme.field },
+              pressed && styles.pressed,
+            ]}>
+            <SymbolView
+              name={{ ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' }}
+              size={18}
+              weight="semibold"
+              tintColor={theme.heading}
+            />
+          </Pressable>
         </View>
 
         {p.theyShare && (
@@ -265,6 +310,7 @@ export function Person({ userId }: { userId: string }) {
             onOpenWorld={openWorld}
             onOpenTrip={openTrip}
             onReact={(updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })}
+            onReport={onReport}
           />
         )}
       </>

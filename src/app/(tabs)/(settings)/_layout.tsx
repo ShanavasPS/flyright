@@ -30,6 +30,10 @@ export default function SettingsStack() {
         name="messages/[id]"
         options={{ title: 'Conversation', headerBackButtonDisplayMode: 'minimal' }}
       />
+      <Stack.Screen
+        name="blocked"
+        options={{ title: 'Blocked people', headerBackButtonDisplayMode: 'minimal' }}
+      />
       {/* On native, Clerk's UserProfileView brings its own navigation chrome;
           the route header is hidden and onHostBack (see screens/account.tsx)
           pops the route, so there's a single back button at every level. The
