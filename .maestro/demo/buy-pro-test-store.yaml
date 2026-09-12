@@ -1,0 +1,34 @@
+# Demo prep (NOT recorded): make the demo user Pro so the claim scene reaches
+# the letter. Only works in a build configured with the RevenueCat TEST STORE
+# key (EXPO_PUBLIC_RC_IOS_KEY set to the EXPO_PUBLIC_RC_TEST_KEY value), where
+# a paywall purchase completes without the App Store. Record the paywall
+# scene with the production key BEFORE this, or it shows the change-plan view.
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- openLink: "flyright:///paywall"
+- extendedWaitUntil:
+    visible: "Start for.*"
+    timeout: 30000
+- tapOn: "Start for.*"
+- extendedWaitUntil:
+    visible: ".*(Continue|OK|Subscribe|Buy|Confirm).*"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: ".*(Subscribe|Buy|Confirm|Continue|OK).*"
+    optional: true
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 4000
+    optional: true
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: ".*(Pro|Manage).*"
+    timeout: 15000

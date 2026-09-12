@@ -1,0 +1,30 @@
+# Demo scene 02 — My travels with the seeded journal: land on the list, let
+# the hero and stats sit, then a slow scroll through the history.
+# Seed: node scripts/seed-demo-data.mjs --ios --sim <udid>   (no --travel-day)
+# The "pauses" are extendedWaitUntil on text that never appears — Maestro
+# has no sleep, an optional wait that times out is the idiom.
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 3000
+    optional: true
+- swipe:
+    start: "50%,80%"
+    end: "50%,35%"
+    duration: 1800
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 2200
+    optional: true
+- swipe:
+    start: "50%,40%"
+    end: "50%,85%"
+    duration: 1400

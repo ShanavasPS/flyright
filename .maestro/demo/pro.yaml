@@ -1,0 +1,22 @@
+# Demo scene 08 — the RevenueCat paywall (intro pricing) opened as a sheet.
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- openLink: "flyright:///paywall"
+- extendedWaitUntil:
+    visible: ".*(Pro|month|year|Start).*"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 6000
+    optional: true
+- swipe:
+    start: "50%,75%"
+    end: "50%,45%"
+    duration: 1400

@@ -58,3 +58,6 @@ asc-api-key.p8
 .env
 .env.*
 !.env.example
+
+# Demo video renders and simulator captures (scripts/demo-video.mjs)
+demo/out/

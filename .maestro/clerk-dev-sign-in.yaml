@@ -7,9 +7,10 @@
 # Clerk prefills the field with the "Last used" address once anyone has
 # signed in on the device; typing on top of it makes an invalid identifier
 # (a@b.coma@b.com), so the field is cleared first.
+# EMAIL has NO default on purpose: a flow-level `env:` beats both `-e` on the
+# command line and a caller's `runFlow: env:`, so the helper would always sign
+# sam in. Callers pass it with `runFlow: { file: clerk-dev-sign-in.yaml, env: { EMAIL: … } }`.
 appId: com.shanavasshaji.flyright
-env:
-  EMAIL: sam+clerk_test@example.com
 tags:
   - helper
 ---

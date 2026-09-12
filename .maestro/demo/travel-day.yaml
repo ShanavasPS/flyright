@@ -1,0 +1,56 @@
+# Demo scene 04 — Travel Day Live: the live hero (running light, countdown,
+# gate), open the timeline, tap the next step, then lock the phone so the
+# Live Activity shows on the Lock Screen, and unlock.
+# Seed: node scripts/seed-demo-data.mjs --ios --sim <udid> --travel-day
+# Run travel-day-allow.yaml once before recording (first Live Activity start
+# asks for permission on the Lock Screen).
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "travel-day-banner"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 2500
+    optional: true
+- tapOn:
+    id: "travel-day-banner"
+# The first tap occasionally lands on the running-light animation and does
+# nothing — one retry if the trip page hasn't opened.
+- extendedWaitUntil:
+    visible: "Travel day"
+    timeout: 6000
+    optional: true
+- runFlow:
+    when:
+      notVisible: "Travel day"
+    commands:
+      - tapOn:
+          id: "travel-day-banner"
+- extendedWaitUntil:
+    visible: "Travel day"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 1800
+    optional: true
+# The next step's action row (seeded through security → passport control).
+- tapOn:
+    text: "(I'm through immigration|I'm on board|I'm through security)"
+    optional: true
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 1800
+    optional: true
+- pressKey: Lock
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 4000
+    optional: true
+- pressKey: Home
+- pressKey: Home

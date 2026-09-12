@@ -1,0 +1,51 @@
+# Demo scene 03 — add a flight by number: "+" → type → search → Tomorrow →
+# the pass card with the live route → Track this flight → back on the list.
+# Needs the signed-in demo user (setup.yaml) and the local API origin so the
+# lookup resolves; FLIGHT defaults to a daily Finnair long-haul.
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 1200
+    optional: true
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "AY1331 or LH873"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 900
+    optional: true
+- tapOn: "AY1331 or LH873"
+- inputText: ${FLIGHT}
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 700
+    optional: true
+- tapOn: ".*Search this flight.*"
+- extendedWaitUntil:
+    visible: ".*Tomorrow.*"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 900
+    optional: true
+- tapOn: ".*Tomorrow.*"
+- extendedWaitUntil:
+    visible: ".*(Track this flight|Save to My travels).*"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 3200
+    optional: true
+- tapOn: ".*(Track this flight|Save to My travels).*"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 15000

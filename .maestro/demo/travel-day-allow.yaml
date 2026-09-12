@@ -1,0 +1,57 @@
+# Demo prep (NOT recorded): after the --travel-day seed, launch so the Live
+# Activity starts, then lock the phone and accept the one-time "Allow Live
+# Activities" prompt on the Lock Screen, and unlock again.
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "travel-day-banner"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 4000
+    optional: true
+- pressKey: Lock
+- extendedWaitUntil:
+    visible: "(Allow|Always Allow)"
+    timeout: 8000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+# iOS asks a second time later ("Do you want to continue to allow Live
+# Activities?") — answer that one for good as well.
+- tapOn:
+    text: "Always Allow"
+    optional: true
+# The Live Activity must be on the Lock Screen now, or the scene has nothing
+# to show — the assertion is the check (optional so a missing one still
+# leaves the phone unlocked; look at the log).
+- extendedWaitUntil:
+    visible: ".*(DEPARTS IN|LANDS IN|LANDED).*"
+    timeout: 8000
+    optional: true
+# The fresh simulator parks a "Ready for Apple Intelligence" notification on
+# the Lock Screen — swipe THAT away (never a blind point: the activity card
+# sits right above it and a stray swipe clears the activity instead).
+- runFlow:
+    when:
+      visible: ".*Apple Intelligence.*"
+    commands:
+      - swipe:
+          from:
+            text: ".*Apple Intelligence.*"
+          direction: LEFT
+      - tapOn:
+          text: "Clear"
+          optional: true
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 1200
+    optional: true
+- pressKey: Home
+- pressKey: Home

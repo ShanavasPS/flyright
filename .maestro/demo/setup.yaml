@@ -1,0 +1,59 @@
+# Demo video, one-time device setup (NOT recorded): first launch on a fresh
+# simulator with the RELEASE build — accept tracking, skip the intro, decline
+# the notification prime, then sign a throwaway Clerk dev user in so live
+# lookups work in the add-flight scene (signed out, the flight-status route
+# answers 401 and the screen offers sign-in instead).
+#
+# Run (see scripts/demo-video.mjs setup, which runs this then seeds):
+#   ~/.maestro/bin/maestro --device <udid> test -e EMAIL=shipaton+clerk_test@example.com .maestro/demo/setup.yaml
+#
+# The Release build must be built with FLYRIGHT_ROUTER_ORIGIN=http://localhost:8081
+# and `npx expo start` serving the API routes, or the lookup never resolves.
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    permissions:
+      notifications: allow
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+# The intro only shows on the very first launch; a relaunch lands on the list.
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+# Notification prime, if it shows on this path.
+- tapOn:
+    text: "Not now"
+    optional: true
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: "Sign in or create account"
+    timeout: 15000
+- tapOn: "Sign in or create account"
+- runFlow:
+    file: ../clerk-dev-sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+- extendedWaitUntil:
+    visible: ".*(Not now|Continue|Settings|My travels).*"
+    timeout: 30000
+- tapOn:
+    text: "Not now"
+    optional: true

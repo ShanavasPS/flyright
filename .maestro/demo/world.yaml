@@ -1,0 +1,35 @@
+# Demo scene 07 — World map with every seeded route, the share poster
+# (Story → Square), then the Travel stats screen.
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- openLink: "flyright://world"
+- extendedWaitUntil:
+    visible: "Everywhere you’ve been"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 2500
+    optional: true
+- tapOn: "Share your world"
+- extendedWaitUntil:
+    visible: "Share image"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 2200
+    optional: true
+- openLink: "flyright:///stats"
+- extendedWaitUntil:
+    visible: "Travel stats"
+    timeout: 15000
+- swipe:
+    start: "50%,80%"
+    end: "50%,45%"
+    duration: 1500

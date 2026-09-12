@@ -13,7 +13,10 @@ appId: com.shanavasshaji.flyright
       visible: "Sign in or create account"
     commands:
       - tapOn: "Sign in or create account"
-      - runFlow: clerk-dev-sign-in.yaml
+      - runFlow:
+            file: clerk-dev-sign-in.yaml
+            env:
+              EMAIL: sam+clerk_test@example.com
       - extendedWaitUntil:
           visible:
             id: "contact-support"

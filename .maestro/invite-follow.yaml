@@ -42,7 +42,10 @@ tags:
     visible: "Sign in to follow"
     timeout: 30000
 - tapOn: "Sign in to follow"
-- runFlow: clerk-dev-sign-in.yaml
+- runFlow:
+      file: clerk-dev-sign-in.yaml
+      env:
+        EMAIL: sam+clerk_test@example.com
 # No second tap: the invite redeems itself and the share-back offer is what
 # the traveller comes back to.
 - extendedWaitUntil:

@@ -1,0 +1,72 @@
+# Demo scene 06 — the delayed HEL→MAD trip: verdict card "You're owed 400
+# EUR", then with PRO=true (the demo user holds the entitlement) → Generate
+# my claim → name + email → Preview → the claim letter; with PRO=false the
+# scene stays on the trip page (Generate opens the paywall for a free user).
+# Needs the seeded journal (demo-mad carries the 195-minute delay).
+# Pro for the demo user: RevenueCat dashboard → Customers → <Clerk id> →
+# Grant promotional entitlement "Owed Pro" (the API grant is what
+# scripts/demo-video.mjs cannot do for you), then
+#   DEMO_PRO=true node scripts/demo-video.mjs record --only 06-verdict-claim
+appId: com.shanavasshaji.flyright
+tags:
+  - demo
+---
+# The travel-day scene ends on the Lock Screen; Home wakes and unlocks the
+# passcode-less simulator before the launch.
+- pressKey: Home
+- pressKey: Home
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- openLink: "flyright:///journey/demo-mad"
+- extendedWaitUntil:
+    visible: "You're owed.*"
+    timeout: 20000
+# The verdict counts up to 400 EUR — let it land.
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 3200
+    optional: true
+- runFlow:
+    when:
+      true: ${PRO == 'true'}
+    commands:
+      - tapOn: "Generate my claim.*"
+      - extendedWaitUntil:
+          visible: "Full name (as on the booking)"
+          timeout: 20000
+      - tapOn: "Full name (as on the booking)"
+      - inputText: "Ada Traveler"
+      - tapOn: "Email for the airline's reply"
+      - inputText: "ada@example.com"
+      - hideKeyboard
+      - tapOn: "Preview my claim.*"
+      - extendedWaitUntil:
+          visible: ".*(Email my claim|claim form|Share my claim letter).*"
+          timeout: 20000
+      - extendedWaitUntil:
+          visible: "demo-pause-never-matches"
+          timeout: 1500
+          optional: true
+      - swipe:
+          start: "50%,75%"
+          end: "50%,40%"
+          duration: 1400
+- runFlow:
+    when:
+      true: ${PRO != 'true'}
+    commands:
+      - swipe:
+          start: "50%,78%"
+          end: "50%,42%"
+          duration: 1500
+      - extendedWaitUntil:
+          visible: "demo-pause-never-matches"
+          timeout: 2000
+          optional: true
+      - swipe:
+          start: "50%,45%"
+          end: "50%,80%"
+          duration: 1200
