@@ -13,8 +13,15 @@
  * the first); `endAfter` = the Maestro step the footage ends on, plus a hold; `[[slnc N]]` is a macOS `say` pause in milliseconds.
  */
 
-export const VOICE = process.env.DEMO_VOICE ?? 'Samantha';
-export const VOICE_RATE = Number(process.env.DEMO_VOICE_RATE ?? 168);
+/** Narration engine: 'edge' (Microsoft neural voices via edge-tts, free, no
+ * key — the default), 'elevenlabs' (needs ELEVENLABS_API_KEY), or 'say'
+ * (macOS built-in, robotic but offline). DEMO_VOICE names the voice for the
+ * chosen engine; DEMO_VOICE_RATE is a percentage for edge, words/min for say. */
+export const TTS = process.env.DEMO_TTS ?? 'edge';
+export const VOICE =
+  process.env.DEMO_VOICE ??
+  { edge: 'en-US-AndrewMultilingualNeural', elevenlabs: 'JBFqnCBsd6RMkjVDRZzb', say: 'Samantha' }[TTS];
+export const VOICE_RATE = process.env.DEMO_VOICE_RATE ?? (TTS === 'say' ? '168' : '+5%');
 
 /** Seed state the recording flows expect, in order. `travelDay` reseeds with
  * the upcoming flight an hour out and stamped through security. */
@@ -23,7 +30,7 @@ export const SCENES = [
     id: '01-title',
     kind: 'card',
     card: 'title',
-    tail: 0.6,
+    tail: 0.3,
     narration:
       'Flight trackers tell you your flight is late. [[slnc 250]] FlyRight stays with you through the whole travel day, [[slnc 150]] and when a flight goes wrong, it tells you what the airline owes you.',
   },
@@ -114,7 +121,7 @@ export const SCENES = [
     id: '09-outro',
     kind: 'card',
     card: 'outro',
-    tail: 1.5,
+    tail: 1.0,
     narration:
       'FlyRight. [[slnc 200]] Trackers tell you it’s late. [[slnc 150]] We tell you what you’re owed. [[slnc 250]] Live now on the App Store and Google Play.',
   },

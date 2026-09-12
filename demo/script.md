@@ -23,8 +23,9 @@ plus a short tail, so the flows never race the voice.
 | 8 | 1:23–1:40 | **FlyRight Pro** RevenueCat paywall with intro pricing | FlyRight is free as a travel buddy. FlyRight Pro adds the claims, early delay warnings and a bigger circle, sold through RevenueCat in the apps, and through RevenueCat Web Billing on getflyright.com, where a free compensation check turns a search into a subscriber. |
 | 9 | 1:40–1:49 | Outro card: name, tagline, App Store · Google Play · getflyright.com | FlyRight. Trackers tell you it’s late. We tell you what you’re owed. Live now on the App Store and Google Play. |
 
-Running time ≈ 1:49 with the built-in voice; a human or ElevenLabs read of
-the same text lands within a few seconds of that.
+Running time ≈ 1:59 with the default neural voice (Microsoft "Andrew" via
+edge-tts); a human or ElevenLabs read of the same text lands within a few
+seconds of that.
 
 ## Why this order
 
@@ -40,10 +41,18 @@ the same text lands within a few seconds of that.
 
 ## Re-voicing
 
-`node scripts/demo-video.mjs voice` renders with macOS `say` (Samantha, rate
-168). For a better read: install a Premium voice (System Settings →
-Accessibility → Spoken Content → System Voice → Manage Voices, e.g. “Ava
-(Premium)” or “Zoe (Premium)”) and run with `DEMO_VOICE="Ava (Premium)"`; or
-paste the narration column into ElevenLabs / OpenAI TTS, drop the files in
-`demo/out/voice/<scene-id>.aiff` (any ffmpeg-readable format works if the
-extension is kept) and re-run `assemble`. Timing follows the audio.
+`node scripts/demo-video.mjs voice` renders with `DEMO_TTS`:
+
+- `edge` (default) — Microsoft neural voices through `edge-tts`
+  (`pip install edge-tts`, free, needs network). `DEMO_VOICE` picks the voice
+  (`edge-tts --list-voices`; good narrators: en-US-AndrewMultilingualNeural,
+  en-US-AvaMultilingualNeural, en-GB-RyanNeural), `DEMO_VOICE_RATE` is a
+  percentage (`+5%`).
+- `elevenlabs` — set `ELEVENLABS_API_KEY`; `DEMO_VOICE` is the voice id
+  (default George), `ELEVENLABS_MODEL` the model (eleven_multilingual_v2).
+  The `[[slnc]]` pauses become `<break>` tags.
+- `say` — macOS built-in, offline, robotic; `DEMO_VOICE`/`DEMO_VOICE_RATE` as
+  for `say`.
+
+A human read works too: drop the files in `demo/out/voice/<scene-id>.mp3`
+(or .wav/.aiff) and re-run `assemble`. Timing follows the audio.

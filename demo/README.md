@@ -8,7 +8,7 @@ from a clean simulator. Read `script.md` for the cut itself.
 - **ffmpeg** — `brew install ffmpeg` (composition, encoding, audio mix).
 - **Maestro CLI** — `~/.maestro/bin/maestro` drives the app; flows in `.maestro/demo/`.
 - **xcrun simctl** — `recordVideo` captures the simulator screen (h264, native resolution).
-- **macOS `say`** — narration; swap for a Premium voice or ElevenLabs (see script.md).
+- **edge-tts** — narration (Microsoft neural voices, `pip install edge-tts`); ElevenLabs or macOS `say` are the alternatives (see script.md).
 - **sharp** (already a dev dependency) — renders the background, phone frame,
   captions and title/outro cards as PNG layers.
 

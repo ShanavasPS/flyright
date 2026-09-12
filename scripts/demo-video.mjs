@@ -6,7 +6,7 @@
  * 1920×1080 cut with ffmpeg. Scenes, narration and captions live in
  * demo/scenes.mjs; the flows in .maestro/demo/.
  *
- *   node scripts/demo-video.mjs voice                 # narration → demo/out/voice
+ *   node scripts/demo-video.mjs voice                 # narration → demo/out/voice (DEMO_TTS=edge|elevenlabs|say)
  *   node scripts/demo-video.mjs setup    [--sim udid] # first launch + sign-in + seed (not recorded)
  *   node scripts/demo-video.mjs record   [--sim udid] [--only 03-add-flight]
  *   node scripts/demo-video.mjs assemble [--music path.mp3]
@@ -29,7 +29,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import sharp from 'sharp';
 
-import { SCENES, VOICE, VOICE_RATE } from '../demo/scenes.mjs';
+import { SCENES, TTS, VOICE, VOICE_RATE } from '../demo/scenes.mjs';
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const OUT = join(ROOT, 'demo/out');
@@ -106,12 +106,63 @@ function probeSize(file) {
 
 /* ---------------------------------------------------------------- voice */
 
+const EDGE_TTS = process.env.EDGE_TTS_BIN ?? 'edge-tts';
+
+/** The narration file for a scene, whichever engine rendered it last. */
+function voiceFile(scene) {
+  for (const ext of ['mp3', 'wav', 'aiff', 'm4a']) {
+    const f = join(DIRS.voice, `${scene.id}.${ext}`);
+    if (existsSync(f)) return f;
+  }
+  throw new Error(`${scene.id}: no narration in ${DIRS.voice} — run voice first`);
+}
+
+/** `[[slnc N]]` is `say` syntax; the neural engines take a break tag or
+ * plain punctuation instead. */
+function narrationFor(engine, text) {
+  if (engine === 'say') return text;
+  if (engine === 'elevenlabs') return text.replace(/\[\[slnc (\d+)\]\]/g, (_, ms) => `<break time="${(ms / 1000).toFixed(2)}s" />`);
+  return text.replace(/\s*\[\[slnc \d+\]\]\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+}
+
+function renderVoice(scene) {
+  for (const ext of ['mp3', 'wav', 'aiff', 'm4a']) rmSync(join(DIRS.voice, `${scene.id}.${ext}`), { force: true });
+  const text = narrationFor(TTS, scene.narration);
+  if (TTS === 'say') {
+    const out = join(DIRS.voice, `${scene.id}.aiff`);
+    sh('say', ['-v', VOICE, '-r', String(VOICE_RATE), '-o', out, text]);
+    return out;
+  }
+  if (TTS === 'edge') {
+    // pip install edge-tts (Microsoft neural voices, free, needs network).
+    const out = join(DIRS.voice, `${scene.id}.mp3`);
+    sh(EDGE_TTS, ['--voice', VOICE, '--rate', String(VOICE_RATE), '--text', text, '--write-media', out]);
+    return out;
+  }
+  if (TTS === 'elevenlabs') {
+    const key = process.env.ELEVENLABS_API_KEY;
+    if (!key) throw new Error('DEMO_TTS=elevenlabs needs ELEVENLABS_API_KEY');
+    const out = join(DIRS.voice, `${scene.id}.mp3`);
+    const body = JSON.stringify({
+      text,
+      model_id: process.env.ELEVENLABS_MODEL ?? 'eleven_multilingual_v2',
+      voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true },
+    });
+    sh('curl', [
+      '-sf', '-o', out, '-X', 'POST', `https://api.elevenlabs.io/v1/text-to-speech/${VOICE}?output_format=mp3_44100_128`,
+      '-H', `xi-api-key: ${key}`, '-H', 'Content-Type: application/json', '--data-binary', body,
+    ]);
+    return out;
+  }
+  throw new Error(`unknown DEMO_TTS ${TTS}`);
+}
+
 function voice() {
   const durations = {};
+  console.log(`narration: ${TTS} / ${VOICE} / rate ${VOICE_RATE}`);
   for (const scene of SCENES) {
-    const aiff = join(DIRS.voice, `${scene.id}.aiff`);
-    sh('say', ['-v', VOICE, '-r', String(VOICE_RATE), '-o', aiff, scene.narration]);
-    durations[scene.id] = probeDuration(aiff);
+    const file = renderVoice(scene);
+    durations[scene.id] = probeDuration(file);
     console.log(`${scene.id}: ${durations[scene.id].toFixed(1)}s`);
   }
   writeFileSync(join(DIRS.voice, 'durations.json'), JSON.stringify(durations, null, 2));
@@ -363,7 +414,7 @@ const VO_DELAY = 0.35;
 const FADE = 0.45;
 /** Footage longer than its narration is played faster, up to this much,
  * before the scene is allowed to outlast the voice. */
-const MAX_SPEEDUP = 1.5;
+const MAX_SPEEDUP = 1.65;
 
 function encodeArgs(duration, out) {
   return [
@@ -445,7 +496,7 @@ async function assemble() {
   const segments = [];
   let total = 0;
   for (const scene of SCENES) {
-    const voiceFile = join(DIRS.voice, `${scene.id}.aiff`);
+    const narration = voiceFile(scene);
     const spoken = durations[scene.id] + VO_DELAY + scene.tail;
     // A flow that runs longer than its narration keeps its footage; the
     // voice just ends early.
@@ -455,7 +506,7 @@ async function assemble() {
     total += duration;
     console.log(`▶ ${scene.id} ${duration}s${scene.speed > 1 ? ` (footage ×${scene.speed.toFixed(2)})` : ''}`);
     segments.push(
-      scene.kind === 'card' ? await segmentCard(scene, duration, bg, voiceFile) : await segmentPhone(scene, duration, art, voiceFile),
+      scene.kind === 'card' ? await segmentCard(scene, duration, bg, narration) : await segmentPhone(scene, duration, art, narration),
     );
   }
   const list = join(DIRS.segments, 'list.txt');
