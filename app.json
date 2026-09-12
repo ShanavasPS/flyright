@@ -99,7 +99,13 @@
       [
         "expo-router",
         {
-          "origin": "https://getflyright.com"
+          "origin": "https://getflyright.com",
+          "headers": {
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Referrer-Policy": "no-referrer",
+            "Content-Security-Policy": "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+          }
         }
       ],
       [

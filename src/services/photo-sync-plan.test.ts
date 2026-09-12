@@ -102,3 +102,14 @@ describe('planPhotoSync', () => {
     expect(plan.apply).toEqual([]);
   });
 });
+
+it('re-uploads an unproven legacy file only when this device holds a local copy', () => {
+  const local = row({ id: 'legacy', storageId: 'old-storage', syncedAt: '2026-08-01T00:00:00Z' });
+  const cloud = remote({ photoId: 'legacy', storageId: 'old-storage', needsUpload: true, url: null });
+  const plan = planPhotoSync([local], [cloud]);
+  expect(plan.upload).toHaveLength(1);
+  expect(plan.upload[0].storageId).toBeNull();
+  expect(plan.upload[0].updatedAt > cloud.updatedAt).toBe(true);
+  expect(planPhotoSync([{ ...local, uri: 'https://old-file-url.invalid' }], [cloud]).upload).toEqual([]);
+  expect(planPhotoSync([{ ...local, deletedAt: '2026-09-01T00:00:00Z' }], [cloud]).upload).toEqual([]);
+});

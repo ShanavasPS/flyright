@@ -34,6 +34,9 @@ export function senderAuthenticated(authResults: string | null | undefined, doma
   if (!authResults || !domain) return false;
   const text = authResults.toLowerCase();
   const wanted = domain.toLowerCase();
+  // Headers.get joins duplicates with commas. Ambiguous receiver evidence
+  // must never promote an attacker-supplied Authentication-Results header.
+  if (!/^mx\.cloudflare\.net\s*;/.test(text) || text.includes(',')) return false;
 
   // Each method result is `method=result` followed by its properties, up to
   // the next `;`. Header folding is already undone by the Worker's Headers API.

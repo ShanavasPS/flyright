@@ -23,19 +23,19 @@ describe('senderAuthenticated', () => {
     expect(senderAuthenticated('mx.cloudflare.net; dmarc=pass header.from=gmail.com policy.dmarc=none', 'gmail.com')).toBe(true);
   });
   it('accepts a subdomain signature (relaxed alignment)', () => {
-    expect(senderAuthenticated('x; dkim=pass header.d=mail.example.com', 'example.com')).toBe(true);
+    expect(senderAuthenticated('mx.cloudflare.net; dkim=pass header.d=mail.example.com', 'example.com')).toBe(true);
   });
   it('rejects a DKIM pass for a different domain', () => {
-    expect(senderAuthenticated('x; dkim=pass header.d=attacker.com; spf=pass smtp.mailfrom=attacker.com', 'gmail.com')).toBe(false);
+    expect(senderAuthenticated('mx.cloudflare.net; dkim=pass header.d=attacker.com; spf=pass smtp.mailfrom=attacker.com', 'gmail.com')).toBe(false);
   });
   it('rejects a look-alike domain that merely ends with the wanted one', () => {
-    expect(senderAuthenticated('x; dkim=pass header.d=notgmail.com', 'gmail.com')).toBe(false);
+    expect(senderAuthenticated('mx.cloudflare.net; dkim=pass header.d=notgmail.com', 'gmail.com')).toBe(false);
   });
   it('rejects SPF alone — the envelope sender is forgeable', () => {
-    expect(senderAuthenticated('x; spf=pass smtp.mailfrom=gmail.com; dkim=none; dmarc=fail header.from=gmail.com', 'gmail.com')).toBe(false);
+    expect(senderAuthenticated('mx.cloudflare.net; spf=pass smtp.mailfrom=gmail.com; dkim=none; dmarc=fail header.from=gmail.com', 'gmail.com')).toBe(false);
   });
   it('rejects dkim=fail and dmarc=fail even when aligned', () => {
-    expect(senderAuthenticated('x; dkim=fail header.d=gmail.com; dmarc=fail header.from=gmail.com', 'gmail.com')).toBe(false);
+    expect(senderAuthenticated('mx.cloudflare.net; dkim=fail header.d=gmail.com; dmarc=fail header.from=gmail.com', 'gmail.com')).toBe(false);
   });
   it('fails closed without results', () => {
     expect(senderAuthenticated(null, 'gmail.com')).toBe(false);
@@ -55,7 +55,7 @@ describe('isSupportReply', () => {
       isSupportReply({
         envelopeFrom: 'bounce@attacker.com',
         headerFrom: `FlyRight Support <${INBOX}>`,
-        authResults: 'x; spf=pass smtp.mailfrom=attacker.com; dkim=pass header.d=attacker.com; dmarc=none',
+        authResults: 'mx.cloudflare.net; spf=pass smtp.mailfrom=attacker.com; dkim=pass header.d=attacker.com; dmarc=none',
         inbox: INBOX,
       }),
     ).toBe(false);
@@ -65,7 +65,7 @@ describe('isSupportReply', () => {
       isSupportReply({
         envelopeFrom: INBOX,
         headerFrom: INBOX,
-        authResults: 'x; spf=softfail smtp.mailfrom=gmail.com; dkim=pass header.d=attacker.com; dmarc=fail header.from=gmail.com',
+        authResults: 'mx.cloudflare.net; spf=softfail smtp.mailfrom=gmail.com; dkim=pass header.d=attacker.com; dmarc=fail header.from=gmail.com',
         inbox: INBOX,
       }),
     ).toBe(false);

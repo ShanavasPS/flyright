@@ -1,3 +1,5 @@
+import { bounded, limit, MINUTE, HOUR, DAY } from './abuse';
+import { safeAvatar } from './profileShared';
 import { ConvexError, v } from 'convex/values';
 
 import { internal } from './_generated/api';
@@ -45,7 +47,7 @@ export async function personCard(ctx: QueryCtx | MutationCtx, userId: string) {
   return {
     userId,
     name: profile?.name ?? 'A traveler',
-    imageUrl: profile?.imageUrl ?? null,
+    imageUrl: safeAvatar(profile?.imageUrl ?? null),
     pro: await isPro(ctx, userId),
   };
 }
@@ -165,6 +167,8 @@ export const searchPeople = mutation({
     // exact-address match is a yes/no about whether that address has an
     // account, and a daily ceiling keeps a list of addresses from being
     // run through it. Far above what typing a few names costs.
+    bounded(q, 254, 'Search');
+    await limit(ctx, `search-burst:${identity.subject}`, 30, MINUTE);
     if (!(await spendSearch(ctx, identity.subject))) throw new ConvexError(SEARCH_LIMIT);
     return await findPeopleFor(ctx, identity.subject, q);
   },
@@ -172,14 +176,8 @@ export const searchPeople = mutation({
 
 /** The unmetered query builds up to 1.0.30 call. Same filters (blocks,
  * discoverability), no daily ceiling — retire once those builds are gone. */
-export const findPeople = query({
-  args: { q: v.string() },
-  handler: async (ctx, { q }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    return await findPeopleFor(ctx, identity.subject, q);
-  },
-});
+/** Retired legacy endpoint: a query cannot atomically charge a search. */
+export const findPeople = query({ args: { q: v.string() }, handler: async () => [] });
 
 async function findPeopleFor(ctx: QueryCtx | MutationCtx, me: string, q: string) {
   const key = searchKey(q);
@@ -192,7 +190,7 @@ async function findPeopleFor(ctx: QueryCtx | MutationCtx, me: string, q: string)
         .query('profiles')
         .withIndex('by_email', (p) => p.eq('email', key))
         .take(10)
-    ).filter((p) => p.discoverableByEmail !== false);
+    ).filter((p) => p.emailVerified === true && p.discoverableByEmail !== false);
   } else {
     const whole = await ctx.db
       .query('profiles')
@@ -225,7 +223,7 @@ async function findPeopleFor(ctx: QueryCtx | MutationCtx, me: string, q: string)
     people.push({
       userId: hit.userId,
       name: hit.name,
-      imageUrl: hit.imageUrl ?? null,
+      imageUrl: safeAvatar(hit.imageUrl ?? null),
       pro: await isPro(ctx, hit.userId),
       relation,
     });
@@ -272,6 +270,9 @@ export const requestFollow = mutation({
       throw new Error('Too many pending invites');
     }
 
+    await limit(ctx, `invite:${me}`, 20, DAY);
+    await limit(ctx, `invite-pair:${me}:${userId}`, 1, DAY);
+    await limit(ctx, 'invite:global', 1000, HOUR);
     const requestId = await ctx.db.insert('circleRequests', {
       fromUserId: me,
       toUserId: userId,
@@ -327,6 +328,9 @@ export const askToFollow = mutation({
     if ((await pendingOutstanding(ctx, me)) >= MAX_PENDING_REQUESTS) {
       throw new Error('Too many pending requests');
     }
+    await limit(ctx, `invite:${me}`, 20, DAY);
+    await limit(ctx, `invite-pair:${me}:${userId}`, 1, DAY);
+    await limit(ctx, 'invite:global', 1000, HOUR);
     const requestId = await ctx.db.insert('circleRequests', {
       fromUserId: me,
       toUserId: userId,
@@ -434,6 +438,8 @@ export const noteFullInvite = mutation({
       });
       request = (await ctx.db.get(requestId))!;
     }
+    await limit(ctx, `full-invite:${me}`, 10, DAY);
+    await limit(ctx, `full-invite-pair:${me}:${ownerId}`, 1, DAY);
     await noteBlockedAttempt(ctx, request);
   },
 });

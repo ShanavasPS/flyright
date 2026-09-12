@@ -1,12 +1,11 @@
+import { HOUR } from './abuse';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
-import { action, internalMutation, type MutationCtx, type QueryCtx } from './_generated/server';
+import { action, internalAction, internalMutation, type MutationCtx, type QueryCtx } from './_generated/server';
 import {
-  entitlementChange,
   proActive,
   proUntilFromSubscriber,
-  type RevenueCatEvent,
   type RevenueCatSubscriber,
 } from './entitlementShared';
 
@@ -36,27 +35,64 @@ async function setProUntil(ctx: MutationCtx, userId: string, proUntil: string | 
   else await ctx.db.insert('entitlements', { userId, proUntil, source, updatedAt });
 }
 
-/** Apply one RC webhook event. Idempotent: replaying an event writes the
- * same proUntil again. */
-export const applyRevenueCatEvent = internalMutation({
-  args: {
-    event: v.object({
-      type: v.string(),
-      app_user_id: v.string(),
-      aliases: v.optional(v.union(v.array(v.string()), v.null())),
-      entitlement_ids: v.optional(v.union(v.array(v.string()), v.null())),
-      expiration_at_ms: v.optional(v.union(v.number(), v.null())),
-      transferred_from: v.optional(v.union(v.array(v.string()), v.null())),
-      transferred_to: v.optional(v.union(v.array(v.string()), v.null())),
-    }),
+/** Snapshot generations prevent a slower, older response overwriting a refund. */
+export const reserveSnapshot = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const row = await ctx.db.query('entitlements').withIndex('by_user', q => q.eq('userId', userId)).unique();
+    const generation = (row?.generation ?? 0) + 1;
+    if (row) await ctx.db.patch(row._id, { generation });
+    else await ctx.db.insert('entitlements', { userId, generation, proUntil: null, source: 'pending', updatedAt: new Date().toISOString() });
+    return generation;
   },
-  handler: async (ctx, { event }) => {
-    const change = entitlementChange(event as RevenueCatEvent);
-    if (!change) return 0;
-    for (const userId of change.userIds) {
-      await setProUntil(ctx, userId, change.proUntil, event.type);
+});
+
+export const commitSnapshot = internalMutation({
+  args: { userId: v.string(), generation: v.number(), proUntil: v.union(v.string(), v.null()) },
+  handler: async (ctx, { userId, generation, proUntil }) => {
+    const row = await ctx.db.query('entitlements').withIndex('by_user', q => q.eq('userId', userId)).unique();
+    if (row?.generation !== generation) return false;
+    await setProUntil(ctx, userId, proUntil, 'revenuecat-snapshot');
+    return true;
+  },
+});
+
+export const eventProcessed = internalMutation({
+  args: { eventId: v.string(), complete: v.boolean() },
+  handler: async (ctx, { eventId, complete }) => {
+    const row = await ctx.db.query('revenueCatEvents').withIndex('by_event', q => q.eq('eventId', eventId)).unique();
+    if (row) return true;
+    if (complete) await ctx.db.insert('revenueCatEvents', { eventId, processedAt: Date.now() });
+    return false;
+  },
+});
+
+async function subscriberSnapshot(userId: string): Promise<string | null> {
+  const apiKey = process.env.REVENUECAT_PUBLIC_API_KEY;
+  if (!apiKey) throw new Error('RevenueCat is not configured');
+  const res = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, 'X-Platform': 'ios' },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`RevenueCat snapshot unavailable (${res.status})`);
+  const body = await res.json() as { subscriber?: RevenueCatSubscriber };
+  if (!body.subscriber) throw new Error('Invalid RevenueCat snapshot');
+  return proUntilFromSubscriber(body.subscriber, process.env.REVENUECAT_ALLOW_SANDBOX === 'true');
+}
+
+/** Webhooks invalidate a snapshot; their payload never grants Pro. Fetch both
+ * sides of transfers, and acknowledge only once every snapshot is stored. */
+export const reconcileEvent = internalAction({
+  args: { eventId: v.string(), userIds: v.array(v.string()) },
+  handler: async (ctx, { eventId, userIds }): Promise<void> => {
+    if (await ctx.runMutation(internal.entitlements.eventProcessed, { eventId, complete: false })) return;
+    for (const userId of userIds) {
+      const generation: number = await ctx.runMutation(internal.entitlements.reserveSnapshot, { userId });
+      const proUntil = await subscriberSnapshot(userId);
+      const committed: boolean = await ctx.runMutation(internal.entitlements.commitSnapshot, { userId, generation, proUntil });
+      if (!committed) throw new Error('Snapshot superseded; retry webhook');
     }
-    return change.userIds.length;
+    await ctx.runMutation(internal.entitlements.eventProcessed, { eventId, complete: true });
   },
 });
 
@@ -87,26 +123,10 @@ export const refreshMine = action({
   handler: async (ctx): Promise<{ pro: boolean } | null> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
-    const apiKey = process.env.REVENUECAT_PUBLIC_API_KEY;
-    if (!apiKey) {
-      console.warn('[entitlements] REVENUECAT_PUBLIC_API_KEY unset; refresh skipped');
-      return null;
-    }
-    const res = await fetch(
-      `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(identity.subject)}`,
-      { headers: { Authorization: `Bearer ${apiKey}`, 'X-Platform': 'ios' } },
-    );
-    if (!res.ok) {
-      console.warn(`[entitlements] RC subscriber lookup ${res.status} for ${identity.subject}`);
-      return null;
-    }
-    const body = (await res.json()) as { subscriber?: RevenueCatSubscriber };
-    const proUntil = proUntilFromSubscriber(body.subscriber ?? {});
-    await ctx.runMutation(internal.entitlements.set, {
-      userId: identity.subject,
-      proUntil,
-      source: 'refresh',
-    });
+    await ctx.runMutation(internal.abuse.consume, { key: `entitlements:${identity.subject}`, maximum: 20, window: HOUR });
+    const generation: number = await ctx.runMutation(internal.entitlements.reserveSnapshot, { userId: identity.subject });
+    const proUntil = await subscriberSnapshot(identity.subject);
+    await ctx.runMutation(internal.entitlements.commitSnapshot, { userId: identity.subject, generation, proUntil });
     return { pro: proActive(proUntil) };
   },
 });

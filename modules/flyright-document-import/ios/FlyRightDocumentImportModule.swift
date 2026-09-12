@@ -1,3 +1,4 @@
+import ImageIO
 import ExpoModulesCore
 import PDFKit
 import Vision
@@ -60,7 +61,16 @@ public class FlyRightDocumentImportModule: Module {
   /// costs one render.
   private static let retryRenderScale: CGFloat = 6
 
+  private static func validateImport(_ url: URL) throws {
+    let root = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("document-imports").resolvingSymlinksInPath().standardizedFileURL
+    let file = url.resolvingSymlinksInPath().standardizedFileURL
+    let values = try file.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+    guard file.isFileURL, file.deletingLastPathComponent().path == root.path, values.isRegularFile == true,
+      let size = values.fileSize, size > 0, size <= 20 * 1024 * 1024 else { throw DocumentUnreadableException("Invalid document") }
+  }
+
   private static func read(url: URL, maxPages: Int) throws -> [String: Any] {
+    try validateImport(url)
     // No-op for Inbox copies; needed if the file were opened in place.
     let scoped = url.startAccessingSecurityScopedResource()
     defer {
@@ -75,7 +85,7 @@ public class FlyRightDocumentImportModule: Module {
     }
 
     var pages: [[String: Any]] = []
-    for index in 0..<min(document.pageCount, max(maxPages, 1)) {
+    for index in 0..<min(document.pageCount, min(max(maxPages, 1), 8)) {
       guard let page = document.page(at: index) else { continue }
       pages.append([
         "text": rowOrderedText(on: page),
@@ -108,7 +118,7 @@ public class FlyRightDocumentImportModule: Module {
   /// step with `string` on this document. A one-character selection is both
   /// index-correct and cheap (~2 ms for a page).
   private static func rowOrderedText(on page: PDFPage) -> String {
-    let raw = page.string ?? ""
+    let raw = String((page.string ?? "").prefix(100_000))
     let ns = raw as NSString
     guard ns.length > 0 else { return raw }
 
@@ -116,7 +126,9 @@ public class FlyRightDocumentImportModule: Module {
     boxes.reserveCapacity(ns.length)
     for index in 0..<ns.length {
       let bounds = page.selection(for: NSRange(location: index, length: 1))?.bounds(for: page)
-      boxes.append(bounds ?? .null)
+      if let bounds, [bounds.minX, bounds.maxX, bounds.minY, bounds.maxY, bounds.width, bounds.height].allSatisfy({ $0.isFinite && abs($0) < 10_000_000 }) {
+        boxes.append(bounds)
+      } else { boxes.append(.null) }
     }
     let heights = boxes.filter { !$0.isNull && $0.height > 0 }.map(\.height).sorted()
     guard !heights.isEmpty, let top = boxes.filter({ !$0.isNull }).map(\.maxY).max() else {
@@ -175,6 +187,7 @@ public class FlyRightDocumentImportModule: Module {
   private static func barcodes(on page: PDFPage, scale renderScale: CGFloat) -> [String] {
     let bounds = page.bounds(for: .mediaBox)
     let size = CGSize(width: bounds.width * renderScale, height: bounds.height * renderScale)
+    guard bounds.origin.x.isFinite, bounds.origin.y.isFinite, size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0, size.width * size.height <= 40_000_000 else { return [] }
     // Draw the page ourselves at exactly renderScale: PDFPage.thumbnail(of:)
     // multiplies by the screen scale on iOS (a 9x page on a 3x device) and
     // Vision rejects or mis-reads the result.
@@ -238,12 +251,18 @@ public class FlyRightDocumentImportModule: Module {
   /// read the same way a rendered PDF page is — one "page" out, so the pure
   /// extractor downstream needs no notion of images at all.
   private static func readImage(url: URL) throws -> [String: Any] {
+    try validateImport(url)
     let scoped = url.startAccessingSecurityScopedResource()
     defer {
       if scoped { url.stopAccessingSecurityScopedResource() }
     }
 
-    guard let data = try? Data(contentsOf: url), let image = UIImage(data: data),
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = properties[kCGImagePropertyPixelWidth] as? Double,
+      let height = properties[kCGImagePropertyPixelHeight] as? Double,
+      width > 0, height > 0, width * height <= 40_000_000,
+      let data = try? Data(contentsOf: url), let image = UIImage(data: data),
       let cgImage = downscaled(image)
     else {
       throw ImageUnreadableException(url.lastPathComponent)

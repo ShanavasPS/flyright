@@ -61,3 +61,13 @@ describe('claim letter', () => {
     expect(claimPdfName(DEMO_JOURNEY, verdict)).toBe('EU261-claim-LH873-2026-08-10.pdf');
   });
 });
+
+it('escapes HTML in claimant and booking fields before generating a PDF', () => {
+  const html = renderClaimLetter(DEMO_JOURNEY, evaluate(DEMO_JOURNEY, DEMO_DISRUPTION), {
+    fullName: '<script>alert(1)</script>', email: '<img src="https://attacker.invalid">', bookingReference: '<iframe src="https://attacker.invalid"></iframe>',
+  });
+  expect(html).not.toContain('<script>');
+  expect(html).not.toContain('<img ');
+  expect(html).not.toContain('<iframe ');
+  expect(html).toContain('&lt;script&gt;');
+});

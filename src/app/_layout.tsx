@@ -1,3 +1,4 @@
+import { PushIdentitySync } from "@/components/push-identity-sync";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
@@ -117,6 +118,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
       <PhotoSync />
       <TravelDaySync />
       <ProfileSync />
+      <PushIdentitySync />
       <EntitlementSync />
       {children}
     </ConvexProviderWithClerk>

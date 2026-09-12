@@ -1,3 +1,5 @@
+import { limit, DAY } from './abuse';
+import { safeAvatar } from './profileShared';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
@@ -33,10 +35,11 @@ export async function followerCount(ctx: MutationCtx | QueryCtx, sessionId: Id<'
 }
 
 export async function profileFor(ctx: MutationCtx | QueryCtx, userId: string) {
-  return ctx.db
+  const profile = await ctx.db
     .query('profiles')
     .withIndex('by_user', (q) => q.eq('userId', userId))
     .unique();
+  return profile ? { ...profile, imageUrl: safeAvatar(profile.imageUrl) } : null;
 }
 
 export async function travelerName(ctx: MutationCtx | QueryCtx, userId: string) {
@@ -195,6 +198,7 @@ export async function createSession(
     sessionExpiryFor(journey.scheduledArrival, Date.now(), journey.toCode),
   ).toISOString();
 
+  await limit(ctx, `live-start:${journey.userId}`, 30, DAY);
   const sessionId = await ctx.db.insert('liveSessions', {
     userId: journey.userId,
     naturalKey: journey.naturalKey,
@@ -320,9 +324,9 @@ export async function circleFull(ctx: QueryCtx | MutationCtx, ownerId: string) {
   return members.length >= FREE_CIRCLE_SIZE && !(await isPro(ctx, ownerId));
 }
 
-export function inviteUsable(invite: { uses: number; expiresAt: string } | null) {
+export function inviteUsable(invite: { uses: number; expiresAt: string; ownerIssued?: boolean } | null) {
   return (
-    !!invite && invite.uses < INVITE_MAX_USES && Date.parse(invite.expiresAt) > Date.now()
+    !!invite && invite.ownerIssued === true && invite.uses < INVITE_MAX_USES && Date.parse(invite.expiresAt) > Date.now()
   );
 }
 
@@ -342,6 +346,7 @@ export async function ensureCircleInvite(ctx: MutationCtx, ownerId: string) {
   const token = makeToken();
   const expiresAt = new Date(now + INVITE_TTL_MS).toISOString();
   await ctx.db.insert('circleInvites', {
+    ownerIssued: true,
     ownerId,
     token,
     uses: 0,

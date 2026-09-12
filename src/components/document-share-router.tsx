@@ -1,3 +1,4 @@
+import { registerDocument } from '@/services/document-imports';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
@@ -18,8 +19,10 @@ export function DocumentShareRouter() {
   const router = useRouter();
 
   useEffect(() => {
-    const open = (doc: SharedDocument) =>
-      router.push({ pathname: '/import-document', params: { uri: doc.uri, name: doc.name ?? '' } });
+    const open = (doc: SharedDocument) => {
+      try { router.push({ pathname: '/import-document', params: { handle: registerDocument(doc) } }); }
+      catch { router.push('/import-document'); }
+    };
     const pending = consumePendingDocument();
     if (pending) open(pending);
     const subscription = addDocumentSharedListener(open);

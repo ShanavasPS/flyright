@@ -1,6 +1,6 @@
 import { useAuth } from '@clerk/expo';
 import { useQueries } from '@tanstack/react-query';
-import { File } from 'expo-file-system';
+import { importDocument } from '@/services/document-imports';
 import { Observe } from 'expo-observe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -42,8 +42,6 @@ import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
 import {
-  documentKind,
-  readDocument,
   type DocumentKind,
 } from '../../modules/flyright-document-import';
 
@@ -138,17 +136,11 @@ export function ImportDocument() {
   const { userId, isSignedIn } = useAuth();
   // `type` comes from the in-app pickers, which know the mime type; a share
   // arrives with the file name only and is read by its extension.
-  const { uri, name, type, via } = useLocalSearchParams<{
-    uri?: string;
-    name?: string;
-    type?: string;
-    /** 'upload' when the traveler picked the file inside the app; a share
-     * from another app says nothing and reads as 'share'. */
-    via?: string;
-  }>();
-  const fileUri = uri ?? null;
-  const kind = documentKind(name || fileUri || '', type || null);
-  const label = fileLabel(fileUri, name || undefined, kind);
+  const { handle, via } = useLocalSearchParams<{ handle?: string; via?: string }>();
+  const document = useMemo(() => importDocument(handle), [handle]);
+  const fileUri = document ? handle : null;
+  const kind = document?.kind ?? 'pdf';
+  const label = fileLabel(null, document?.name || undefined, kind);
   const { data: journeys } = useJourneys(userId);
 
   const [phase, setPhase] = useState<Phase>(() =>
@@ -164,7 +156,7 @@ export function ImportDocument() {
   // and deleted as soon as it has been parsed — the app keeps neither the PDF
   // nor the picture.
   useEffect(() => {
-    if (!fileUri) return;
+    if (!document) return;
     let cancelled = false;
     (async () => {
       try {
@@ -172,11 +164,7 @@ export function ImportDocument() {
         // named .pdf (or the reverse) gets read by the other reader rather
         // than refused. If neither can read it, the first attempt's reason is
         // the one worth showing — it was the likelier reader.
-        const contents = await readDocument(fileUri, kind).catch((reason) =>
-          readDocument(fileUri, kind === 'image' ? 'pdf' : 'image').catch(() => {
-            throw reason;
-          }),
-        );
+        const contents = await document.read();
         const { segments, boardingPassBarcodes, ticketNumbers } = extractItinerary(contents.pages, today);
         if (cancelled) return;
         setPhase({ kind: 'review', segments, barcodes: boardingPassBarcodes, tickets: ticketNumbers });
@@ -195,18 +183,12 @@ export function ImportDocument() {
         const message = error instanceof Error ? error.message : 'This file could not be read.';
         setPhase({ kind: 'unreadable', message });
         Observe.logEvent('document.unreadable', { severity: 'warn', body: message });
-      } finally {
-        try {
-          new File(fileUri).delete();
-        } catch {
-          // A missing or already-removed file is fine.
-        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [fileUri, kind, today, via]);
+  }, [document, kind, today, via]);
 
   const segments = phase.kind === 'review' || phase.kind === 'saving' ? phase.segments : [];
 

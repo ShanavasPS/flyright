@@ -1,3 +1,4 @@
+import { bounded, limit, DAY } from './abuse';
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 
@@ -50,7 +51,10 @@ export const push = mutation({
     // entire journal as inserts, and that must not become forty pushes.
     const added: Id<'journeys'>[] = [];
 
+    if (rows.length > 100) throw new Error('Sync at most 100 trips at a time.');
+    await limit(ctx, `journey-sync:${identity.subject}`, 5000, DAY, rows.length);
     for (const row of rows) {
+      for (const [key, value] of Object.entries(row)) if (typeof value === 'string') bounded(value, key === 'notes' ? 10000 : 200, key);
       const existing = await ctx.db
         .query('journeys')
         .withIndex('by_user_key', (q) =>
@@ -61,6 +65,7 @@ export const push = mutation({
       let journeyId = existing?._id ?? null;
       let scheduleChanged = false;
       if (!existing) {
+        await limit(ctx, `journey-create:${identity.subject}`, 500, DAY);
         journeyId = await ctx.db.insert('journeys', { ...row, userId: identity.subject });
         scheduleChanged = true;
         if (!row.deletedAt) added.push(journeyId);

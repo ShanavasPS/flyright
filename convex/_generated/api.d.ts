@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as abuse from "../abuse.js";
 import type * as airportZones from "../airportZones.js";
 import type * as attention from "../attention.js";
 import type * as attentionHelpers from "../attentionHelpers.js";
@@ -20,6 +21,7 @@ import type * as crons from "../crons.js";
 import type * as devTools from "../devTools.js";
 import type * as entitlementShared from "../entitlementShared.js";
 import type * as entitlements from "../entitlements.js";
+import type * as fileOwnership from "../fileOwnership.js";
 import type * as flightData from "../flightData.js";
 import type * as flightNormalize from "../flightNormalize.js";
 import type * as http from "../http.js";
@@ -35,16 +37,21 @@ import type * as lookupShared from "../lookupShared.js";
 import type * as lookups from "../lookups.js";
 import type * as onesignal from "../onesignal.js";
 import type * as photos from "../photos.js";
+import type * as profileShared from "../profileShared.js";
 import type * as provider from "../provider.js";
 import type * as providerFetch from "../providerFetch.js";
 import type * as providerShared from "../providerShared.js";
 import type * as pushCopy from "../pushCopy.js";
+import type * as pushIdentity from "../pushIdentity.js";
 import type * as safety from "../safety.js";
 import type * as safetyHelpers from "../safetyHelpers.js";
+import type * as securityMaintenance from "../securityMaintenance.js";
 import type * as support from "../support.js";
 import type * as supportShared from "../supportShared.js";
 import type * as updates from "../updates.js";
 import type * as updatesShared from "../updatesShared.js";
+import type * as uploadShared from "../uploadShared.js";
+import type * as uploads from "../uploads.js";
 import type * as users from "../users.js";
 
 import type {
@@ -54,6 +61,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  abuse: typeof abuse;
   airportZones: typeof airportZones;
   attention: typeof attention;
   attentionHelpers: typeof attentionHelpers;
@@ -66,6 +74,7 @@ declare const fullApi: ApiFromModules<{
   devTools: typeof devTools;
   entitlementShared: typeof entitlementShared;
   entitlements: typeof entitlements;
+  fileOwnership: typeof fileOwnership;
   flightData: typeof flightData;
   flightNormalize: typeof flightNormalize;
   http: typeof http;
@@ -81,16 +90,21 @@ declare const fullApi: ApiFromModules<{
   lookups: typeof lookups;
   onesignal: typeof onesignal;
   photos: typeof photos;
+  profileShared: typeof profileShared;
   provider: typeof provider;
   providerFetch: typeof providerFetch;
   providerShared: typeof providerShared;
   pushCopy: typeof pushCopy;
+  pushIdentity: typeof pushIdentity;
   safety: typeof safety;
   safetyHelpers: typeof safetyHelpers;
+  securityMaintenance: typeof securityMaintenance;
   support: typeof support;
   supportShared: typeof supportShared;
   updates: typeof updates;
   updatesShared: typeof updatesShared;
+  uploadShared: typeof uploadShared;
+  uploads: typeof uploads;
   users: typeof users;
 }>;
 

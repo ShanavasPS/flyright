@@ -115,6 +115,8 @@ class FlyRightDocumentImportModule : Module() {
       else -> null
     } ?: return null
 
+    if (uri.scheme != "content") return null
+    if (intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION == 0) return null
     val resolver = context.contentResolver
     val name = displayName(uri)
     val type = intent.type ?: resolver.getType(uri)
@@ -124,7 +126,16 @@ class FlyRightDocumentImportModule : Module() {
     val dir = File(context.cacheDir, "shared-documents").apply { mkdirs() }
     val copy = File(dir, "${UUID.randomUUID()}.pdf")
     try {
-      resolver.openInputStream(uri)?.use { input -> copy.outputStream().use { input.copyTo(it) } }
+      resolver.openInputStream(uri)?.use { input -> copy.outputStream().use { output ->
+        val buffer = ByteArray(8192)
+        var total = 0L
+        while (true) {
+          val count = input.read(buffer)
+          if (count < 0) break
+          total += count
+          if (total > 20 * 1024 * 1024) throw IllegalArgumentException("Document too large")
+          output.write(buffer, 0, count)
+        } } }
         ?: return null
     } catch (e: Exception) {
       copy.delete()
@@ -168,10 +179,17 @@ class FlyRightDocumentImportModule : Module() {
    * module at 4x. Only runs when the cheap pass found nothing. */
   private val retryRenderScale = 8f
 
+  private fun importFile(uri: String): File {
+    val parsed = Uri.parse(uri)
+    if (parsed.scheme != "file" || !parsed.authority.isNullOrEmpty()) throw DocumentUnreadableException("Invalid document")
+    val file = File(parsed.path ?: "").canonicalFile
+    val root = File(context.cacheDir, "document-imports").canonicalFile
+    if (file.parentFile != root || !file.isFile || file.length() !in 1..(20L * 1024 * 1024)) throw DocumentUnreadableException("Invalid document")
+    return file
+  }
+
   private fun readPdf(uri: String, maxPages: Int): Map<String, Any> {
-    val path = Uri.parse(uri).path ?: throw DocumentUnreadableException(uri)
-    val file = File(path)
-    if (!file.exists()) throw DocumentUnreadableException(uri)
+    val file = importFile(uri)
 
     PDFBoxResourceLoader.init(context)
     val texts = mutableListOf<String>()
@@ -185,10 +203,10 @@ class FlyRightDocumentImportModule : Module() {
       PDDocument.load(file).use { doc ->
         pageCount = doc.numberOfPages
         val stripper = PDFTextStripper().apply { sortByPosition = true }
-        for (i in 0 until minOf(pageCount, maxOf(maxPages, 1))) {
+        for (i in 0 until minOf(pageCount, maxPages.coerceIn(1, 8))) {
           stripper.startPage = i + 1
           stripper.endPage = i + 1
-          texts.add(stripper.getText(doc))
+          texts.add(stripper.getText(doc).take(100_000))
         }
         if (doc.isEncrypted) {
           doc.isAllSecurityToBeRemoved = true
@@ -237,6 +255,7 @@ class FlyRightDocumentImportModule : Module() {
           for (i in 0 until minOf(pages, renderer.pageCount)) {
             for (scale in listOf(renderScale, retryRenderScale)) {
               val bitmap = renderer.openPage(i).use { page ->
+                if (page.width <= 0 || page.height <= 0 || page.width.toDouble() * page.height * scale * scale > 40_000_000) throw DocumentUnreadableException("Page too large")
                 Bitmap.createBitmap(
                   (page.width * scale).toInt(),
                   (page.height * scale).toInt(),
@@ -291,9 +310,7 @@ class FlyRightDocumentImportModule : Module() {
   /** One "page" out, so the pure extractor downstream needs no notion of
    * images at all. */
   private fun readImage(uri: String): Map<String, Any> {
-    val path = Uri.parse(uri).path ?: throw ImageUnreadableException(uri)
-    val file = File(path)
-    if (!file.exists()) throw ImageUnreadableException(uri)
+    val file = importFile(uri)
     val bitmap = loadBitmap(file) ?: throw ImageUnreadableException(uri)
     return try {
       val scanner = newBarcodeScanner()
@@ -322,7 +339,7 @@ class FlyRightDocumentImportModule : Module() {
   private fun loadBitmap(file: File): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeFile(file.path, bounds)
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outWidth.toLong() * bounds.outHeight > 40_000_000) return null
     var sample = 1
     while (maxOf(bounds.outWidth, bounds.outHeight) / sample > maxImageEdge) sample *= 2
     val options = BitmapFactory.Options().apply {

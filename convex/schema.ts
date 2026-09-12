@@ -7,6 +7,16 @@ import { v } from 'convex/values';
  * both sides — no parse/format round trips. Deletes are tombstones
  * (`deletedAt`), never row removal, so they propagate across devices. */
 export default defineSchema({
+  abuseLimits: defineTable({ key: v.string(), count: v.number(), resetAt: v.number() })
+    .index('by_key', ['key']).index('by_reset', ['resetAt']),
+  uploadTickets: defineTable({
+    token: v.string(), userId: v.string(), expiresAt: v.number(),
+    state: v.union(v.literal('pending'), v.literal('receiving'), v.literal('complete')),
+    storageId: v.optional(v.id('_storage')),
+  }).index('by_token', ['token']).index('by_user', ['userId']).index('by_expiry', ['expiresAt']),
+  ownedFiles: defineTable({
+    userId: v.string(), storageId: v.id('_storage'), size: v.number(), createdAt: v.number(),
+  }).index('by_storage', ['storageId']).index('by_user', ['userId']).index('by_created', ['createdAt']),
   journeys: defineTable({
     /** Clerk user id — always stamped server-side from the JWT. */
     userId: v.string(),
@@ -211,6 +221,7 @@ export default defineSchema({
    * holding the link joins the owner's circle, so a leaked link stays a
    * bounded problem. */
   circleInvites: defineTable({
+    ownerIssued: v.optional(v.boolean()),
     ownerId: v.string(),
     token: v.string(),
     uses: v.number(),
@@ -278,6 +289,7 @@ export default defineSchema({
      * in on the owner's next profile sync, and neither ever leaves the
      * server — a search result carries the name and photo, nothing else. */
     email: v.optional(v.union(v.string(), v.null())),
+    emailVerified: v.optional(v.boolean()),
     searchName: v.optional(v.union(v.string(), v.null())),
     /** The first word of searchName — see circleShared.firstNameKey. */
     searchFirst: v.optional(v.union(v.string(), v.null())),
@@ -368,7 +380,9 @@ export default defineSchema({
    * trusted for server-enforced limits like the free circle size. One row per
    * RC app_user_id (Clerk ids and RC anonymous ids alike, since RC events
    * list every alias). */
+  revenueCatEvents: defineTable({ eventId: v.string(), processedAt: v.number() }).index("by_event", ["eventId"]).index("by_time", ["processedAt"]),
   entitlements: defineTable({
+    generation: v.optional(v.number()),
     userId: v.string(),
     /** ISO instant Pro lapses; null = never had it or revoked. Lifetime
      * purchases store a far-future date. */

@@ -3,11 +3,14 @@ import { Webhook } from 'svix';
 
 import { internal } from './_generated/api';
 import { httpAction } from './_generated/server';
+import { boundedBody } from './uploadShared';
+import { photoUpload } from './uploads';
 
 // The convex/ tsconfig has no Node types; process exists at runtime.
 declare const process: { env: Record<string, string | undefined> };
 
 const http = httpRouter();
+http.route({ path: '/photo-upload', method: 'POST', handler: photoUpload });
 
 /**
  * Clerk webhook receiver. Configure in the Clerk dashboard (Webhooks → Add
@@ -23,7 +26,9 @@ http.route({
     const secret = process.env.CLERK_WEBHOOK_SECRET;
     if (!secret) return new Response('webhook not configured', { status: 503 });
 
-    const payload = await request.text();
+    let payload: string;
+    try { payload = new TextDecoder().decode(await boundedBody(request, 256 * 1024)); }
+    catch { return new Response('body too large', { status: 413 }); }
     let event: {
       type?: string;
       data?: {
@@ -33,7 +38,7 @@ http.route({
         username?: string | null;
         image_url?: string | null;
         primary_email_address_id?: string | null;
-        email_addresses?: { id?: string; email_address?: string }[];
+        email_addresses?: { id?: string; email_address?: string; verification?: { status?: string } }[];
       };
     };
     try {
@@ -67,6 +72,7 @@ http.route({
         name,
         imageUrl: d.image_url ?? null,
         email: primary?.email_address ?? null,
+        emailVerified: primary?.verification?.status === 'verified',
       });
     }
 
@@ -93,37 +99,18 @@ http.route({
       return new Response('unauthorized', { status: 401 });
     }
 
-    let event: {
-      type?: string;
-      app_user_id?: string;
-      aliases?: string[] | null;
-      entitlement_ids?: string[] | null;
-      expiration_at_ms?: number | null;
-      transferred_from?: string[] | null;
-      transferred_to?: string[] | null;
-    };
-    try {
-      event = (await request.json()).event ?? {};
-    } catch {
-      return new Response('invalid json', { status: 400 });
-    }
-    if (typeof event.type !== 'string' || typeof event.app_user_id !== 'string') {
-      // TEST pings from the dashboard have both; anything else is noise.
-      return new Response(null, { status: 200 });
-    }
-
-    const touched = await ctx.runMutation(internal.entitlements.applyRevenueCatEvent, {
-      event: {
-        type: event.type,
-        app_user_id: event.app_user_id,
-        aliases: event.aliases ?? null,
-        entitlement_ids: event.entitlement_ids ?? null,
-        expiration_at_ms: event.expiration_at_ms ?? null,
-        transferred_from: event.transferred_from ?? null,
-        transferred_to: event.transferred_to ?? null,
-      },
-    });
-    console.log(`[rc-webhook] ${event.type} ${event.app_user_id}: ${touched} row(s)`);
+    let event: Record<string, unknown>;
+    try { event = JSON.parse(new TextDecoder().decode(await boundedBody(request, 128 * 1024))).event; }
+    catch { return new Response('invalid body', { status: 400 }); }
+    if (!event || typeof event.type !== 'string') return new Response('invalid event', { status: 400 });
+    if (event.type === 'TEST') return new Response(null, { status: 200 });
+    if (event.environment === 'SANDBOX' && process.env.REVENUECAT_ALLOW_SANDBOX !== 'true') return new Response(null, { status: 200 });
+    if (typeof event.id !== 'string' || event.id.length > 200 || !['PRODUCTION', 'SANDBOX'].includes(String(event.environment))) return new Response('invalid event', { status: 400 });
+    const ids = [event.app_user_id, ...['aliases', 'transferred_from', 'transferred_to'].flatMap(key => Array.isArray(event[key]) ? event[key] as unknown[] : [])];
+    const userIds = [...new Set(ids.filter((id): id is string => typeof id === 'string' && /^user_[A-Za-z0-9]{1,100}$/.test(id)))];
+    if (userIds.length > 100) return new Response('too many users', { status: 400 });
+    try { await ctx.runAction(internal.entitlements.reconcileEvent, { eventId: event.id, userIds }); }
+    catch { return new Response('snapshot unavailable; retry', { status: 503 }); }
     return new Response(null, { status: 200 });
   }),
 });
@@ -152,7 +139,7 @@ http.route({
       emailId?: string | null;
     };
     try {
-      body = await request.json();
+      body = JSON.parse(new TextDecoder().decode(await boundedBody(request, 64 * 1024)));
     } catch {
       return new Response('invalid json', { status: 400 });
     }

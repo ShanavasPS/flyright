@@ -75,7 +75,7 @@ export function renderClaimLetter(
   claimant: Claimant,
 ): string {
   const [salutation, heading, ...body] = letterParagraphs(journey, verdict, claimant);
-  const html = (text: string) => text.replace(BOLD, '<strong>$1</strong>');
+  const html = (text: string) => escapeHtml(text).replace(BOLD, '<strong>$1</strong>');
 
   return `<!DOCTYPE html>
 <html><body style="font-family: -apple-system, Helvetica, sans-serif; line-height: 1.5; padding: 40px;">
@@ -85,7 +85,7 @@ export function renderClaimLetter(
 
 ${body.map((text) => `  <p>${html(text)}</p>`).join('\n\n')}
 
-  <p>Yours faithfully,<br/>${claimant.fullName}<br/>${claimant.email}</p>
+  <p>Yours faithfully,<br/>${escapeHtml(claimant.fullName)}<br/>${escapeHtml(claimant.email)}</p>
 </body></html>`;
 }
 
@@ -128,4 +128,8 @@ export function claimEmailBody(journey: Journey, verdict: Verdict, claimant: Cla
 export function claimPdfName(journey: Journey, verdict: Verdict): string {
   const flight = journey.number || `${journey.from.code}-${journey.to.code}`;
   return `${verdict.regulation ?? 'claim'}-claim-${flight}-${journey.scheduledDeparture.slice(0, 10)}.pdf`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 }

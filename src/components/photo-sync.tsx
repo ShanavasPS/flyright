@@ -45,21 +45,22 @@ export function PhotoSync() {
         for (const row of plan.upload) {
           try {
             const storageId = await uploadPhoto(row, await generateUploadUrl());
-            await markPhotoUploaded(row.id, storageId);
+            await markPhotoUploaded(row.id, storageId, row.updatedAt);
             outbound.push({ ...row, storageId });
           } catch {
             // Missing file or bad network: leave it dirty for the next pass.
           }
         }
-        if (outbound.length) {
+        for (let offset = 0; offset < outbound.length; offset += 100) {
+          const chunk = outbound.slice(offset, offset + 100);
           await push({
-            rows: outbound.map((row) => ({
+            rows: chunk.map((row) => ({
               ...toRemotePhoto(row),
               // SQLite stores the id as text; the validator wants the branded type.
               storageId: row.storageId as Id<'_storage'> | null,
             })),
           });
-          await markPhotosSynced(outbound);
+          await markPhotosSynced(chunk);
         }
         for (const row of plan.apply) await applyRemotePhoto(row, userId);
       } catch {

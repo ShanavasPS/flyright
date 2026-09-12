@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 import { logInAnalytics, logOutAnalytics, trackAuth } from '@/services/analytics';
 import { setNotificationViewer } from '@/services/notification-lifecycle';
-import { logInNotifications, logOutNotifications } from '@/services/notifications';
+import { logOutNotifications } from '@/services/notifications';
 import { logInPurchases, logOutPurchases } from '@/services/purchases';
 import {
   clearSignedOutNotice,
@@ -57,7 +57,6 @@ export function IdentitySync() {
         rememberSession({ id: sessionId, email: email ?? null, expireAt: sessionExpireAt });
       }
       void logInPurchases(userId, email);
-      logInNotifications(userId, email);
       logInAnalytics(userId, {
         auth_method: authMethod,
         signup_date: createdAt ? new Date(createdAt).toISOString() : undefined,

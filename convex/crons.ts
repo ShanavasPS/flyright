@@ -17,4 +17,7 @@ crons.interval('prune cached flight facts', { hours: 6 }, internal.provider.prun
 // The Live Activity proxy's abuse meter only needs a day of history.
 crons.interval('prune live activity meter', { hours: 12 }, internal.liveActivityMeter.prune, {});
 
+crons.interval('prune abuse counters', { hours: 1 }, internal.abuse.prune, {});
+crons.interval('prune photo uploads', { hours: 1 }, internal.uploads.prune, {});
+
 export default crons;

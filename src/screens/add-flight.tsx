@@ -1,3 +1,4 @@
+import { registerDocument } from '@/services/document-imports';
 import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
@@ -313,9 +314,7 @@ export function AddFlight() {
       router.replace({
         pathname: '/import-document',
         params: {
-          uri: picked.uri,
-          name: picked.name ?? '',
-          type: picked.mimeType ?? '',
+          handle: registerDocument(picked),
           via: 'upload',
         },
       });

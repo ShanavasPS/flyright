@@ -226,6 +226,9 @@ export function AddPerson() {
           <ThemedText type="link">Done</ThemedText>
         </Pressable>
       </View>
+      <ThemedText type="small" themeColor="textSecondary">
+        Confirm who someone is before sharing trips. A Pro badge shows a paid plan.
+      </ThemedText>
       <TextInput
         autoCapitalize="none"
         autoCorrect={false}

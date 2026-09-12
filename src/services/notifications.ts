@@ -132,16 +132,11 @@ export function setUserTag(key: string, value: string) {
   OneSignal.User.addTag(key, value);
 }
 
-/**
- * Attach this device's subscription to the signed-in user. The external id is
- * the Clerk user id — the same key RevenueCat uses — so journeys and the
- * backend can target by user across devices and tools. Email rides along
- * whenever Clerk knows it (anonymous users never reach this call).
- */
-export function logInNotifications(userId: string, email?: string) {
+/** Attach only the secret alias returned by the authenticated token endpoint. */
+export function logInNotifications(alias: string) {
   if (!ONESIGNAL_APP_ID) return;
-  OneSignal.login(userId);
-  if (email) OneSignal.User.addEmail(email);
+  if (!/^push_[a-f0-9]{64}$/.test(alias)) return;
+  OneSignal.login(alias);
 }
 
 /** Detach from the identified user; the device continues as anonymous. */

@@ -1,3 +1,4 @@
+import { boundedBody } from '../../../convex/uploadShared';
 /**
  * POST /api/live-activity — proxy for OneSignal's Live Activity REST API,
  * so the REST key stays server-side. Body:
@@ -57,8 +58,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const raw = await request.text().catch(() => '');
-  if (raw.length > MAX_BODY_BYTES) return Response.json({ error: 'body too large' }, { status: 413 });
+  let raw: string;
+  try { raw = new TextDecoder().decode(await boundedBody(request, MAX_BODY_BYTES)); }
+  catch { return Response.json({ error: 'body too large' }, { status: 413 }); }
   let body: { activityId?: unknown; event?: unknown; contentState?: Record<string, unknown> } | null = null;
   try {
     body = JSON.parse(raw);
@@ -98,7 +100,7 @@ export async function POST(request: Request) {
   const verdict = await meter(request, activityId, event);
   if (!verdict.allowed) {
     console.warn('[live-activity] refused', verdict.reason);
-    return Response.json({ error: 'rate limited', reason: verdict.reason }, { status: 429 });
+    return Response.json({ error: verdict.reason === 'unavailable' ? 'metering unavailable' : 'rate limited', reason: verdict.reason }, { status: verdict.reason === 'unavailable' ? 503 : 429 });
   }
 
   const upstream = await fetch(
@@ -134,9 +136,7 @@ export async function POST(request: Request) {
   return Response.json({ ok: true });
 }
 
-/** One Convex round trip that charges the activity and the address. Fails
- * open when metering is not configured or unreachable (dev without a
- * deployment, an outage) — the lookup gate makes the same call. */
+/** Refuse paid work if the activity/address meters cannot authorize it. */
 async function meter(
   request: Request,
   activityId: string,
@@ -146,7 +146,7 @@ async function meter(
   const client = convex();
   if (!secret || !client) {
     if (process.env.NODE_ENV === 'production') console.warn('[live-activity] metering not configured');
-    return { allowed: true };
+    return process.env.NODE_ENV === 'production' ? { allowed: false, reason: 'unavailable' } : { allowed: true };
   }
   try {
     return await client.mutation(api.liveActivityMeter.permit, {
@@ -156,7 +156,7 @@ async function meter(
       event,
     });
   } catch (error) {
-    console.warn('[live-activity] metering unreachable, proceeding unmetered', error);
-    return { allowed: true };
+    console.warn('[live-activity] metering unavailable', error);
+    return { allowed: false, reason: 'unavailable' };
   }
 }

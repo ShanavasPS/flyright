@@ -1,29 +1,31 @@
+import { safeAvatar } from './profileShared';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
-import type { Id } from './_generated/dataModel';
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server';
 import { firstNameKey, searchKey } from './circleShared';
+import { bounded, limit, HOUR } from './abuse';
+import { deleteOwnedFile } from './fileOwnership';
 
-/** One writer for the profile mirror, so the webhook and the client's own
- * sync can't disagree about what a row holds — including the two lowercased
- * keys "add someone" searches on. A null email leaves whatever is already
- * stored alone: the webhook always knows the address, the client may not. */
+/** Searchable email is written only by verified server events. The legacy
+ * client fallback may update display fields but never email ownership. */
 async function writeProfile(
   ctx: MutationCtx,
   userId: string,
   name: string,
   imageUrl: string | null,
   email: string | null,
+  emailVerified?: boolean,
 ) {
   const existing = await ctx.db
     .query('profiles')
     .withIndex('by_user', (q) => q.eq('userId', userId))
     .unique();
   const fields = {
-    name,
-    imageUrl,
-    email: searchKey(email) ?? existing?.email ?? null,
+    name: bounded(name, 100, 'Name'),
+    imageUrl: safeAvatar(imageUrl),
+    email: emailVerified === undefined ? existing?.email ?? null : emailVerified ? searchKey(email) : null,
+    emailVerified: emailVerified ?? existing?.emailVerified ?? false,
     searchName: searchKey(name),
     searchFirst: firstNameKey(name),
     updatedAt: new Date().toISOString(),
@@ -119,16 +121,16 @@ export const purge = internalMutation({
       .query('tripUpdates')
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .collect();
-    const files = new Set<Id<'_storage'>>();
     for (const p of photos) {
-      if (p.storageId) files.add(p.storageId);
       await ctx.db.delete(p._id);
     }
     for (const u of updates) {
-      if (u.storageId) files.add(u.storageId);
       await ctx.db.delete(u._id);
     }
-    for (const file of files) await ctx.storage.delete(file).catch(() => {});
+    const owned = await ctx.db.query('ownedFiles').withIndex('by_user', q => q.eq('userId', userId)).collect();
+    for (const file of owned) await deleteOwnedFile(ctx, userId, file.storageId);
+    const tickets = await ctx.db.query('uploadTickets').withIndex('by_user', q => q.eq('userId', userId)).collect();
+    for (const ticket of tickets) await ctx.db.delete(ticket._id);
 
     const entitlement = await ctx.db
       .query('entitlements')
@@ -179,9 +181,10 @@ export const upsertProfile = internalMutation({
     name: v.string(),
     imageUrl: v.union(v.string(), v.null()),
     email: v.optional(v.union(v.string(), v.null())),
+    emailVerified: v.boolean(),
   },
-  handler: async (ctx, { userId, name, imageUrl, email }) => {
-    await writeProfile(ctx, userId, name, imageUrl, email ?? null);
+  handler: async (ctx, { userId, name, imageUrl, email, emailVerified }) => {
+    await writeProfile(ctx, userId, name, imageUrl, email ?? null, emailVerified);
   },
 });
 
@@ -198,6 +201,7 @@ export const syncMyProfile = mutation({
   handler: async (ctx, { name, imageUrl, email }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return;
+    bounded(name, 100, 'Name');
     const trimmed = name.trim();
     if (!trimmed) return;
     const existing = await ctx.db
@@ -216,7 +220,9 @@ export const syncMyProfile = mutation({
     ) {
       return;
     }
-    await writeProfile(ctx, identity.subject, trimmed, imageUrl, email ?? null);
+    await limit(ctx, `profile:${identity.subject}`, 30, HOUR);
+    // Client-supplied email is never evidence of ownership, including on old builds.
+    await writeProfile(ctx, identity.subject, trimmed, imageUrl, null);
   },
 });
 

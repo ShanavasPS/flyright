@@ -1,3 +1,4 @@
+import { bounded, limit, HOUR, DAY } from './abuse';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
@@ -6,9 +7,7 @@ import { maySee } from './audience';
 import {
   activeSessionForKey,
   audienceFor,
-  circleFull,
   createSession,
-  ensureCircleInvite,
   followerCount,
   isCloseMember,
   journeyForKey,
@@ -50,6 +49,7 @@ export const start = mutation({
   },
   handler: async (ctx, { naturalKey, stage, stamps, activityId, plan }) => {
     const identity = await requireIdentity(ctx);
+    validateState(naturalKey, stage, stamps, activityId, plan);
 
     const existing = await activeSessionForKey(ctx, identity.subject, naturalKey);
     if (existing) {
@@ -88,6 +88,8 @@ export const setStage = mutation({
   },
   handler: async (ctx, { naturalKey, stage, stamps, activityId, plan }) => {
     const identity = await requireIdentity(ctx);
+    validateState(naturalKey, stage, stamps, activityId, plan);
+    await limit(ctx, `live-state:${identity.subject}`, 240, HOUR);
     let session = await activeSessionForKey(ctx, identity.subject, naturalKey);
     if (!session) {
       // A circle is a standing audience: the first stage tap on a trip
@@ -186,6 +188,8 @@ export const refreshFacts = mutation({
     if (!session || !session.number) return;
     const last = session.lastCheckedAt ? Date.parse(session.lastCheckedAt) : 0;
     if (Date.now() - last < 5 * 60_000) return;
+    await limit(ctx, `live-refresh:${identity.subject}`, 30, HOUR);
+    await limit(ctx, `live-refresh-session:${session._id}`, 1, 5 * 60_000);
     await ctx.scheduler.runAfter(0, internal.liveInternal.poll, { sessionId: session._id });
   },
 });
@@ -202,28 +206,13 @@ export const follow = mutation({
     if (session.userId === identity.subject) throw new Error('Own session');
     if (await blockedBetween(ctx, session.userId, identity.subject)) throw new Error('Link expired');
 
-    // A close-circle trip's link doesn't follow the trip: it offers to
-    // follow the traveler instead (their circle invite), and only close
-    // members — already aboard — get the trip itself.
+    // Restricted trips disclose no trip or invitation to outsiders.
     const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
     if (
       journey &&
       !maySee(journey, await isCloseMember(ctx, session.userId, identity.subject))
     ) {
-      const inCircle = await ctx.db
-        .query('circle')
-        .withIndex('by_owner_member', (q) =>
-          q.eq('ownerId', session.userId).eq('memberId', identity.subject),
-        )
-        .unique();
-      return {
-        sessionId: null,
-        hidden: true as const,
-        circleInviteToken:
-          inCircle || (await circleFull(ctx, session.userId))
-            ? null
-            : (await ensureCircleInvite(ctx, session.userId)).token,
-      };
+      return { sessionId: null, hidden: true as const, circleInviteToken: null };
     }
 
     const existing = await ctx.db
@@ -233,6 +222,7 @@ export const follow = mutation({
       )
       .unique();
     if (!existing) {
+      await limit(ctx, `follow:${identity.subject}`, 100, DAY);
       await ctx.db.insert('follows', {
         sessionId: session._id,
         ownerId: session.userId,
@@ -241,20 +231,8 @@ export const follow = mutation({
         createdAt: new Date().toISOString(),
       });
     }
-    // The upgrade path from one trip to every trip: the traveler chose to
-    // share with this person, so the follow page may offer the traveler's
-    // circle invite — unless they're already in it, or the circle is full
-    // (the traveler's problem to solve, not the follower's).
-    const inCircle = await ctx.db
-      .query('circle')
-      .withIndex('by_owner_member', (q) =>
-        q.eq('ownerId', session.userId).eq('memberId', identity.subject),
-      )
-      .unique();
-    const circleInviteToken =
-      inCircle || (await circleFull(ctx, session.userId))
-        ? null
-        : (await ensureCircleInvite(ctx, session.userId)).token;
+    // A trip token authorizes only this trip. Circle invitations are owner-issued.
+    const circleInviteToken = null;
     return { sessionId: session._id, hidden: false as const, circleInviteToken };
   },
 });
@@ -424,3 +402,10 @@ export const following = query({
     return out;
   },
 });
+
+function validateState(key: string, stage: string | null, stamps: Record<string, string>, activity: string | null, plan?: string[]) {
+  bounded(key, 200); if (stage) bounded(stage, 50); if (activity) bounded(activity, 200);
+  if (Object.keys(stamps).length > 30 || (plan?.length ?? 0) > 30) throw new Error('Too many trip stages');
+  for (const [name, stamp] of Object.entries(stamps)) { bounded(name, 50); bounded(stamp, 40); }
+  for (const name of plan ?? []) bounded(name, 50);
+}

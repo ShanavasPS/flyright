@@ -66,7 +66,8 @@
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1",
     "svix": "^2.0.0",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "decode-uri-component": "file:vendor/decode-uri-component"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -91,7 +92,8 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "sync-versions": "node ./scripts/sync-build-numbers.mjs",
-    "build-airport-timezones": "node ./scripts/build-airport-timezones.mjs"
+    "build-airport-timezones": "node ./scripts/build-airport-timezones.mjs",
+    "test:security": "node scripts/security-regressions.cjs"
   },
   "jest": {
     "preset": "jest-expo",
@@ -99,5 +101,8 @@
       "\\.css$": "<rootDir>/scripts/jest-css-stub.js"
     }
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "decode-uri-component": "$decode-uri-component"
+  }
 }

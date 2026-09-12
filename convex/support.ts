@@ -1,3 +1,4 @@
+import { limit, HOUR, DAY } from './abuse';
 import { ConvexError, v } from 'convex/values';
 
 import { internal } from './_generated/api';
@@ -177,8 +178,12 @@ export const startThread = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Email support@getflyright.com for help signing in.');
+    await limit(ctx, `support-start:${identity.subject}`, 5, HOUR);
+    await limit(ctx, 'support:global', 200, HOUR);
     const body = validateBody(args.message);
-    const email = (identity?.email ?? args.email ?? '').trim().toLowerCase();
+    const profile = await ctx.db.query('profiles').withIndex('by_user', q => q.eq('userId', identity.subject)).unique();
+    const email = (identity.emailVerified === true ? identity.email : profile?.emailVerified ? profile.email : '')?.trim().toLowerCase() ?? '';
     if (!EMAIL_RE.test(email)) throw new ConvexError('Add an email address we can reply to.');
 
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -215,6 +220,16 @@ export const reply = mutation({
   args: { threadId: v.id('supportThreads'), message: v.string() },
   handler: async (ctx, { threadId, message }) => {
     const thread = await requireOwnThread(ctx, threadId);
+    const identity = (await ctx.auth.getUserIdentity())!;
+    const profile = await ctx.db.query('profiles').withIndex('by_user', q => q.eq('userId', identity.subject)).unique();
+    const email = (identity.emailVerified === true ? identity.email : profile?.emailVerified ? profile.email : '')?.trim().toLowerCase() ?? '';
+    if (!EMAIL_RE.test(email)) throw new ConvexError('Verify your account email before replying.');
+    // Legacy threads may contain client-claimed reply addresses. Rebind them
+    // before scheduling any more mail, including after an account email change.
+    if (thread.email !== email) await ctx.db.patch(thread._id, { email });
+    await limit(ctx, `support-reply:${thread.userId}`, 20, DAY);
+    await limit(ctx, `support-thread:${thread._id}`, 5, HOUR);
+    await limit(ctx, 'support:global', 200, HOUR);
     const body = validateBody(message);
     await appendInbound(ctx, thread, body);
   },

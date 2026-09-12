@@ -1,3 +1,4 @@
+import { registerInboxDocument } from '@/services/document-imports';
 /** Rewrites incoming system URLs before Expo Router matches them.
  *
  * A PDF shared to the app on iOS ("Copy to FlyRight", enabled by the
@@ -9,10 +10,10 @@
 export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
   try {
     if (/^file:/i.test(path)) {
-      return `/import-document?uri=${encodeURIComponent(path)}`;
+      return `/import-document?handle=${registerInboxDocument(path)}`;
     }
     return path;
   } catch {
-    return path;
+    return '/import-document';
   }
 }

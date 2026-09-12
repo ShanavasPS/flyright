@@ -18,8 +18,7 @@
  *     convex/provider.ts. Pro accounts get the larger daily limit, read
  *     server-side from the entitlements mirror.
  *
- * Infra hiccups fail open: a metering outage must not take lookups down;
- * bots are the concern, not the counter.
+ * Metering outages refuse paid work so a counter failure cannot bypass limits.
  *
  * Server-only: never import from app code. */
 
@@ -269,7 +268,10 @@ export function convex(): ConvexHttpClient | null {
 export async function providerCall(path: string): Promise<ProviderResponse> {
   const secret = process.env.LOOKUP_QUOTA_SECRET;
   const client = convex();
-  if (!secret || !client) return providerFetch(path);
+  if (!secret || !client) {
+    if (isProduction()) throw new Error('Lookup metering unavailable');
+    return providerFetch(path);
+  }
   return (await client.action(api.provider.fetchPath, { secret, path })) as ProviderResponse;
 }
 
@@ -287,19 +289,17 @@ export interface LookupRequest {
  * the current degradation level, which tells the route whether the pool is
  * thin enough to skip the speculative inbound call.
  *
- * Fails open to a permit: if metering is unconfigured or Convex is
- * unreachable, a lookup is better than an outage. The provider's own monthly
- * ceiling is the backstop in that case.
+ * Production refuses paid work when metering cannot authorize it.
  */
 export async function beginLookup(
   subject: GateSubject,
   request: LookupRequest,
-): Promise<BeginResult> {
+): Promise<BeginResult | { outcome: 'unavailable' }> {
   const secret = process.env.LOOKUP_QUOTA_SECRET;
   const client = convex();
   if (!secret || !client) {
-    if (isProduction()) console.warn('[lookup-gate] lookup metering not configured');
-    return { outcome: 'permit', level: 'full' };
+    if (!isProduction()) return { outcome: 'permit', level: 'full' };
+    return { outcome: 'unavailable' };
   }
   try {
     return await client.mutation(api.provider.begin, {
@@ -310,8 +310,8 @@ export async function beginLookup(
       ...request,
     });
   } catch (error) {
-    console.warn('[lookup-gate] metering unreachable, proceeding unmetered', error);
-    return { outcome: 'permit', level: 'full' };
+    console.warn('[lookup-gate] metering unavailable', error);
+    return { outcome: 'unavailable' };
   }
 }
 

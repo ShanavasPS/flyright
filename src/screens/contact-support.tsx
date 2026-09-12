@@ -26,6 +26,7 @@ import { useTheme } from '@/hooks/use-theme';
  * to the support inbox with the traveler's address as Reply-To (see
  * convex/support.ts), so a reply from a normal mail client reaches them. */
 export function ContactSupport() {
+  const { isSignedIn } = useUser();
   return (
     <ThemedView style={styles.container}>
       {/* "padding" on both platforms — see support-thread.tsx for why Android
@@ -42,9 +43,12 @@ export function ContactSupport() {
             Questions about a verdict, a claim, or your subscription? Tell us what
             happened — include the flight number and date if it&apos;s about a trip.
           </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            FlyRight support will never ask for your login code or a payment to resolve a support request.
+          </ThemedText>
           {/* useMutation needs a ConvexProvider, which _layout mounts only when
               a deployment is configured. Without one, fall back to plain email. */}
-          {CONVEX_URL ? <ContactForm /> : <MailFallback />}
+          {CONVEX_URL && isSignedIn ? <ContactForm /> : <MailFallback />}
         </ScrollView>
       </KeyboardAvoidingView>
     </ThemedView>

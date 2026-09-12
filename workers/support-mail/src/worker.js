@@ -40,7 +40,7 @@ export default {
           fromHeader: decodeWords(message.headers.get('from') || ''),
           authResults: message.headers.get('authentication-results') || '',
           subject: decodeWords(message.headers.get('subject') || ''),
-          text,
+          text: text.slice(0, 4000),
           emailId: message.headers.get('message-id'),
         });
         // Each deployment owns its own threads; the first one that knows the
@@ -107,7 +107,8 @@ function parseMime(bytes) {
   return out;
 }
 
-function walk(raw, out) {
+function walk(raw, out, depth = 0) {
+  if (depth > 20) return;
   const sep = raw.search(/\r?\n\r?\n/);
   const headerText = sep >= 0 ? raw.slice(0, sep) : raw;
   const body = sep >= 0 ? raw.slice(sep).replace(/^\r?\n\r?\n/, '') : '';
@@ -121,7 +122,7 @@ function walk(raw, out) {
     for (let i = 1; i < parts.length; i++) {
       const part = parts[i];
       if (part.startsWith('--')) break;
-      walk(part.replace(/^\r?\n/, ''), out);
+      walk(part.replace(/^\r?\n/, ''), out, depth + 1);
       if (out.text) return; // plain text wins; stop at the first one
     }
     return;

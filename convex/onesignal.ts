@@ -1,3 +1,4 @@
+import { pushAlias } from './pushIdentity';
 /** OneSignal REST helpers — used only from actions. Needs ONESIGNAL_APP_ID
  * and ONESIGNAL_REST_API_KEY set on the deployment (npx convex env set). */
 
@@ -12,7 +13,7 @@ function config() {
   return { appId, auth };
 }
 
-/** Push to specific users by Clerk id (IdentitySync sets external_id).
+/** Resolve Clerk IDs to secret recipient aliases before contacting OneSignal.
  *
  * `badge`: the count to leave on the iOS app icon — the receiver's whole
  * unseen inbox (attention.badgeFor), so it lands even while the app is
@@ -30,13 +31,15 @@ export async function sendFollowerPush(
 ): Promise<void> {
   const cfg = config();
   if (!cfg || externalIds.length === 0) return;
+  const aliases = await Promise.all(externalIds.map(pushAlias));
+  if (aliases.some(alias => !alias)) return;
   const res = await fetch('https://api.onesignal.com/notifications', {
     method: 'POST',
     headers: { authorization: cfg.auth, 'content-type': 'application/json' },
     body: JSON.stringify({
       app_id: cfg.appId,
       target_channel: 'push',
-      include_aliases: { external_id: externalIds },
+      include_aliases: { external_id: aliases },
       headings: { en: heading },
       contents: { en: body },
       data: { url },
@@ -66,6 +69,8 @@ export async function startLiveActivity(
 ): Promise<boolean> {
   const cfg = config();
   if (!cfg) return false;
+  const alias = await pushAlias(externalId);
+  if (!alias) return false;
   const res = await fetch(
     `https://api.onesignal.com/apps/${cfg.appId}/activities/activity/DefaultLiveActivityAttributes`,
     {
@@ -80,7 +85,7 @@ export async function startLiveActivity(
         headings: { en: heading },
         contents: { en: body },
         target_channel: 'push',
-        include_aliases: { external_id: [externalId] },
+        include_aliases: { external_id: [alias] },
       }),
     },
   );

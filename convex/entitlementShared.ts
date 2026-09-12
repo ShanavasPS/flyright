@@ -11,6 +11,7 @@ export const NEVER_EXPIRES = '9999-12-31T00:00:00.000Z';
  * (https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields). */
 export interface RevenueCatEvent {
   type: string;
+  cancel_reason?: string | null;
   app_user_id: string;
   aliases?: string[] | null;
   entitlement_ids?: string[] | null;
@@ -61,6 +62,10 @@ export function entitlementChange(event: RevenueCatEvent): EntitlementChange | n
     return { userIds: [...ids], proUntil: at };
   }
 
+  if (event.type === 'CANCELLATION' && mentionsPro && (!event.expiration_at_ms || event.cancel_reason === 'CUSTOMER_SUPPORT')) {
+    return { userIds: [...ids], proUntil: null };
+  }
+
   if (GRANTING.has(event.type) && mentionsPro) {
     return {
       userIds: [...ids],
@@ -76,14 +81,24 @@ export const proActive = (proUntil: string | null | undefined, now = Date.now())
 
 /** The slice of RevenueCat's GET /v1/subscribers/{id} response this reads. */
 export interface RevenueCatSubscriber {
-  entitlements?: Record<string, { expires_date?: string | null }>;
+  entitlements?: Record<string, { expires_date?: string | null; product_identifier?: string }>;
+  subscriptions?: Record<string, { is_sandbox?: boolean }>;
+  non_subscriptions?: Record<string, { is_sandbox?: boolean }[]>;
 }
 
 /** proUntil from the subscriber snapshot — null when Pro was never held.
  * An expired entitlement stays listed with a past expires_date, which
  * proActive already treats as lapsed, so it's stored as-is. */
-export function proUntilFromSubscriber(subscriber: RevenueCatSubscriber): string | null {
+export function proUntilFromSubscriber(subscriber: RevenueCatSubscriber, allowSandbox = true): string | null {
   const pro = subscriber.entitlements?.[ENTITLEMENT_PRO];
   if (!pro) return null;
+  if (!allowSandbox) {
+    const product = pro.product_identifier;
+    if (!product) return null;
+    const subscription = subscriber.subscriptions?.[product];
+    const purchases = subscriber.non_subscriptions?.[product] ?? [];
+    if (subscription?.is_sandbox !== false && !purchases.some(p => p.is_sandbox === false)) return null;
+  }
+  if (pro.expires_date && !Number.isFinite(Date.parse(pro.expires_date))) return null;
   return pro.expires_date ?? NEVER_EXPIRES;
 }

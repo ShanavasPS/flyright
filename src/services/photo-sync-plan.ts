@@ -19,6 +19,7 @@ export interface RemotePhoto {
   updatedAt: string;
   deletedAt: string | null;
   url?: string | null;
+  needsUpload?: boolean;
 }
 
 export function toRemotePhoto(row: TripPhotoRow): Omit<RemotePhoto, 'url'> {
@@ -59,7 +60,9 @@ export function planPhotoSync(local: TripPhotoRow[], remote: RemotePhoto[]): Pho
 
   for (const row of local) {
     const counterpart = remoteById.get(row.id);
-    if (!counterpart) {
+    if (counterpart?.needsUpload && !row.deletedAt && !counterpart.deletedAt && row.uri.startsWith('file://')) {
+      plan.upload.push({ ...row, storageId: null, updatedAt: new Date(Math.max(Date.now(), Date.parse(row.updatedAt) + 1, Date.parse(counterpart.updatedAt) + 1)).toISOString() });
+    } else if (!counterpart) {
       if (isPhotoDirty(row)) outbound(row);
     } else if (counterpart.updatedAt > row.updatedAt) {
       plan.apply.push(counterpart);

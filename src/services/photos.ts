@@ -172,8 +172,8 @@ export async function uploadPhoto(row: TripPhotoRow, uploadUrl: string): Promise
 
 /** Records the upload without touching updatedAt, so the row's push carries
  * the same stamp and the tie afterwards reads as "in sync". */
-export async function markPhotoUploaded(id: string, storageId: string): Promise<void> {
-  await db.update(tripPhotos).set({ storageId }).where(eq(tripPhotos.id, id));
+export async function markPhotoUploaded(id: string, storageId: string, updatedAt?: string): Promise<void> {
+  await db.update(tripPhotos).set({ storageId, ...(updatedAt ? { updatedAt } : {}) }).where(eq(tripPhotos.id, id));
 }
 
 export async function markPhotosSynced(rows: { id: string; updatedAt: string }[]): Promise<void> {

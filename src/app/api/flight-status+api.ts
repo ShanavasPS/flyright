@@ -211,6 +211,8 @@ export async function GET(request: Request) {
 
   // Someone already asked this question recently — free, and doesn't touch
   // anyone's allowance.
+  if (begin.outcome === 'unavailable') return Response.json({ error: 'metering_unavailable' }, { status: 503 });
+
   if (begin.outcome === 'cached') {
     return new Response(begin.payload, {
       headers: { 'content-type': 'application/json', 'x-flyright-cache': 'hit' },

@@ -1,3 +1,5 @@
+import { limit, HOUR } from './abuse';
+import { requireFileOwner, deleteOwnedFile, ownedFileUrl } from './fileOwnership';
 import { ConvexError, v } from 'convex/values';
 
 import type { Doc, Id } from './_generated/dataModel';
@@ -24,7 +26,7 @@ async function publicUpdate(ctx: QueryCtx | MutationCtx, row: Doc<'tripUpdates'>
   return {
     updateId: row._id,
     text: row.text,
-    photoUrl: row.storageId ? await ctx.storage.getUrl(row.storageId) : null,
+    photoUrl: await ownedFileUrl(ctx, row.userId, row.storageId),
     width: row.width,
     height: row.height,
     stage: row.stage,
@@ -136,6 +138,8 @@ export const post = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
     const me = identity.subject;
+    if (storageId) await requireFileOwner(ctx, me, storageId);
+    await limit(ctx, `trip-update:${me}`, 30, HOUR);
     const journey = await journeyForKey(ctx, me, journeyKey);
     if (!journey) throw new ConvexError('Trip not found');
     // An "Only me" trip has nobody to post to; the client hides the composer,
@@ -176,7 +180,7 @@ export const remove = mutation({
     const row = await ctx.db.get(updateId);
     if (!row || row.userId !== identity.subject) return;
     if (row.storageId && !(await storageInUse(ctx, row.storageId, { update: row._id }))) {
-      await ctx.storage.delete(row.storageId).catch(() => {});
+      await deleteOwnedFile(ctx, identity.subject, row.storageId);
     }
     await ctx.db.delete(row._id);
   },
