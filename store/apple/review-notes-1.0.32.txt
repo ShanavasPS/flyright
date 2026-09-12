@@ -1,0 +1,16 @@
+FlyRight 1.0.32 — a maintenance release on top of 1.0.31 (approved 2026-09-11). No new screens, no new permissions, no new purchases, no change to the account model.
+
+ONLY CHANGE SINCE 1.0.31:
+
+The app now reports a launch event to Expo's EAS Insights (expo-insights, the Expo SDK's own usage library) so we can see when an update has reached devices. The event carries a random per-install id, the app version, the platform and the OS version — no account, flight, claim, note or photo content, and it runs without any prompt. This is anonymous usage analytics, already covered by the app's Product Interaction / Performance Data privacy declarations; it is not tracking across apps and the ATT choice is unrelated to it.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- Trip updates: My travels -> open any upcoming or recent trip -> "Share an update" on the trip page (visible on the trip's travel day and the day after). Followers see it on the People tab.
+- Block / Report: People tab -> any person -> "…" menu on their page.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.31: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos or updates, and push for flight status, claim deadlines and trip updates from people the user follows. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
