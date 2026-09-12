@@ -15,6 +15,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.32',
+    date: '2026-09-12',
+    notes: [
+      'The app now tells us, anonymously, that it launched and on which version — so we see when an update has actually reached travellers.',
+      'No new screens this time: 1.0.32 is 1.0.31 with that one signal added, so a fix can be judged by the phones it reached.',
+      'Nothing about you or your trips is in that signal — a random install id, the app version, and the platform.',
+    ],
+  },
+  {
     version: '1.0.31',
     date: '2026-09-11',
     notes: [
