@@ -55,3 +55,19 @@ tags:
     optional: true
 - pressKey: Home
 - pressKey: Home
+# The "continue to allow" prompt can surface on a LATER lock, so lock once
+# more and answer it if it is there, leaving the scene a clean card.
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 2500
+    optional: true
+- pressKey: Lock
+- extendedWaitUntil:
+    visible: "Always Allow"
+    timeout: 6000
+    optional: true
+- tapOn:
+    text: "Always Allow"
+    optional: true
+- pressKey: Home
+- pressKey: Home

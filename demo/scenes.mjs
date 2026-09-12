@@ -10,7 +10,8 @@
  * their taps inside that time — pacing lives in the narration, not the YAML.
  *
  * `trimAt` = which "… is visible" step of the flow opens the scene (default
- * the first); `endAfter` = the Maestro step the footage ends on, plus a hold; `[[slnc N]]` is a macOS `say` pause in milliseconds.
+ * the first); `endAfter` = the Maestro step the footage ends on, plus a hold;
+ * `maxSpeed` overrides the global footage speed-up cap for one scene; `[[slnc N]]` is a macOS `say` pause in milliseconds.
  */
 
 /** Narration engine: 'edge' (Microsoft neural voices via edge-tts, free, no
@@ -62,13 +63,14 @@ export const SCENES = [
     flow: '.maestro/demo/travel-day.yaml',
     seed: 'travelDay',
     // Close on the Lock Screen (the flow unlocks afterwards for the next scene).
-    endAfter: { step: 'Press Lock key', hold: 3.5 },
+    endAfter: { step: 'Press Lock key', hold: 2.4 },
+    maxSpeed: 1.8, // four screens in one breath; Maestro's step latency, not the UI, is what gets compressed
     tail: 0.8,
     eyebrow: 'Travel Day Live',
     title: 'Your day, on a boarding pass',
-    bullets: ['Countdown, gate and terminal', 'Check-in → security → boarding', 'Live Activity on the Lock Screen'],
+    bullets: ['Countdown, gate and terminal', 'Check-in → security → boarding', 'Dynamic Island + Lock Screen Live Activity'],
     narration:
-      'On the day you fly, the home screen becomes a boarding pass. [[slnc 120]] It counts down to departure, shows the gate the moment the airport posts it, [[slnc 100]] and walks you through check-in, security and boarding. [[slnc 150]] A Live Activity keeps it on your Lock Screen and in the Dynamic Island.',
+      'On the day you fly, the home screen becomes a boarding pass. [[slnc 120]] It counts down to departure, shows the gate the moment the airport posts it, [[slnc 100]] and walks you through check-in, security and boarding. [[slnc 150]] A Live Activity keeps it in the Dynamic Island and on your Lock Screen.',
   },
   {
     id: '05-people',
@@ -77,9 +79,9 @@ export const SCENES = [
     tail: 0.6,
     eyebrow: 'People',
     title: 'Follow a travel day, live',
-    bullets: ['The plane on the route, delays as they happen', 'Followers get the landing, not a “did you land?”', 'Share a photo from inside the trip'],
+    bullets: ['The plane on the route, delays as they happen', 'Followers see the landing the moment it happens', 'Share a photo from inside the trip'],
     narration:
-      'The people who care can follow your travel day live: [[slnc 100]] the plane on the route, delays as they happen, and the moment you land. [[slnc 150]] No more “did you land?” texts.',
+      'The people who care can follow your travel day live: [[slnc 100]] the plane on the route, delays as they happen, and the moment you land. [[slnc 150]] Nobody has to ask whether you got there.',
   },
   {
     id: '06-verdict-claim',
@@ -91,7 +93,7 @@ export const SCENES = [
     title: 'You’re owed 400 EUR',
     bullets: ['Delay detected automatically', 'EU261 and friends, in plain words', 'One tap drafts the claim letter'],
     narration:
-      'And when a flight does go wrong, FlyRight already knows. [[slnc 120]] This one landed three hours late. [[slnc 100]] Under EU261, that’s four hundred euros, [[slnc 100]] and one tap drafts the claim letter, ready to send. [[slnc 120]] No legalese, no web forms from 2011.',
+      'And when a flight does go wrong, FlyRight already knows. [[slnc 120]] This one landed three hours late. [[slnc 100]] Under EU261, that’s four hundred euros, [[slnc 100]] and one tap drafts the claim letter, ready to send. [[slnc 120]] No legalese, and no middleman taking a cut.',
   },
   {
     id: '07-world',

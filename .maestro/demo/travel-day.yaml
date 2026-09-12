@@ -1,6 +1,7 @@
 # Demo scene 04 — Travel Day Live: the live hero (running light, countdown,
-# gate), open the timeline, tap the next step, then lock the phone so the
-# Live Activity shows on the Lock Screen, and unlock.
+# gate), open the timeline, tap the next step, send the app to the background
+# so the Dynamic Island shows the activity in its compact pill,
+# then lock the phone for the Lock Screen card, and unlock.
 # Seed: node scripts/seed-demo-data.mjs --ios --sim <udid> --travel-day
 # Run travel-day-allow.yaml once before recording (first Live Activity start
 # asks for permission on the Lock Screen).
@@ -37,20 +38,28 @@ tags:
     timeout: 20000
 - extendedWaitUntil:
     visible: "demo-pause-never-matches"
-    timeout: 1800
+    timeout: 1200
     optional: true
 # The next step's action row (seeded through security → passport control).
-- tapOn:
-    text: "(I'm through immigration|I'm on board|I'm through security)"
-    optional: true
+# Exact text, not optional: an optional miss waits out Maestro's whole
+# element timeout and pads the footage.
+- tapOn: "I'm through immigration"
 - extendedWaitUntil:
     visible: "demo-pause-never-matches"
-    timeout: 1800
+    timeout: 900
+    optional: true
+# Home → the Dynamic Island carries the activity in its compact form.
+# (A long-press would expand the island, but Maestro's press latency here
+# runs 10+ s and blows the two-minute budget — the compact pill is the shot.)
+- pressKey: Home
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 2600
     optional: true
 - pressKey: Lock
 - extendedWaitUntil:
     visible: "demo-pause-never-matches"
-    timeout: 4000
+    timeout: 2600
     optional: true
 - pressKey: Home
 - pressKey: Home

@@ -222,6 +222,24 @@ function seed(udid, travelDay) {
   const args = ['scripts/seed-demo-data.mjs', '--ios', '--sim', udid];
   if (travelDay) args.push('--travel-day');
   sh('node', args);
+  if (travelDay) {
+    // The simulator never receives Live Activity pushes, so an activity keeps
+    // the countdown it was STARTED with, and the app adopts any live activity
+    // for the journey rather than starting over. Reinstalling the same build
+    // is what ends OS activities (data stays), then forgetting the id makes
+    // the next launch start a fresh one for the reseeded departure.
+    const bundle = execFileSync('xcrun', ['simctl', 'get_app_container', udid, 'com.shanavasshaji.flyright', 'app'])
+      .toString()
+      .trim();
+    sh('xcrun', ['simctl', 'install', udid, bundle]);
+    const container = execFileSync('xcrun', ['simctl', 'get_app_container', udid, 'com.shanavasshaji.flyright', 'data'])
+      .toString()
+      .trim();
+    sh('sqlite3', [
+      join(container, 'Documents/SQLite/ExpoSQLiteStorage'),
+      "DELETE FROM storage WHERE key LIKE 'travel-activity-%' OR key LIKE 'travel-day-posted-%'",
+    ]);
+  }
 }
 
 async function setup(udid) {
@@ -501,7 +519,7 @@ async function assemble() {
     // A flow that runs longer than its narration keeps its footage; the
     // voice just ends early.
     const footage = scene.kind === 'recording' ? captureMeta(scene).footage : 0;
-    scene.speed = footage > spoken ? Math.min(MAX_SPEEDUP, footage / spoken) : 1;
+    scene.speed = footage > spoken ? Math.min(scene.maxSpeed ?? MAX_SPEEDUP, footage / spoken) : 1;
     const duration = Number(Math.max(spoken, footage / scene.speed).toFixed(2));
     total += duration;
     console.log(`▶ ${scene.id} ${duration}s${scene.speed > 1 ? ` (footage ×${scene.speed.toFixed(2)})` : ''}`);
