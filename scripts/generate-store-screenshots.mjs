@@ -1,6 +1,7 @@
 /**
  * Frames raw device captures into store-ready marketing screenshots on the
- * brand's night-sky gradient, plus the Play Store icon and feature graphic.
+ * brand's night-sky gradient, plus the Play Store icon and feature graphic
+ * (the latter lives in generate-feature-graphic.mjs).
  * Each store gets its own device: the App Store set is framed in an iPhone
  * (store-assets/raw/*.png, iPhone 17 sim, 1206×2622) and the Play set in a
  * Pixel (store-assets/raw/pixel/*.png, Pixel 9a emulator, 1080×2424) so the
@@ -12,6 +13,7 @@
  */
 import sharp from 'sharp';
 import { mkdir, copyFile } from 'node:fs/promises';
+import { generateFeatureGraphic } from './generate-feature-graphic.mjs';
 
 // Brand night sky — keep in sync with scripts/generate-icons.mjs.
 const NAVY = '#16345F';
@@ -155,39 +157,6 @@ async function frame({ W, H, raw, headline, sub, out, device }) {
   console.log('wrote', out);
 }
 
-/** Play feature graphic: icon + wordmark + tagline on the night sky. */
-async function featureGraphic(out) {
-  const W = 1024;
-  const H = 500;
-  const icon = await sharp('assets/images/icon.png')
-    .resize(300, 300)
-    .composite([
-      {
-        input: Buffer.from(`<svg width="300" height="300"><rect width="300" height="300" rx="66" fill="#fff"/></svg>`),
-        blend: 'dest-in',
-      },
-    ])
-    .png()
-    .toBuffer();
-
-  const base = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-    <defs>${bgDefs}</defs>
-    <rect width="${W}" height="${H}" fill="url(#bg)"/>
-    <rect width="${W}" height="${H}" fill="url(#glow)"/>
-    ${routeArcs(W, H)}
-    <text x="400" y="230" font-family="${FONT}" font-size="86" font-weight="700"
-      fill="${WHITE}">FlyRight</text>
-    <text x="402" y="290" font-family="${FONT}" font-size="34" font-weight="500"
-      fill="${SUB}">Get paid for flight delays</text>
-  </svg>`);
-
-  await sharp(base)
-    .composite([{ input: icon, left: 72, top: 100 }])
-    .png()
-    .toFile(out);
-  console.log('wrote', out);
-}
-
 const TARGETS = [
   { dir: 'store-assets', prefix: 'appstore-65', W: 1284, H: 2778, device: 'iphone' },
   { dir: 'store-assets', prefix: 'phone', W: 1080, H: 1920, device: 'pixel' },
@@ -201,7 +170,7 @@ for (const { dir, prefix, W, H, device } of TARGETS) {
   }
 }
 
-await featureGraphic('store-assets/feature-graphic-1024x500.png');
+await generateFeatureGraphic();
 await sharp('assets/images/icon.png').resize(512, 512).png().toFile('store-assets/play-icon-512.png');
 console.log('wrote store-assets/play-icon-512.png');
 
