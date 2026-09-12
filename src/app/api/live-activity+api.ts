@@ -15,8 +15,7 @@ import { boundedBody } from '../../../convex/uploadShared';
  * our OneSignal key: every call is metered in Convex per activity (lifetime,
  * count, pacing) and per address per day (convex/liveActivityMeter.ts), and
  * the content is bounded (only the widget's keys, short strings). Metering
- * outages fail open like the lookup gate — a dead lock screen is a worse
- * failure than an unmetered minute.
+ * outages return 503, preventing unmetered calls to the paid provider.
  */
 
 import { api } from '../../../convex/_generated/api';

@@ -1,6 +1,21 @@
 # Security remediation — 12 September 2026
 
-All nine review findings have code changes, validated on the personal development Convex backend. The user authorized committing and deploying the production services on 12 September 2026. The rollout is in progress; its verified results will be recorded below. Updated mobile binaries remain a separate store release.
+All nine review findings have code changes, validated on the personal development Convex backend. The user authorized committing and deploying the production services on 12 September 2026. **The production Convex backend, EAS website/API routes, and Clerk protections are deployed and verified.** The support-mail Worker upload is blocked on its missing deployment credential; updated mobile binaries remain a separate store release.
+
+## Production deployment record
+
+Verified on **12 September 2026 at 15:41 UTC**:
+
+- Security implementation commit: `b6492c2`, pushed to `origin/main`.
+- Convex: deployed to `limitless-oyster-269`; schema validation and TypeScript checks passed, with the new ownership, upload-ticket, abuse and webhook-event indexes created.
+- Separate random 32-byte base64url `PUSH_IDENTITY_SECRET` values were created and verified in production and development. Values were not printed or committed; existing values are preserved on subsequent deployments.
+- Clerk: enabled disposable-domain blocking and `strict` enumeration protection. The vendor dry run passed before application, and a subsequent configuration read confirmed both settings. Existing CAPTCHA, PII protection, same-client email links and lockout settings were retained.
+- Reconciled **26 production accounts and 26 verified primary emails** directly from Clerk. Production inventory: **2 legacy photo references, 0 conflicting ownership records**, no truncation. Those two files are preserved and hidden pending recovery from local originals.
+- EAS Hosting deployment: [flyright--nqfa0v0grp.expo.app](https://flyright--nqfa0v0grp.expo.app), promoted to production. Both `getflyright.com` and `flyright.expo.app` serve the exported JavaScript entry `entry-272523e8eb57cf47765538eb2b958dde.js`. The export contains the production Convex URL and no development Convex URL.
+- Live checks passed: page response, CSP (including `frame-ancestors 'none'`), `nosniff`, `no-referrer`, 413 for oversized Live Activity bodies, 400 for malformed Live Activity/missing flight arguments, 403 for ticketless photo uploads, 401 for unauthenticated inbound support, and support for app version 1.0.32. [EAS Hosting converts `X-Frame-Options` into CSP](https://docs.expo.dev/eas/hosting/reference/responses-and-headers/), so a separate `X-Frame-Options` response header is not expected.
+- No support messages, push notifications, paid flight lookups, production test accounts or production test files were created by these checks.
+- Support-mail Worker: the updated bundle builds successfully, but **has not been uploaded**. Its `FlyRight worker deploy` token was not retained according to the access map and is absent from the shell and EAS production environment; its secure storage location has been requested.
+- Native document-import protections, private push registration, legacy-photo recovery and other client changes are committed but require updated iOS/Android store binaries. No EAS mobile build or store submission was made in this deployment.
 
 | Finding | Implemented change |
 | --- | --- |
@@ -25,8 +40,8 @@ Other hardening: claim-letter text is escaped before HTML generation; Expo emits
 - iOS simulator build with signing disabled: passed.
 - Android document-import module compilation: passed.
 - Real development-backend smoke test: passed email spoof rejection, real image upload/storage validation, one-use replay rejection, foreign-file attachment rejection, and deletion isolation. Temporary profiles, photos and tickets were removed.
-- Clerk reconciliation dry run: **26 production accounts, all with verified primary emails**. No production profile rows were changed.
-- Clerk configuration patch: vendor dry-run validation passed. No settings were applied.
+- Clerk reconciliation dry run: **26 production accounts, all with verified primary emails**. Subsequently applied during the authorized production rollout above.
+- Clerk configuration patch: vendor dry-run validation passed. Subsequently applied and read back during the authorized production rollout above.
 - `npm audit --omit=dev`: **27 moderate package entries, zero high or critical**. The URL-decoder advisory is removed. Remaining roots are `stream-json` in the unused Solana wallet dependency tree and `uuid` buffer handling in tooling/that tree; they were not blindly upgraded across incompatible major versions.
 - Repository lint still reports the pre-existing `react-hooks/set-state-in-effect` error in `src/hooks/use-color-scheme.web.ts` and a default-import warning in `src/components/time-dialog.tsx`.
 
@@ -35,10 +50,10 @@ Local logs are under `/tmp/flyright-security-*`; they are temporary and not a du
 ## Concrete rollout
 
 1. Backend enforcement now is authorized. It deliberately pauses private pushes to old public-ID subscriptions, expires old circle invitation links, and hides legacy cloud-photo references until ownership can be established from local originals. Existing local photos are retained. Older clients cannot use the retired unmetered people search.
-2. Create a separate cryptographically random 32-byte base64url `PUSH_IDENTITY_SECRET` in each Convex environment. Keep it server-only and preserve it across deploys. Never expose it with an `EXPO_PUBLIC_` prefix. Rotation revokes the aliases and clients rebind on foreground/sign-in. No production secret has been created yet.
-3. Deploy the Convex code, then run `node scripts/reconcile-profile-emails.mjs --prod --apply`. The script reads Clerk directly and never trusts old profile emails; it logs counts only. Inspect `securityMaintenance:inventory` for unknown/conflicting photo references without exporting personal data. Do not assign ownership to arbitrary historic storage IDs or delete unknown files.
-4. Apply `security/clerk-production.patch.json` using the explicit production Clerk target. Its validated changes enable disposable-domain blocking and change enumeration protection from `bulk` to `strict`. Current production already has Smart CAPTCHA, PII protection, same-client email links, and lockout after 10 failed attempts for 60 minutes. Keep Native API enabled for the native app: [Clerk documents that this public native pathway bypasses CAPTCHA](https://clerk.com/docs/guides/secure/bot-protection), so backend budgets remain necessary.
-5. Export using production EAS environment values and deploy hosting so the API fail-closed behavior and headers become live. Deploy the updated support-mail Worker through its existing script/bindings. No actual support messages were sent during validation.
+2. Completed: separate cryptographically random 32-byte base64url `PUSH_IDENTITY_SECRET` values in each Convex environment. Keep them server-only and preserve them across deploys. Never expose them with an `EXPO_PUBLIC_` prefix. Rotation revokes the aliases and clients rebind on foreground/sign-in.
+3. Completed: Convex deployment, `node scripts/reconcile-profile-emails.mjs --prod --apply`, and `securityMaintenance:inventory`. The script reads Clerk directly and never trusts old profile emails; it logs counts only. Do not assign ownership to arbitrary historic storage IDs or delete unknown files.
+4. Completed: `security/clerk-production.patch.json` applied to the explicit production Clerk target and verified. Production also has Smart CAPTCHA, PII protection, same-client email links, and lockout after 10 failed attempts for 60 minutes. Keep Native API enabled for the native app: [Clerk documents that this public native pathway bypasses CAPTCHA](https://clerk.com/docs/guides/secure/bot-protection), so backend budgets remain necessary.
+5. Hosting completed using production EAS environment values, with live headers and request-boundary checks. Remaining: deploy the updated support-mail Worker through its existing script/bindings once its deployment credential is available. No actual support messages were sent during validation.
 6. Release updated iOS and Android binaries through the repository's full version-bump/release-notes/EAS workflow. Verify sign-in, new and recovered photo uploads, private push delivery, document imports, and circle invitations with two controlled accounts. The local compiler checks do not replace this device acceptance test.
 
 ## Limits that remain explicit
