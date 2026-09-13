@@ -507,36 +507,40 @@ export function WorldCanvas({
         />
         <View style={styles.header} pointerEvents="box-none">
           {onBack && <BackButton onPress={onBack} />}
-          <View style={styles.titleBlock} pointerEvents="none">
+          <View style={styles.titleBlock} pointerEvents="box-none">
             <ThemedText
               type="smallBold"
               themeColor="textSecondary"
               style={styles.eyebrow}
-              numberOfLines={1}>
+              pointerEvents="none">
               {focusedRow
                 ? `${focusedRow.number || focusedRow.carrier} · ${formatDayLabel(focusedRow.scheduledDeparture, airportZone(focusedRow.fromCode))}`
                 : eyebrow}
             </ThemedText>
-            <ThemedText
-              type="title"
-              themeColor="heading"
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}>
-              {focusedRow ? `${focusedRow.fromCode} → ${focusedRow.toCode}` : title}
-            </ThemedText>
+            <View style={styles.titleRow} pointerEvents="box-none">
+              <ThemedText
+                type="title"
+                themeColor="heading"
+                style={styles.flex}
+                pointerEvents="none"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}>
+                {focusedRow ? `${focusedRow.fromCode} → ${focusedRow.toCode}` : title}
+              </ThemedText>
+              {focusedRow && <AllTravelsButton onPress={onClearFocus} />}
+              {!focusedRow && !empty && (
+                <PeriodButton
+                  period={period}
+                  onPress={() => {
+                    setSelectedKey(null);
+                    setChoosing((open) => !open);
+                  }}
+                />
+              )}
+              {shareable && loaded && visible.length > 0 && <ShareButton onPress={shareVisible} />}
+            </View>
           </View>
-          {focusedRow && <AllTravelsButton onPress={onClearFocus} />}
-          {!focusedRow && !empty && (
-            <PeriodButton
-              period={period}
-              onPress={() => {
-                setSelectedKey(null);
-                setChoosing((open) => !open);
-              }}
-            />
-          )}
-          {shareable && loaded && visible.length > 0 && <ShareButton onPress={shareVisible} />}
         </View>
       </SafeAreaView>
 
@@ -854,6 +858,11 @@ const styles = StyleSheet.create({
   titleBlock: {
     flex: 1,
     gap: Spacing.half,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
   eyebrow: {
     fontSize: 12,
