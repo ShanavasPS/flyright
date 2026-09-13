@@ -139,20 +139,6 @@ function useInvite(full: boolean) {
   };
 }
 
-/** "2 following · 3 followers · 1 waiting" — the header eyebrow, My
- * travels-style. Waiting = requests for me to answer, of either kind. */
-function circleEyebrow(data: CircleList | null | undefined): string {
-  if (!data) return 'Your circle';
-  const parts: string[] = [];
-  if (data.following.length) parts.push(`${data.following.length} following`);
-  if (data.followers.length) {
-    parts.push(`${data.followers.length} follower${data.followers.length > 1 ? 's' : ''}`);
-  }
-  const waiting = data.incoming.length + data.followRequests.length;
-  if (waiting) parts.push(`${waiting} waiting`);
-  return parts.join(' · ') || 'Your circle';
-}
-
 /** Which side opens first: the one with something new on it — a request
  * to answer, or an arrival not yet looked at. Following wins a tie; it is
  * where the trips are. */
@@ -387,13 +373,6 @@ export function People() {
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <View style={styles.titleRow}>
           <View style={styles.titleBlock}>
-            <ThemedText
-              type="smallBold"
-              themeColor="textSecondary"
-              style={styles.eyebrow}
-              numberOfLines={1}>
-              {isSignedIn ? circleEyebrow(data) : 'Travel together'}
-            </ThemedText>
             <ThemedText type="title" themeColor="heading">
               People
             </ThemedText>
@@ -1127,13 +1106,6 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     flex: 1,
-    gap: Spacing.half,
-  },
-  eyebrow: {
-    fontSize: 12,
-    lineHeight: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
   },
   addCircle: {
     width: 40,

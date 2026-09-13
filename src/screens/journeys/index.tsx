@@ -106,7 +106,8 @@ function headerEyebrow(
     else if (state.stage === 'departed') label = 'In the air';
     else if (today || phase === 'live') label = 'Flying today';
     else label = 'Flying tomorrow';
-    return `${label} · ${journey.fromCode} → ${journey.toCode}`;
+    // The hero card already displays the route prominently.
+    return label;
   }
   const next = sections[0]?.key === 'upcoming' ? sections[0].data[0] : undefined;
   if (next) {
