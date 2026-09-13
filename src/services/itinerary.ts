@@ -25,6 +25,7 @@ import { airportRank, hubAirports, isValidIata, largeAirports } from '@/services
 import { parseBcbp, resolveFlightDate } from '@/services/bcbp';
 import { storablePass, storableTicket, type StoredPass } from '@/services/boarding-pass';
 import { parseEticketRecord } from '@/services/eticket';
+import type { WalletFlightDetails } from '@/services/wallet-passes';
 
 export interface DocumentPage {
   text: string;
@@ -33,6 +34,8 @@ export interface DocumentPage {
   /** The symbology of each payload, index-aligned with `barcodes`; absent
    * from readers that predate boarding-pass keeping. */
   barcodeFormats?: string[];
+  /** Structured Wallet dates anchor the barcode's otherwise yearless day. */
+  wallet?: WalletFlightDetails;
 }
 
 export type SegmentSource = 'barcode' | 'text';
@@ -1263,6 +1266,37 @@ function segmentsFromBarcodes(
  * One thing no barcode carries is the year — BCBP dates are a bare day of
  * the year (see bcbp.resolveFlightDate). */
 export function extractItinerary(pages: DocumentPage[], today = new Date()): ItineraryExtraction {
+  if (pages.some(page => page.wallet)) {
+    const results = pages.map(page => {
+      if (!page.wallet) return extractItinerary([page], today);
+      const details = page.wallet;
+      const result = extractItinerary([{ ...page, wallet: undefined }], details.date ? new Date(`${details.date}T12:00:00`) : today);
+      result.segments = result.segments.map(segment => {
+        const sameRoute = (!details.fromCode || details.fromCode === segment.fromCode) && (!details.toCode || details.toCode === segment.toCode);
+        // A Wallet file can encode multiple legs. Printed times and seats
+        // belong only to the named leg, never every connection in its code.
+        const namedLeg = sameRoute && (!details.flight || details.flight.replace(/\s/g, '').toUpperCase() === segment.flight) &&
+          (result.segments.length === 1 || (!!details.fromCode && !!details.toCode));
+        if (!namedLeg) return segment;
+        const sameDate = details.date === segment.date;
+        return {
+          ...segment,
+          depTime: sameDate ? details.depTime : null,
+          arrivalDate: sameDate ? details.arrivalDate ?? segment.arrivalDate : segment.arrivalDate,
+          arrTime: sameDate ? details.arrTime : null,
+          seat: details.seat?.trim() || segment.seat,
+          pnr: details.pnr?.trim() || segment.pnr,
+        };
+      });
+      return result;
+    });
+    const segments = results.flatMap(result => result.segments);
+    return {
+      segments: segments.filter((segment, index) => segments.findIndex(other => other.flight === segment.flight && other.date === segment.date && other.fromCode === segment.fromCode && other.toCode === segment.toCode) === index),
+      boardingPassBarcodes: results.reduce((sum, result) => sum + result.boardingPassBarcodes, 0),
+      ticketNumbers: distinct(results.flatMap(result => result.ticketNumbers)),
+    };
+  }
   const text = plainSpaces(pages.map((p) => p.text).join('\n'));
   const barcodes = pages.flatMap((p) => p.barcodes);
   const formats = pages.flatMap((p) => p.barcodes.map((_, i) => p.barcodeFormats?.[i]));

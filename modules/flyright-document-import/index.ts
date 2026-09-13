@@ -22,6 +22,7 @@
 
 import { requireOptionalNativeModule, type NativeModule } from 'expo';
 import type { EventSubscription } from 'expo-modules-core';
+import type { WalletFlightDetails } from '../../src/services/wallet-passes';
 
 export interface SharedDocument {
   /** file:// path of a private copy the app owns and should delete after reading. */
@@ -32,6 +33,8 @@ export interface SharedDocument {
    * bare "image/*" for a picture of no stated kind) — what decides the
    * reader when the name carries no extension. */
   mimeType?: string | null;
+  text?: string;
+  documents?: SharedDocument[];
 }
 
 export interface PdfPageContents {
@@ -42,6 +45,7 @@ export interface PdfPageContents {
    * ('pdf417' | 'aztec' | 'qr' | 'datamatrix', or a decoder's own name for
    * anything else). Absent from binaries older than boarding-pass keeping. */
   barcodeFormats?: string[];
+  wallet?: WalletFlightDetails;
 }
 
 /** A symbol drawn back from its payload: one string per row of modules,
@@ -113,17 +117,26 @@ export async function renderBarcode(payload: string, format: string): Promise<Re
  * return and what the platform decoders read. */
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|heic|heif|webp|tiff?|bmp|gif)$/i;
 
-export type DocumentKind = 'pdf' | 'image';
+export type DocumentKind = 'pdf' | 'image' | 'wallet' | 'wallet-link';
 
 /** Which reader a file needs, from the mime type when a picker gave one (an
  * iOS photo can arrive with no extension at all) and the file name or URI
  * otherwise. PDF is the assumption: that is what every share hands over. */
 export function documentKind(nameOrUri: string, mimeType?: string | null): DocumentKind {
+  if (mimeType === 'text/plain' || mimeType === 'text/uri-list') return 'wallet-link';
+  if (/^application\/vnd\.apple\.pkpass(?:es)?$/.test(mimeType ?? '') || /\.pkpass(?:es)?$/i.test(nameOrUri.split('?')[0])) return 'wallet';
   if (mimeType) return mimeType.startsWith('image/') ? 'image' : 'pdf';
   return IMAGE_EXTENSIONS.test(nameOrUri.split('?')[0]) ? 'image' : 'pdf';
 }
 
 /** Reads a travel document of either kind into pages. */
 export async function readDocument(uri: string, kind: DocumentKind): Promise<PdfContents> {
+  if (kind === 'wallet' || kind === 'wallet-link') {
+    const { File } = await import('expo-file-system');
+    const { readWalletArchive, readWalletText } = await import('../../src/services/wallet-passes');
+    const file = new File(uri);
+    const pages = kind === 'wallet' ? readWalletArchive(await file.bytes()) : readWalletText(await file.text());
+    return { pageCount: pages.length, pages };
+  }
   return kind === 'image' ? readImage(uri) : readPdf(uri);
 }

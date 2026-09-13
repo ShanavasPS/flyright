@@ -37,7 +37,7 @@ export type DocumentSource = 'files' | 'photos';
 async function pickFromFiles(): Promise<PickedDocument | null> {
   const result = await DocumentPicker.getDocumentAsync({
     // Images too: a pass saved to Files is as likely as one in the library.
-    type: ['application/pdf', 'image/*'],
+    type: ['application/pdf', 'image/*', 'application/vnd.apple.pkpass', 'application/vnd.apple.pkpasses'],
     multiple: false,
     // The picked original may live in another app's container or in iCloud;
     // the cache copy is ours to read and to delete.

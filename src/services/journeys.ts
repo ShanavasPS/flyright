@@ -12,6 +12,8 @@ import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
+import { importedJourneyPatch, matchingImportedJourney } from '@/services/imported-journeys';
+import type { ImportedSegment } from '@/services/itinerary';
 
 export type JourneyRow = typeof journeys.$inferSelect;
 export type NewJourneyRow = typeof journeys.$inferInsert;
@@ -105,6 +107,35 @@ export async function addJourney(row: NewJourneyRow) {
     });
   void reconcileNotifications();
   void reconcileTravelDay();
+}
+
+/** Recheck under the same SQLite transaction as the write. A delayed lookup,
+ * repeated share or second import screen cannot turn an update into a new trip. */
+export async function saveImportedJourney(segment: ImportedSegment, newRow: NewJourneyRow | null, currentUserId: string | null | undefined) {
+  const now = new Date().toISOString();
+  const result = db.transaction(tx => {
+    const rows = tx.select().from(journeys).where(visibleTo(currentUserId)).all();
+    const existing = matchingImportedJourney(segment, rows) ?? (newRow ? rows.find(row => row.id === newRow.id) : null);
+    if (existing) {
+      const patch = importedJourneyPatch(segment, existing, now);
+      if (Object.keys(patch).length) tx.update(journeys).set({ ...patch, updatedAt: now }).where(eq(journeys.id, existing.id)).run();
+      return { id: existing.id, created: false };
+    }
+    if (!newRow) throw new Error('This trip has changed. Close this screen and share the pass again.');
+    const collision = tx.select().from(journeys).where(eq(journeys.id, newRow.id)).get();
+    if (collision?.userId && collision.userId !== currentUserId) throw new Error('This trip is saved under a different account on this device.');
+    tx.insert(journeys).values({ ...newRow, updatedAt: now }).onConflictDoUpdate({
+      target: journeys.id,
+      // A previously removed flight can be restored. Never replace a row
+      // owned by another account when its natural ID happens to collide.
+      set: { ...newRow, deletedAt: null, updatedAt: now },
+      setWhere: currentUserId ? or(isNull(journeys.userId), eq(journeys.userId, currentUserId)) : isNull(journeys.userId),
+    }).run();
+    return { id: newRow.id, created: true };
+  });
+  void reconcileNotifications();
+  void reconcileTravelDay();
+  return result;
 }
 
 /** Edit a journal entry in place. The row id (= sync natural key) stays

@@ -1,5 +1,8 @@
 import { redirectSystemPath } from '@/app/+native-intent';
 import { registerInboxDocument } from '@/services/document-imports';
+import { consumeWalletShare } from '@/services/wallet-share-intake';
+
+jest.mock('@/services/wallet-share-intake', () => ({ consumeWalletShare: jest.fn(() => 'wallet-handle') }));
 
 jest.mock('@/constants/config', () => ({
   DETOUR_API_KEY: 'test-key',
@@ -74,6 +77,12 @@ it('still registers shared PDFs and routes with an opaque handle', async () => {
   expect(await redirectSystemPath({ path, initial: true })).toBe('/import-document?handle=document-handle');
   expect(registerInboxDocument).toHaveBeenCalledWith(path);
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it('consumes Wallet shares from the native store, never from URL parameters', async () => {
+  expect(await redirectSystemPath({ path: 'flyright://expo-sharing?uri=file:///private/secret', initial: false })).toBe('/import-document?handle=wallet-handle');
+  expect(consumeWalletShare).toHaveBeenCalledWith();
+  expect(registerInboxDocument).not.toHaveBeenCalled();
 });
 
 it('keeps rejected file imports on the import screen', async () => {

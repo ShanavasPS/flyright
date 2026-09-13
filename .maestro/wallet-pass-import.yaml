@@ -1,0 +1,31 @@
+# Share a synthetic Wallet pass for an existing test trip, then run with
+# JOURNEY_ID, SEAT and SHOTS. The review must offer an update, never a new trip.
+appId: com.shanavasshaji.flyright
+---
+- tapOn:
+    text: "(Share with )?FlyRight"
+    optional: true
+- tapOn:
+    text: "Just once"
+    optional: true
+- extendedWaitUntil:
+    visible: "Save the travel code →"
+    timeout: 60000
+- assertVisible: ".*In My travels.*update boarding pass.*"
+- assertNotVisible: "Add 1 flight to My travels →"
+- takeScreenshot: ${SHOTS}/wallet-update-review
+- tapOn: "Save the travel code →"
+- extendedWaitUntil:
+    notVisible:
+      id: import-document
+    timeout: 10000
+- extendedWaitUntil:
+    notVisible:
+      id: import-added
+    timeout: 10000
+- openLink: "flyright:///boarding-pass?journeyId=${JOURNEY_ID}"
+- extendedWaitUntil:
+    visible: ${SEAT}
+    timeout: 30000
+- assertNotVisible: ".*Failed to sync native client state.*"
+- takeScreenshot: ${SHOTS}/wallet-saved-pass

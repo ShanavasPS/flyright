@@ -49,6 +49,7 @@
     "expo-task-manager": "~57.0.14",
     "expo-tracking-transparency": "~57.0.1",
     "expo-web-browser": "~57.0.2",
+    "fflate": "^0.8.3",
     "i18next": "^26.3.6",
     "onesignal-expo-plugin": "^2.7.0",
     "react": "19.2.3",

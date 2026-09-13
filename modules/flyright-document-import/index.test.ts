@@ -3,6 +3,12 @@ import { documentKind } from './index';
 /** Which reader a picked file gets: the pickers' mime type wins, the name
  * decides when they gave none, and PDF is the fallback (every share is one). */
 describe('documentKind', () => {
+  it('recognizes Wallet files and links, including a generic MIME type', () => {
+    expect(documentKind('pass.pkpass', 'application/octet-stream')).toBe('wallet');
+    expect(documentKind('pass.PKPASSES')).toBe('wallet');
+    expect(documentKind('file', 'application/vnd.apple.pkpass')).toBe('wallet');
+    expect(documentKind('', 'text/plain')).toBe('wallet-link');
+  });
   it('trusts the picker mime type', () => {
     expect(documentKind('receipt.pdf', 'image/jpeg')).toBe('image');
     expect(documentKind('IMG_0042.HEIC', 'application/pdf')).toBe('pdf');

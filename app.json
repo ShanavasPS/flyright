@@ -47,6 +47,14 @@
             "LSItemContentTypes": [
               "public.image"
             ]
+          },
+          {
+            "CFBundleTypeName": "Wallet boarding pass",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "com.apple.pkpass",
+              "com.apple.pkpasses"
+            ]
           }
         ]
       },
@@ -107,10 +115,72 @@
             },
             {
               "mimeType": "image/*"
+            },
+            {
+              "mimeType": "application/vnd.apple.pkpass"
+            },
+            {
+              "mimeType": "application/vnd.apple.pkpasses"
+            },
+            {
+              "mimeType": "application/octet-stream"
+            },
+            {
+              "mimeType": "application/zip"
+            },
+            {
+              "mimeType": "text/plain"
+            },
+            {
+              "mimeType": "text/uri-list"
             }
           ],
           "category": [
             "DEFAULT"
+          ]
+        },
+        {
+          "action": "SEND_MULTIPLE",
+          "data": [
+            {
+              "mimeType": "application/vnd.apple.pkpass"
+            },
+            {
+              "mimeType": "application/vnd.apple.pkpasses"
+            },
+            {
+              "mimeType": "application/pdf"
+            },
+            {
+              "mimeType": "image/*"
+            },
+            {
+              "mimeType": "application/octet-stream"
+            }
+          ],
+          "category": [
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "content"
+            },
+            {
+              "scheme": "file"
+            },
+            {
+              "mimeType": "application/vnd.apple.pkpass"
+            },
+            {
+              "mimeType": "application/vnd.apple.pkpasses"
+            }
+          ],
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
           ]
         }
       ],
@@ -187,7 +257,17 @@
         }
       ],
       "expo-mail-composer",
-      "expo-sharing",
+      "./plugins/with-wallet-sharing.js",
+      [
+        "expo-sharing",
+        {
+          "ios": {
+            "enabled": true,
+            "appGroupId": "group.com.shanavasshaji.flyright.wallet",
+            "activationRule": "SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"com.apple.pkpass\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"com.apple.pkpasses\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"com.adobe.pdf\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.image\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.file-url\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.url\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.plain-text\").@count == $item.attachments.@count AND $item.attachments.@count > 0 AND $item.attachments.@count <= 8).@count > 0"
+          }
+        }
+      ],
       "react-native-maps",
       [
         "@layers/expo",

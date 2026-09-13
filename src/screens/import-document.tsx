@@ -4,8 +4,8 @@ import { importDocument } from '@/services/document-imports';
 import { Observe } from 'expo-observe';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,15 +29,16 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
-import { dayOffset, flightDay, formatDayLabel, formatTime, localDateString, zonedTimestamp } from '@/services/dates';
+import { dayOffset, formatDayLabel, formatTime, localDateString, zonedTimestamp } from '@/services/dates';
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { haversineKm } from '@/services/geo';
 import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
 import { shiftYears } from '@/services/year-choice';
-import { addJourney, attachBoardingPass, attachTicketCode, useJourneys, type NewJourneyRow } from '@/services/journeys';
+import { saveImportedJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
+import { importedJourneyPatch, matchingImportedJourney } from '@/services/imported-journeys';
 import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
@@ -91,6 +92,7 @@ function estimatedArrival(depClock: string, distanceKm: number): string {
  * the library often has none, and the picker's cache filename is a UUID no
  * traveler would recognise, so that reads as "this picture". */
 function fileLabel(uri: string | null, name: string | undefined, kind: DocumentKind): string {
+  if (kind === 'wallet' || kind === 'wallet-link') return 'your Wallet pass';
   if (name) return name;
   if (kind === 'image') return 'this picture';
   if (!uri) return 'document';
@@ -133,7 +135,7 @@ export function ImportDocument() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { userId, isSignedIn } = useAuth();
+  const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
   // `type` comes from the in-app pickers, which know the mime type; a share
   // arrives with the file name only and is read by its extension.
   const { handle, via } = useLocalSearchParams<{ handle?: string; via?: string }>();
@@ -222,44 +224,23 @@ export function ImportDocument() {
     })),
   });
 
-  // Legs already in the journal: matched by the lookup row id or by number
-  // and day, so a receipt re-shared after the trip doesn't duplicate anything.
-  const existing = useMemo(() => {
-    // Keyed the ways a segment can name a trip, to the row it is — the row
-    // is what a re-shared boarding pass attaches to.
-    const ids = new Map<string, string>();
-    for (const j of journeys ?? []) {
-      ids.set(j.id, j.id);
-      // The flight's local day, which is what a segment carries — slicing the
-      // stored instant would miss a match across UTC midnight and re-offer a
-      // leg the journal already has (see dates.flightDay).
-      if (j.number) {
-        ids.set(`${j.number}-${flightDay(j.scheduledDeparture, airportZone(j.fromCode))}-${j.fromCode}-${j.toCode}`, j.id);
-      }
-    }
-    return ids;
-  }, [journeys]);
-
   const rows = segments.map((segment, i) => {
     const query = lookups[i];
     // A lookup that never ran (out of reach) is "not pending" with no data.
     const edited = pinned.has(segment.key);
     const plan = planFor(segment, edited || (query.fetchStatus === 'idle' && !query.data) ? null : query);
-    const existingId =
-      segment.flight && segment.date ? existing.get(`${segment.flight}-${segment.date}-${segment.fromCode}-${segment.toCode}`) ?? null : null;
+    const matchSegment = { ...segment,
+      fromCode: segment.fromCode ?? (plan.kind === 'lookup' ? plan.flight.from.code : null),
+      toCode: segment.toCode ?? (plan.kind === 'lookup' ? plan.flight.to.code : null),
+    };
+    const existingRow = matchingImportedJourney(matchSegment, journeys ?? []);
+    const existingId = existingRow?.id ?? null;
     const already = existingId != null;
-    // A trip already in the journal, on a document that carries its
-    // boarding-pass code: the leg is offered again, this time to put the
-    // pass on the trip (services/boarding-pass), seat and booking with it.
-    const existingRow = (journeys ?? []).find((j) => j.id === existingId);
-    const attachable = !!existingRow && (
-      (!!segment.pass && (existingRow.passCode !== segment.pass.code || existingRow.passFormat !== segment.pass.format)) ||
-      (!!segment.ticket && (existingRow.ticketCode !== segment.ticket.code || existingRow.ticketFormat !== segment.ticket.format))
-    );
-    const selectable = attachable || (!already && (plan.kind === 'lookup' || plan.kind === 'journal'));
+    const attachable = !!existingRow && Object.keys(importedJourneyPatch(matchSegment, existingRow, '')).length > 0;
+    const selectable = authLoaded && journeys !== undefined && (attachable || (!already && (plan.kind === 'lookup' || plan.kind === 'journal')));
     const selected = selectable && !deselected.has(segment.key);
     return {
-      segment,
+      segment: matchSegment,
       plan,
       already,
       attachable,
@@ -324,107 +305,115 @@ export function ImportDocument() {
       return next;
     });
 
+  const saving = useRef(false);
   const save = async () => {
-    if (!selectedRows.length) return;
-    setPhase((current) => (current.kind === 'review' ? { ...current, kind: 'saving' } : current));
-    let tracked = 0;
-    const now = new Date().toISOString();
-    let attached = 0;
-    for (const { segment, plan, attachable, existingId } of selectedRows) {
-      if (attachable && existingId) {
-        if (segment.pass) await attachBoardingPass(existingId, segment.pass, { seat: segment.seat, bookingReference: segment.pnr });
-        if (segment.ticket) await attachTicketCode(existingId, segment.ticket);
-        attached += 1;
-        trackEvent('boarding_pass_attached', { via: 'document' });
-        continue;
-      }
-      const details = {
-        bookingReference: segment.pnr,
-        seat: segment.seat,
-        ...(segment.ticket
-          ? { ticketCode: segment.ticket.code, ticketFormat: segment.ticket.format, ticketCapturedAt: now }
-          : {}),
-        ...(segment.pass
-          ? { passCode: segment.pass.code, passFormat: segment.pass.format, passCapturedAt: now }
-          : {}),
-        ...flagsFor(audience),
-      };
-      // A codeshare leg is stored as the airline flying it — EU261's carrier
-      // test is about the operator — under the number on the ticket.
-      const operator = operatorOf(segment);
-      if (plan.kind === 'lookup') {
-        const flight = plan.flight;
-        const schedule = legSchedule(segment, flight);
-        const row: NewJourneyRow = {
-          id: `${flight.flight}-${flight.date}`,
-          userId,
-          mode: 'flight',
-          source: 'lookup',
-          carrier: operator?.name ?? flight.carrier.name,
-          carrierCountry: operator?.country ?? flight.carrierCountry,
-          number: flight.flight,
-          fromCode: flight.from.code!,
-          fromCountry: flight.from.country ?? '',
-          toCode: flight.to.code!,
-          toCountry: flight.to.country ?? '',
-          distanceKm: flight.distanceKm ?? 0,
-          scheduledDeparture: schedule.departure ?? `${flight.date}T00:00:00Z`,
-          scheduledArrival: schedule.arrival ?? `${flight.date}T00:00:00Z`,
-          ...details,
-          createdAt: now,
+    if (!selectedRows.length || saving.current || !authLoaded || journeys === undefined) return;
+    saving.current = true;
+    try {
+      setPhase((current) => (current.kind === 'review' ? { ...current, kind: 'saving' } : current));
+      let tracked = 0;
+      const now = new Date().toISOString();
+      let attached = 0;
+      for (const { segment, plan, attachable, existingId } of selectedRows) {
+        if (attachable && existingId) {
+          await saveImportedJourney(segment, null, userId);
+          attached += 1;
+          trackEvent('boarding_pass_attached', { via: 'document' });
+          continue;
+        }
+        const details = {
+          bookingReference: segment.pnr,
+          seat: segment.seat,
+          ...(segment.ticket
+            ? { ticketCode: segment.ticket.code, ticketFormat: segment.ticket.format, ticketCapturedAt: now }
+            : {}),
+          ...(segment.pass
+            ? { passCode: segment.pass.code, passFormat: segment.pass.format, passCapturedAt: now }
+            : {}),
+          ...flagsFor(audience),
         };
-        await addJourney(row);
-        if (flight.delayMinutes != null) await recordDelay(row.id, flight.delayMinutes);
-        if (!flight.landed) tracked += 1;
-        trackEvent('flight_added', { source: 'lookup', via: 'document' });
-      } else if (plan.kind === 'journal' && segment.date) {
-        const from = getAirport(plan.from)!;
-        const to = getAirport(plan.to)!;
-        const distanceKm = haversineKm(from.lat, from.lon, to.lat, to.lon);
-        const depClock = segment.depTime ?? '12:00';
-        const arrClock = segment.arrTime ?? (segment.depTime ? estimatedArrival(depClock, distanceKm) : depClock);
-        const arrivalDay =
-          segment.arrivalDate ??
-          (arrClock < depClock ? localDateString(new Date(`${segment.date}T12:00:00`), 1) : segment.date);
-        // The printed clocks pinned to their airports, the same rule the
-        // lookup rows follow (see legSchedule) — a journal leg is still a
-        // flight at a place, not a clock on the phone. Estimated or
-        // placeholder clocks stay bare, as the add-flight form keeps them.
-        const pinnedDep = segment.depTime ? zonedTimestamp(segment.date, depClock, airportZone(from.iata)) : null;
-        const pinnedArr = segment.arrTime ? zonedTimestamp(arrivalDay, arrClock, airportZone(to.iata)) : null;
-        const carrier = operator ?? (segment.flight ? carrierFor(segment.flight) : null);
-        await addJourney({
-          id: `${segment.flight ?? 'TRIP'}-${from.iata}-${to.iata}-${segment.date}`,
-          userId,
-          mode: 'flight',
-          source: 'manual',
-          carrier: carrier?.name ?? 'Flight',
-          carrierCountry: carrier?.country ?? '',
-          number: segment.flight ?? '',
-          fromCode: from.iata,
-          fromCountry: from.country,
-          toCode: to.iata,
-          toCountry: to.country,
-          distanceKm,
-          scheduledDeparture: pinnedDep ?? `${segment.date}T${depClock}:00`,
-          scheduledArrival: pinnedArr ?? `${arrivalDay}T${arrClock}:00`,
-          ...details,
-          createdAt: now,
-        });
-        trackEvent('flight_added', { source: 'manual', via: 'document' });
+        // A codeshare leg is stored as the airline flying it — EU261's carrier
+        // test is about the operator — under the number on the ticket.
+        const operator = operatorOf(segment);
+        if (plan.kind === 'lookup') {
+          const flight = plan.flight;
+          const schedule = legSchedule(segment, flight);
+          const row: NewJourneyRow = {
+            id: `${flight.flight}-${flight.date}`,
+            userId,
+            mode: 'flight',
+            source: 'lookup',
+            carrier: operator?.name ?? flight.carrier.name,
+            carrierCountry: operator?.country ?? flight.carrierCountry,
+            number: flight.flight,
+            fromCode: flight.from.code!,
+            fromCountry: flight.from.country ?? '',
+            toCode: flight.to.code!,
+            toCountry: flight.to.country ?? '',
+            distanceKm: flight.distanceKm ?? 0,
+            scheduledDeparture: schedule.departure ?? `${flight.date}T00:00:00Z`,
+            scheduledArrival: schedule.arrival ?? `${flight.date}T00:00:00Z`,
+            ...details,
+            createdAt: now,
+          };
+          const saved = await saveImportedJourney(segment, row, userId);
+          if (!saved.created) { attached += 1; continue; }
+          if (flight.delayMinutes != null) await recordDelay(row.id, flight.delayMinutes);
+          if (!flight.landed) tracked += 1;
+          trackEvent('flight_added', { source: 'lookup', via: 'document' });
+        } else if (plan.kind === 'journal' && segment.date) {
+          const from = getAirport(plan.from)!;
+          const to = getAirport(plan.to)!;
+          const distanceKm = haversineKm(from.lat, from.lon, to.lat, to.lon);
+          const depClock = segment.depTime ?? '12:00';
+          const arrClock = segment.arrTime ?? (segment.depTime ? estimatedArrival(depClock, distanceKm) : depClock);
+          const arrivalDay =
+            segment.arrivalDate ??
+            (arrClock < depClock ? localDateString(new Date(`${segment.date}T12:00:00`), 1) : segment.date);
+          // The printed clocks pinned to their airports, the same rule the
+          // lookup rows follow (see legSchedule) — a journal leg is still a
+          // flight at a place, not a clock on the phone. Estimated or
+          // placeholder clocks stay bare, as the add-flight form keeps them.
+          const pinnedDep = segment.depTime ? zonedTimestamp(segment.date, depClock, airportZone(from.iata)) : null;
+          const pinnedArr = segment.arrTime ? zonedTimestamp(arrivalDay, arrClock, airportZone(to.iata)) : null;
+          const carrier = operator ?? (segment.flight ? carrierFor(segment.flight) : null);
+          const saved = await saveImportedJourney(segment, {
+            id: `${segment.flight ?? 'TRIP'}-${from.iata}-${to.iata}-${segment.date}`,
+            userId,
+            mode: 'flight',
+            source: 'manual',
+            carrier: carrier?.name ?? 'Flight',
+            carrierCountry: carrier?.country ?? '',
+            number: segment.flight ?? '',
+            fromCode: from.iata,
+            fromCountry: from.country,
+            toCode: to.iata,
+            toCountry: to.country,
+            distanceKm,
+            scheduledDeparture: pinnedDep ?? `${segment.date}T${depClock}:00`,
+            scheduledArrival: pinnedArr ?? `${arrivalDay}T${arrClock}:00`,
+            ...details,
+            createdAt: now,
+          }, userId);
+          if (!saved.created) { attached += 1; continue; }
+          trackEvent('flight_added', { source: 'manual', via: 'document' });
+        }
       }
-    }
-    setPhase({ kind: 'added', count: selectedRows.length - attached, attached, tracked });
-    Observe.logEvent('document.flights_added', {
-      attributes: { count: selectedRows.length - attached, attached, tracked },
-    });
-    // Same moment as add-flight's "Track this flight": they trusted us with
-    // upcoming trips, so ask for push once (a no-op after the first answer).
-    if (tracked > 0) {
-      requestPushPermission()
-        .then(() => reconcileNotifications())
-        .catch(() => {});
-    }
+      setPhase({ kind: 'added', count: selectedRows.length - attached, attached, tracked });
+      Observe.logEvent('document.flights_added', {
+        attributes: { count: selectedRows.length - attached, attached, tracked },
+      });
+      // Same moment as add-flight's "Track this flight": they trusted us with
+      // upcoming trips, so ask for push once (a no-op after the first answer).
+      if (tracked > 0) {
+        requestPushPermission()
+          .then(() => reconcileNotifications())
+          .catch(() => {});
+      }
+    } catch {
+      setPhase(current => current.kind === 'saving' ? { ...current, kind: 'review' } : current);
+      Alert.alert('Could not save your pass', 'Please try again. Any trips already saved will be updated without adding another copy.');
+    } finally { saving.current = false; }
   };
 
   /** Hand one leg to the add-flight form with everything the document said
@@ -539,7 +528,7 @@ export function ImportDocument() {
               {phase.message}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              A PDF boarding pass, e-ticket receipt or booking confirmation works — so does a
+              A Wallet pass, PDF boarding pass, e-ticket receipt or booking confirmation works — so does a
               screenshot or photo of a pass. Or add the flight by number.
             </ThemedText>
           </ThemedView>
@@ -623,6 +612,8 @@ export function ImportDocument() {
               label={
                 phase.kind === 'saving'
                   ? 'Adding…'
+                  : !authLoaded || journeys === undefined
+                    ? 'Checking My travels…'
                   : selectedRows.length === 0
                     ? pendingCount > 0
                       ? 'Looking up flights…'
@@ -695,7 +686,7 @@ function SegmentCard({
   const carrierName = operator?.name ?? marketingName;
 
   const status = (() => {
-    if (attachable) return { text: segment.pass ? 'In My travels — save boarding pass' : 'In My travels — save ticket for check-in', color: '#2FD68C' };
+    if (attachable) return { text: segment.pass ? 'In My travels — update boarding pass' : segment.ticket ? 'In My travels — save ticket for check-in' : 'In My travels — update flight details', color: '#2FD68C' };
     if (already) return { text: 'Already in My travels', color: WHITE_DIM };
     if (plan.kind === 'pending') return { text: 'Looking up…', color: WHITE_DIM };
     if (plan.kind === 'lookup') {

@@ -3,6 +3,7 @@ import { createDetourNativeIntentHandler } from '@swmansion/react-native-detour/
 import { DETOUR_API_KEY, DETOUR_APP_ID } from '@/constants/config';
 import { DETOUR_HOST, deferrablePath, detourDestination } from '@/services/deferred-links';
 import { registerInboxDocument } from '@/services/document-imports';
+import { consumeWalletShare } from '@/services/wallet-share-intake';
 
 const handleDetourIntent = createDetourNativeIntentHandler({
   hosts: [DETOUR_HOST],
@@ -26,6 +27,10 @@ const handleDetourIntent = createDetourNativeIntentHandler({
  * modules/flyright-document-import — so this only ever fires on iOS. */
 export async function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): Promise<string> {
   try {
+    if (/^[a-z][a-z0-9+.-]*:\/\/expo-sharing(?:[/?#]|$)/i.test(path)) {
+      const handle = consumeWalletShare();
+      return handle ? `/import-document?handle=${handle}` : '/';
+    }
     if (/^file:/i.test(path)) {
       return `/import-document?handle=${registerInboxDocument(path)}`;
     }
@@ -34,6 +39,6 @@ export async function redirectSystemPath({ path, initial }: { path: string; init
     // mapToRoute. Validate that result too, while leaving other URLs alone.
     return route === path ? path : deferrablePath(route) ?? '/';
   } catch {
-    return /^file:/i.test(path) ? '/import-document' : '/';
+    return /^file:/i.test(path) || path.includes('://expo-sharing') ? '/import-document' : '/';
   }
 }

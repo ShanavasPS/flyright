@@ -82,3 +82,4 @@ export function toDomainJourney(row: JourneyRow): Journey {
         : undefined,
   };
 }
+export async function saveImportedJourney() { throw new Error('Import a boarding pass in the FlyRight app.'); }

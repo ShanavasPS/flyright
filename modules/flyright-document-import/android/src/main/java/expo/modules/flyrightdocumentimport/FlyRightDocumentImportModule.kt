@@ -68,16 +68,19 @@ private val IMAGE_EXTENSION = Regex("""\.(jpe?g|png|heic|heif|webp|tiff?|bmp|gif
 
 class FlyRightDocumentImportModule : Module() {
   private var pending: Map<String, Any?>? = null
+  private var observing = false
 
   override fun definition() = ModuleDefinition {
     Name("FlyRightDocumentImport")
 
     Events("onDocumentShared")
+    OnStartObserving { observing = true }
+    OnStopObserving { observing = false }
 
     OnNewIntent { intent ->
       capture(intent)?.let { doc ->
-        pending = doc
-        sendEvent("onDocumentShared", doc)
+        appContext.currentActivity?.let { neutralise(it) }
+        if (observing) sendEvent("onDocumentShared", doc) else pending = doc
       }
     }
 
@@ -155,6 +158,24 @@ class FlyRightDocumentImportModule : Module() {
 
   private fun capture(intent: Intent?): Map<String, Any?>? {
     if (intent == null) return null
+    if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+      val uris = if (Build.VERSION.SDK_INT >= 33) {
+        intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+      } ?: return null
+      if (uris.isEmpty() || uris.size > 8) return mapOf("uri" to "", "name" to "Shared passes")
+      val documents = uris.map { uri -> capture(Intent(intent).apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_STREAM, uri)
+      }) ?: return mapOf("uri" to "", "name" to "Shared passes") }
+      return mapOf("uri" to "", "name" to "Shared passes", "documents" to documents)
+    }
+    if (intent.action == Intent.ACTION_SEND && (intent.type == "text/plain" || intent.type == "text/uri-list")) {
+      val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+      if (text != null && text.length <= 512 * 1024) return mapOf("uri" to "", "name" to "Wallet boarding pass", "text" to text)
+    }
     val uri: Uri = when (intent.action) {
       Intent.ACTION_SEND ->
         if (Build.VERSION.SDK_INT >= 33) {
@@ -176,12 +197,16 @@ class FlyRightDocumentImportModule : Module() {
     val isPdf = type == "application/pdf" || lower.endsWith(".pdf")
     // A screenshot or photo of a ticket shares as an image; the reader OCRs it.
     val isImage = type?.startsWith("image/") == true || IMAGE_EXTENSION.containsMatchIn(lower)
-    if (!isPdf && !isImage) return null
+    val isBundle = type == "application/vnd.apple.pkpasses" || lower.endsWith(".pkpasses")
+    val isWallet = isBundle || type == "application/vnd.apple.pkpass" || lower.endsWith(".pkpass")
+    if (!isPdf && !isImage && !isWallet) return mapOf("uri" to "", "name" to name)
 
     val dir = File(context.cacheDir, "shared-documents").apply { mkdirs() }
     // The copy's extension says which reader to use when the sender gave no
     // display name — the JS side reads the kind off the name or the URI.
-    val copy = File(dir, "${UUID.randomUUID()}.${if (isPdf) "pdf" else "jpg"}")
+    dir.listFiles()?.filter { it.lastModified() < System.currentTimeMillis() - 3600_000 }?.forEach { it.delete() }
+    val extension = if (isBundle) "pkpasses" else if (isWallet) "pkpass" else if (isPdf) "pdf" else "jpg"
+    val copy = File(dir, "${UUID.randomUUID()}.$extension")
     try {
       resolver.openInputStream(uri)?.use { input -> copy.outputStream().use { output ->
         val buffer = ByteArray(8192)
@@ -201,7 +226,7 @@ class FlyRightDocumentImportModule : Module() {
     return mapOf(
       "uri" to Uri.fromFile(copy).toString(),
       "name" to name,
-      "mimeType" to (if (isPdf) "application/pdf" else type?.takeIf { it.startsWith("image/") } ?: "image/*"),
+      "mimeType" to (if (isBundle) "application/vnd.apple.pkpasses" else if (isWallet) "application/vnd.apple.pkpass" else if (isPdf) "application/pdf" else type?.takeIf { it.startsWith("image/") } ?: "image/*"),
     )
   }
 
@@ -222,6 +247,7 @@ class FlyRightDocumentImportModule : Module() {
     val intent = Intent(activity.intent)
     intent.action = Intent.ACTION_MAIN
     intent.removeExtra(Intent.EXTRA_STREAM)
+    intent.removeExtra(Intent.EXTRA_TEXT)
     intent.data = null
     intent.type = null
     activity.intent = intent
