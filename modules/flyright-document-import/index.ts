@@ -1,12 +1,13 @@
 /** JS boundary for reading shared travel documents — the native half of
- * "share a PDF to FlyRight". Two jobs:
+ * "share a PDF or a picture of a ticket to FlyRight". Two jobs:
  *
  *  1. Intake. Android delivers a shared file as an ACTION_SEND intent with no
  *     URL, which React Native's Linking never surfaces, so the Kotlin module
  *     copies the stream into the cache and hands the path over here — as a
  *     pending document on cold start, as an event when the app is already up.
- *     iOS needs neither: a "Copy to FlyRight" share arrives as a file:// URL
- *     through the normal linking path, and src/app/+native-intent.ts routes it.
+ *     iOS needs neither: a "Copy to FlyRight" share (PDFs and images, per the
+ *     CFBundleDocumentTypes in app.json) arrives as a file:// URL through the
+ *     normal linking path, and src/app/+native-intent.ts routes it.
  *
  *  2. Reading. `readPdf` renders each page's text (PDFKit / PDFBox) and
  *     decodes every barcode on it (Vision / ML Kit: PDF417, QR, Aztec, Data
@@ -27,6 +28,10 @@ export interface SharedDocument {
   uri: string;
   /** The sender's display name for the file, when known. */
   name: string | null;
+  /** The type the sender declared ("application/pdf", "image/jpeg", or a
+   * bare "image/*" for a picture of no stated kind) — what decides the
+   * reader when the name carries no extension. */
+  mimeType?: string | null;
 }
 
 export interface PdfPageContents {

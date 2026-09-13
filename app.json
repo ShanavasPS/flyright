@@ -40,6 +40,13 @@
             "LSItemContentTypes": [
               "com.adobe.pdf"
             ]
+          },
+          {
+            "CFBundleTypeName": "Ticket picture",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "public.image"
+            ]
           }
         ]
       },
@@ -97,6 +104,9 @@
           "data": [
             {
               "mimeType": "application/pdf"
+            },
+            {
+              "mimeType": "image/*"
             }
           ],
           "category": [

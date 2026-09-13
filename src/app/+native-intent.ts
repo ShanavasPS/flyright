@@ -18,8 +18,8 @@ const handleDetourIntent = createDetourNativeIntentHandler({
  * Detour's handler resolves incoming links on both cold and warm launches.
  * The provider stays deferred-only so it does not navigate a second time.
  *
- * A PDF shared to the app on iOS ("Copy to FlyRight", enabled by the
- * CFBundleDocumentTypes entry in app.json) arrives as a file:// URL in the
+ * A PDF or a picture shared to the app on iOS ("Copy to FlyRight", enabled
+ * by the CFBundleDocumentTypes entries in app.json) arrives as a file:// URL in the
  * app's Documents/Inbox. Left alone, the router would treat that path as a
  * route and 404; here it becomes the import screen with the file as a param.
  * Android shares travel a different road (ACTION_SEND, no URL) — see

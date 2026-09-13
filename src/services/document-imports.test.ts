@@ -20,7 +20,10 @@ jest.mock('expo-file-system', () => {
     constructor(parent: string | { uri: string }, child?: string) { this.uri = typeof parent === 'string' ? parent : `${parent.uri}${child}`; }
     get exists() { return mockFiles.has(this.uri); }
     get size() { return mockFiles.get(this.uri)?.size ?? 0; }
-    copy(to: File) { mockFiles.set(to.uri, { size: this.size }); }
+    // The real `copy()` is async (SDK 57) and the service must not use it:
+    // a promise here would leave the copy missing when the reader opens it.
+    copy(): never { throw new Error('use copySync'); }
+    copySync(to: File) { mockFiles.set(to.uri, { size: this.size }); }
     delete() { const item = mockFiles.get(this.uri); if (item) item.deleted = true; }
   }
   return { Directory, File, Paths: { cache: { uri: 'file:///cache/' }, document: { uri: 'file:///Documents/' } } };

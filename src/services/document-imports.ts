@@ -33,7 +33,10 @@ export function registerDocument(doc: { uri: string; name?: string | null; mimeT
   }
   const handle = randomUUID();
   const copy = new File(dir, handle);
-  source.copy(copy);
+  // Synchronous on purpose: `copy()` is async in SDK 57 and the callers
+  // delete the source (an iOS Inbox file) and open the copy right after —
+  // an un-awaited copy lost that race and the reader found no file.
+  source.copySync(copy);
   entries.set(handle, { uri: copy.uri, name: doc.name?.slice(0, 200) ?? '', mimeType: doc.mimeType ?? '', expires: Date.now() + 3600_000 });
   return handle;
 }

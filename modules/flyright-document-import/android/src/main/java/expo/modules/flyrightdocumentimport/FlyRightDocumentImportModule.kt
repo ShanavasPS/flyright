@@ -41,7 +41,8 @@ import java.util.UUID
 /** Android half of the shared-document reader — see ../index.ts for the
  * contract.
  *
- * Intake: "Share → FlyRight" on a PDF starts (or re-enters, launchMode
+ * Intake: "Share → FlyRight" on a PDF or a picture (the SEND filters in
+ * app.json name application/pdf and every image type) starts (or re-enters, launchMode
  * singleTask) MainActivity with an ACTION_SEND intent whose EXTRA_STREAM is a
  * content:// URI the sender granted us to read only while this activity
  * lives. Neither React Native's Linking nor expo-router see that intent, so
@@ -60,6 +61,9 @@ import java.util.UUID
  * same import screen. The barcode pass is identical once the bitmap exists;
  * ML Kit's text recogniser stands in for PDFBox when the image carries no
  * barcode (a screenshot of a confirmation email). */
+/** Picture files a ticket may arrive as; kept in step with IMAGE_EXTENSIONS in index.ts. */
+private val IMAGE_EXTENSION = Regex("""\.(jpe?g|png|heic|heif|webp|tiff?|bmp|gif)$""")
+
 class FlyRightDocumentImportModule : Module() {
   private var pending: Map<String, Any?>? = null
 
@@ -120,11 +124,16 @@ class FlyRightDocumentImportModule : Module() {
     val resolver = context.contentResolver
     val name = displayName(uri)
     val type = intent.type ?: resolver.getType(uri)
-    val isPdf = type == "application/pdf" || (name?.lowercase()?.endsWith(".pdf") == true)
-    if (!isPdf) return null
+    val lower = name?.lowercase() ?: ""
+    val isPdf = type == "application/pdf" || lower.endsWith(".pdf")
+    // A screenshot or photo of a ticket shares as an image; the reader OCRs it.
+    val isImage = type?.startsWith("image/") == true || IMAGE_EXTENSION.containsMatchIn(lower)
+    if (!isPdf && !isImage) return null
 
     val dir = File(context.cacheDir, "shared-documents").apply { mkdirs() }
-    val copy = File(dir, "${UUID.randomUUID()}.pdf")
+    // The copy's extension says which reader to use when the sender gave no
+    // display name — the JS side reads the kind off the name or the URI.
+    val copy = File(dir, "${UUID.randomUUID()}.${if (isPdf) "pdf" else "jpg"}")
     try {
       resolver.openInputStream(uri)?.use { input -> copy.outputStream().use { output ->
         val buffer = ByteArray(8192)
@@ -141,7 +150,11 @@ class FlyRightDocumentImportModule : Module() {
       copy.delete()
       return null
     }
-    return mapOf("uri" to Uri.fromFile(copy).toString(), "name" to name)
+    return mapOf(
+      "uri" to Uri.fromFile(copy).toString(),
+      "name" to name,
+      "mimeType" to (if (isPdf) "application/pdf" else type?.takeIf { it.startsWith("image/") } ?: "image/*"),
+    )
   }
 
   private fun displayName(uri: Uri): String? {
