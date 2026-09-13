@@ -95,6 +95,13 @@ const ACCOUNTING_CODES: Record<string, string> = {
   '999': 'CA',
 };
 
+/** The airline behind a 3-digit IATA accounting prefix ("176" → Emirates),
+ * or null when it is not in the carrier table. */
+export function carrierForAccountingCode(code: string) {
+  const iata = ACCOUNTING_CODES[code];
+  return iata && iata in CARRIERS ? { iata, name: CARRIERS[iata].name } : null;
+}
+
 /** Null for anything that isn't an e-ticket record: boarding passes, loyalty
  * cards, URLs. The stripe repeats the number; every copy has to agree. */
 export function parseEticketRecord(data: string): EticketRecord | null {

@@ -62,6 +62,7 @@ import {
   zonedTimestamp,
 } from '@/services/dates';
 import { haversineKm } from '@/services/geo';
+import { classifyFlightInput } from '@/services/flight-input';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
 import {
@@ -201,6 +202,19 @@ export function AddFlight() {
   const [scanning, setScanning] = useState(false);
 
   const inputCandidate = normalizeFlightNumber(flightInput);
+  // Why the search action is (or isn't) showing. A pasted booking reference
+  // or e-ticket number used to get the same hint as an empty box.
+  const inputClass = classifyFlightInput(flightInput);
+  const inputHint =
+    inputClass.kind === 'pnr'
+      ? 'That looks like a booking reference. The flight number is the airline code plus digits, like AY1331, printed next to the airline name on the same ticket.'
+      : inputClass.kind === 'ticket'
+        ? `That looks like an e-ticket number${inputClass.carrier ? ` from ${inputClass.carrier}` : ''}. The flight number is shorter, like AY1331. Or upload the ticket and we’ll read it.`
+        : inputClass.kind === 'flight'
+          ? inputClass.carrier
+            ? null
+            : `We don’t know an airline with the code ${inputClass.flight.slice(0, 2)}. If that’s a booking reference, look for the flight number next to the airline name.`
+          : 'The code on your ticket, booking email, or boarding pass.';
   const today = new Date();
 
   // Prefill once from the row being edited, then jump straight to the manual
@@ -783,9 +797,9 @@ export function AddFlight() {
                   returnKeyType="search"
                   style={styles.passInput}
                 />
-                {!inputCandidate && (
-                  <ThemedText type="small" style={styles.passHint}>
-                    The code on your ticket, booking email, or boarding pass.
+                {inputHint && (
+                  <ThemedText type="small" style={styles.passHint} testID="flight-input-hint">
+                    {inputHint}
                   </ThemedText>
                 )}
                 {inputCandidate ? (

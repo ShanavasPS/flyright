@@ -1,0 +1,78 @@
+# Add-flight flow: the flight-number box explains a wrong code. A pasted
+# booking reference (PNR), an e-ticket number, or a designator with an unknown
+# airline code each get their own hint instead of the generic one, and only a
+# real-looking designator shows "Search this flight".
+# Run: maestro test .maestro/add-flight-wrong-code.yaml   (booted simulator with
+# the dev build installed and `npx expo start` serving the bundle on :8081)
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+# The ATT prompt lands a beat after onboarding; clear it before the tap so it
+# can't sit over the sheet.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 8000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- tapOn: "Add a flight, past or future"
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 10000
+- assertVisible: "The code on your ticket, booking email, or boarding pass."
+- tapOn: "AY1331 or LH873"
+# Booking reference
+- inputText: "K7QX2M"
+- extendedWaitUntil:
+    visible: "That looks like a booking reference.*"
+    timeout: 5000
+- assertNotVisible: ".*Search this flight.*"
+- eraseText
+# E-ticket number, Emirates accounting prefix
+- inputText: "1762208710619"
+- extendedWaitUntil:
+    visible: "That looks like an e-ticket number from Emirates.*"
+    timeout: 5000
+- assertNotVisible: ".*Search this flight.*"
+- eraseText
+# Designator shape, airline code not in the table: searchable, but nudged
+- inputText: "ZQ1234"
+- extendedWaitUntil:
+    visible: "We don’t know an airline with the code ZQ.*"
+    timeout: 5000
+- assertVisible: ".*Search this flight.*"
+- eraseText
+# A known flight: no hint, just the action
+- inputText: "AY1331"
+- extendedWaitUntil:
+    visible: ".*Search this flight.*"
+    timeout: 5000
+- assertNotVisible: "The code on your ticket.*"
+- assertNotVisible: "We don’t know an airline.*"
