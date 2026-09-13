@@ -21,7 +21,7 @@
  */
 
 import { CARRIERS, operatingBrand } from '@/constants/carriers';
-import { airportRank, hubAirports, isValidIata } from '@/services/airports';
+import { airportRank, hubAirports, isValidIata, largeAirports } from '@/services/airports';
 import { parseBcbp, resolveFlightDate } from '@/services/bcbp';
 import { parseEticketRecord } from '@/services/eticket';
 
@@ -283,16 +283,50 @@ function legsFromRouteBlocks(
 
 const ROUTE_PAIR_RE = /\b([A-Z]{3})\s*(?:→|->|—|–|-|>|\/|to)\s*([A-Z]{3})\b/g;
 
+/** Between two codes of a route strip, once the recogniser has had its
+ * way with the arrow: whitespace, or an arrow's leftovers. */
+const STRIP_JOIN_RE = /^[\s→\->–—»›>\/.,·•]*$/;
+
 /** The routes a document lists on their own, in flying order and joined
  * into one journey — a seats or baggage table headed "IXE → BLR", "BLR →
- * TRV". Null unless at least two chain. */
+ * TRV". Null unless at least two chain.
+ *
+ * Read twice: first the pairs the page arrows together; failing a chain,
+ * the strip as a run of codes with nothing but space (or what is left of
+ * an arrow) between them — a recogniser drops the arrow of a small
+ * heading now and then, and "IXE" over "BLR" over "BLR → TRV" is still
+ * the chain, which is the only thing that says where the first leg
+ * flies when its own row names cities the table doesn't know. A code
+ * repeated where a chain links ("BLR BLR") is the join itself. */
 function routeSummary(text: string): [string, string][] | null {
+  const arrowed: [string, string][] = [];
+  for (const m of text.matchAll(ROUTE_PAIR_RE)) arrowed.push([m[1], m[2]]);
+  const chained = chainOf(arrowed);
+  if (chained) return chained;
+
+  const strip: [string, string][] = [];
+  let prev: { code: string; end: number } | null = null;
+  for (const m of text.matchAll(/\b([A-Z]{3})\b/g)) {
+    const code = m[1];
+    if (!isValidIata(code) || airportRank(code) < 1) {
+      prev = null;
+      continue;
+    }
+    if (prev && STRIP_JOIN_RE.test(text.slice(prev.end, m.index))) strip.push([prev.code, code]);
+    prev = { code, end: m.index + code.length };
+  }
+  return chainOf(strip);
+}
+
+/** Distinct, airport-checked pairs that link head to tail into one
+ * journey; null unless at least two do. */
+function chainOf(candidates: [string, string][]): [string, string][] | null {
   const pairs: [string, string][] = [];
-  for (const m of text.matchAll(ROUTE_PAIR_RE)) {
-    if (!isValidIata(m[1]) || !isValidIata(m[2]) || m[1] === m[2]) continue;
-    if (airportRank(m[1]) < 1 || airportRank(m[2]) < 1) continue;
-    if (pairs.some(([a, b]) => a === m[1] && b === m[2])) continue;
-    pairs.push([m[1], m[2]]);
+  for (const [a, b] of candidates) {
+    if (!isValidIata(a) || !isValidIata(b) || a === b) continue;
+    if (airportRank(a) < 1 || airportRank(b) < 1) continue;
+    if (pairs.some(([x, y]) => x === a && y === b)) continue;
+    pairs.push([a, b]);
   }
   if (pairs.length < 2) return null;
   for (let i = 1; i < pairs.length; i++) if (pairs[i - 1][1] !== pairs[i][0]) return null;
@@ -747,25 +781,83 @@ function airportsIn(window: string): string[] {
   // codes were found in front of the name matches.
   const named: { index: number; code: string }[] = [];
   const upper = window.toUpperCase();
+  for (const { name, code } of nameableCities()) {
+    // No lookbehind (Hermes): the leading group eats the non-letter, so the
+    // city starts one character in when the group matched.
+    const re = new RegExp(`(^|[^A-Z])${escapeRegExp(name)}(?![A-Z])`);
+    const m = re.exec(upper);
+    if (m) named.push({ index: m.index + m[1].length, code });
+  }
+  named.sort((a, b) => a.index - b.index);
+  return distinct([...parenthesized, ...pairs, ...named.map((n) => n.code)]);
+}
+
+/** The names a ticket may print a city under that the airport table
+ * doesn't use: the pre-rename spellings Indian carriers keep ("Mangalore"
+ * for Mangaluru, "Trivandrum" for Thiruvananthapuram) and a few abroad. */
+const CITY_ALIASES: Record<string, string> = {
+  MANGALORE: 'IXE',
+  BANGALORE: 'BLR',
+  TRIVANDRUM: 'TRV',
+  COCHIN: 'COK',
+  BOMBAY: 'BOM',
+  MADRAS: 'MAA',
+  CALCUTTA: 'CCU',
+  POONA: 'PNQ',
+  BARODA: 'BDQ',
+  KOZHIKODE: 'CCJ',
+  TRICHY: 'TRZ',
+  VIZAG: 'VTZ',
+  SAIGON: 'SGN',
+  RANGOON: 'RGN',
+  KIEV: 'KBP',
+  KYIV: 'KBP',
+};
+
+/** A rank-1 city is spotted by name only when the name is this long and
+ * no other large airport shares it — "Thiruvananthapuram" is an airport,
+ * "Richmond" and "Kingston" are anybody's. */
+const NAMEABLE_CITY_MIN = 9;
+
+let nameableCache: { name: string; code: string }[] | null = null;
+
+/** The city names worth looking for in a leg's text, each with the one
+ * airport it means: every hub's (the curated few hundred, "DOHA" → DOH,
+ * a city with several hubs answering to its main one), the long,
+ * unshared names of the other large airports ("Coimbatore", "Mangaluru"),
+ * and the legacy spellings tickets still print. */
+function nameableCities(): { name: string; code: string }[] {
+  if (nameableCache) return nameableCache;
+  const cityOf = (city: string) => city.split(' (')[0].toUpperCase();
+  const shared = new Map<string, number>();
+  for (const airport of largeAirports()) {
+    const city = cityOf(airport.city);
+    shared.set(city, (shared.get(city) ?? 0) + 1);
+  }
+  const list: { name: string; code: string }[] = [];
   for (const airport of hubAirports()) {
-    const city = airport.city.split(' (')[0];
-    if (city.length < 4 || CITY_WORDS.has(city.toUpperCase())) continue;
+    const city = cityOf(airport.city);
+    if (city.length < 4 || CITY_WORDS.has(city)) continue;
     // A city with several hubs names all of them at the same spot in the
     // text ("LONDON" is LHR, LGW, LCY and STN), and taking them in table
     // order turned one leg into London → London. Only the city's main
     // international airport answers to the bare city name; the exact one is
     // the barcode's business (extractItinerary) or the traveller's.
-    if (PRIMARY_AIRPORT[city.toUpperCase()] && PRIMARY_AIRPORT[city.toUpperCase()] !== airport.iata) {
-      continue;
-    }
-    // No lookbehind (Hermes): the leading group eats the non-letter, so the
-    // city starts one character in when the group matched.
-    const re = new RegExp(`(^|[^A-Z])${city.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Z])`);
-    const m = re.exec(upper);
-    if (m) named.push({ index: m.index + m[1].length, code: airport.iata });
+    if (PRIMARY_AIRPORT[city] && PRIMARY_AIRPORT[city] !== airport.iata) continue;
+    list.push({ name: city, code: airport.iata });
   }
-  named.sort((a, b) => a.index - b.index);
-  return distinct([...parenthesized, ...pairs, ...named.map((n) => n.code)]);
+  for (const airport of largeAirports()) {
+    if (airportRank(airport.iata) === 2) continue;
+    const city = cityOf(airport.city);
+    if (city.length < NAMEABLE_CITY_MIN || !/^[A-Z]+$/.test(city) || CITY_WORDS.has(city)) continue;
+    if (shared.get(city) !== 1) continue;
+    list.push({ name: city, code: airport.iata });
+  }
+  for (const [name, code] of Object.entries(CITY_ALIASES)) list.push({ name, code });
+  // Longest first, so "Thiruvananthapuram" is tried before any name it
+  // contains and the position recorded is the whole word's.
+  nameableCache = list.sort((a, b) => b.name.length - a.name.length);
+  return nameableCache;
 }
 
 /** Passenger-type codes a receipt prints after the name — "(ADT)" is an
@@ -1057,6 +1149,18 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
       [s.fromCode, s.toCode] = summary[i];
     });
   }
+  // A leg that found one airport, next to a leg that found both, can tell
+  // which end it is: the code the next leg departs from is where this one
+  // lands, the code the previous leg landed at is where this one starts.
+  // Half a route still needs the traveller, but it's the right half.
+  once.forEach((s, i) => {
+    if (!!s.fromCode === !!s.toCode) return;
+    const only = (s.fromCode ?? s.toCode) as string;
+    const next = once[i + 1];
+    const prev = once[i - 1];
+    if (next?.fromCode === only && next.toCode) [s.fromCode, s.toCode] = [null, only];
+    else if (prev?.toCode === only && prev.fromCode) [s.fromCode, s.toCode] = [only, null];
+  });
   // Likewise a seat table under the legs, one seat per flight found, seats
   // the legs whose own block printed none.
   const seats = seatTable(text);

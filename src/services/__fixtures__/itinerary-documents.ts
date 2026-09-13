@@ -1767,6 +1767,134 @@ Forward
   },
 ];
 
+/** The same IndiGo email as a phone's own reader returns it (Vision's
+ * current revision, as on a device rather than the simulator): the leg
+ * table bands differently — the first leg's clocks come out BEFORE its
+ * flight number, "GE 388" for 6E 388, the second leg's "16:10" read as
+ * "10:10" — and the route chain under the table is split one code per
+ * line ("IXE", "→ BLR", "BLR", "→ TRV"). Passenger and PNR made up. */
+export const INDIGO_EMAIL_SCREENSHOT_DEVICE: DocumentPage[] = [
+  {
+    text: `18:57
+2*YE01
+15%
+:
+IndiGo
+PNR/Booking Ref.: K7PQ2N
+Date of Booking*
+Payment Status
+CONFIRMED
+25 Sep 20 16:25:59 (UTC)
+Approved
+*Booking Date reflects in UTC (Universal Time Coordinated), all other timings mentioned are as per Local Time.
+IndiGo Passenger(s)
+Check-in now
+Flight Status
+1. Ms. Doe Jane
+IndiGo Flight(s)
+Flight
+Date
+From
+Departs
+Number
+Counter/Bag drop
+To (Terminal)
+Arrives Via
+(Terminal)
+(Alreraft
+closes
+type)
+13:40
+GE 388
+12:40
+14:45
+04 Oct 20
+Mangalore
+(A320)
+Bengaluru (T1)
+6E 379
+Thiruvananthapuram
+04 Oct 20
+Bengaluru (T1) 10:10
+(A320)
+15:10
+(T1)
+17:30
+Seats and Additional Services
+IXE
+→ BLR
+BLR
+→ TRV
+Passenger name
+Seat
+Services Purchased
+Seat
+Services Purchased
+Ms. Doe Jane
+20A
+20A
+Tips for a hasslc-free travel experience
+Mandatory health
+120 min before
+60 min before
+25 min before
+declaration and web
+departure
+departure
+departure
+check-in
+Reach the airport to allow
+Drop your bags and proceed
+Boarding gate closes.
+yourself sufficient time for
+for boarding.
+Declare your health status
+and check-in online 48
+necessary procedures.
+hours to 60 min before
+flight departure.
+Travel and Baggage Information
+IXE→ BLR
+BLR → TRV
+• Fare Type: Regular Fare
+• Fare Type: Regular Fare
+• Airport counters close 60 minutes prior to the scheduled
+• Airport counters close 60 minutes prior to the scheduled
+departure time.
+departure time.
+• Boarding gates close 25 minutes prior to the scheduled
+• Boarding gates close 25 minutes prior to the scheduled
+departure time.
+departure time.
+• BAGGAGE INFORMATION:
+• BAGGAGE INFORMATION:
+• Check-in Baggage: 20 Kg per person (One piece only).
+• Check-in Baggage: 20 Kg per person (One piece only).
+Additional charges will apply for excess baggage.
+Additional charges will apply for excess baggage.
+• Disclaimer: 15kg per person (1 piece only) effective Oct 1st,
+• Disclaimer: 15kg per person (1 piece only) effective Oct 1st,
+2020. For Double or MultiSeats bookings, extra 10 kg.
+2020. For Double or MultiSeats bookings, extra 10 kg.
+Additional charges may apply for excess baggage. Note: For
+Additional charges may apply for excess baggage. Note: For
+bookings made between May 21 to Sept 30, 2020 (inclusive)
+bookings made between May 21 to Sept 30, 2020 (inclusive)
+for travel up to Nov 24, 2020, the allowance will be 20kg (1
+for travel up to Nov 24, 2020, the allowance will be 20kg (1
+piece only) instead of 15kg.
+piece only) instead of 15kg.
+• Hand Baggage: One personal item like small laptop bag,
+• Hand Baggage: One personal item like small laptop bag,
+....
+h Reply
+• Forward
+99+`,
+    barcodes: [],
+  },
+];
+
+
 /** Lufthansa booking confirmation (two legs, no barcode): each leg headed
  * "Sat. 06 February 2021: Bangalore – Frankfurt" — the year followed by a
  * colon — with an "Important Notice" paragraph between the first heading

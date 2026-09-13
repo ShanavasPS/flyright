@@ -13,6 +13,7 @@ import {
   GOIBIBO_CONFIRMATION_PDFBOX,
   GOIBIBO_CONFIRMATION_PDFKIT,
   INDIGO_EMAIL_SCREENSHOT,
+  INDIGO_EMAIL_SCREENSHOT_DEVICE,
   LUFTHANSA_CONFIRMATION_PDFBOX,
   LUFTHANSA_CONFIRMATION_PDFKIT,
   FINNAIR_RECEIPT,
@@ -365,6 +366,51 @@ describe('extractItinerary — a screenshot of an IndiGo itinerary email', () =>
     const segments = extractSegmentsFromText(INDIGO_EMAIL_SCREENSHOT[0].text, TODAY_2026);
     expect(segments.map((s) => s.flight)).toEqual(['6E388', '6E379']);
     expect(segments.some((s) => s.date === '2020-09-25' || s.depTime === '16:25')).toBe(false);
+  });
+});
+
+describe('extractItinerary — the IndiGo screenshot as a phone reads it', () => {
+  // A traveller's phone (2026-09-13) showed the first leg with no route at
+  // all — "Route not in the document" — and the second leg right. The
+  // first leg's row names "Mangalore" and "Bengaluru", neither of which
+  // the parser could place (Mangalore is Mangaluru in the airport table,
+  // and only hub cities were looked for), so the leg lived or died by the
+  // route chain under the table; a dropped arrow or a garbled code in
+  // that chain took the leg's route with it.
+  const TODAY_2026 = new Date(2026, 8, 13, 12);
+  const text = INDIGO_EMAIL_SCREENSHOT_DEVICE[0].text;
+  const routes = (t: string) =>
+    extractSegmentsFromText(t, TODAY_2026).map((s) => `${s.flight} ${s.fromCode}-${s.toCode}`);
+
+  it('reads both legs with their routes from the device text as it came', () => {
+    expect(summary(INDIGO_EMAIL_SCREENSHOT_DEVICE, TODAY_2026)).toEqual([
+      { flight: '6E388', date: '2020-10-04', from: 'IXE', to: 'BLR', dep: '13:40', arr: '14:45' },
+      // "16:10" came out as "10:10", which reads as no departure at all
+      // next to the 15:10 closing time; the clocks are told apart by
+      // value and the closing time is the nearest sensible one.
+      { flight: '6E379', date: '2020-10-04', from: 'BLR', to: 'TRV', dep: '15:10', arr: '17:30' },
+    ]);
+  });
+
+  it('keeps the chain when the recogniser drops the arrows', () => {
+    // "IXE" over "BLR" over "BLR → TRV": the first arrow gone.
+    expect(routes(text.replace('IXE\n→ BLR\n', 'IXE\nBLR\n'))).toEqual(['6E388 IXE-BLR', '6E379 BLR-TRV']);
+    // Every arrow gone.
+    expect(routes(text.replace(/→ /g, ''))).toEqual(['6E388 IXE-BLR', '6E379 BLR-TRV']);
+  });
+
+  it('routes the first leg by its city names when the chain has garbled its code', () => {
+    // "IXE" misread everywhere: no chain; the row's "Mangalore" (the
+    // ticket's spelling of Mangaluru) and "Bengaluru" are the route.
+    expect(routes(text.replace(/IXE/g, '1XE'))).toEqual(['6E388 IXE-BLR', '6E379 BLR-TRV']);
+  });
+
+  it('hands a leg that found one airport the right end of it', () => {
+    // Neither the chain nor the city names: the first leg's row names
+    // only Bengaluru, and the leg after it departs from BLR — so BLR is
+    // where this one lands, and the traveller adds the origin.
+    const noChain = text.replace(/IXE/g, '1XE').replace('Mangalore', 'Mangalor');
+    expect(routes(noChain)).toEqual(['6E388 null-BLR', '6E379 BLR-TRV']);
   });
 });
 

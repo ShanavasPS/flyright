@@ -135,3 +135,17 @@ export function hubAirports(): Airport[] {
   }
   return hubCache;
 }
+
+let largeCache: Airport[] | null = null;
+
+/** Every large airport (rank 1 and 2) — the hubs plus the thousand or so
+ * "large_airport" fields; a rank-1 city's name is only worth spotting in
+ * text when it is long and no other large airport shares it. */
+export function largeAirports(): Airport[] {
+  if (!largeCache) {
+    largeCache = Object.entries(AIRPORTS)
+      .filter(([, tuple]) => tuple[4] >= 1)
+      .map(([iata, tuple]) => toAirport(iata, tuple));
+  }
+  return largeCache;
+}

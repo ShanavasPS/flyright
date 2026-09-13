@@ -165,6 +165,9 @@ export function ImportDocument() {
         // than refused. If neither can read it, the first attempt's reason is
         // the one worth showing — it was the likelier reader.
         const contents = await document.read();
+        // The recogniser's text is the only way to see why a page read
+        // wrongly; a fixture for services/itinerary starts from this log.
+        if (__DEV__) console.log(`[import] ${kind} text:\n${contents.pages.map((p) => p.text).join('\n=== page ===\n')}`);
         const { segments, boardingPassBarcodes, ticketNumbers } = extractItinerary(contents.pages, today);
         if (cancelled) return;
         setPhase({ kind: 'review', segments, barcodes: boardingPassBarcodes, tickets: ticketNumbers });
