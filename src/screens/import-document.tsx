@@ -307,7 +307,10 @@ export function ImportDocument() {
 
   const saving = useRef(false);
   const save = async () => {
-    if (!selectedRows.length || saving.current || !authLoaded || journeys === undefined) return;
+    // Lookups finish one at a time. Saving the ready subset would close the
+    // document and silently leave later legs behind, even though they were
+    // selected by default. Wait for every initial lookup to settle first.
+    if (pendingCount > 0 || !selectedRows.length || saving.current || !authLoaded || journeys === undefined) return;
     saving.current = true;
     try {
       setPhase((current) => (current.kind === 'review' ? { ...current, kind: 'saving' } : current));
@@ -614,10 +617,10 @@ export function ImportDocument() {
                   ? 'Adding…'
                   : !authLoaded || journeys === undefined
                     ? 'Checking My travels…'
+                  : pendingCount > 0
+                    ? `Checking flights… ${segments.length - pendingCount} of ${segments.length}`
                   : selectedRows.length === 0
-                    ? pendingCount > 0
-                      ? 'Looking up flights…'
-                      : 'Nothing selected'
+                    ? 'Nothing selected'
                     : selectedRows.every((r) => r.attachable)
                       ? selectedRows.length === 1
                         ? 'Save the travel code →'
@@ -626,7 +629,7 @@ export function ImportDocument() {
                         ? 'Add 1 flight to My travels →'
                         : `Add ${selectedRows.length} flights to My travels →`
               }
-              disabled={phase.kind === 'saving' || selectedRows.length === 0}
+              disabled={phase.kind === 'saving' || pendingCount > 0 || selectedRows.length === 0}
               onPress={save}
             />
           </View>
