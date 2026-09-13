@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.33',
+    date: '2026-09-13',
+    notes: [
+      'The app icon now shows a dot when something waits for you — a People request, a support reply or a newer version — and clears when you have looked.',
+      'A push tells you when a new FlyRight is in the store, so you no longer find out by opening Settings.',
+      'Invite links no longer add whoever holds them: opening one asks the sender first, and the sender sees “Opened your invite link” on the request.',
+      'Typing a booking reference or an e-ticket number into the flight box now says what it is and points you to scan or upload the ticket instead.',
+      'Links shared from FlyRight open straight in the installed app instead of the browser.',
+      'Account hardening: your searchable email is the one on your account, a photo can only be removed by the person who added it, and the app’s calls are rate-limited against bots.',
+    ],
+  },
+  {
     version: '1.0.32',
     date: '2026-09-12',
     notes: [
