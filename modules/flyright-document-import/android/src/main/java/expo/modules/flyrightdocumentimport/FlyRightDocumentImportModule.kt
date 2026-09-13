@@ -24,7 +24,9 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
+import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatReader
+import com.google.zxing.MultiFormatWriter
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.multi.GenericMultipleBarcodeReader
@@ -98,6 +100,52 @@ class FlyRightDocumentImportModule : Module() {
     AsyncFunction("readImage") { uri: String ->
       readImage(uri)
     }
+
+    // The other direction: a payload back into a symbol, as a module matrix
+    // the JS side draws (services/boarding-pass matrixToPath). ZXing's
+    // writers produce one BitMatrix cell per module; asked for a 1x1 target
+    // they emit the symbol at its natural size, and the quiet zone is
+    // trimmed off since the card draws its own margin.
+    AsyncFunction("renderBarcode") { payload: String, format: String ->
+      renderBarcode(payload, format)
+    }
+  }
+
+  private fun renderBarcode(payload: String, format: String): Map<String, Any> {
+    if (payload.isEmpty() || payload.length > 2000) throw BarcodeUnrenderableException(format)
+    val zxingFormat = when (format) {
+      "pdf417" -> BarcodeFormat.PDF_417
+      "aztec" -> BarcodeFormat.AZTEC
+      "qr" -> BarcodeFormat.QR_CODE
+      "datamatrix" -> BarcodeFormat.DATA_MATRIX
+      else -> throw BarcodeUnrenderableException(format)
+    }
+    val hints = mapOf(
+      EncodeHintType.MARGIN to 0,
+      // BCBP is plain ASCII; ISO-8859-1 keeps every byte as-is.
+      EncodeHintType.CHARACTER_SET to "ISO-8859-1",
+    )
+    val matrix = try {
+      MultiFormatWriter().encode(payload, zxingFormat, 1, 1, hints)
+    } catch (e: Exception) {
+      throw BarcodeUnrenderableException(format)
+    }
+    val width = matrix.width
+    val height = matrix.height
+    var minX = width; var maxX = -1; var minY = height; var maxY = -1
+    for (y in 0 until height) for (x in 0 until width) if (matrix.get(x, y)) {
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+    }
+    if (maxX < minX || maxY < minY) throw BarcodeUnrenderableException(format)
+    val rows = (minY..maxY).map { y ->
+      val row = StringBuilder(maxX - minX + 1)
+      for (x in minX..maxX) row.append(if (matrix.get(x, y)) '1' else '0')
+      row.toString()
+    }
+    return mapOf("width" to maxX - minX + 1, "height" to maxY - minY + 1, "rows" to rows)
   }
 
   private val context: Context
@@ -241,7 +289,13 @@ class FlyRightDocumentImportModule : Module() {
     } finally {
       if (renderable != file) renderable.delete()
     }
-    val pages = texts.mapIndexed { i, text -> mapOf("text" to text, "barcodes" to barcodes[i]) }
+    val pages = texts.mapIndexed { i, text ->
+      mapOf(
+        "text" to text,
+        "barcodes" to barcodes[i].map { it.payload },
+        "barcodeFormats" to barcodes[i].map { it.format },
+      )
+    }
     return mapOf("pageCount" to pageCount, "pages" to pages)
   }
 
@@ -258,9 +312,9 @@ class FlyRightDocumentImportModule : Module() {
       .build(),
   )
 
-  private fun decodeBarcodes(file: File, pages: Int): List<List<String>> {
+  private fun decodeBarcodes(file: File, pages: Int): List<List<DecodedBarcode>> {
     val scanner = newBarcodeScanner()
-    val result = MutableList<List<String>>(pages) { emptyList() }
+    val result = MutableList<List<DecodedBarcode>>(pages) { emptyList() }
     try {
       ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
         val renderer = PdfRenderer(pfd)
@@ -300,22 +354,24 @@ class FlyRightDocumentImportModule : Module() {
 
   /** Both decoders over one bitmap: ML Kit first, then ZXing for the small
    * PDF417 stripes it skips. Either failing only costs its own findings. */
-  private fun payloads(scanner: BarcodeScanner, bitmap: Bitmap): List<String> {
-    val found = LinkedHashSet<String>()
+  private fun payloads(scanner: BarcodeScanner, bitmap: Bitmap): List<DecodedBarcode> {
+    val found = LinkedHashMap<String, DecodedBarcode>()
     try {
       // rawValue keeps BCBP's whitespace-significant layout intact;
       // displayValue would "clean" it.
-      Tasks.await(scanner.process(InputImage.fromBitmap(bitmap, 0)))
-        .mapNotNullTo(found) { it.rawValue?.takeIf(String::isNotEmpty) }
+      Tasks.await(scanner.process(InputImage.fromBitmap(bitmap, 0))).forEach { code ->
+        val payload = code.rawValue?.takeIf(String::isNotEmpty) ?: return@forEach
+        found.putIfAbsent(payload, DecodedBarcode(payload, mlKitFormatName(code.format)))
+      }
     } catch (e: Exception) {
       // ML Kit failing only means ZXing gets the whole job.
     }
     try {
-      found.addAll(zxingDecode(bitmap))
+      zxingDecode(bitmap).forEach { found.putIfAbsent(it.payload, it) }
     } catch (e: Exception) {
       // Same: an image that fails to scan simply contributes no barcodes.
     }
-    return found.toList()
+    return found.values.toList()
   }
 
   // -- images ---------------------------------------------------------------
@@ -334,7 +390,13 @@ class FlyRightDocumentImportModule : Module() {
       }
       mapOf(
         "pageCount" to 1,
-        "pages" to listOf(mapOf("text" to imageText(bitmap), "barcodes" to codes)),
+        "pages" to listOf(
+          mapOf(
+            "text" to imageText(bitmap),
+            "barcodes" to codes.map { it.payload },
+            "barcodeFormats" to codes.map { it.format },
+          ),
+        ),
       )
     } finally {
       bitmap.recycle()
@@ -418,7 +480,27 @@ class FlyRightDocumentImportModule : Module() {
  * with that in place the binarizer's 4 MB bit matrix was the allocation
  * that failed: a three-page receipt with no barcode takes the retry on every
  * page, and could not be read on Android at all. */
-private fun zxingDecode(bitmap: Bitmap): List<String> {
+/** A decoded symbol: its payload and which symbology carried it, named the
+ * way expo-camera names them so JS treats both readers alike. */
+data class DecodedBarcode(val payload: String, val format: String)
+
+private fun mlKitFormatName(format: Int): String = when (format) {
+  Barcode.FORMAT_PDF417 -> "pdf417"
+  Barcode.FORMAT_AZTEC -> "aztec"
+  Barcode.FORMAT_QR_CODE -> "qr"
+  Barcode.FORMAT_DATA_MATRIX -> "datamatrix"
+  else -> "unknown"
+}
+
+private fun zxingFormatName(format: BarcodeFormat): String = when (format) {
+  BarcodeFormat.PDF_417 -> "pdf417"
+  BarcodeFormat.AZTEC -> "aztec"
+  BarcodeFormat.QR_CODE -> "qr"
+  BarcodeFormat.DATA_MATRIX -> "datamatrix"
+  else -> "unknown"
+}
+
+private fun zxingDecode(bitmap: Bitmap): List<DecodedBarcode> {
   val width = bitmap.width
   val height = bitmap.height
   val luminance = ByteArray(width * height)
@@ -448,7 +530,7 @@ private fun zxingDecode(bitmap: Bitmap): List<String> {
   val reader = GenericMultipleBarcodeReader(MultiFormatReader())
   return try {
     reader.decodeMultiple(BinaryBitmap(HybridBinarizer(source)), hints)
-      .mapNotNull { it.text?.takeIf(String::isNotEmpty) }
+      .mapNotNull { r -> r.text?.takeIf(String::isNotEmpty)?.let { DecodedBarcode(it, zxingFormatName(r.barcodeFormat)) } }
   } catch (e: com.google.zxing.NotFoundException) {
     emptyList()
   }
@@ -459,6 +541,9 @@ private class DocumentUnreadableException(uri: String) :
 
 private class ImageUnreadableException(uri: String) :
   CodedException("ERR_IMAGE_UNREADABLE", "'$uri' could not be opened as an image.", null)
+
+private class BarcodeUnrenderableException(format: String) :
+  CodedException("ERR_BARCODE_UNRENDERABLE", "A '$format' barcode could not be drawn.", null)
 
 private class DocumentLockedException :
   CodedException("ERR_DOCUMENT_LOCKED", "This PDF is password-protected.", null)

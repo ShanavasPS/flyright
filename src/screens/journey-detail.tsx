@@ -16,6 +16,7 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BoardingPassCard } from '@/components/boarding-pass-card';
 import { Card } from '@/components/card';
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
@@ -415,6 +416,11 @@ export function JourneyDetail({
           return outlook ? <InboundCard outlook={outlook} /> : null;
         })()}
 
+        {/* Keep airport codes within reach, before the travel-day checklist. */}
+        {!isDemo && row && (travelActive || travelPreview || tripAge <= 0) && (
+          <BoardingPassCard row={row} prominent />
+        )}
+
         {(travelActive || travelPreview) && row && (
           <TravelDayTimeline
             journey={row}
@@ -498,6 +504,10 @@ export function JourneyDetail({
             </ThemedText>
             <JournalBlock row={row} userId={userId} now={now} tripAge={tripAge} onEditNotes={openNotes} />
           </Card>
+        )}
+
+        {!isDemo && row && !(travelActive || travelPreview || tripAge <= 0) && (
+          <BoardingPassCard row={row} prominent={false} />
         )}
 
         </ScrollView>

@@ -2,9 +2,9 @@ import { registerDocument } from '@/services/document-imports';
 import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -51,9 +51,11 @@ import {
 } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
+import { legFor, passCovers, type StoredPass } from '@/services/boarding-pass';
 import { withYear } from '@/services/year-choice';
 import {
   dayOffset,
+  flightDay,
   formatDayLabel,
   formatDayLabelWithYear,
   formatTime,
@@ -71,7 +73,7 @@ import {
   normalizeFlightNumber,
 } from '@/services/flight-lookup';
 import { recordDelay } from '@/services/disruptions';
-import { addJourney, updateJourney, useJourney } from '@/services/journeys';
+import { addJourney, attachBoardingPass, updateJourney, useJourney } from '@/services/journeys';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 import {
@@ -109,6 +111,13 @@ const PROMPTS: Record<Step, string> = {
   added: '',
 };
 
+/** The scanned code as row fields, when it names the trip being saved;
+ * nothing otherwise, so an existing pass on the row is left alone. */
+function passFields(pass: StoredPass | null, journey: { number: string; fromCode: string; toCode: string; date?: string }) {
+  if (!pass || !passCovers(pass.code, journey)) return {};
+  return { passCode: pass.code, passFormat: pass.format, passCapturedAt: new Date().toISOString() };
+}
+
 /** The optional booking reference and seat as row fields: trimmed, upper-
  * cased, null when blank. */
 function tripDetails(bookingRef: string, seat: string) {
@@ -142,8 +151,12 @@ export function AddFlight() {
     arrTime?: string;
     /** '1' to open straight on the journal form instead of the lookup. */
     manual?: string;
+    /** '1' to open with the scanner up — "Add your boarding pass" on a trip. */
+    scan?: string;
+    journeyId?: string;
   }>();
   const { row: editRow } = useJourney(editId ?? '', userId);
+  const { row: passTarget, loaded: passTargetLoaded } = useJourney(prefill.journeyId ?? '', userId);
 
   const [step, setStep] = useState<Step>('flight');
   const [flightInput, setFlightInput] = useState('');
@@ -199,7 +212,12 @@ export function AddFlight() {
     );
   // Boarding-pass scanner open on the flight step (native only — web camera
   // barcode support is too patchy to offer).
-  const [scanning, setScanning] = useState(false);
+  const [scanning, setScanning] = useState(prefill.scan === '1' && Platform.OS !== 'web');
+  // The code the scanner read, kept on the trip so it can be shown at the
+  // gate (services/boarding-pass). Attached only when the flight saved is
+  // the one the code names — the traveller can retype the number after a
+  // scan, and a pass for another flight must not follow.
+  const [scannedPass, setScannedPass] = useState<StoredPass | null>(null);
 
   const inputCandidate = normalizeFlightNumber(flightInput);
   // Why the search action is (or isn't) showing. A pasted booking reference
@@ -293,10 +311,33 @@ export function AddFlight() {
   // One scan fills every token at once: flight, date, and the route — the
   // route so that when the lookup 404s (old pass, regional carrier), the
   // manual fallback comes prefilled instead of empty.
-  const applyScan = (pass: BoardingPass) => {
+  const applyScan = async (pass: BoardingPass, code: StoredPass | null) => {
+    if (prefill.journeyId) {
+      setScanning(false);
+      const target = passTarget && {
+        ...passTarget, date: flightDay(passTarget.scheduledDeparture, airportZone(passTarget.fromCode)),
+      };
+      const matched = target ? legFor(pass, target) : null;
+      if (!target || !matched || !code) {
+        Alert.alert('Pass not added', !passTargetLoaded
+          ? 'The trip is still loading. Please scan again.'
+          : 'This code does not match this trip’s route and departure day. Scan the pass for this flight.',
+        [{ text: 'Scan again', onPress: () => setScanning(true) }, { text: 'Cancel', style: 'cancel', onPress: () => router.back() }]);
+        return;
+      }
+      try {
+        await attachBoardingPass(target.id, code, { seat: matched.seat, bookingReference: matched.pnr });
+        trackEvent('boarding_pass_attached', { via: 'camera' });
+        router.back();
+      } catch {
+        Alert.alert('Could not save the pass', 'Please try scanning it again.');
+      }
+      return;
+    }
     const leg = pass.legs[0];
     const designator = normalizeFlightNumber(leg.flight);
     setScanning(false);
+    setScannedPass(code);
     setFlightInput(leg.flight);
     setFlightNumber(designator);
     setFromInput(leg.fromCode);
@@ -456,10 +497,11 @@ export function AddFlight() {
       scheduledDeparture: flight.scheduledDeparture ?? `${flight.date}T00:00:00Z`,
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
       ...tripDetails(bookingRef, seat),
+      ...passFields(scannedPass, { number: flight.flight, fromCode: flight.from.code!, toCode: flight.to.code!, date: flight.date }),
       ...flagsFor(audience),
       createdAt: new Date().toISOString(),
     });
-    trackEvent('flight_added', { source: 'lookup' });
+    trackEvent('flight_added', { source: 'lookup', pass: !!scannedPass });
     // The lookup already knows the arrival delay — cache it so the journeys
     // list can badge an owed row without another status call.
     if (flight.delayMinutes != null) {
@@ -590,11 +632,12 @@ export function AddFlight() {
       scheduledDeparture,
       scheduledArrival,
       ...tripDetails(bookingRef, seat),
+      ...passFields(scannedPass, { number: flightNumber ?? '', fromCode: fromAirport.iata, toCode: toAirport.iata, date: date ?? undefined }),
       ...flagsFor(audience),
       createdAt: new Date().toISOString(),
     });
     setStep('added');
-    trackEvent('flight_added', { source: 'manual' });
+    trackEvent('flight_added', { source: 'manual', pass: !!scannedPass });
     Observe.logEvent('flight.added_manually', {
       attributes: {
         route: `${fromAirport.iata}-${toAirport.iata}`,
@@ -605,15 +648,15 @@ export function AddFlight() {
     // Journal entries aren't watched, so no push-permission ask here.
   };
 
-  // Let the check-mark land, then hand back to the journeys list.
-  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
+  // Only dismiss while focused, so an incoming link cannot pop a new screen.
+  useFocusEffect(useCallback(() => {
     if (step !== 'added') return;
-    dismissTimer.current = setTimeout(() => router.back(), 1600);
-    return () => {
-      if (dismissTimer.current) clearTimeout(dismissTimer.current);
-    };
-  }, [step, router]);
+    const dismissTimer = setTimeout(() => {
+      if (router.canGoBack()) router.back();
+      else router.replace('/');
+    }, 1600);
+    return () => clearTimeout(dismissTimer);
+  }, [step, router]));
 
   if (step === 'added') {
     const savedRoute = manualMode

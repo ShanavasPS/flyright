@@ -29,6 +29,12 @@ const journeyRow = v.object({
   rating: v.optional(v.union(v.number(), v.null())),
   bookingReference: v.optional(v.union(v.string(), v.null())),
   seat: v.optional(v.union(v.string(), v.null())),
+  passCode: v.optional(v.union(v.string(), v.null())),
+  passFormat: v.optional(v.union(v.string(), v.null())),
+  passCapturedAt: v.optional(v.union(v.string(), v.null())),
+  ticketCode: v.optional(v.union(v.string(), v.null())),
+  ticketFormat: v.optional(v.union(v.string(), v.null())),
+  ticketCapturedAt: v.optional(v.union(v.string(), v.null())),
   hiddenFromCircle: v.optional(v.boolean()),
   privateTrip: v.optional(v.boolean()),
   source: v.string(),
@@ -54,7 +60,11 @@ export const push = mutation({
     if (rows.length > 100) throw new Error('Sync at most 100 trips at a time.');
     await limit(ctx, `journey-sync:${identity.subject}`, 5000, DAY, rows.length);
     for (const row of rows) {
-      for (const [key, value] of Object.entries(row)) if (typeof value === 'string') bounded(value, key === 'notes' ? 10000 : 200, key);
+      for (const [key, value] of Object.entries(row)) {
+        // A boarding-pass barcode runs to a few hundred characters with its
+        // security data (services/boarding-pass MAX_PASS_CODE_LENGTH).
+        if (typeof value === 'string') bounded(value, key === 'notes' ? 10000 : (key === 'passCode' || key === 'ticketCode') ? 2000 : 200, key);
+      }
       const existing = await ctx.db
         .query('journeys')
         .withIndex('by_user_key', (q) =>

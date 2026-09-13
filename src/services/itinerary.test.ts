@@ -241,6 +241,17 @@ describe('extractItinerary — Emirates e-ticket receipt', () => {
     expect(segments.every((s) => s.pnr === 'PLQWTZ')).toBe(true);
   });
 
+  it('keeps the original receipt code on its printed flights when the decoder supplies its format', () => {
+    const pages = EMIRATES_RECEIPT_PDFKIT.map((page) => ({
+      ...page, barcodeFormats: page.barcodes.map(() => 'pdf417'),
+    }));
+    const { segments } = extractItinerary(pages, TODAY);
+    const code = pages.flatMap((p) => p.barcodes)[0];
+    expect(segments).toHaveLength(3);
+    expect(segments.every((s) => s.ticket?.code === code && s.ticket.format === 'pdf417')).toBe(true);
+    expect(segments.every((s) => s.pass === null)).toBe(true);
+  });
+
   const CONJUNCTION_LEGS = [
     { flight: 'EK533', date: '2025-09-27', from: 'COK', to: 'DXB', dep: '04:25', arr: '06:50' },
     { flight: 'EK215', date: '2025-09-27', from: 'DXB', to: 'LAX', dep: '08:55', arr: '14:15' },
@@ -480,7 +491,40 @@ describe('extractItinerary — barcodes alone', () => {
       seat: '1A',
       operatedBy: null,
       sources: ['barcode'],
+      // No symbology from the reader: nothing to redraw, so no pass kept.
+      pass: null,
     });
+  });
+
+  it('keeps the code for the gate when the reader says which symbology it was', () => {
+    const code = 'M2DOE/JOHN            EABC123 HELLHRAY 1331 242Y025A0042 10AAIRLINE-10DEF456 LHRJFKBA 0117 242J002B0007 100';
+    const { segments } = extractItinerary(
+      [{ text: '', barcodes: [code], barcodeFormats: ['pdf417'] }],
+      new Date(2026, 7, 25, 12),
+    );
+    expect(segments).toHaveLength(2);
+    // A connection's single code covers both legs.
+    expect(segments[0].pass).toEqual({ code, format: 'pdf417' });
+    expect(segments[1].pass).toEqual({ code, format: 'pdf417' });
+    expect(segments[0].flight).toBe('AY1331');
+    expect(segments[1].flight).toBe('BA117');
+  });
+
+  it('keeps the code on a leg the page also describes', () => {
+    const code = 'M1DESMARAIS/LUC       EABC123 YULFRAAC 0834 326J001A0025 100';
+    const { segments } = extractItinerary(
+      [
+        {
+          text: 'AC834 22 Nov 2026 Montreal (YUL) 18:30 - Frankfurt (FRA) 07:45',
+          barcodes: [code, 'https://example.com/loyalty'],
+          barcodeFormats: ['aztec', 'qr'],
+        },
+      ],
+      new Date(2026, 10, 20, 12),
+    );
+    expect(segments).toHaveLength(1);
+    expect(segments[0].sources).toEqual(['barcode', 'text']);
+    expect(segments[0].pass).toEqual({ code, format: 'aztec' });
   });
 
   it('returns nothing for documents without flights', () => {

@@ -2,9 +2,9 @@ import { useAuth } from '@clerk/expo';
 import { useQueries } from '@tanstack/react-query';
 import { importDocument } from '@/services/document-imports';
 import { Observe } from 'expo-observe';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,7 +35,7 @@ import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/f
 import { haversineKm } from '@/services/geo';
 import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
 import { shiftYears } from '@/services/year-choice';
-import { addJourney, useJourneys, type NewJourneyRow } from '@/services/journeys';
+import { addJourney, attachBoardingPass, attachTicketCode, useJourneys, type NewJourneyRow } from '@/services/journeys';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 import { legSchedule } from '@/services/leg-schedule';
@@ -66,7 +66,7 @@ type Phase =
   | { kind: 'unreadable'; message: string }
   | { kind: 'review'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
   | { kind: 'saving'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
-  | { kind: 'added'; count: number; tracked: number };
+  | { kind: 'added'; count: number; attached: number; tracked: number };
 
 /** The provider remembers about a year back and schedules run ~11 months
  * ahead; outside that a lookup is a guaranteed 404, so skip the round trip. */
@@ -225,14 +225,16 @@ export function ImportDocument() {
   // Legs already in the journal: matched by the lookup row id or by number
   // and day, so a receipt re-shared after the trip doesn't duplicate anything.
   const existing = useMemo(() => {
-    const ids = new Set<string>();
+    // Keyed the ways a segment can name a trip, to the row it is — the row
+    // is what a re-shared boarding pass attaches to.
+    const ids = new Map<string, string>();
     for (const j of journeys ?? []) {
-      ids.add(j.id);
+      ids.set(j.id, j.id);
       // The flight's local day, which is what a segment carries — slicing the
       // stored instant would miss a match across UTC midnight and re-offer a
       // leg the journal already has (see dates.flightDay).
       if (j.number) {
-        ids.add(`${j.number}-${flightDay(j.scheduledDeparture, airportZone(j.fromCode))}`);
+        ids.set(`${j.number}-${flightDay(j.scheduledDeparture, airportZone(j.fromCode))}-${j.fromCode}-${j.toCode}`, j.id);
       }
     }
     return ids;
@@ -243,13 +245,25 @@ export function ImportDocument() {
     // A lookup that never ran (out of reach) is "not pending" with no data.
     const edited = pinned.has(segment.key);
     const plan = planFor(segment, edited || (query.fetchStatus === 'idle' && !query.data) ? null : query);
-    const already = !!segment.flight && !!segment.date && existing.has(`${segment.flight}-${segment.date}`);
-    const selectable = !already && (plan.kind === 'lookup' || plan.kind === 'journal');
+    const existingId =
+      segment.flight && segment.date ? existing.get(`${segment.flight}-${segment.date}-${segment.fromCode}-${segment.toCode}`) ?? null : null;
+    const already = existingId != null;
+    // A trip already in the journal, on a document that carries its
+    // boarding-pass code: the leg is offered again, this time to put the
+    // pass on the trip (services/boarding-pass), seat and booking with it.
+    const existingRow = (journeys ?? []).find((j) => j.id === existingId);
+    const attachable = !!existingRow && (
+      (!!segment.pass && (existingRow.passCode !== segment.pass.code || existingRow.passFormat !== segment.pass.format)) ||
+      (!!segment.ticket && (existingRow.ticketCode !== segment.ticket.code || existingRow.ticketFormat !== segment.ticket.format))
+    );
+    const selectable = attachable || (!already && (plan.kind === 'lookup' || plan.kind === 'journal'));
     const selected = selectable && !deselected.has(segment.key);
     return {
       segment,
       plan,
       already,
+      attachable,
+      existingId,
       selectable,
       selected,
       edited,
@@ -315,8 +329,26 @@ export function ImportDocument() {
     setPhase((current) => (current.kind === 'review' ? { ...current, kind: 'saving' } : current));
     let tracked = 0;
     const now = new Date().toISOString();
-    for (const { segment, plan } of selectedRows) {
-      const details = { bookingReference: segment.pnr, seat: segment.seat, ...flagsFor(audience) };
+    let attached = 0;
+    for (const { segment, plan, attachable, existingId } of selectedRows) {
+      if (attachable && existingId) {
+        if (segment.pass) await attachBoardingPass(existingId, segment.pass, { seat: segment.seat, bookingReference: segment.pnr });
+        if (segment.ticket) await attachTicketCode(existingId, segment.ticket);
+        attached += 1;
+        trackEvent('boarding_pass_attached', { via: 'document' });
+        continue;
+      }
+      const details = {
+        bookingReference: segment.pnr,
+        seat: segment.seat,
+        ...(segment.ticket
+          ? { ticketCode: segment.ticket.code, ticketFormat: segment.ticket.format, ticketCapturedAt: now }
+          : {}),
+        ...(segment.pass
+          ? { passCode: segment.pass.code, passFormat: segment.pass.format, passCapturedAt: now }
+          : {}),
+        ...flagsFor(audience),
+      };
       // A codeshare leg is stored as the airline flying it — EU261's carrier
       // test is about the operator — under the number on the ticket.
       const operator = operatorOf(segment);
@@ -382,9 +414,9 @@ export function ImportDocument() {
         trackEvent('flight_added', { source: 'manual', via: 'document' });
       }
     }
-    setPhase({ kind: 'added', count: selectedRows.length, tracked });
+    setPhase({ kind: 'added', count: selectedRows.length - attached, attached, tracked });
     Observe.logEvent('document.flights_added', {
-      attributes: { count: selectedRows.length, tracked },
+      attributes: { count: selectedRows.length - attached, attached, tracked },
     });
     // Same moment as add-flight's "Track this flight": they trusted us with
     // upcoming trips, so ask for push once (a no-op after the first answer).
@@ -429,20 +461,18 @@ export function ImportDocument() {
     else router.replace('/');
   }, [router]);
 
-  // Let the check-mark land, then hand back to the journeys list.
-  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
+  // Let the check-mark land, then hand back to the journeys list. Cancel
+  // on blur so a new deep link cannot make this timer pop another screen.
+  useFocusEffect(useCallback(() => {
     if (phase.kind !== 'added') return;
-    dismissTimer.current = setTimeout(close, 1800);
-    return () => {
-      if (dismissTimer.current) clearTimeout(dismissTimer.current);
-    };
-  }, [phase.kind, close]);
+    const dismissTimer = setTimeout(close, 1600);
+    return () => clearTimeout(dismissTimer);
+  }, [phase.kind, close]));
 
   const containerStyle = [styles.container, { paddingTop: Math.max(insets.top, Spacing.four) }];
 
   if (phase.kind === 'added') {
-    const { count, tracked } = phase;
+    const { count, attached, tracked } = phase;
     return (
       <ThemedView style={[...containerStyle, styles.centered]} testID="import-added">
         <Animated.View entering={ZoomIn.springify()} style={styles.addedBadge}>
@@ -454,12 +484,25 @@ export function ImportDocument() {
             />
           </View>
           <ThemedText type="subtitle" themeColor="heading">
-            {count === 1 ? 'Flight added' : `${count} flights added`}
+            {count === 0
+              ? attached === 1
+                ? 'Travel code saved'
+                : `Travel codes saved on ${attached} trips`
+              : count === 1
+                ? 'Flight added'
+                : `${count} flights added`}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.addedSub}>
-            {tracked > 0
-              ? "They're in My travels — we'll watch the upcoming ones for delays and anything you're owed."
-              : "They're in My travels. If a flight was disrupted, its verdict is waiting on the trip page."}
+            {count === 0
+              ? "Saved on the trip page. Open the code when you need it at the airport."
+              : tracked > 0
+                ? "They're in My travels — we'll watch the upcoming ones for delays and anything you're owed."
+                : "They're in My travels. If a flight was disrupted, its verdict is waiting on the trip page."}
+            {count > 0 && attached > 0
+              ? attached === 1
+                ? ' A travel code went on a trip you already had.'
+                : ` Travel codes went on ${attached} trips you already had.`
+              : ''}
           </ThemedText>
         </Animated.View>
       </ThemedView>
@@ -528,7 +571,7 @@ export function ImportDocument() {
           <ThemedText themeColor="textSecondary" numberOfLines={2}>
             {segments.length === 1 ? 'One flight' : `${segments.length} flights`} in {label}
             {phase.barcodes > 0
-              ? ` · ${phase.barcodes === 1 ? 'one boarding pass' : `${phase.barcodes} boarding passes`} read`
+              ? ` · ${phase.barcodes === 1 ? 'one boarding pass' : `${phase.barcodes} travel codes`} read`
               : phase.tickets.length > 0
                 ? ` · e-ticket ${phase.tickets[0]}`
                 : ''}
@@ -547,12 +590,13 @@ export function ImportDocument() {
             style={styles.body}
             contentContainerStyle={styles.bodyContent}
             showsVerticalScrollIndicator={false}>
-            {rows.map(({ segment, plan, already, selectable, selected, edited, error }) => (
+            {rows.map(({ segment, plan, already, attachable, selectable, selected, edited, error }) => (
               <SegmentCard
                 key={segment.key}
                 segment={segment}
                 plan={plan}
                 already={already}
+                attachable={attachable}
                 selectable={selectable}
                 selected={selected}
                 lookupError={error}
@@ -568,11 +612,13 @@ export function ImportDocument() {
           <YearSheet request={yearRequest} today={today} onClose={() => setYearRequest(null)} />
           {audienceSheet}
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
-            <AudienceRow
-              value={audience}
-              followers={followers}
-              onPress={() => chooseAudience(audience, setAudience)}
-            />
+            {rows.some((row) => !row.already) && (
+              <AudienceRow
+                value={audience}
+                followers={followers}
+                onPress={() => chooseAudience(audience, setAudience)}
+              />
+            )}
             <PrimaryButton
               label={
                 phase.kind === 'saving'
@@ -581,9 +627,13 @@ export function ImportDocument() {
                     ? pendingCount > 0
                       ? 'Looking up flights…'
                       : 'Nothing selected'
-                    : selectedRows.length === 1
-                      ? 'Add 1 flight to My travels →'
-                      : `Add ${selectedRows.length} flights to My travels →`
+                    : selectedRows.every((r) => r.attachable)
+                      ? selectedRows.length === 1
+                        ? 'Save the travel code →'
+                        : `Add ${selectedRows.length} travel codes →`
+                      : selectedRows.length === 1
+                        ? 'Add 1 flight to My travels →'
+                        : `Add ${selectedRows.length} flights to My travels →`
               }
               disabled={phase.kind === 'saving' || selectedRows.length === 0}
               onPress={save}
@@ -602,6 +652,7 @@ function SegmentCard({
   segment,
   plan,
   already,
+  attachable,
   selectable,
   selected,
   lookupError,
@@ -615,6 +666,7 @@ function SegmentCard({
   segment: ImportedSegment;
   plan: Plan;
   already: boolean;
+  attachable: boolean;
   selectable: boolean;
   selected: boolean;
   lookupError: unknown;
@@ -643,6 +695,7 @@ function SegmentCard({
   const carrierName = operator?.name ?? marketingName;
 
   const status = (() => {
+    if (attachable) return { text: segment.pass ? 'In My travels — save boarding pass' : 'In My travels — save ticket for check-in', color: '#2FD68C' };
     if (already) return { text: 'Already in My travels', color: WHITE_DIM };
     if (plan.kind === 'pending') return { text: 'Looking up…', color: WHITE_DIM };
     if (plan.kind === 'lookup') {
@@ -681,6 +734,8 @@ function SegmentCard({
     operator && `Codeshare · sold as ${marketingName}`,
     segment.seat && `Seat ${segment.seat}`,
     segment.pnr && `Booking ${segment.pnr}`,
+    segment.pass && !already && 'Boarding pass kept for the gate',
+    segment.ticket && !already && 'Ticket code kept for check-in',
   ]
     .filter(Boolean)
     .join(' · ');
@@ -764,7 +819,7 @@ function SegmentCard({
             {status.text}
           </ThemedText>
           {!!details && (
-            <ThemedText type="small" style={styles.passCarrier} numberOfLines={1}>
+            <ThemedText type="small" style={styles.passCarrier} numberOfLines={3}>
               {details}
             </ThemedText>
           )}

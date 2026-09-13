@@ -301,6 +301,15 @@ function RootLayout() {
                 }}
               />
               {/* One trip photo on black, with its own close/remove bar. */}
+              {/* The boarding pass held up at the gate: white, full screen,
+                brightness to full — see screens/boarding-pass. */}
+              <Stack.Screen
+                name="boarding-pass"
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                }}
+              />
               <Stack.Screen
                 name="photo-viewer"
                 options={{

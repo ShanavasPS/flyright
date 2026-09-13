@@ -25,6 +25,10 @@ export interface BoardingPassLeg {
   /** Day of year 1–366; BCBP carries no year — see resolveFlightDate. */
   dayOfYear: number;
   seat: string | null;
+  /** Compartment/cabin letter as printed ("J", "Y"), null when blank. */
+  cabin: string | null;
+  /** Check-in sequence number ("25" from "00025"), null when blank. */
+  sequence: string | null;
 }
 
 export interface BoardingPass {
@@ -43,7 +47,9 @@ function parseLeg(block: string): BoardingPassLeg | null {
   const carrier = block.slice(13, 16).trim();
   const number = block.slice(16, 21).trim().replace(/^0+(?=\w)/, '');
   const dayOfYear = Number(block.slice(21, 24));
+  const cabin = block.slice(24, 25).trim();
   const seat = block.slice(25, 29).trim();
+  const sequence = block.slice(29, 34).trim().replace(/^0+(?=\d)/, '');
 
   if (!/^[A-Z]{3}$/.test(fromCode) || !/^[A-Z]{3}$/.test(toCode)) return null;
   if (!/^[A-Z0-9]{2,3}$/.test(carrier) || !/^\d{1,4}[A-Z]?$/.test(number)) return null;
@@ -56,6 +62,8 @@ function parseLeg(block: string): BoardingPassLeg | null {
     flight: `${carrier}${number}`,
     dayOfYear,
     seat: seat || null,
+    cabin: /^[A-Z]$/.test(cabin) ? cabin : null,
+    sequence: /^\d+$/.test(sequence) ? sequence : null,
   };
 }
 

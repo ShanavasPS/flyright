@@ -37,6 +37,18 @@ export const journeys = sqliteTable('journeys', {
    *  off a scanned boarding pass. Null when unknown. */
   bookingReference: text('booking_reference'),
   seat: text('seat'),
+  /** The boarding-pass barcode read off a scanned or imported pass, kept so
+   *  the trip can show it again at the gate: the payload exactly as decoded
+   *  and the symbology it came in (services/boarding-pass). One per trip,
+   *  the traveller's own; a rescan replaces it. Null until a pass is read. */
+  passCode: text('pass_code'),
+  passFormat: text('pass_format'),
+  /** When the code was read — "Scanned 12 Sep" on the card. */
+  passCapturedAt: text('pass_captured_at'),
+  /** Receipt code for check-in; retained when a boarding pass is added. */
+  ticketCode: text('ticket_code'),
+  ticketFormat: text('ticket_format'),
+  ticketCapturedAt: text('ticket_captured_at'),
   /** Hidden from the traveler's circle: members never see this trip in
    *  People, get no push about it, and aren't folded into its live session.
    *  A link the traveler shares explicitly still works — the token is the

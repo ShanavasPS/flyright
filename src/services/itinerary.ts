@@ -23,12 +23,16 @@
 import { CARRIERS, operatingBrand } from '@/constants/carriers';
 import { airportRank, hubAirports, isValidIata, largeAirports } from '@/services/airports';
 import { parseBcbp, resolveFlightDate } from '@/services/bcbp';
+import { storablePass, storableTicket, type StoredPass } from '@/services/boarding-pass';
 import { parseEticketRecord } from '@/services/eticket';
 
 export interface DocumentPage {
   text: string;
   /** Raw payloads of every barcode decoded on the page. */
   barcodes: string[];
+  /** The symbology of each payload, index-aligned with `barcodes`; absent
+   * from readers that predate boarding-pass keeping. */
+  barcodeFormats?: string[];
 }
 
 export type SegmentSource = 'barcode' | 'text';
@@ -56,6 +60,12 @@ export interface ImportedSegment {
    * document is silent. */
   operatedBy: { code: string | null; name: string } | null;
   sources: SegmentSource[];
+  /** The boarding-pass barcode this leg was read from, when it came from
+   * one in a symbology we can redraw — kept on the trip so the gate can
+   * read it again (services/boarding-pass). Null for legs from the page. */
+  pass: StoredPass | null;
+  /** Receipt code for check-in, matched through the flights printed on its document. */
+  ticket?: StoredPass | null;
 }
 
 export interface ItineraryExtraction {
@@ -276,6 +286,7 @@ function legsFromRouteBlocks(
       seat: normalizeSeat(seat?.[1]),
       operatedBy: null,
       sources: ['text'],
+      pass: null,
     });
   }
   return legs;
@@ -1129,6 +1140,7 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
       seat: normalizeSeat(seatMatch?.[1]),
       operatedBy,
       sources: ['text'],
+      pass: null,
     });
   });
 
@@ -1195,11 +1207,17 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
   );
 }
 
-function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[] {
+function segmentsFromBarcodes(
+  barcodes: string[],
+  formats: (string | undefined)[],
+  today: Date,
+): ImportedSegment[] {
   const segments: ImportedSegment[] = [];
+  const formatOf = new Map(barcodes.map((payload, i) => [payload, formats[i]]));
   for (const payload of distinct(barcodes)) {
     const pass = parseBcbp(payload);
     if (!pass) continue;
+    const stored = storablePass(payload, formatOf.get(payload));
     for (const leg of pass.legs) {
       const date = resolveFlightDate(leg.dayOfYear, today);
       const key = `${leg.flight}-${date}`;
@@ -1218,6 +1236,7 @@ function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[
         // BCBP's leg block names the operating carrier, so the flight prefix already is it.
         operatedBy: null,
         sources: ['barcode'],
+        pass: stored,
       });
     }
   }
@@ -1246,11 +1265,38 @@ function segmentsFromBarcodes(barcodes: string[], today: Date): ImportedSegment[
 export function extractItinerary(pages: DocumentPage[], today = new Date()): ItineraryExtraction {
   const text = plainSpaces(pages.map((p) => p.text).join('\n'));
   const barcodes = pages.flatMap((p) => p.barcodes);
-  const barcodeLegs = segmentsFromBarcodes(barcodes, today);
+  const formats = pages.flatMap((p) => p.barcodes.map((_, i) => p.barcodeFormats?.[i]));
+  const barcodeLegs = segmentsFromBarcodes(barcodes, formats, today);
   const ticketNumbers = distinct(
     barcodes.map((b) => parseEticketRecord(b)?.ticketNumber).filter((n): n is string => !!n),
   );
   const textLegs = segmentsFromText(text, today);
+  const tickets = barcodes.flatMap((code, i) => {
+    const ticket = storableTicket(code, formats[i]);
+    return ticket ? [ticket] : [];
+  });
+  // A single ticket document can list several legs. With multiple ticket
+  // numbers, only use the code on the same page as the printed leg.
+  const singleTicket = ticketNumbers.length === 1 ? tickets[0] : null;
+  for (const leg of textLegs) {
+    if (singleTicket) {
+      leg.ticket = singleTicket;
+      continue;
+    }
+    if (tickets.length === 0) continue;
+    const candidates = pages.flatMap((page) => {
+      const namesLeg = segmentsFromText(plainSpaces(page.text), today).some(
+        (p) => p.flight === leg.flight && p.date === leg.date && p.fromCode === leg.fromCode && p.toCode === leg.toCode,
+      );
+      return namesLeg ? page.barcodes.flatMap((code, i) => {
+        const ticket = storableTicket(code, page.barcodeFormats?.[i]);
+        return ticket ? [ticket] : [];
+      }) : [];
+    });
+    if (new Set(candidates.map((t) => parseEticketRecord(t.code)?.ticketNumber)).size === 1) {
+      leg.ticket = candidates[0];
+    }
+  }
 
   const merged: ImportedSegment[] = [];
   const claimed = new Set<string>();
@@ -1285,6 +1331,7 @@ export function extractItinerary(pages: DocumentPage[], today = new Date()): Iti
       seat: match.seat ?? leg.seat,
       pnr: match.pnr ?? leg.pnr,
       sources: ['barcode', 'text'],
+      pass: match.pass,
     });
   }
   for (const b of barcodeLegs) {

@@ -11,6 +11,8 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
+  # Reuse expo-camera's bundled ZXing framework for Data Matrix encoding.
+  s.dependency 'ExpoCameraBarcodeScanning'
   s.frameworks = 'PDFKit', 'Vision'
 
   s.pod_target_xcconfig = {

@@ -1,7 +1,9 @@
+import CoreImage
 import ImageIO
 import ExpoModulesCore
 import PDFKit
 import Vision
+internal import ZXingObjC
 
 /// iOS half of the shared-document reader — see ../index.ts for the contract.
 ///
@@ -47,6 +49,99 @@ public class FlyRightDocumentImportModule: Module {
         }
       }
     }
+
+    // The other direction: a payload back into a symbol, as a module matrix
+    // the JS side draws (services/boarding-pass matrixToPath). Core Image's
+    // generators emit exactly one pixel per module plus their quiet zone, so
+    // sampling the rendered bitmap at 1x IS the matrix.
+    AsyncFunction("renderBarcode") { (payload: String, format: String, promise: Promise) in
+      DispatchQueue.global(qos: .userInitiated).async {
+        do {
+          promise.resolve(try Self.renderBarcode(payload: payload, format: format))
+        } catch {
+          promise.reject(error)
+        }
+      }
+    }
+  }
+
+  // -- rendering ------------------------------------------------------------
+
+  private static func renderBarcode(payload: String, format: String) throws -> [String: Any] {
+    guard !payload.isEmpty, payload.utf16.count <= 2000 else {
+      throw BarcodeUnrenderableException(format)
+    }
+    if format == "datamatrix" {
+      let writer = ZXDataMatrixWriter()
+      let matrix = try writer.encode(payload, format: kBarcodeFormatDataMatrix, width: 1, height: 1)
+      let rows = (0..<matrix.height).map { y in
+        String((0..<matrix.width).map { x in matrix.getX(x, y: y) ? Character("1") : Character("0") })
+      }
+      return ["width": matrix.width, "height": matrix.height, "rows": rows]
+    }
+    guard let data = payload.data(using: .isoLatin1) ?? payload.data(using: .utf8), !data.isEmpty else {
+      throw BarcodeUnrenderableException(format)
+    }
+    let filter: CIFilter?
+    switch format {
+    case "pdf417":
+      // Compaction is left automatic — every mode is lossless, whitespace
+      // included — and so is the column count, which the generator picks
+      // the way airlines print it (a BCBP stripe is 8–12 columns wide).
+      filter = CIFilter(name: "CIPDF417BarcodeGenerator")
+    case "aztec":
+      filter = CIFilter(name: "CIAztecCodeGenerator")
+    case "qr":
+      filter = CIFilter(name: "CIQRCodeGenerator")
+      filter?.setValue("M", forKey: "inputCorrectionLevel")
+    default:
+      throw BarcodeUnrenderableException(format)
+    }
+    guard let generator = filter else { throw BarcodeUnrenderableException(format) }
+    generator.setValue(data, forKey: "inputMessage")
+    guard let output = generator.outputImage else { throw BarcodeUnrenderableException(format) }
+    // Generators pad the symbol with a quiet zone in their extent; trim it,
+    // since the card draws its own margin and the stripe wants the width.
+    let extent = output.extent.integral
+    let context = CIContext(options: [.useSoftwareRenderer: true])
+    guard let cgImage = context.createCGImage(output, from: extent) else {
+      throw BarcodeUnrenderableException(format)
+    }
+    let width = cgImage.width
+    let height = cgImage.height
+    guard width > 0, height > 0, width * height <= 4_000_000 else { throw BarcodeUnrenderableException(format) }
+    var pixels = [UInt8](repeating: 0, count: width * height)
+    guard let bitmap = CGContext(
+      data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue
+    ) else { throw BarcodeUnrenderableException(format) }
+    bitmap.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+    var rows: [String] = []
+    rows.reserveCapacity(height)
+    var minX = width, maxX = -1, minY = height, maxY = -1
+    // Core Graphics draws bottom-up; walk rows from the top so row 0 is the
+    // symbol's top row, the way the SVG path reads it.
+    for y in 0..<height {
+      let base = (height - 1 - y) * width
+      var row = String()
+      row.reserveCapacity(width)
+      for x in 0..<width {
+        let dark = pixels[base + x] < 128
+        row.append(dark ? "1" : "0")
+        if dark {
+          minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+        }
+      }
+      rows.append(row)
+    }
+    guard maxX >= minX, maxY >= minY else { throw BarcodeUnrenderableException(format) }
+    let trimmed = rows[minY...maxY].map { row -> String in
+      let start = row.index(row.startIndex, offsetBy: minX)
+      let end = row.index(row.startIndex, offsetBy: maxX + 1)
+      return String(row[start..<end])
+    }
+    return ["width": maxX - minX + 1, "height": maxY - minY + 1, "rows": trimmed]
   }
 
   /// Pages render at 3x their PDF points (216 dpi): dense enough for Vision to
@@ -87,9 +182,11 @@ public class FlyRightDocumentImportModule: Module {
     var pages: [[String: Any]] = []
     for index in 0..<min(document.pageCount, min(max(maxPages, 1), 8)) {
       guard let page = document.page(at: index) else { continue }
+      let codes = barcodes(on: page)
       pages.append([
         "text": rowOrderedText(on: page),
-        "barcodes": barcodes(on: page),
+        "barcodes": codes.map(\.payload),
+        "barcodeFormats": codes.map(\.format),
       ])
     }
     return ["pageCount": document.pageCount, "pages": pages]
@@ -178,13 +275,30 @@ public class FlyRightDocumentImportModule: Module {
       .joined(separator: "\n")
   }
 
-  private static func barcodes(on page: PDFPage) -> [String] {
+  /// A decoded symbol: its payload and which symbology carried it, named the
+  /// way expo-camera names them so JS treats both readers alike.
+  struct DecodedBarcode {
+    let payload: String
+    let format: String
+  }
+
+  private static func symbologyName(_ symbology: VNBarcodeSymbology) -> String {
+    switch symbology {
+    case .pdf417: return "pdf417"
+    case .aztec: return "aztec"
+    case .qr: return "qr"
+    case .dataMatrix: return "datamatrix"
+    default: return symbology.rawValue
+    }
+  }
+
+  private static func barcodes(on page: PDFPage) -> [DecodedBarcode] {
     let found = barcodes(on: page, scale: renderScale)
     if !found.isEmpty { return found }
     return barcodes(on: page, scale: retryRenderScale)
   }
 
-  private static func barcodes(on page: PDFPage, scale renderScale: CGFloat) -> [String] {
+  private static func barcodes(on page: PDFPage, scale renderScale: CGFloat) -> [DecodedBarcode] {
     let bounds = page.bounds(for: .mediaBox)
     let size = CGSize(width: bounds.width * renderScale, height: bounds.height * renderScale)
     guard bounds.origin.x.isFinite, bounds.origin.y.isFinite, size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0, size.width * size.height <= 40_000_000 else { return [] }
@@ -208,7 +322,7 @@ public class FlyRightDocumentImportModule: Module {
     return barcodes(in: cgImage)
   }
 
-  private static func barcodes(in cgImage: CGImage) -> [String] {
+  private static func barcodes(in cgImage: CGImage) -> [DecodedBarcode] {
     let request = VNDetectBarcodesRequest()
     request.symbologies = [.pdf417, .qr, .aztec, .dataMatrix]
     #if targetEnvironment(simulator)
@@ -237,10 +351,12 @@ public class FlyRightDocumentImportModule: Module {
     }
 
     var seen = Set<String>()
-    var payloads: [String] = []
+    var payloads: [DecodedBarcode] = []
     for observation in request.results ?? [] {
       guard let payload = observation.payloadStringValue, !payload.isEmpty else { continue }
-      if seen.insert(payload).inserted { payloads.append(payload) }
+      if seen.insert(payload).inserted {
+        payloads.append(DecodedBarcode(payload: payload, format: symbologyName(observation.symbology)))
+      }
     }
     return payloads
   }
@@ -267,9 +383,14 @@ public class FlyRightDocumentImportModule: Module {
     else {
       throw ImageUnreadableException(url.lastPathComponent)
     }
+    let codes = barcodes(in: cgImage)
     return [
       "pageCount": 1,
-      "pages": [["text": text(in: cgImage), "barcodes": barcodes(in: cgImage)]],
+      "pages": [[
+        "text": text(in: cgImage),
+        "barcodes": codes.map(\.payload),
+        "barcodeFormats": codes.map(\.format),
+      ]],
     ]
   }
 
@@ -339,6 +460,12 @@ private final class DocumentUnreadableException: GenericException<String> {
 private final class ImageUnreadableException: GenericException<String> {
   override var reason: String {
     "'\(param)' could not be opened as an image."
+  }
+}
+
+private final class BarcodeUnrenderableException: GenericException<String> {
+  override var reason: String {
+    "A '\(param)' barcode could not be drawn."
   }
 }
 

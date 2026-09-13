@@ -18,8 +18,8 @@ export function useJourneys(_currentUserId: string | null | undefined): { data: 
 export function useJourney(
   _id: string,
   _currentUserId: string | null | undefined,
-): JourneyRow | undefined {
-  return undefined;
+): { row: JourneyRow | undefined; loaded: boolean; error: undefined } {
+  return { row: undefined, loaded: true, error: undefined };
 }
 
 export async function addJourney(_row: NewJourneyRow): Promise<void> {
@@ -34,6 +34,22 @@ export async function updateJourney(
 }
 
 export async function saveJourneyNotes(_id: string, _text: string): Promise<void> {
+  throw new Error('Editing journeys is not supported on web yet.');
+}
+
+export async function attachBoardingPass(_id: string, _pass: unknown, _details?: unknown): Promise<void> {
+  throw new Error('Editing journeys is not supported on web yet.');
+}
+
+export async function removeBoardingPass(_id: string): Promise<void> {
+  throw new Error('Editing journeys is not supported on web yet.');
+}
+
+export async function attachTicketCode(_id: string, _ticket: unknown): Promise<void> {
+  throw new Error('Editing journeys is not supported on web yet.');
+}
+
+export async function removeTicketCode(_id: string): Promise<void> {
   throw new Error('Editing journeys is not supported on web yet.');
 }
 

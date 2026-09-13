@@ -15,6 +15,8 @@ describe('parseBcbp', () => {
       flight: 'AC834',
       dayOfYear: 326,
       seat: '001A',
+      cabin: 'J',
+      sequence: '25',
     });
   });
 

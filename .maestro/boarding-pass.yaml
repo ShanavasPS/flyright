@@ -1,0 +1,35 @@
+# Requires a synthetic AY1331 HEL–LHR pass imported on the test device.
+# Pass JOURNEY_ID for its saved row; does not clear the device's existing data.
+# maestro --device <device> test -e JOURNEY_ID=AY1331-2026-09-14 -e SHOTS=/tmp/pass .maestro/boarding-pass.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- tapOn:
+    text: "Don’t Allow|Don't allow|Don.t Allow"
+    optional: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- tapOn:
+    id: hero-boarding-pass
+- extendedWaitUntil:
+    visible: "Maja Lindqvist"
+    timeout: 15000
+- assertVisible: "14A"
+- assertVisible: "FRX7YQ"
+- takeScreenshot: ${SHOTS}/boarding-pass
+- tapOn:
+    id: boarding-pass-code
+- takeScreenshot: ${SHOTS}/boarding-pass-rotated
+- tapOn: "Close"
+- openLink: "flyright:///journey/${JOURNEY_ID}"
+- scrollUntilVisible:
+    element:
+      id: boarding-pass-card
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: ${SHOTS}/boarding-pass-trip
+- tapOn:
+    id: boarding-pass-card
+- assertVisible: "Maja Lindqvist"

@@ -78,6 +78,20 @@
       "when": 1789043684212,
       "tag": "0010_private_trip",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1789304643355,
+      "tag": "0011_boarding_pass",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789305950109,
+      "tag": "0012_ticket_code",
+      "breakpoints": true
     }
   ]
 }

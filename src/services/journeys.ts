@@ -6,6 +6,7 @@ import migrations from '../../drizzle/migrations';
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import type { Journey } from '@/rules/types';
+import type { StoredPass } from '@/services/boarding-pass';
 import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
@@ -89,6 +90,14 @@ export async function addJourney(row: NewJourneyRow) {
         scheduledArrival: row.scheduledArrival,
         ...(row.seat != null ? { seat: row.seat } : {}),
         ...(row.bookingReference != null ? { bookingReference: row.bookingReference } : {}),
+        // A pass scanned for a trip already in the journal is the newest
+        // pass for it: the code and its symbology move together.
+        ...(row.passCode != null
+          ? { passCode: row.passCode, passFormat: row.passFormat, passCapturedAt: row.passCapturedAt ?? now }
+          : {}),
+        ...(row.ticketCode != null
+          ? { ticketCode: row.ticketCode, ticketFormat: row.ticketFormat, ticketCapturedAt: row.ticketCapturedAt ?? now }
+          : {}),
         ...(chosen
           ? { hiddenFromCircle: !!row.hiddenFromCircle, privateTrip: !!row.privateTrip }
           : {}),
@@ -124,6 +133,51 @@ export async function saveJourneyNotes(id: string, text: string) {
     .update(journeys)
     .set({ notes: trimmed ? trimmed : null, notesUpdatedAt: now, updatedAt: now })
     .where(eq(journeys.id, id));
+}
+
+/** The boarding-pass barcode for a trip — read off a scanned or imported
+ * pass, kept so the gate can read it again (services/boarding-pass). Seat
+ * and booking reference come along when the code names them and the row
+ * lacks them: the pass is the freshest word on both. Replaces any earlier
+ * pass; updatedAt moves so the pass follows the trip to other devices. */
+export async function attachBoardingPass(
+  id: string,
+  pass: StoredPass,
+  details: { seat?: string | null; bookingReference?: string | null } = {},
+) {
+  const now = new Date().toISOString();
+  await db
+    .update(journeys)
+    .set({
+      passCode: pass.code,
+      passFormat: pass.format,
+      passCapturedAt: now,
+      ...(details.seat ? { seat: details.seat } : {}),
+      ...(details.bookingReference ? { bookingReference: details.bookingReference } : {}),
+      updatedAt: now,
+    })
+    .where(eq(journeys.id, id));
+}
+
+/** Takes the pass off a trip on every device (the row syncs the nulls). */
+export async function removeBoardingPass(id: string) {
+  await db
+    .update(journeys)
+    .set({ passCode: null, passFormat: null, passCapturedAt: null, updatedAt: new Date().toISOString() })
+    .where(eq(journeys.id, id));
+}
+
+export async function attachTicketCode(id: string, ticket: StoredPass) {
+  const now = new Date().toISOString();
+  await db.update(journeys).set({
+    ticketCode: ticket.code, ticketFormat: ticket.format, ticketCapturedAt: now, updatedAt: now,
+  }).where(eq(journeys.id, id));
+}
+
+export async function removeTicketCode(id: string) {
+  await db.update(journeys).set({
+    ticketCode: null, ticketFormat: null, ticketCapturedAt: null, updatedAt: new Date().toISOString(),
+  }).where(eq(journeys.id, id));
 }
 
 /** Who sees a trip: the whole circle, the close circle, or nobody else.

@@ -94,6 +94,24 @@ const JOURNAL = {
   bookingReference: 'K8ZP2Q',
 };
 
+/** The upcoming flight carries its boarding pass — the code a scanned pass
+ *  leaves on the trip (src/services/boarding-pass), so the trip page's pass
+ *  card, the home hero's "Pass" pill and the gate screen all have something
+ *  to draw. A well-formed single-leg BCBP for AY1331 HEL→LHR, seat 14A,
+ *  sequence 42, on the day the flight is seeded for. */
+const PASS = {
+  id: 'demo-upcoming',
+  seat: '14A',
+  bookingReference: 'FRX7YQ',
+  format: 'pdf417',
+  code() {
+    const day = new Date(UPCOMING_AT);
+    const start = Date.UTC(day.getFullYear(), 0, 0);
+    const doy = Math.round((Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) - start) / DAY);
+    return `M1LINDQVIST/MAJA      E${'FRX7YQ'.padEnd(7)}HELLHRAY 1331 ${String(doy).padStart(3, '0')}Y014A0042 100`;
+  },
+};
+
 function seed(dbPath) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA foreign_keys = OFF');
@@ -114,11 +132,13 @@ function seed(dbPath) {
     from_code, from_country, to_code, to_country, distance_km,
     scheduled_departure, scheduled_arrival, ticket_price_amount, ticket_price_currency,
     notes, notes_updated_at, rating, booking_reference, seat,
+    pass_code, pass_format, pass_captured_at,
     source, created_at, updated_at, deleted_at, synced_at
-  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
   for (const [id, carrier, carrierCountry, number, from, to, departs, hours] of TRIPS) {
-    const j = id === JOURNAL.id ? JOURNAL : {};
+    const j = id === JOURNAL.id ? JOURNAL : id === PASS.id ? PASS : {};
+    const pass = id === PASS.id ? PASS : null;
     insert.run(
       id,
       null,
@@ -140,6 +160,9 @@ function seed(dbPath) {
       j.rating ?? null,
       j.bookingReference ?? null,
       j.seat ?? null,
+      pass ? pass.code() : null,
+      pass ? pass.format : null,
+      pass ? iso(now - 2 * HOUR) : null,
       'manual',
       iso(departs),
       iso(departs),

@@ -38,6 +38,18 @@ export interface PdfPageContents {
   text: string;
   /** Raw string payloads of the barcodes found on the page, deduplicated. */
   barcodes: string[];
+  /** The symbology each payload came in, index-aligned with `barcodes`
+   * ('pdf417' | 'aztec' | 'qr' | 'datamatrix', or a decoder's own name for
+   * anything else). Absent from binaries older than boarding-pass keeping. */
+  barcodeFormats?: string[];
+}
+
+/** A symbol drawn back from its payload: one string per row of modules,
+ * '1' where a module is dark (services/boarding-pass SymbolMatrix). */
+export interface RenderedBarcode {
+  width: number;
+  height: number;
+  rows: string[];
 }
 
 export interface PdfContents {
@@ -52,6 +64,7 @@ declare class DocumentImportModule extends NativeModule<Events> {
   consumePendingDocument(): SharedDocument | null;
   readPdf(uri: string, maxPages: number): Promise<PdfContents>;
   readImage(uri: string): Promise<PdfContents>;
+  renderBarcode(payload: string, format: string): Promise<RenderedBarcode>;
 }
 
 const native = requireOptionalNativeModule<DocumentImportModule>('FlyRightDocumentImport');
@@ -87,6 +100,13 @@ export async function readPdf(uri: string): Promise<PdfContents> {
 export async function readImage(uri: string): Promise<PdfContents> {
   if (!native) throw new Error('Document import is not available on this platform.');
   return native.readImage(uri);
+}
+
+/** Draws a barcode payload back into its symbol — the boarding pass a trip
+ * keeps, redrawn for the gate. Core Image / ZXing on iOS, ZXing on Android. */
+export async function renderBarcode(payload: string, format: string): Promise<RenderedBarcode> {
+  if (!native) throw new Error('Barcode rendering is not available on this platform.');
+  return native.renderBarcode(payload, format);
 }
 
 /** Image extensions worth handing to `readImage` — what the pickers can

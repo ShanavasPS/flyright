@@ -51,6 +51,15 @@ export default defineSchema({
     rating: v.optional(v.union(v.number(), v.null())),
     bookingReference: v.optional(v.union(v.string(), v.null())),
     seat: v.optional(v.union(v.string(), v.null())),
+    /** The boarding-pass barcode (payload + symbology) and when it was read,
+     * so the pass follows the trip to the account's other devices. Same
+     * optionality as the fields above. */
+    passCode: v.optional(v.union(v.string(), v.null())),
+    passFormat: v.optional(v.union(v.string(), v.null())),
+    passCapturedAt: v.optional(v.union(v.string(), v.null())),
+    ticketCode: v.optional(v.union(v.string(), v.null())),
+    ticketFormat: v.optional(v.union(v.string(), v.null())),
+    ticketCapturedAt: v.optional(v.union(v.string(), v.null())),
     /** Close circle only: members outside the owner's close circle get no
      * People-tab listing, no push, no follow of its live session, and a
      * shared link shows them the traveler, not the trip. They still count

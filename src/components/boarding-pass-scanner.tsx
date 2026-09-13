@@ -8,6 +8,7 @@ import { COBALT, WHITE_DIM } from '@/components/travel-stats-header';
 import { carrierFor } from '@/constants/carriers';
 import { Spacing } from '@/constants/theme';
 import { parseBcbp, type BoardingPass } from '@/services/bcbp';
+import { storablePass, type StoredPass } from '@/services/boarding-pass';
 import { parseEticketRecord, type EticketRecord } from '@/services/eticket';
 import { noteSuccess, noteWarning } from '@/services/haptics';
 
@@ -28,7 +29,10 @@ export function BoardingPassScanner({
   onClose,
   onUpload,
 }: {
-  onScan: (pass: BoardingPass) => void;
+  /** The parsed pass, and the code it came from (payload + symbology) so
+   * the trip can keep it for the gate — null when the symbology isn't one
+   * we can redraw. */
+  onScan: (pass: BoardingPass, code: StoredPass | null) => void;
   onClose: () => void;
   onUpload?: () => void;
 }) {
@@ -54,7 +58,7 @@ export function BoardingPassScanner({
     }
   }, [permission, requestPermission]);
 
-  const handleScan = (data: string) => {
+  const handleScan = (data: string, type: string) => {
     if (doneRef.current) return;
     const pass = parseBcbp(data);
     if (!pass) {
@@ -68,7 +72,7 @@ export function BoardingPassScanner({
     }
     doneRef.current = true;
     noteSuccess();
-    onScan(pass);
+    onScan(pass, storablePass(data, type));
   };
 
   if (!permission) return null;
@@ -127,7 +131,7 @@ export function BoardingPassScanner({
         // Android puts ML Kit's cleaned-up displayValue in `data` — it mangles
         // BCBP's whitespace-significant layout — and the intact payload in
         // `raw`. iOS has no `raw` and its `data` is already intact.
-        onBarcodeScanned={({ data, raw }) => handleScan(raw || data)}
+        onBarcodeScanned={({ data, raw, type }) => handleScan(raw || data, type)}
       />
       <ThemedText type="small" style={[styles.hintText, styles.centered]}>
         {unrecognized?.kind === 'eticket'

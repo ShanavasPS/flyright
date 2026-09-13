@@ -25,6 +25,7 @@ import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
+import { trackEvent } from '@/services/analytics';
 import { formatTime } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
 import type { TravelStats } from '@/services/timeline';
@@ -196,12 +197,41 @@ export function HomeHero({
                 .join(' · ')}
             </ThemedText>
           </Animated.View>
-          {/* Same disclosure affordance as the stats footer — this opens a screen. */}
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={14}
-            tintColor={theme.textSecondary}
-          />
+          <View style={styles.trailing}>
+            {/* The pass, one tap from the home screen on the day: the gate
+                is where a hand reaches for the phone (screens/boarding-pass). */}
+            {!!active.passCode && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Show boarding pass"
+                testID="hero-boarding-pass"
+                hitSlop={Spacing.one}
+                onPress={() => {
+                  tapLight();
+                  trackEvent('boarding_pass_opened', { from: 'home' });
+                  router.push({ pathname: '/boarding-pass', params: { journeyId: active.id } });
+                }}
+                style={({ pressed }) => [
+                  styles.passPill,
+                  { backgroundColor: `${theme.tint}1A`, opacity: pressed ? 0.7 : 1 },
+                ]}>
+                <SymbolView
+                  name={{ ios: 'qrcode', android: 'qr_code_2', web: 'qr_code_2' }}
+                  size={14}
+                  tintColor={theme.tint}
+                />
+                <ThemedText type="smallBold" style={[styles.passPillText, { color: theme.tint }]}>
+                  Pass
+                </ThemedText>
+              </Pressable>
+            )}
+            {/* Same disclosure affordance as the stats footer — this opens a screen. */}
+            <SymbolView
+              name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+              size={14}
+              tintColor={theme.textSecondary}
+            />
+          </View>
         </View>
       </Pressable>
 
@@ -541,6 +571,23 @@ const styles = StyleSheet.create({
   },
   rotated: {
     transform: [{ rotate: '90deg' }],
+  },
+  trailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  passPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.four,
+  },
+  passPillText: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   factWrap: {
     flexShrink: 1,
