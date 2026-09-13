@@ -1,6 +1,6 @@
 import { STORE_URLS } from '@/constants/store-links';
 
-import { appLink, deferrablePath, storeLink } from './deferred-links';
+import { appLink, deferrablePath, detourDestination, storeLink } from './deferred-links';
 
 const IPHONE =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1';
@@ -53,5 +53,33 @@ describe('appLink', () => {
   it('refuses anything the app would not open', () => {
     expect(appLink('/settings')).toBeNull();
     expect(appLink('/i/')).toBeNull();
+  });
+});
+
+describe('detourDestination', () => {
+  it.each([
+    [`${BASE}/i/tok_9X-y?campaign=invite#preview`, '/i/tok_9X-y'],
+    [`${BASE}/t/trip_123`, '/t/trip_123'],
+    ['https://getflyright.com/i/tok?next=/settings', '/i/tok'],
+    ['flyright://t/trip_123', '/t/trip_123'],
+    ['flyright:///i/tok', '/i/tok'],
+  ])('maps a resolved destination %s to %s', (url, path) => {
+    expect(detourDestination(new URL(url))).toBe(path);
+  });
+
+  it.each([
+    BASE,
+    `${BASE}/`,
+    `${BASE}/settings`,
+    `${BASE}/i/`,
+    `${BASE}/i/a/b`,
+    `${BASE}/i/a%2Fb`,
+    'https://another.godetour.link/abc123/i/tok',
+    'https://flyright.godetour.link.example.com/abc123/i/tok',
+    'https://example.com/i/tok',
+    'otherapp://i/tok',
+    'file:///abc123/i/tok',
+  ])('rejects an unsupported destination %s', (url) => {
+    expect(detourDestination(new URL(url))).toBeNull();
   });
 });

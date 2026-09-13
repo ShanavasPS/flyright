@@ -16,7 +16,8 @@
       "bundleIdentifier": "com.shanavasshaji.flyright",
       "supportsTablet": true,
       "associatedDomains": [
-        "applinks:getflyright.com"
+        "applinks:getflyright.com",
+        "applinks:flyright.godetour.link"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -70,6 +71,20 @@
               "scheme": "https",
               "host": "getflyright.com",
               "pathPrefix": "/i"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "flyright.godetour.link"
             }
           ],
           "category": [

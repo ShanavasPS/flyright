@@ -15,8 +15,9 @@ import { deferrablePath } from '@/services/deferred-links';
  * clipboard deliberately off, it would raise the paste banner) and the SDK
  * asks once, on the first-ever launch, whether a recent click matches.
  *
- * Deferred links only: Universal/App Links on getflyright.com are Expo
- * Router's, and its own retention analytics stay off — Layers has that.
+ * Deferred links only: Expo Router handles getflyright.com links directly,
+ * and +native-intent resolves Detour Universal/App Links. Detour's own
+ * retention analytics stay off — Layers has that.
  * Without credentials (or on web, where there's nothing to defer to) the
  * children render untouched.
  */

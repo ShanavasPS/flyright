@@ -4,6 +4,9 @@
 
 import { APP_SCHEME, STORE_URLS } from '@/constants/store-links';
 
+/** Also registered in app.json for iOS Universal Links and Android App Links. */
+export const DETOUR_HOST = 'flyright.godetour.link';
+
 /** The only in-app paths a deferred link may open: trip share pages and
  * circle invites. Anything else the match API hands back is dropped — the
  * destination is server-provided, so it never gets to pick a screen. */
@@ -12,6 +15,21 @@ const DEFERRABLE = /^\/(i|t)\/[A-Za-z0-9_-]+$/;
 export function deferrablePath(route: string): string | null {
   const path = route.split('?')[0] ?? '';
   return DEFERRABLE.test(path) ? path : null;
+}
+
+/** Detour URLs include an app-hash segment before the screen path. Short
+ * links may resolve to one of those, our website, or our own URL scheme.
+ * Keep the same destination allowlist as deferred links, dropping all params. */
+export function detourDestination(url: URL): string | null {
+  if (url.protocol === 'https:' || url.protocol === 'http:') {
+    if (url.hostname === DETOUR_HOST) {
+      return deferrablePath(url.pathname.replace(/^\/[^/]+/, ''));
+    }
+    if (url.hostname === 'getflyright.com') return deferrablePath(url.pathname);
+  } else if (url.protocol === `${APP_SCHEME}:`) {
+    return deferrablePath(`${url.hostname ? `/${url.hostname}` : ''}${url.pathname}`);
+  }
+  return null;
 }
 
 export type StorePlatform = keyof typeof STORE_URLS;
