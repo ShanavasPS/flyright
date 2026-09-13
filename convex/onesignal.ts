@@ -52,6 +52,29 @@ export async function sendFollowerPush(
   }
 }
 
+/** Add the traveler's verified sign-up address as an email subscription on
+ * the same OneSignal user their push alias identifies (the device's later
+ * `OneSignal.login(alias)` merges into it). Creating a user whose external
+ * id already exists merely appends the subscription (202), so the call is
+ * idempotent; a welcome Journey keyed on "email subscription added" fires
+ * once per address. Resolves false on an upstream error. */
+export async function subscribeEmail(externalId: string, email: string): Promise<boolean> {
+  const cfg = oneSignalConfig();
+  if (!cfg) return false;
+  const alias = await pushAlias(externalId);
+  if (!alias) return false;
+  const res = await fetch(`https://api.onesignal.com/apps/${cfg.appId}/users`, {
+    method: 'POST',
+    headers: { authorization: cfg.auth, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      identity: { external_id: alias },
+      subscriptions: [{ type: 'Email', token: email }],
+    }),
+  });
+  if (!res.ok) console.warn('[onesignal] email subscribe failed', res.status, (await res.text()).slice(0, 300));
+  return res.ok;
+}
+
 export function inboxPushOptions(url: string, badge?: number) {
   if (badge == null) return {};
   const source = url === 'https://getflyright.com/people' ? 'people' : 'support';

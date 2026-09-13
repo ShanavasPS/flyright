@@ -24,7 +24,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Notifications',
-    body: 'If you enable notifications, a push token is registered with OneSignal so we can alert you about delays and claim deadlines. You can disable notifications at any time in system settings.',
+    body: 'If you enable notifications, a push token is registered with OneSignal so we can alert you about delays and claim deadlines. You can disable notifications at any time in system settings. When you create an account, your verified email address is also shared with OneSignal so we can send you a welcome email and occasional product updates; every email carries an unsubscribe link.',
   },
   {
     title: 'Camera',

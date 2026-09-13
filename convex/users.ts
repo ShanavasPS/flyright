@@ -16,7 +16,7 @@ async function writeProfile(
   imageUrl: string | null,
   email: string | null,
   emailVerified?: boolean,
-) {
+): Promise<{ newEmail: string | null }> {
   const existing = await ctx.db
     .query('profiles')
     .withIndex('by_user', (q) => q.eq('userId', userId))
@@ -32,6 +32,10 @@ async function writeProfile(
   };
   if (existing) await ctx.db.patch(existing._id, fields);
   else await ctx.db.insert('profiles', { userId, ...fields });
+  // A verified address the profile didn't carry before — the trigger for
+  // the welcome email (http.ts). Lowercased like the stored key.
+  const newEmail = fields.email && fields.email !== (existing?.email ?? null) ? fields.email : null;
+  return { newEmail };
 }
 
 /** Hard-deletes everything a user synced — called from the Clerk
@@ -184,7 +188,7 @@ export const upsertProfile = internalMutation({
     emailVerified: v.boolean(),
   },
   handler: async (ctx, { userId, name, imageUrl, email, emailVerified }) => {
-    await writeProfile(ctx, userId, name, imageUrl, email ?? null, emailVerified);
+    return writeProfile(ctx, userId, name, imageUrl, email ?? null, emailVerified);
   },
 });
 

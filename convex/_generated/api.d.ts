@@ -55,6 +55,7 @@ import type * as updatesShared from "../updatesShared.js";
 import type * as uploadShared from "../uploadShared.js";
 import type * as uploads from "../uploads.js";
 import type * as users from "../users.js";
+import type * as welcome from "../welcome.js";
 
 import type {
   ApiFromModules,
@@ -110,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   uploadShared: typeof uploadShared;
   uploads: typeof uploads;
   users: typeof users;
+  welcome: typeof welcome;
 }>;
 
 /**

@@ -67,13 +67,18 @@ http.route({
       const emails = d.email_addresses ?? [];
       const primary =
         emails.find((e) => e.id && e.id === d.primary_email_address_id) ?? emails[0];
-      await ctx.runMutation(internal.users.upsertProfile, {
+      const { newEmail } = await ctx.runMutation(internal.users.upsertProfile, {
         userId,
         name,
         imageUrl: d.image_url ?? null,
         email: primary?.email_address ?? null,
         emailVerified: primary?.verification?.status === 'verified',
       });
+      // First verified address → OneSignal email subscription → the welcome
+      // Journey. Off the request path so a slow OneSignal never fails Clerk.
+      if (newEmail) {
+        await ctx.scheduler.runAfter(0, internal.welcome.subscribeEmail, { userId, email: newEmail });
+      }
     }
 
     return new Response(null, { status: 200 });
