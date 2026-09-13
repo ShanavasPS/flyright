@@ -46,9 +46,11 @@ tags:
       file: clerk-dev-sign-in.yaml
       env:
         EMAIL: sam+clerk_test@example.com
-# No second tap: the invite redeems itself and the share-back offer is what
-# the traveller comes back to.
+# No second tap: the invite redeems itself. Since 2026-09-13 redeeming files
+# a follow request the owner allows in People (a forwarded link no longer
+# joins by itself), so "waiting for the owner" is what the traveller comes
+# back to — not "you're following".
 - extendedWaitUntil:
-    visible: ".*You're following.*"
+    visible: ".*Waiting for.*"
     timeout: 30000
-- assertVisible: ".*Share your trips back.*"
+- assertVisible: ".*confirms who follows.*"

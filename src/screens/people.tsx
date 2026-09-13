@@ -907,7 +907,7 @@ function FollowRequestRow({ request }: { request: Incoming }) {
           {request.name}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-          Wants to follow your trips
+          {request.viaLink ? 'Opened your invite link · wants to follow your trips' : 'Wants to follow your trips'}
         </ThemedText>
       </View>
       <View style={styles.answerRow}>

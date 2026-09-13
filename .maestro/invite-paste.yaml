@@ -39,5 +39,5 @@ tags:
 # it is one tap rather than the sign-in detour invite-follow.yaml covers.
 - tapOn: "Follow ${OWNER}'s trips"
 - extendedWaitUntil:
-    visible: ".*You're following ${OWNER}.*"
+    visible: ".*Waiting for ${OWNER}.*"
     timeout: 30000

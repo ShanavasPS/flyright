@@ -28,9 +28,11 @@ import { latestUpdate, updatesFor } from './updates';
 import { updateWindowOpen } from './updatesShared';
 
 /** Find My-style circles: who follows my trips, whose trips I follow.
- * Invites are personal links (getflyright.com/i/<token>); accepting one adds
- * the acceptor to the owner's circle, which then rides along on every live
- * session through liveHelpers.materializeCircleFollows. */
+ * Invites are personal links (getflyright.com/i/<token>); redeeming one
+ * files a follow request the owner allows in People (a link travels, so
+ * holding it is not the same as being wanted). The allow adds the requester
+ * to the owner's circle, which then rides along on every live session
+ * through liveHelpers.materializeCircleFollows. */
 
 async function requireIdentity(ctx: MutationCtx | QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -77,7 +79,10 @@ export const inviteByToken = query({
     // A blocked person holding the link sees an expired one.
     if (identity && (await blockedBetween(ctx, invite!.ownerId, identity.subject))) return { gone: true as const };
     const owner = await personCard(ctx, invite!.ownerId);
-    let relation: 'self' | 'member' | 'none' = 'none';
+    // 'requested': this link was already redeemed by the caller and the
+    // owner hasn't answered yet — the page says so instead of offering the
+    // same tap again.
+    let relation: 'self' | 'member' | 'requested' | 'none' = 'none';
     if (identity?.subject === invite!.ownerId) relation = 'self';
     else if (identity) {
       const row = await ctx.db
@@ -87,6 +92,7 @@ export const inviteByToken = query({
         )
         .unique();
       if (row) relation = 'member';
+      else if (await pendingRequest(ctx, identity.subject, invite!.ownerId, 'follow')) relation = 'requested';
     }
     // A link minted before the owner hit the free cap (or before a lapse)
     // still resolves — the page says the circle is full instead of 404ing.
@@ -826,32 +832,80 @@ async function join(ctx: MutationCtx, ownerId: string, memberId: string) {
   await armHeadsUpsForOwner(ctx, ownerId);
 }
 
-/** Redeem an invite: the caller joins the inviter's circle. */
+/** Redeem an invite. The link is a bearer token — anyone it was forwarded
+ * to holds it — so redeeming it does NOT join the circle: it files a
+ * follow request ('follow' kind, marked viaLink) that the owner allows in
+ * People, exactly like "Follow back". The one shortcut: an in-app
+ * invitation the owner already sent this person is their yes, and the
+ * link joins on the spot. Idempotent — a second tap returns the standing
+ * request, and a redeemed-and-allowed link reports 'following'. */
 export const accept = mutation({
   args: { token: v.string() },
   handler: async (ctx, { token }) => {
     const identity = await requireIdentity(ctx);
+    const me = identity.subject;
     const invite = await ctx.db
       .query('circleInvites')
       .withIndex('by_token', (q) => q.eq('token', token))
       .unique();
     if (!inviteUsable(invite)) throw new Error('Invite expired');
     const ownerId = invite!.ownerId;
-    if (ownerId === identity.subject) throw new Error('Own invite');
+    if (ownerId === me) throw new Error('Own invite');
     // A blocked person holding the link sees an expired one.
-    if (await blockedBetween(ctx, ownerId, identity.subject)) throw new Error('Invite expired');
-
-    await join(ctx, ownerId, identity.subject);
-    await ctx.db.patch(invite!._id, { uses: invite!.uses + 1 });
-
-    const reverse = await ctx.db
-      .query('circle')
-      .withIndex('by_owner_member', (q) =>
-        q.eq('ownerId', identity.subject).eq('memberId', ownerId),
-      )
-      .unique();
+    if (await blockedBetween(ctx, ownerId, me)) throw new Error('Invite expired');
     const owner = await personCard(ctx, ownerId);
-    return { ownerId, ownerName: owner.name, sharingBack: !!reverse };
+
+    // `sharingBack` is what pre-1.0.33 clients act on: true sends them
+    // straight to People (where the request shows as "Asked to follow")
+    // instead of a "You're following" card that would not be true yet.
+    const outcome = async (status: 'following' | 'requested') => ({
+      status,
+      ownerId,
+      ownerName: owner.name,
+      sharingBack: status === 'requested' || !!(await areSharing(ctx, me, ownerId)),
+    });
+
+    if (await areSharing(ctx, ownerId, me)) return outcome('following');
+    if (await pendingRequest(ctx, me, ownerId, 'follow')) return outcome('requested');
+
+    // The owner invited this very person in-app: that is the approval.
+    const invitation = await pendingRequest(ctx, ownerId, me, 'invite');
+    if (invitation) {
+      // Throws CIRCLE_FULL if their circle filled up since they invited me.
+      await join(ctx, ownerId, me);
+      await ctx.db.patch(invite!._id, { uses: invite!.uses + 1 });
+      await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
+        requestId: invitation._id,
+        kind: 'accepted',
+      });
+      return outcome('following');
+    }
+
+    // A "no" given in the last month looks like an unanswered request from
+    // here, same as askToFollow: nothing written, nobody pushed.
+    if (await recentlyDeclined(ctx, me, ownerId, 'follow')) return outcome('requested');
+    if ((await pendingOutstanding(ctx, me)) >= MAX_PENDING_REQUESTS) {
+      throw new Error('Too many pending requests');
+    }
+    await limit(ctx, `invite:${me}`, 20, DAY);
+    await limit(ctx, 'invite:global', 1000, HOUR);
+    // No circleFull check: the request waits in People until the owner
+    // makes room (or goes Pro) — they see the cap when they tap Allow.
+    const requestId = await ctx.db.insert('circleRequests', {
+      fromUserId: me,
+      toUserId: ownerId,
+      kind: 'follow',
+      viaLink: true,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      respondedAt: null,
+    });
+    await ctx.db.patch(invite!._id, { uses: invite!.uses + 1 });
+    await ctx.scheduler.runAfter(0, internal.circleInternal.notifyRequest, {
+      requestId,
+      kind: 'linkAsked',
+    });
+    return outcome('requested');
   },
 });
 
@@ -1072,6 +1126,8 @@ export const list = query({
       since: string;
       blocked: boolean;
       fresh: boolean;
+      /** A follow request filed by redeeming my invite link. */
+      viaLink: boolean;
     } & Awaited<ReturnType<typeof personCard>>;
     const incoming: RequestCard[] = [];
     const followRequests: RequestCard[] = [];
@@ -1081,6 +1137,7 @@ export const list = query({
         id: r._id,
         since: r.createdAt,
         blocked: !!r.blockedAt,
+        viaLink: !!r.viaLink,
         // Arrived since I last looked at the side it is answered on.
         fresh: after(r.createdAt, follow ? followersSeenAt : followingSeenAt),
         ...(await personCard(ctx, r.fromUserId)),
@@ -1096,6 +1153,7 @@ export const list = query({
         id: r._id,
         since: r.createdAt,
         blocked: !!r.blockedAt,
+        viaLink: !!r.viaLink,
         // Mine, so never news — except an invitation someone tried to
         // accept while my circle was full, which lands on Followers.
         fresh: after(r.blockedAt, followersSeenAt),

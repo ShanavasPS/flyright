@@ -23,8 +23,12 @@ import { clearPendingFollow, markPendingFollow, pendingFollowFor } from '@/servi
 import { useProLocked } from '@/services/purchases';
 
 /** The invite page behind getflyright.com/i/<token>: "Sam invited you to
- * follow their trips". Accepting joins Sam's circle; the follow-up offers to
- * share back, Find My style. Reactive on web for anyone (store pitch). */
+ * follow their trips". Accepting files a follow request Sam allows in
+ * People — the link travels, so holding it is not the same as being wanted
+ * — and the page says "waiting for Sam" rather than "you're following".
+ * (Sam's own in-app invitation to this person is the yes; then the link
+ * joins on the spot and offers to share back, Find My style.) Reactive on
+ * web for anyone (store pitch). */
 export function JoinCircle({ token }: { token: string }) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -33,12 +37,17 @@ export function JoinCircle({ token }: { token: string }) {
   const { isAuthenticated } = useConvexAuth();
   const invite = useQuery(api.circle.inviteByToken, { token });
   const accept = useMutation(api.circle.accept);
-  const noteFullInvite = useMutation(api.circle.noteFullInvite);
   const shareBack = useMutation(api.circle.shareBack);
   const [busy, setBusy] = useState(false);
-  const [joined, setJoined] = useState<{ ownerId: string; sharingBack: boolean } | null>(null);
-  // Owner hit the free cap between minting the link and this tap — the
-  // reactive query normally catches it first (invite.full).
+  // What the tap came to: 'requested' (the usual — waits on the owner) or
+  // 'following' (the owner had already invited this person in-app).
+  const [joined, setJoined] = useState<{
+    status: 'following' | 'requested';
+    ownerId: string;
+    sharingBack: boolean;
+  } | null>(null);
+  // Only the on-the-spot join can hit the cap (the owner's own invitation,
+  // their circle filled up meanwhile); a request just waits for room.
   const [ownerFull, setOwnerFull] = useState(false);
   // A follow that didn't land (offline, invite redeemed elsewhere). Shown
   // rather than swallowed: a button that does nothing when tapped is how an
@@ -53,21 +62,6 @@ export function JoinCircle({ token }: { token: string }) {
   const redeeming = useRef(false);
   const proLocked = useProLocked();
 
-  // Landing on "circle is full" with an account is an attempt the owner
-  // should hear about — once. The server writes it as a waiting invitation
-  // (see circle.noteFullInvite), so the tap isn't lost either: it sits in
-  // People until the owner makes room. Anonymous visitors name nobody.
-  const noted = useRef(false);
-  const shownFull =
-    isAuthenticated && !!invite && !('gone' in invite) && invite.relation === 'none' && (invite.full || ownerFull);
-  useEffect(() => {
-    if (!shownFull || noted.current) return;
-    noted.current = true;
-    noteFullInvite({ token }).catch(() => {
-      // Best effort: the owner's row and push are a courtesy, not the follow.
-    });
-  }, [shownFull, noteFullInvite, token]);
-
   // Back to the People tab, wherever this page was pushed from.
   const done = useCallback(() => router.replace('/(tabs)/(people)/people'), [router]);
 
@@ -78,19 +72,20 @@ export function JoinCircle({ token }: { token: string }) {
       const result = await accept({ token });
       clearPendingFollow();
       setPending(false);
-      Observe.logEvent('circle.joined');
-      trackEvent('circle_joined');
-      // Land on "you're following" before the OS prompt covers it — the
-      // reactive query flips relation to 'member' the moment the mutation
+      Observe.logEvent(result.status === 'following' ? 'circle.joined' : 'circle.requested');
+      trackEvent(result.status === 'following' ? 'circle_joined' : 'circle_requested');
+      // Land on the outcome before the OS prompt covers it — the reactive
+      // query flips relation to 'member'/'requested' the moment the mutation
       // commits, and that branch would otherwise win the race and swallow
       // the share-back offer.
       setJoined(result);
-      // The whole point of following is the pushes, and someone who only
-      // follows may never hit the app's other permission moments — ask now,
-      // while "you'll get a heads-up" is still on screen. One-shot OS prompt;
-      // a no here is respected like everywhere else (Settings can flip it).
+      // The whole point of following is the pushes — the "allowed" one
+      // first of all — and someone who only follows may never hit the app's
+      // other permission moments. Ask now, while "you'll get a heads-up" is
+      // still on screen. One-shot OS prompt; a no here is respected like
+      // everywhere else (Settings can flip it).
       await requestPushPermission();
-      if (result.sharingBack) done();
+      if (result.status === 'following' && result.sharingBack) done();
     } catch (e) {
       if (e instanceof ConvexError && e.data === CIRCLE_FULL) setOwnerFull(true);
       // Otherwise offline, or expired mid-view (the reactive query flips to
@@ -109,10 +104,10 @@ export function JoinCircle({ token }: { token: string }) {
   useEffect(() => {
     if (redeeming.current || !pending || !isAuthenticated || busy || joined || failed) return;
     if (invite === undefined || 'gone' in invite) return;
-    if (invite.relation !== 'none' || invite.full) {
-      // Their own link, already following, or the circle filled up while
-      // they signed in — nothing left to redeem, so drop the intent (the
-      // flag alone decides nothing on screen).
+    if (invite.relation !== 'none') {
+      // Their own link, already following, or already asked — nothing left
+      // to redeem, so drop the intent (the flag alone decides nothing on
+      // screen).
       clearPendingFollow();
       return;
     }
@@ -196,6 +191,17 @@ export function JoinCircle({ token }: { token: string }) {
           This is your own invite link — send it to the people who should follow your trips.
         </ThemedText>
       );
+    } else if (joined?.status === 'requested' || invite.relation === 'requested') {
+      action = (
+        <Card>
+          <ThemedText type="subtitle">Waiting for {name}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {name} confirms who follows their trips. You&apos;ll get a notification the moment they say
+            yes — then every heads-up and travel-day update follows.
+          </ThemedText>
+          <PrimaryButton label="Open People" onPress={done} />
+        </Card>
+      );
     } else if (joined) {
       action = (
         <Card>
@@ -218,16 +224,13 @@ export function JoinCircle({ token }: { token: string }) {
           <PrimaryButton label="Open People" onPress={done} />
         </>
       );
-    } else if (invite.full || ownerFull) {
+    } else if (ownerFull) {
       // The owner's problem to solve, not the invitee's — no upsell here.
       action = (
         <>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             {name}&apos;s circle is full for now. Free accounts share with {FREE_CIRCLE_LABEL};{' '}
             {name} can add more people with FlyRight Pro.
-            {isAuthenticated
-              ? ` ${name} has been told you tried — the invitation waits in People until there's room.`
-              : ''}
           </ThemedText>
           <PrimaryButton label="Open People" onPress={done} />
         </>
@@ -236,6 +239,13 @@ export function JoinCircle({ token }: { token: string }) {
       action = (
         <>
           <PrimaryButton label={`Follow ${name}'s trips`} disabled={busy} onPress={onAccept} />
+          {invite.full && (
+            // A request to a full circle waits in People; the owner sees the
+            // cap (and the way past it) when they tap Allow.
+            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+              {name}&apos;s circle is full right now — they can let you in once there&apos;s room.
+            </ThemedText>
+          )}
           {failed && (
             <ThemedText type="small" themeColor="danger" style={styles.centered}>
               That didn&apos;t go through — check your connection and tap again.
@@ -253,7 +263,7 @@ export function JoinCircle({ token }: { token: string }) {
             {name} invited you to follow their trips
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-            You can stop following at any time.
+            {name} confirms each follower first. You can stop following at any time.
           </ThemedText>
         </View>
         <Card>

@@ -69,8 +69,9 @@ export const requestPush = internalQuery({
 
 /** The pushes an in-app request makes. An invitation ('invite' kind): one to
  * the invitee when it is sent, one back to the sender when it is accepted.
- * A follow request ('follow' kind — "Follow back" on a follower row): one to
- * the person whose trips are asked for, one back to the asker once allowed.
+ * A follow request ('follow' kind — "Follow back" on a follower row, or a
+ * redeemed invite link): one to the person whose trips are asked for, one
+ * back to the asker once allowed.
  * And 'blocked': the invitee tried to accept but the inviter's circle is
  * full — one push to the inviter, ever, per invitation.
  * All open the People tab, which is where the request lives either way. */
@@ -81,6 +82,7 @@ export const notifyRequest = internalAction({
       v.literal('invited'),
       v.literal('accepted'),
       v.literal('asked'),
+      v.literal('linkAsked'),
       v.literal('allowed'),
       v.literal('blocked'),
     ),
@@ -103,6 +105,13 @@ export const notifyRequest = internalAction({
         to: r.toUserId,
         title: `${r.fromName} wants to follow your trips`,
         body: `Allow it in People and ${r.fromName} gets a heads-up the day before each of your flights.`,
+      },
+      // A redeemed invite link (circle.accept): same ask, and the owner is
+      // told it came in through the link they handed out.
+      linkAsked: {
+        to: r.toUserId,
+        title: `${r.fromName} wants to follow your trips`,
+        body: `${r.fromName} opened your invite link. Allow it in People and they get a heads-up the day before each of your flights.`,
       },
       allowed: {
         to: r.fromUserId,
