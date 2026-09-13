@@ -1,0 +1,21 @@
+FlyRight 1.0.33 — a feature-and-hardening release on top of 1.0.32 (approved 2026-09-12). No new permissions, no new purchases, no change to the account model, no change to the ATT usage described below.
+
+WHAT CHANGED SINCE 1.0.32:
+
+- App icon badge: the icon shows a badge when something waits for the user (a People request, an unread support reply, or a newer FlyRight in the App Store). It uses the standard notification badge and clears when the user looks at the item. Settings shows a shortcut to the system notification settings when badges are turned off.
+- Store release notification: when a newer FlyRight is live on the App Store, the app receives a push (via OneSignal, our existing push provider) that sets the badge and links to Settings. It carries only public release information.
+- Invite links: opening an invite link now files a follow request that the sender approves in the People tab, instead of joining the circle immediately. The page says "Waiting for <name>".
+- Universal links: flyright.godetour.link (our deferred-link domain) is now an associated domain so shared links open the installed app.
+- Flight box: typing a booking reference or an e-ticket number where a flight number goes now explains what it is and points to scanning or uploading the ticket.
+- Hardening (not user-visible): the searchable profile email is taken from the signed-in account rather than the client, photos can only be removed by the account that added them, public functions are rate-limited, push registration is bound to the account on the server, and a vulnerable URL-decoding dependency was replaced.
+
+HOW TO REVIEW:
+
+DEMO ACCOUNT — HOW TO SIGN IN: Settings tab -> "Sign in or create account" -> enter the email above -> tap Continue -> tap "Use another method" -> "Sign in with your password" -> enter the password. No email code is needed for this account.
+
+- Flight box hint: My travels tab -> the "+" button in the title bar -> type ABC123 (a booking reference) or a 13-digit number into the flight field and read the card below it.
+- People and invite links: People tab -> "Invite someone" produces a getflyright.com/i/<token> link; opening it on another install shows "Waiting for <name>" and the sender sees the request in People.
+- Compensation verdict and claim letter, no account needed: Claims tab -> "See a demo verdict" -> "Generate my claim".
+- Account deletion: Settings -> the account row -> Delete account.
+
+UNCHANGED FROM 1.0.32: App Tracking Transparency is asked once and, if authorized, the IDFA is used solely for install attribution of our own marketing (Layers SDK); analytics carry an install id, screen names and purchase events only, never flight, claim, note or photo content, and declining changes nothing in the app. The app reports an anonymous launch event to Expo's EAS Insights (install id, app version, platform, OS version). The camera is used for boarding-pass scanning, the photo library for uploading a ticket and attaching trip photos or updates, and push for flight status, claim deadlines, trip updates from people the user follows and the release notice above. Location is never requested (a bundled notification SDK references the API, hence the purpose string). The app is fully usable without an account; live flight lookups require one and are capped per day. iPad is supported in both orientations.
