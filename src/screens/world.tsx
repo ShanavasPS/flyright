@@ -48,6 +48,7 @@ import { openWorldShare } from '@/services/world-share';
  * (28) + label (20) + vertical padding (32). */
 const HEADER_HEIGHT = 83;
 const STATS_CARD_HEIGHT = 80;
+const RECENTER_CONTROL_HEIGHT = 56;
 
 /** Upcoming routes draw faint and let the travelling comet carry the colour;
  * two hex digits of alpha appended to the theme tint. */
@@ -177,8 +178,10 @@ export function WorldCanvas({
   // by comparing regions against the last fit, not `details.isGesture` —
   // Apple Maps doesn't report that flag.
   const [moved, setMoved] = useState(false);
+  const [fitRevision, setFitRevision] = useState(0);
   // Timestamp of the latest fit request; settles within FIT_SETTLE_MS are its own.
   const fitStarted = useRef(0);
+  const fitQueued = useRef(false);
   const fitted = useRef<Region | null>(null);
 
   // The SDK's zoom-out floor in degrees of longitude — see regionFor and
@@ -247,18 +250,51 @@ export function WorldCanvas({
   const footerInset = (Platform.OS === 'ios' ? insets.bottom : 0) + Spacing.three;
   const mapPadding = {
     top: insets.top + HEADER_HEIGHT,
-    bottom: footerInset + STATS_CARD_HEIGHT,
+    // Keep room for the recenter control so showing it doesn't shift the camera.
+    bottom: footerInset + STATS_CARD_HEIGHT + RECENTER_CONTROL_HEIGHT,
     left: 0,
     right: 0,
   };
   useEffect(() => {
-    if (ready && !moved) fit(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on new data or view size only
-  }, [ready, data, maxLonSpan]);
+    if (!focused || !ready || moved) return;
+    // NativeTabs reattaches Google's map after React reports focus. Camera
+    // commands sent in that gap are ignored. Let the native transition
+    // finish, and cancel the pending fit if the traveller starts panning.
+    fitQueued.current = true;
+    const timer = setTimeout(() => {
+      fitQueued.current = false;
+      fit(true);
+    }, Platform.OS === 'android' ? 300 : 0);
+    return () => {
+      clearTimeout(timer);
+      fitQueued.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- explicit requests also refit an unchanged period
+  }, [focused, ready, moved, data, maxLonSpan, fitRevision]);
+
+  // A plain return to World starts from the chosen period's overview,
+  // rather than inheriting the last trip's zoom. Keep the date selection.
+  const [wasFocused, setWasFocused] = useState(focused);
+  if (wasFocused !== focused) {
+    setWasFocused(focused);
+    if (focused) setMoved(false);
+  }
 
   // Tapping a plane docks a detail card in the stats card's slot; tapping the
   // map or its close button brings the stats back.
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  const recenter = () => {
+    setMoved(false);
+    setFitRevision((revision) => revision + 1);
+  };
+  const choosePeriod = (next: WorldPeriod) => {
+    setPeriod(next);
+    setSelectedKey(null);
+    // Selecting "All time" again is an explicit request for the overview,
+    // even though the filter value and route data haven't changed.
+    recenter();
+  };
 
   // A hand-off (or its clearing) is a new subject: the camera refits even if
   // the user had panned, and the trip's route card docks straight away.
@@ -373,6 +409,9 @@ export function WorldCanvas({
             setMoved(true);
             return;
           }
+          // A reattachment can report the old camera before the queued fit.
+          // It is neither a user pan nor evidence of the SDK's zoom limit.
+          if (fitQueued.current) return;
           // The settle of the initial region or of our own animateToRegion —
           // record what the SDK actually granted (it clamps extreme spans) as
           // the baseline, and learn its floor from the clamp.
@@ -434,7 +473,10 @@ export function WorldCanvas({
         )}
         {planes.map(({ route, plane }) => (
           <PlaneMarker
-            key={route.key}
+            // Google drops cached marker images when NativeTabs detaches
+            // the map. Recreate them on visibility changes so returning to
+            // World restores planes as well as the route polylines.
+            key={Platform.OS === 'android' ? `${route.key}-${focused}` : route.key}
             plane={plane}
             opacity={plane.upcoming ? pulse : 1}
             onPress={() => {
@@ -445,7 +487,7 @@ export function WorldCanvas({
         ))}
         {data.airports.map((airport) => (
           <AirportMarker
-            key={airport.iata}
+            key={Platform.OS === 'android' ? `${airport.iata}-${focused}` : airport.iata}
             iata={airport.iata}
             city={airport.city}
             coordinate={{ latitude: airport.lat, longitude: airport.lon }}
@@ -495,20 +537,15 @@ export function WorldCanvas({
             />
           )}
           {shareable && loaded && visible.length > 0 && <ShareButton onPress={shareVisible} />}
-          {moved && (
-            <RecenterButton
-              onPress={() => {
-                setMoved(false);
-                fit(true);
-              }}
-            />
-          )}
         </View>
       </SafeAreaView>
 
       <View
         style={[styles.footer, { paddingBottom: footerInset }]}
         pointerEvents="box-none">
+        {!choosing && !empty && !emptyPeriod && moved && (
+          <RecenterButton onPress={recenter} />
+        )}
         {empty ? (
           emptyCard
         ) : choosing ? (
@@ -516,7 +553,7 @@ export function WorldCanvas({
             rows={rows}
             period={period}
             recap={recap}
-            onChange={setPeriod}
+            onChange={choosePeriod}
             onClose={() => setChoosing(false)}
           />
         ) : selected ? (
@@ -526,7 +563,7 @@ export function WorldCanvas({
             onClose={() => setSelectedKey(null)}
           />
         ) : emptyPeriod ? (
-          <EmptyPeriodCard period={period} onReset={() => setPeriod(ALL_TIME)} />
+          <EmptyPeriodCard period={period} onReset={() => choosePeriod(ALL_TIME)} />
         ) : recap.trips > 0 ? (
           <Card style={styles.stats}>
             <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
@@ -755,16 +792,16 @@ function ShareButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Floating "fit everything back on screen" control, shown once the user has
- * panned or zoomed away from the fitted view. */
+/** Restore the overview after the traveller moves the map. */
 function RecenterButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Recenter the map on your travels"
+      testID="world-map-recenter"
       onPress={onPress}
-      style={[styles.recenter, { backgroundColor: theme.backgroundElement }]}>
+      style={[styles.recenterLabel, { backgroundColor: theme.backgroundElement }]}>
       <SymbolView
         name={{
           ios: 'arrow.down.right.and.arrow.up.left',
@@ -775,6 +812,7 @@ function RecenterButton({ onPress }: { onPress: () => void }) {
         weight="semibold"
         tintColor={theme.tint}
       />
+      <ThemedText type="smallBold" style={{ color: theme.tint }}>Recenter</ThemedText>
     </Pressable>
   );
 }
@@ -857,6 +895,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
+  },
+  recenterLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    minHeight: 48,
+    marginBottom: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 24,
   },
   routeCard: {
     alignSelf: 'stretch',

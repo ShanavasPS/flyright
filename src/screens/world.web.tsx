@@ -70,6 +70,16 @@ export function World() {
   // (so new flights re-fit the map until the user takes the wheel).
   const [userBox, setUserBox] = useState<ViewBox | null>(null);
   const box = userBox ?? fitted;
+  const [wasFocused, setWasFocused] = useState(focused);
+  if (wasFocused !== focused) {
+    setWasFocused(focused);
+    if (focused) setUserBox(null);
+  }
+  const choosePeriod = (next: WorldPeriod) => {
+    setPeriod(next);
+    // Re-selecting the current period also restores its overview.
+    setUserBox(null);
+  };
 
   const [seenFocus, setSeenFocus] = useState(focusedRow?.id);
   if (seenFocus !== focusedRow?.id) {
@@ -230,13 +240,13 @@ export function World() {
                 rows={all}
                 period={period}
                 recap={recap}
-                onChange={setPeriod}
+                onChange={choosePeriod}
                 onClose={() => setChoosing(false)}
               />
             </View>
           ) : emptyPeriod ? (
             <View style={styles.periodCard}>
-              <EmptyPeriodCard period={period} onReset={() => setPeriod(ALL_TIME)} />
+              <EmptyPeriodCard period={period} onReset={() => choosePeriod(ALL_TIME)} />
             </View>
           ) : recap.trips > 0 ? (
             <Card style={styles.stats}>
