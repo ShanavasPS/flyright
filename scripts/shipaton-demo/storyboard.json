@@ -1,0 +1,65 @@
+{
+  "title": "FlyRight — your travel day, taken care of",
+  "duration": 119,
+  "voice": "Samantha",
+  "voiceRate": 165,
+  "scenes": [
+    {
+      "id": "01-intro", "duration": 10, "chapter": "YOUR TRAVEL BUDDY",
+      "headline": ["Every flight.", "One companion."],
+      "bullets": ["Before you fly", "Through travel day", "When plans go wrong"],
+      "narration": "Meet Fly Right: your travel buddy on the day you fly, and your advocate when a flight goes wrong. Your flights, your people, and your memories, together."
+    },
+    {
+      "id": "02-add", "duration": 13, "chapter": "01 / ADD YOUR FLIGHT",
+      "headline": ["Start with", "your next flight."],
+      "bullets": ["Look up a flight number", "Scan a boarding pass", "Import a confirmation document"],
+      "narration": "Start with a flight number, scan a boarding pass, or import your airline's confirmation. Fly Right brings the journey into your travel journal, so the details you need are ready in one place."
+    },
+    {
+      "id": "03-travel", "duration": 18, "chapter": "02 / TRAVEL DAY",
+      "headline": ["A little calmer.", "At every step."],
+      "bullets": ["A timeline for the whole journey", "Check-in, security, boarding", "Your next step at a glance"],
+      "note": "Sample itinerary shown",
+      "narration": "On travel day, open your flight to see the journey laid out step by step. Check-in, bags, security, and boarding all have their place. The timeline keeps your progress clear, while flight information stays alongside it. Less hunting through emails. More knowing what's next."
+    },
+    {
+      "id": "04-people", "duration": 13, "chapter": "03 / YOUR PEOPLE",
+      "headline": ["Bring your", "people along."],
+      "bullets": ["Follow friends and family", "See their upcoming journeys", "Choose who sees your trips"],
+      "narration": "Travel is personal. Follow friends and family, see their upcoming journeys, and share the trips you choose. Your circle can follow along, with visibility controls that keep you in charge of what they see."
+    },
+    {
+      "id": "05-world", "duration": 14, "chapter": "04 / YOUR WORLD",
+      "headline": ["Every route.", "Part of your story."],
+      "bullets": ["Explore your routes on the map", "See your distance and countries", "Discover your travel records"],
+      "narration": "Every flight becomes part of your world. Explore the routes you've flown, then open your travel statistics to see the distance, countries, and records behind your journeys. A growing picture of everywhere you've been."
+    },
+    {
+      "id": "06-journal", "duration": 12, "chapter": "05 / YOUR MEMORIES",
+      "headline": ["Keep more", "than the ticket."],
+      "bullets": ["Write a note about the journey", "Rate the flight", "Keep photos and seat details"],
+      "narration": "And keep the details that made the trip yours. Add notes, a rating, photos, and seat details inside each flight. Your travel history becomes a journal you'll actually want to revisit."
+    },
+    {
+      "id": "07-claims", "duration": 16, "chapter": "06 / WHEN PLANS GO WRONG",
+      "headline": ["Understand", "your next move."],
+      "bullets": ["A clear compensation estimate", "The reason behind the result", "Guided claim preparation"],
+      "note": "Built-in demo verdict · eligibility depends on the circumstances",
+      "narration": "When a flight goes wrong, Fly Right helps you understand your options. This built-in example shows a four-hundred-euro compensation estimate and explains why. From the same screen, you can start preparing a claim, with guidance instead of a blank page."
+    },
+    {
+      "id": "08-pro", "duration": 15, "chapter": "07 / POWERED BY REVENUECAT",
+      "headline": ["More support.", "With FlyRight Pro."],
+      "bullets": ["Monthly, yearly, or lifetime", "Inbound-plane insights", "A bigger circle and claim tools"],
+      "note": "Live RevenueCat paywall · plan selection shown",
+      "narration": "Fly Right Pro adds inbound-plane insights, a bigger circle, and claim tools. Revenue Cat powers the in-app paywall, with monthly, yearly, and lifetime options. Here, travellers compare plans and choose the upgrade that fits the way they fly."
+    },
+    {
+      "id": "09-close", "duration": 8, "chapter": "SHIPATON 2026 / DESIGN AWARD",
+      "headline": ["Your travel day,", "taken care of."],
+      "bullets": ["FlyRight", "getflyright.com"],
+      "narration": "For Shipaton's Design Award: thoughtful mobile design, built around the traveller. Fly Right. Your travel day, taken care of."
+    }
+  ]
+}

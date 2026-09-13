@@ -61,3 +61,5 @@ asc-api-key.p8
 
 # Demo video renders and simulator captures (scripts/demo-video.mjs)
 demo/out/
+# Shipaton demo renders (scripts/shipaton-demo/render.mjs)
+scripts/shipaton-demo/output/

@@ -27,7 +27,9 @@ export const WEB_PURCHASE_LINK = process.env.EXPO_PUBLIC_WEB_PURCHASE_LINK ?? ''
  * priced in 18 currencies — Web Billing picks the visitor's, EUR is the
  * fallback. Web Billing prices are immutable once saved, so a price change
  * means a new product swapped into the offering. The web funnel renders
- * services/web-pricing.ts instead, which localizes the same numbers. */
+ * services/web-pricing.ts instead, which localizes the same numbers.
+ * NOTE: the App Store and Play plans dropped their intro prices for a 14-day
+ * free trial on 2026-09-12; only Web Billing still sells the intro products. */
 export const PRO_PRICE_FROM = 'from €1.99/month';
 
 // Layers (growth analytics / install attribution) app id — see

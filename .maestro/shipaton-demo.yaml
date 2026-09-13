@@ -1,0 +1,197 @@
+# Real app capture; no reset, seed, purchase, invitation, or claim submission.
+# Run through scripts/shipaton-demo/record.sh for output directories and UDID.
+# Required fixtures: today's demo-upcoming and a flown demo-dxb with notes.
+appId: com.shanavasshaji.flyright
+---
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/01-intro
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 9000
+- takeScreenshot: ${DEMO_OUT}/stills/01-intro
+- stopRecording
+
+- openLink: flyright://add-flight
+- extendedWaitUntil:
+    visible: "Add Flight"
+    timeout: 15000
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/02-add
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- tapOn: "AY1331 or LH873"
+- inputText: "AY1331"
+- hideKeyboard
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- takeScreenshot: ${DEMO_OUT}/stills/02-add
+- stopRecording
+
+- tapOn: "Close"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- tapOn:
+    id: travel-day-banner
+- extendedWaitUntil:
+    visible: "Travel day"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Travel day"
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- startRecording: ${DEMO_OUT}/raw/03-travel
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 6000
+- swipe:
+    start: "50%,75%"
+    end: "50%,60%"
+    duration: 1800
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 7000
+- takeScreenshot: ${DEMO_OUT}/stills/03-travel
+- stopRecording
+
+- openLink: flyright://people
+- extendedWaitUntil:
+    visible: "People"
+    timeout: 20000
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/04-people
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 5000
+- swipe:
+    start: "50%,77%"
+    end: "50%,60%"
+    duration: 1400
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 4000
+- takeScreenshot: ${DEMO_OUT}/stills/04-people
+- stopRecording
+
+- openLink: flyright://world
+- extendedWaitUntil:
+    visible: "World"
+    timeout: 20000
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 9000
+- startRecording: ${DEMO_OUT}/raw/05-world
+- swipe:
+    start: "50%,60%"
+    end: "60%,47%"
+    duration: 1800
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 5000
+- takeScreenshot: ${DEMO_OUT}/stills/05-world
+- openLink: flyright://stats
+- extendedWaitUntil:
+    visible: "Travel stats"
+    timeout: 15000
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 4000
+- stopRecording
+
+- openLink: flyright:///journey/demo-dxb
+- extendedWaitUntil:
+    visible: ".*DXB to LAX.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Your notes"
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/06-journal
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 8000
+- takeScreenshot: ${DEMO_OUT}/stills/06-journal
+- stopRecording
+
+- openLink: flyright:///journey/demo
+- extendedWaitUntil:
+    visible: "You're owed.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Generate my claim.*"
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/07-claims
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 12000
+- takeScreenshot: ${DEMO_OUT}/stills/07-claims
+- stopRecording
+
+- openLink: flyright://paywall
+- extendedWaitUntil:
+    visible: "Monthly"
+    timeout: 20000
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/08-pro
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3500
+- tapOn: "Monthly"
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- tapOn: "Yearly"
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3500
+- takeScreenshot: ${DEMO_OUT}/stills/08-pro
+- stopRecording
+
+- swipe:
+    start: "50%,9%"
+    end: "50%,85%"
+    duration: 900
+- openLink: flyright://world
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 6000
+- startRecording: ${DEMO_OUT}/raw/09-close
+- swipe:
+    start: "55%,48%"
+    end: "45%,58%"
+    duration: 1800
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 7500
+- takeScreenshot: ${DEMO_OUT}/stills/09-close
+- stopRecording

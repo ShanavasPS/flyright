@@ -7,7 +7,9 @@
  * Unknown regions fall back to EUR, exactly like Web Billing does.
  * Re-check when the dashboard prices change. Full ladder per currency (EUR):
  * monthly 4.99 (intro 1.99 ×3) · yearly 29.99 (intro 19.99 first year) ·
- * lifetime 49.99 (flyright_pro_lifetime_web_v2, since 2026-09-02). */
+ * lifetime 49.99 (flyright_pro_lifetime_web_v2, since 2026-09-02).
+ * Web only: the store plans replaced their intro prices with a 14-day free
+ * trial on 2026-09-12. */
 
 export const MONTHLY_INTRO_PRICE: Record<string, number> = {
   EUR: 1.99,
