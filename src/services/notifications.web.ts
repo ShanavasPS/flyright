@@ -28,6 +28,9 @@ export function addPushStateListener(_onChange: () => void): () => void {
 
 export function setUserTag(_key: string, _value: string) {}
 
+export function clearPushGroup(_group: string) {}
+export function addPushReceivedListener(_onChange: () => void): () => void { return () => {}; }
+
 export function logInNotifications(_userId: string, _email?: string) {}
 
 export function logOutNotifications() {}

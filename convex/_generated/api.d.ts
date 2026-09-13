@@ -10,6 +10,8 @@
 
 import type * as abuse from "../abuse.js";
 import type * as airportZones from "../airportZones.js";
+import type * as appUpdateShared from "../appUpdateShared.js";
+import type * as appUpdates from "../appUpdates.js";
 import type * as attention from "../attention.js";
 import type * as attentionHelpers from "../attentionHelpers.js";
 import type * as audience from "../audience.js";
@@ -63,6 +65,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   abuse: typeof abuse;
   airportZones: typeof airportZones;
+  appUpdateShared: typeof appUpdateShared;
+  appUpdates: typeof appUpdates;
   attention: typeof attention;
   attentionHelpers: typeof attentionHelpers;
   audience: typeof audience;

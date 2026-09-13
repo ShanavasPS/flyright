@@ -4,7 +4,7 @@ import { pushAlias } from './pushIdentity';
 
 declare const process: { env: Record<string, string | undefined> };
 
-function config() {
+export function oneSignalConfig() {
   const appId = process.env.ONESIGNAL_APP_ID;
   const apiKey = process.env.ONESIGNAL_REST_API_KEY;
   if (!appId || !apiKey) return null;
@@ -15,13 +15,11 @@ function config() {
 
 /** Resolve Clerk IDs to secret recipient aliases before contacting OneSignal.
  *
- * `badge`: the count to leave on the iOS app icon — the receiver's whole
- * unseen inbox (attention.badgeFor), so it lands even while the app is
- * closed, the way a mail app's does. Set, not incremented: the client owns
- * the same number and rewrites it on every foreground, so the two never
- * drift apart. Omitted for pushes that aren't about an inbox item, which
- * leaves whatever count is showing alone. Android launchers badge from the
- * notification itself, so nothing to send there. */
+ * `badge`: the receiver's unseen inbox count. A positive count sets the
+ * icon's attention indicator to 1, just like a release announcement. Only
+ * the device clears it, after checking all sources including app updates.
+ * Travel pushes leave it alone. Android groups let the app dismiss a read
+ * inbox source without cancelling live flight notifications. */
 export async function sendFollowerPush(
   externalIds: string[],
   heading: string,
@@ -29,7 +27,7 @@ export async function sendFollowerPush(
   url: string,
   badge?: number,
 ): Promise<void> {
-  const cfg = config();
+  const cfg = oneSignalConfig();
   if (!cfg || externalIds.length === 0) return;
   const aliases = await Promise.all(externalIds.map(pushAlias));
   if (aliases.some(alias => !alias)) return;
@@ -43,7 +41,7 @@ export async function sendFollowerPush(
       headings: { en: heading },
       contents: { en: body },
       data: { url },
-      ...(badge == null ? {} : { ios_badgeType: 'SetTo', ios_badgeCount: badge }),
+      ...inboxPushOptions(url, badge),
     }),
   });
   const text = (await res.text()).slice(0, 300);
@@ -52,6 +50,15 @@ export async function sendFollowerPush(
   if (!res.ok || !/"id":"[^"]+"/.test(text)) {
     console.warn('[onesignal] push not delivered', res.status, text);
   }
+}
+
+export function inboxPushOptions(url: string, badge?: number) {
+  if (badge == null) return {};
+  const source = url === 'https://getflyright.com/people' ? 'people' : 'support';
+  return {
+    android_group: `flyright-attention-${source}`,
+    ...(badge > 0 ? { ios_badgeType: 'SetTo', ios_badgeCount: 1 } : {}),
+  };
 }
 
 /** Push-to-start a Live Activity on the traveler's phone (iOS 17.2+, the
@@ -67,7 +74,7 @@ export async function startLiveActivity(
   heading: string,
   body: string,
 ): Promise<boolean> {
-  const cfg = config();
+  const cfg = oneSignalConfig();
   if (!cfg) return false;
   const alias = await pushAlias(externalId);
   if (!alias) return false;
@@ -106,7 +113,7 @@ export async function pushLiveActivity(
   event: 'update' | 'end',
   contentState: Record<string, unknown>,
 ): Promise<void> {
-  const cfg = config();
+  const cfg = oneSignalConfig();
   if (!cfg) return;
   const res = await fetch(
     `https://api.onesignal.com/apps/${cfg.appId}/live_activities/${encodeURIComponent(activityId)}/notifications`,

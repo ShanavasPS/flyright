@@ -39,11 +39,10 @@ export const markPeopleSeen = mutation({
   },
 });
 
-/** The number a push should leave on this person's app icon: everything
- * unseen, the item the push is about included, since the push is scheduled
- * after the mutation that created it. Only pushes about an inbox item carry
- * it — a travel-day update is not something to "read", so those leave the
- * badge alone. */
+/** Whether an inbox push should set the icon's attention indicator: count
+ * everything unseen after the mutation that created the event. The sender
+ * converts any positive count to 1; only the app clears the indicator once
+ * all sources (including an available update) have loaded and are empty. */
 export const badgeFor = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, { userId }) => attentionTotal(await attentionFor(ctx, userId)),

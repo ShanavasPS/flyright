@@ -4,6 +4,8 @@ import { internal } from './_generated/api';
 
 const crons = cronJobs();
 
+crons.interval('announce available app updates', { minutes: 15 }, internal.appUpdates.check, {});
+
 // Safety net for the live sessions: closes expired ones and re-arms poll
 // chains that died (see liveInternal.closeExpired). Hourly is enough — the
 // chains reschedule themselves in the happy path.

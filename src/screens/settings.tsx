@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../convex/_generated/api';
 
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
+import { appBadgePermission } from '@/services/app-badge';
 import { OptionPicker } from '@/components/option-picker';
 import { Avatar } from '@/components/avatar';
 import { ThemedSwitch } from '@/components/themed-switch';
@@ -263,13 +264,14 @@ function TripVisibilityRow() {
 
 function PushNotificationsRow() {
   const [enabled, setEnabled] = useState(false);
+  const [badgesAllowed, setBadgesAllowed] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     const refresh = () =>
-      getPushEnabled().then((value) => {
-        if (mounted) setEnabled(value);
+      Promise.all([getPushEnabled(), appBadgePermission()]).then(([value, badges]) => {
+        if (mounted) { setEnabled(value); setBadgesAllowed(badges); }
       });
     refresh();
     // State changes behind our back two ways: OneSignal events (the
@@ -321,8 +323,15 @@ function PushNotificationsRow() {
         <View style={styles.rowLabel}>
           <ThemedText>Push notifications</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Disruption alerts and claim reminders for your flights.
+            Flight alerts, People activity, support replies and app updates.
           </ThemedText>
+          {Platform.OS === 'ios' && enabled && !badgesAllowed && (
+            <Pressable accessibilityRole="button" onPress={() => Linking.openSettings()}>
+              <ThemedText type="small" themeColor="tint">
+                App icon badges are off. Enable Badges in system settings.
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
         <ThemedSwitch testID="push-toggle" value={enabled} disabled={busy} onValueChange={onToggle} />
       </View>

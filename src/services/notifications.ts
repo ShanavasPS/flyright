@@ -126,6 +126,17 @@ export function addPushStateListener(onChange: () => void): () => void {
   };
 }
 
+/** Remove a consumed inbox source without clearing travel-day pushes. */
+export function clearPushGroup(group: string) {
+  if (ONESIGNAL_APP_ID) OneSignal.Notifications.removeGroupedNotifications(group);
+}
+
+export function addPushReceivedListener(onChange: () => void): () => void {
+  if (!ONESIGNAL_APP_ID) return () => {};
+  OneSignal.Notifications.addEventListener('foregroundWillDisplay', onChange);
+  return () => OneSignal.Notifications.removeEventListener('foregroundWillDisplay', onChange);
+}
+
 /** Tag the device so OneSignal journeys can segment (e.g. has_open_claim). */
 export function setUserTag(key: string, value: string) {
   if (!ONESIGNAL_APP_ID) return;

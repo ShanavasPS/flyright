@@ -7,6 +7,14 @@ import { v } from 'convex/values';
  * both sides — no parse/format round trips. Deletes are tombstones
  * (`deletedAt`), never row removal, so they propagate across devices. */
 export default defineSchema({
+  appUpdateAnnouncements: defineTable({
+    platform: v.union(v.literal('ios'), v.literal('android')),
+    version: v.string(),
+    idempotencyKey: v.string(),
+    lastAttemptAt: v.number(),
+    sentAt: v.union(v.number(), v.null()),
+    notificationId: v.union(v.string(), v.null()),
+  }).index('by_release', ['platform', 'version']),
   abuseLimits: defineTable({ key: v.string(), count: v.number(), resetAt: v.number() })
     .index('by_key', ['key']).index('by_reset', ['resetAt']),
   uploadTickets: defineTable({

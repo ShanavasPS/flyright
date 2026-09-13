@@ -1,4 +1,4 @@
-import type { ReleaseNote } from '@/constants/release-notes';
+import type { ReleaseNote } from '../constants/release-notes';
 
 /** Compare dotted numeric versions; negative when a < b. */
 export function compareVersions(a: string, b: string): number {

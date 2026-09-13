@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,7 +8,6 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAppVersion } from '@/hooks/use-app-version';
 import { useTheme } from '@/hooks/use-theme';
-import { markUpdateSeen } from '@/services/update-seen';
 
 /** The Settings row that says a newer FlyRight is on the store — the app
  * icon, the version, a red count, like iOS's own Software Update row. Renders
@@ -18,14 +16,6 @@ export function UpdateAvailableCard() {
   const router = useRouter();
   const theme = useTheme();
   const { update } = useAppVersion();
-  // Seen once this row has been on screen: the app icon stops counting the
-  // update (attention-provider), while the row keeps its own count until
-  // the update is installed, like iOS's Software Update row.
-  const focused = useIsFocused();
-  const latest = update?.latest;
-  useEffect(() => {
-    if (focused && latest) markUpdateSeen(latest);
-  }, [focused, latest]);
   if (!update) return null;
 
   return (
