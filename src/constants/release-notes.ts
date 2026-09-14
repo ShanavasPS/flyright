@@ -15,6 +15,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.35',
+    date: '2026-09-14',
+    notes: [
+      'Try live flight tracking before creating an account, with five guest lookups each day.',
+      'When your guest lookups run out, sign in and continue with the flight you already entered.',
+      'Import tickets as a guest too. Flights beyond the daily allowance stay in your journal so no leg is lost.',
+      'Use Siri and Shortcuts on iPhone to open your next flight, boarding pass or Add flight.',
+      'Upcoming trip headers are cleaner and easier to scan.',
+    ],
+  },
+  {
     version: '1.0.34',
     date: '2026-09-14',
     notes: [
