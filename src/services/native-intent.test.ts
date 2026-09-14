@@ -35,6 +35,9 @@ describe.each([true, false])('native intent (initial=%s)', (initial) => {
   it.each([
     'https://getflyright.com/i/invite_123',
     'flyright://journey/journey_123',
+    'flyright://assistant/next-flight',
+    'flyright://assistant/boarding-pass',
+    'flyright://assistant/add-flight',
     '/settings',
     'https://other.godetour.link/hash/i/tok',
   ])('leaves other incoming links unchanged: %s', async (path) => {

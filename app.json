@@ -279,7 +279,8 @@
       ],
       "./plugins/with-pods-uuid-fix.js",
       "./plugins/with-android-theme.js",
-      "./plugins/with-android-no-backup.js"
+      "./plugins/with-android-no-backup.js",
+      "./plugins/with-assistant-actions.js"
     ],
     "experiments": {
       "typedRoutes": true,

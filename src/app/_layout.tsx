@@ -5,6 +5,7 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import { AttentionProvider } from "@/components/attention-provider";
+import { AssistantActionRouter } from "@/components/assistant-action-router";
 import { DeferredLinks } from "@/components/deferred-link-router";
 import { DocumentShareRouter } from "@/components/document-share-router";
 import { IdentitySync } from "@/components/identity-sync";
@@ -61,6 +62,7 @@ function ScreenErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export const unstable_settings = {
+  anchor: '(tabs)',
   screenErrorBoundary: ScreenErrorBoundary,
 };
 
@@ -194,6 +196,7 @@ function RootLayout() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <IdentitySync />
       <NotificationRouter />
+      <AssistantActionRouter />
       <DocumentShareRouter />
       <DeferredLinks>
       <CloudSync>

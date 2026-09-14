@@ -1,0 +1,3 @@
+<AppFunctionAppMetadata xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions"
+  appfn:description="FlyRight is a travel journal with saved flights and boarding passes. These functions return a PendingIntent that the caller must launch to open the requested screen. They do not return flight information or boarding-pass barcodes and do not create bookings. The app resolves the next flight using the active account after opening. Add flight opens a form; the traveller must review and save it."
+  appfn:displayDescription="@string/flyright_assistant_description" />

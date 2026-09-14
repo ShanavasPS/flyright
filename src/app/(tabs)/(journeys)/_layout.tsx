@@ -1,5 +1,9 @@
 import { Stack } from 'expo-router';
 
+// Assistant links can enter this stack directly. Keep My travels underneath
+// the trip so its immersive screen always has a way back.
+export const unstable_settings = { anchor: 'index' };
+
 // Screens this tab pushes live in this nested stack: pushing on the root
 // stack detaches the native tab controller, which resets to the first tab
 // when it re-attaches on pop.

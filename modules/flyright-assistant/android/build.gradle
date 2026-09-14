@@ -1,0 +1,37 @@
+buildscript {
+  dependencies {
+    classpath "com.google.devtools.ksp:symbol-processing-gradle-plugin:${rootProject['kspVersion']}"
+  }
+}
+
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+apply plugin: 'com.google.devtools.ksp'
+
+group = 'expo.modules.flyrightassistant'
+version = '0.1.0'
+
+android {
+  namespace 'expo.modules.flyrightassistant'
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+    consumerProguardFiles 'proguard-rules.pro'
+  }
+}
+
+ksp {
+  arg('appfunctions:aggregateAppFunctions', 'true')
+}
+
+dependencies {
+  // Last release compatible with SDK 57's compileSdk 36 / AGP 8 toolchain.
+  // alpha09+ require compileSdk 37 and AGP 9.1. Upgrade these together with
+  // Expo, migrating to the service-entry-point API introduced in alpha10.
+  implementation 'androidx.appfunctions:appfunctions:1.0.0-alpha08'
+  implementation 'androidx.appfunctions:appfunctions-service:1.0.0-alpha08'
+  ksp 'androidx.appfunctions:appfunctions-compiler:1.0.0-alpha08'
+}
