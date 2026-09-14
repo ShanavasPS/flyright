@@ -8,6 +8,8 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 Before starting, read [the release guide](docs/release-workflow.md) and [the release state](docs/release-state.md). They preserve the release instructions and supporting recipes previously saved only in Claude's private memory. Both Codex and Claude must use and maintain these shared references. Verify current EAS/store state; saved version numbers and review states are historical observations.
 
+**Check physical hardware before choosing test targets.** Run `xcrun devicectl list devices`, `adb devices -l` and `adb mdns services` (use the SDK adb path if needed). Shanavas's paired iPhone 15 Pro is an established test device; use it when reachable. Maestro's lack of physical iPhone support does not prevent Xcode/devicectl from checking the installed version, cold-starting the app and reading crash logs. Run those checks as well as the simulator UI suite, and record their different coverage. See the physical-device recipe in `docs/release-checks.md`. Do not assume hardware is unavailable from a sandbox error or an empty simulator-only tool list.
+
 When the user asks for a release, do ALL of this without being reminded:
 
 1. **Bump the patch version by 1** in `app.json` and `package.json` (1.0.1 → 1.0.2 → 1.0.3 …) before building.

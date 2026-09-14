@@ -50,8 +50,27 @@ Use the existing `.maestro/` feature flows for changed areas: Wallet/PDF/photo i
 
 ## Physical devices and evidence
 
+Discover actual hardware before deciding which tests to run:
+
+```sh
+xcrun devicectl list devices
+~/Library/Android/sdk/platform-tools/adb devices -l
+~/Library/Android/sdk/platform-tools/adb mdns services
+```
+
+Use Shanavas's paired iPhone 15 Pro when reachable: CoreDevice ID `3A998669-73E7-5A25-9A43-52F0CC4FC555`, hardware UDID `00008130-0008642C0204001C`. On 2026-09-14 it was reachable through CoreDevice even though `xctrace` initially said offline and `idevice_id` found no USB/network device. The CoreDevice app/lock queries established actual connectivity. Sandbox errors connecting to CoreDeviceService or starting adb are permission boundaries, not proof that no phone exists; use the permitted host execution path.
+
 [Maestro supports physical Android devices and iOS simulators](https://docs.maestro.dev/get-started/supported-platform). It does not currently provide physical iPhone UI automation. Do not report a simulator run as an iPhone hardware test. The local runner records device type explicitly.
 
-Physical iPhone automation needs a separately configured XCTest/Appium runner with valid development signing. Until that is configured, validate camera scanning, Apple Wallet sharing, push delivery and Live Activities on the actual iPhone and record the observed result. A physical Android phone can run the same Maestro flows once connected through adb. Missing hardware coverage must be recorded; it cannot be replaced by a green simulator report.
+Physical iPhone **UI automation** needs a separately configured XCTest/Appium runner with valid development signing. Basic physical-device startup/crash checks are already possible with `devicectl`; do not skip them because Maestro cannot tap on the phone:
+
+1. Query `device info apps` and `device info lockState` with `--device <CoreDevice-ID>`. Require the intended FlyRight version/build and an unlocked phone. Preserve the existing installation and data.
+2. Record `device info files --domain-type systemCrashLogs --filter 'Name CONTAINS "FlyRight"'` before launching.
+3. Run `device process launch --terminate-existing --payload-url flyright://settings --device <CoreDevice-ID> com.shanavasshaji.flyright`, saving `--json-output <evidence-path>`. Wait at least 30 seconds, then query `device info processes --filter 'processIdentifier == <returned-PID>'` and require that exact launched process to remain alive. Repeat with `flyright://world`.
+4. Read crash-log names again and fail on new FlyRight logs; allow time for reports to appear. Save the commands' JSON results and observation times. Process survival and no new crash log establish only the observed startup window: they do not prove sign-in, image rendering, successful navigation or all feature behavior.
+
+Prefix each subcommand above with `xcrun devicectl`, use `--timeout 20`, and save evidence under `.maestro/out/`. Request visual confirmation or use an available capture/UI runner for screen assertions; do not invent a screenshot result. The installed `idevicescreenshot` could not reach the phone through its CoreDevice wireless tunnel on 2026-09-14. Earlier scanner testing used an EAS ad hoc preview installed with `devicectl device install app`, followed by a launch and physical scanning; it was not a Maestro physical-iPhone flow.
+
+Validate camera scanning, Apple Wallet sharing, push delivery and Live Activities on the actual iPhone when affected, and record the observed result. A physical Android phone can run the same Maestro flows once connected through adb. Missing hardware coverage must be recorded; it cannot be replaced by a green simulator report.
 
 Each device run saves a dated `report.json`, JUnit results, screenshots and failure details under `.maestro/out/release/` (gitignored). Copy useful screenshots/recordings to `~/Downloads` with descriptive release/platform names when sharing verification evidence with the user. Record both platform results, native versions, commit, backend deployment, upgrade-versus-fresh-install coverage and physical-device checks in `docs/release-state.md` before promotion. Re-run after code, native config, backend or candidate changes; historical passing reports do not clear a new candidate.
