@@ -3,6 +3,6 @@
     "block_disposable_email_domains": true
   },
   "auth_attack_protection": {
-    "enumeration_protection": "strict"
+    "enumeration_protection": "bulk"
   }
 }

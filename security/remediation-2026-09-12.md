@@ -2,6 +2,8 @@
 
 All nine review findings have code changes, validated on the personal development Convex backend. The user authorized committing and deploying the production services on 12 September 2026. **The production Convex backend, EAS website/API routes, Clerk protections, and support-mail Worker are deployed and verified.** Updated mobile binaries remain a separate store release.
 
+**Current Clerk setting:** enumeration protection was restored to `bulk` on 14 September 2026 to address the native new-user registration regression described below. The production patch reflects this setting; the 12 September deployment record is historical.
+
 ## Production deployment record
 
 Verified on **12 September 2026 at 15:41 UTC**:
@@ -63,3 +65,15 @@ Local logs are under `/tmp/flyright-security-*`; they are temporary and not a du
 - Existing circle memberships have no reliable record of whether an old token originated from the owner or the faulty trip-follow flow. The patch prevents new promotions and invalidates old tokens; owners should review existing members.
 - The CSP is a tested baseline covering embedding, objects and base URLs. It does not yet enforce a complete script-source allowlist.
 - Provider administrator MFA, billing ceilings/WAF configuration, and handling actual abuse reports still need operational verification. Neither the original review nor these fixes establish that a compromise occurred or that scams are impossible.
+
+## Native registration follow-up — 14 September 2026
+
+The `strict` enumeration setting exposed an incompatibility with Clerk's native combined sign-in/sign-up flow: it starts with sign-in and relies on a missing-account error to transfer to sign-up. Strict protection hides that error, so new email users reached a sign-in verification screen and received the "no account found" notification instead of a registration code. This began with the 12 September configuration change, independently of the later Siri/Gemini work.
+
+A local workaround with separate **Sign in** and **Create account** modes was prepared and tested but never released. After the Clerk rollback restored authentication, the user requested its removal. The native [authentication screen](../src/screens/sign-in.tsx) is restored to its original combined flow, and tests specific to the removed workaround were deleted. Development test evidence from the investigation remains in `.maestro/out/auth-signup-2026-09-14/`.
+
+### Production enumeration rollback — 14 September 2026, 19:58 UTC
+
+At the user's explicit request, changed only `auth_attack_protection.enumeration_protection` from `strict` to `bulk` on FlyRight's production Clerk instance. Clerk's dry-run validation passed, the patch succeeded, and an independent configuration read confirmed `bulk`. Comparing the complete before/after configuration (excluding its version marker) confirmed every other setting was unchanged, including CAPTCHA, PII protection, email-link checks, lockout, disposable-domain blocking and authentication providers.
+
+The saved [production patch](clerk-production.patch.json) now specifies `bulk` so reapplying it does not reintroduce this regression. Bulk retains rate limiting but permits individual account-existence discovery. This configuration rollback requires no Convex deployment or mobile binary update. The user subsequently reported that Google and email authentication worked again. Automated verification of new production accounts was not performed after the rollback; no accounts were created or emails sent by the rollback operation. Private configuration snapshots and the verification report are under `/private/tmp/flyright-clerk-bulk-rollback-2026-09-14/`.
