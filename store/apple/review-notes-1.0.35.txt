@@ -1,0 +1,9 @@
+FlyRight 1.0.35 adds guest flight lookups and iPhone App Shortcuts.
+
+Flight lookups are available without an account. Guests receive five fresh lookups per UTC day, shared by devices on the same network; cached results are free. Once that allowance is used, the app offers the existing sign-in/create-account sheet and keeps the entered flight. Manual journal entries remain available. Guest ticket imports preserve every leg, including legs that cannot receive a live lookup.
+
+The native Clerk authentication screen and the existing Apple, Google and email sign-in methods remain in place. To use the configured reviewer account, enter the demo email, then choose Use another method and Sign in with your password. The existing demo credentials are unchanged.
+
+On iPhone, the Shortcuts app exposes My next flight, Open boarding pass and Add a flight actions for FlyRight. Saved flight and boarding-pass actions use trips already on the device. The app opens the trip with normal back navigation. Upcoming trip headers have also been simplified.
+
+No purchase is required for guest lookup or manual journaling. Existing account and trip data are retained on update.
