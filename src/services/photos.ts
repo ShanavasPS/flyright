@@ -4,13 +4,14 @@
  * or, for photos that arrived through sync, its Convex storage URL. */
 
 import { and, asc, eq, isNull } from 'drizzle-orm';
-import { Directory, File, Paths, UploadType } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 
 import { db } from '@/db/client';
 import { tripPhotos } from '@/db/schema';
 import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import type { RemotePhoto, TripPhotoRow } from '@/services/photo-sync-plan';
+import { resolvePhotoUri, uploadPhotoFile } from '@/services/photo-files';
 
 export type { TripPhotoRow };
 
@@ -43,12 +44,17 @@ export function usePhotos(journeyId: string): TripPhotoRow[] | undefined {
       .orderBy(asc(tripPhotos.createdAt)),
     [journeyId],
   );
-  return data;
+  return data?.map(withCurrentPhotoUri);
 }
 
 /** One photo by id; `loaded` separates "still reading" from "gone". */
 export function usePhoto(id: string) {
-  return useLiveRow(db.select().from(tripPhotos).where(eq(tripPhotos.id, id)), [id]);
+  const result = useLiveRow(db.select().from(tripPhotos).where(eq(tripPhotos.id, id)), [id]);
+  return { ...result, row: result.row ? withCurrentPhotoUri(result.row) : undefined };
+}
+
+function withCurrentPhotoUri(row: TripPhotoRow): TripPhotoRow {
+  return { ...row, uri: resolvePhotoUri(row.uri) };
 }
 
 /** System camera or library UI. Resolves to [] when the traveler cancels.
@@ -116,7 +122,7 @@ export async function importPhotos(
 /** One photo row by id, read once. */
 export async function photoById(id: string): Promise<TripPhotoRow | undefined> {
   const [row] = await db.select().from(tripPhotos).where(eq(tripPhotos.id, id));
-  return row;
+  return row ? withCurrentPhotoUri(row) : undefined;
 }
 
 /** Soft delete: the row stays as a tombstone so the sync removes the stored
@@ -134,7 +140,7 @@ export async function deletePhoto(id: string): Promise<void> {
 function removeLocalFile(uri: string | undefined) {
   if (!uri?.startsWith('file://')) return;
   try {
-    const file = new File(uri);
+    const file = new File(resolvePhotoUri(uri));
     if (file.exists) file.delete();
   } catch {
     // Best effort — a stranded file is harmless.
@@ -155,19 +161,7 @@ export {
 
 /** POSTs the file's bytes to a Convex upload URL and returns the storageId. */
 export async function uploadPhoto(row: TripPhotoRow, uploadUrl: string): Promise<string> {
-  const file = new File(row.uri);
-  const task = file.createUploadTask(uploadUrl, {
-    httpMethod: 'POST',
-    uploadType: UploadType.BINARY_CONTENT,
-    mimeType: 'image/jpeg',
-    headers: { 'Content-Type': 'image/jpeg' },
-  });
-  const result = await task.uploadAsync();
-  if (result.status < 200 || result.status >= 300) {
-    throw new Error(`Photo upload failed (${result.status})`);
-  }
-  const { storageId } = JSON.parse(result.body) as { storageId: string };
-  return storageId;
+  return uploadPhotoFile(row.uri, uploadUrl);
 }
 
 /** Records the upload without touching updatedAt, so the row's push carries
@@ -198,7 +192,8 @@ export async function applyRemotePhoto(remote: RemotePhoto, userId: string): Pro
     removeLocalFile(existing.uri);
     return;
   }
-  const uri = existing?.uri.startsWith('file://') ? existing.uri : remote.url;
+  const localUri = existing?.uri.startsWith('file://') ? resolvePhotoUri(existing.uri) : null;
+  const uri = localUri && new File(localUri).exists ? localUri : remote.url;
   if (!uri) return; // nothing to show yet — the server has no file for it
   const columns = {
     journeyId: remote.journeyKey,
