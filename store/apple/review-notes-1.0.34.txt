@@ -1,15 +1,15 @@
-FlyRight 1.0.34 — a feature release on top of 1.0.33. No new permissions, no new purchases, no change to the account model, no change to the ATT usage described below. It does add one new app extension, described first.
+FlyRight 1.0.34 — a feature release on top of 1.0.33. No new permissions, no new purchases, no change to the account model or the ATT usage described below. It adds one new app extension, described first.
 
 NEW APP EXTENSION — SHARE EXTENSION (com.shanavasshaji.flyright.expo-sharing-extension):
 
-FlyRight now appears in the system share sheet for travel documents, so a boarding pass can be sent to the app from Wallet, Mail, Files or Photos. The extension accepts only pkpass/pkpasses, PDF, image, file-URL, URL and plain-text attachments (see its activation rule), writes the shared file into the app's App Group container, and hands it to the app's existing import screen. It shows no UI of its own beyond the standard share sheet, makes no network calls, and reads nothing else from the host app. The App Group (group.com.shanavasshaji.flyright.wallet) is used only for that hand-off.
+FlyRight now appears in the share sheet for travel documents, so a boarding pass can be sent from Wallet, Mail, Files or Photos. It accepts only pkpass/pkpasses, PDF, image, file-URL, URL and plain-text attachments (see its activation rule), writes the file into the app's App Group container (group.com.shanavasshaji.flyright.wallet, used only for that hand-off), and hands it to the existing import screen. It shows no UI of its own, makes no network calls, and reads nothing else from the host app.
 
 WHAT CHANGED SINCE 1.0.33:
 
 - Boarding passes kept on a trip: the barcode read from a scanned or imported pass (IATA BCBP, PDF417/Aztec/QR) is stored with the trip and can be shown again at the gate. The pass screen redraws the code from the stored payload, so it works with no network, and raises screen brightness while it is open, the way Wallet does. The traveller can remove a stored pass from that screen.
-- The pass is synced to the traveller's other devices with the rest of the trip, and the seat, sequence and booking reference it carries fill themselves in.
+- The pass syncs to the traveller's other devices with the trip, and the seat, sequence and booking reference it carries fill themselves in.
 - Sharing a picture of a ticket: a screenshot or photo can now be shared into FlyRight everywhere a PDF could be. A pass shared from Wallet attaches to a trip that already exists instead of creating a duplicate.
-- Imports read from a screenshot keep their route when the airline's printed layout is damaged, and an import waits for every leg's lookup before saving.
+- Imports from a screenshot keep their route when the printed layout is damaged, and an import waits for every leg's lookup before saving.
 - Live Activities for followed trips: a traveller can allow a specific follower to see their trip on that follower's Lock Screen. It is off by default and the traveller turns it on per person.
 - The World map opens on the whole world again, and trip photos no longer fail to upload after an app update.
 
