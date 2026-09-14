@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.34',
+    date: '2026-09-14',
+    notes: [
+      'Your boarding pass now lives on the trip: scan it or import the ticket once, and the barcode is on the trip page — full screen at the gate, brightness up, no signal needed.',
+      'The pass follows you to your other devices, and the seat, sequence and booking reference it carries fill themselves in.',
+      'Share a screenshot or a photo of a ticket straight to FlyRight — pictures now work everywhere PDFs did — and a pass shared from Apple Wallet lands on the trip you already have instead of making a second one.',
+      'Tickets read from a screenshot keep their route when the airline’s layout is damaged, and an import waits for every leg before it saves.',
+      'A trip you follow can now run on your Lock Screen, if the traveller turns it on for you.',
+      'The World map opens on the whole world again, and trip photos no longer fail to upload after an app update.',
+    ],
+  },
+  {
     version: '1.0.33',
     date: '2026-09-13',
     notes: [
