@@ -95,7 +95,11 @@
     "typecheck": "tsc --noEmit",
     "sync-versions": "node ./scripts/sync-build-numbers.mjs",
     "build-airport-timezones": "node ./scripts/build-airport-timezones.mjs",
-    "test:security": "node scripts/security-regressions.cjs"
+    "test:security": "node scripts/security-regressions.cjs",
+    "release:backend": "node scripts/check-backend-contract.mjs --prod",
+    "release:deploy-backend": "convex deploy -y && convex dev --once && npm run release:backend && node scripts/check-backend-contract.mjs --dev",
+    "release:preflight": "npm run typecheck && node --test scripts/check-backend-contract.test.mjs && jest --runInBand --watchman=false && npm run release:backend",
+    "release:devices": "node scripts/release-device-check.mjs"
   },
   "jest": {
     "preset": "jest-expo",

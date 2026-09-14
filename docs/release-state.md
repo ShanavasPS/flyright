@@ -2,6 +2,22 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-14 — release regression checks added and exercised
+
+No new store build, submission or backend deployment was performed for this verification. The checks ran from the working tree based on `1e70dae`, including the new, then-uncommitted test tooling.
+
+| Check | Observed result |
+| --- | --- |
+| Preflight | TypeScript, 742 Jest tests and 5 backend-check regression tests passed; command exited zero |
+| Live backend inventory | All 57 client API references were present/public on both production and development, including `followerActivities:mine` |
+| iOS native regression | iPhone 16 Pro simulator on iOS 18.3, `1.0.34 (51)`, passed; simulator rebuilt from build 49 without clearing app data |
+| Android native regression | Emulator `emulator-5554`, `1.0.34 (48)`, passed |
+| Native cases | Old-container file path, HTTP failure, empty/missing file and successful retry; each platform produced exactly the three expected requests with matching bytes |
+| Evidence | `.maestro/out/release/2026-09-14T08-52-02.125Z/` contains the passing report, JUnit results and both screenshots |
+| Coverage still required before the next promotion | Production-configured candidate smoke with a dedicated signed-in account and trips/photos retained across releases; physical-device checks for affected native features |
+
+The native probe simulates an old photo path and uses real native file/network APIs; it is not a physical-device run or a complete store upgrade test. Earlier runs failed on unavailable Metro/IPv4 access and remain recorded as failures. See [release-checks.md](release-checks.md) for the required gates.
+
 ## 2026-09-14 — 1.0.34 released (iOS in expedited review, Android live)
 
 | Item | Result |

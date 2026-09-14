@@ -1,0 +1,19 @@
+# Exercises real expo-file-system + expo/fetch after an app-container move,
+# missing/empty files, HTTP failure and retry. Development binaries only.
+# Start through scripts/release-device-check.mjs: it runs the loopback upload
+# receiver and checks actual requests. No trip rows or cloud data are changed.
+# This flow preserves state; never add clearState or clearKeychain.
+appId: com.shanavasshaji.flyright
+tags:
+  - release
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://dev/release-check"
+- extendedWaitUntil:
+    visible: "Native photo upgrade checks passed"
+    timeout: 30000
+- takeScreenshot: ${SHOTS}/native-photo-upgrade

@@ -1,0 +1,55 @@
+# Candidate binary smoke check on a dedicated, already signed-in test device.
+# Run via scripts/release-device-check.mjs, which verifies native version/build.
+# Retain the test account's trips/photos across candidate installations to cover
+# upgrades. No clearState, reinstall, sign-out, purchase or support-message send.
+# Requires ACCOUNT_EMAIL and JOURNEY_ID for a retained test trip with photos.
+appId: com.shanavasshaji.flyright
+tags:
+  - release
+---
+- repeat:
+    times: 2
+    commands:
+      - launchApp:
+          clearState: false
+      - extendedWaitUntil:
+          visible: "My travels"
+          timeout: 90000
+      - openLink: "flyright://settings"
+      - extendedWaitUntil:
+          visible: ".*${ACCOUNT_EMAIL}.*"
+          timeout: 30000
+      - assertNotVisible: "Sign in or create account"
+      - assertNotVisible: "Something went wrong"
+      - openLink: "flyright://people"
+      - extendedWaitUntil:
+          visible: "Following.*|Nobody's following you yet"
+          timeout: 30000
+      - assertNotVisible: ".*Could not find public function.*"
+      - openLink: "flyright:///journey/${JOURNEY_ID}"
+      - scrollUntilVisible:
+          element: "Trip log"
+          direction: DOWN
+          timeout: 30000
+      - assertNotVisible: "Something went wrong"
+      - scrollUntilVisible:
+          element: "Trip photo"
+          direction: DOWN
+          timeout: 15000
+      - tapOn:
+          text: "Trip photo"
+          index: 0
+      - extendedWaitUntil:
+          visible: "Close"
+          timeout: 10000
+      - assertVisible: "Trip photo"
+      - assertNotVisible: "Couldn't load this photo|Photo unavailable"
+      - takeScreenshot: ${SHOTS}/retained-trip-photo
+      - tapOn: "Close"
+      - openLink: "flyright://world"
+      - extendedWaitUntil:
+          visible:
+            id: "world-map-recenter"
+          timeout: 30000
+      - assertNotVisible: "Something went wrong"
+- takeScreenshot: ${SHOTS}/signed-in-cold-start

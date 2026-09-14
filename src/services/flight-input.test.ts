@@ -1,5 +1,10 @@
 import { classifyFlightInput } from './flight-input';
 
+// This classifier uses the real normalizer but never signs in or fetches.
+// Loading Clerk's native SDK here leaves a MessagePort open and hangs the
+// release preflight after Jest has finished all assertions.
+jest.mock('@clerk/expo', () => ({ getClerkInstance: jest.fn() }));
+
 describe('classifyFlightInput', () => {
   it('recognises flight designators and names known airlines', () => {
     expect(classifyFlightInput('ay 1331')).toEqual({

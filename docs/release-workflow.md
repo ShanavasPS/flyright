@@ -6,6 +6,7 @@ The request authorizes versioning, both production builds/uploads, hosting deplo
 
 ## Before building
 
+- Follow [release-checks.md](release-checks.md): deploy both backends, pass the preflight, and run the native photo regressions on iOS and Android. Before App Review/Play production promotion, pass the signed-in candidate checks using production-configured release binaries with retained test data. Failed or missing coverage blocks promotion.
 - Inspect `git status`, recent commits, `app.json`, `package.json`, and current EAS/store state. Resume already scheduled work when continuing a release; do not bump or schedule duplicate builds merely because a session restarted.
 - Preserve unfinished work. If a release must exclude unrelated changes, use an isolated release worktree containing the complete intended release. Modified tracked files that import omitted untracked files can produce a broken EAS archive. Stage the exact version hunks so a bump does not accidentally include unrelated dependencies without their lockfile changes. `npm ci --include=dev --dry-run` in the release worktree caught that failure previously.
 - Read the exact Expo SDK 57 documentation required by AGENTS.md before writing code. Use the global `eas` binary for release commands.
@@ -46,7 +47,7 @@ Verify the served entry-JS hash at `https://flyright.expo.app` matches the local
 
 `/api/app-version` reads public App Store and Play listings and returns notes only for versions the stores serve. The older iTunes lookup/Play-edit polling recipes are obsolete: iTunes returned 403 from Hosting, and opening Play edits interfered with uploads. Check the current route before troubleshooting.
 
-Deploy pending backend changes needed by the release with `npx convex deploy -y`; generating types alone does not deploy functions. As last recorded on 2026-09-13, `APP_UPDATE_PUSH_ENABLED` was unset on production and enabling it was reserved for the user's decision. Do not treat a build request as enabling that switch: it announces the current live version to eligible older installs. See [app-icon-badges.md](app-icon-badges.md).
+Run `npm run release:deploy-backend` before every release build: it deploys production and development, then checks the function references used by the app against both live deployments. Generating types alone does not deploy functions. Run `npm run release:preflight` afterwards. As last recorded on 2026-09-13, `APP_UPDATE_PUSH_ENABLED` was unset on production and enabling it was reserved for the user's decision. Do not treat a build request as enabling that switch: it announces the current live version to eligible older installs. See [app-icon-badges.md](app-icon-badges.md).
 
 ## Store completion
 
