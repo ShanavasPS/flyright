@@ -1,0 +1,96 @@
+# Cold starts and core screens on an existing native installation.
+# Works on physical Android phones and iOS simulators. Keep existing app data,
+# account and permissions. Complete onboarding before running; no seed.
+# Verify the installed version/build separately and review the screenshots.
+# ACCOUNT_STATE must be signed-in or signed-out. For signed-in checks,
+# ACCOUNT_EMAIL is a regex: escape dots/plus signs in the expected email.
+# Run: maestro --device <serial-or-sim-udid> test \
+#   -e ACCOUNT_STATE=signed-out -e SHOTS=<output-directory> \
+#   .maestro/release-core.yaml
+# Add -e ACCOUNT_EMAIL='<escaped-email>' when ACCOUNT_STATE=signed-in.
+# Android uses tab taps: legacy FlyRight installs can claim the same URL scheme.
+# This core smoke does not replace release-signed-in.yaml's retained-photo gate.
+appId: com.shanavasshaji.flyright
+tags:
+  - release
+---
+- assertTrue: ${ACCOUNT_STATE === 'signed-in' || ACCOUNT_STATE === 'signed-out'}
+- repeat:
+    times: 2
+    commands:
+      - launchApp:
+          clearState: false
+          permissions: {}
+      - extendedWaitUntil:
+          visible: "My travels"
+          timeout: 90000
+      - assertNotVisible: "Something went wrong"
+      - takeScreenshot: ${SHOTS}/travels
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn: "Settings"
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - openLink: "flyright://settings"
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-in'}
+          commands:
+            - extendedWaitUntil:
+                visible: ".*${ACCOUNT_EMAIL}.*"
+                timeout: 30000
+            - assertNotVisible: "Sign in or create account"
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-out'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Sign in or create account"
+                timeout: 30000
+      - assertNotVisible: "Something went wrong"
+      - takeScreenshot: ${SHOTS}/settings
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn: "People"
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - openLink: "flyright://people"
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-in'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Following.*|Nobody's following you yet"
+                timeout: 30000
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-out'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Sign in to invite"
+                timeout: 30000
+      - assertNotVisible: ".*Could not find public function.*"
+      - takeScreenshot: ${SHOTS}/people
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn: "World"
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - openLink: "flyright://world"
+      - extendedWaitUntil:
+          visible: "Showing .*|Your world map awaits"
+          timeout: 30000
+      - assertNotVisible: "Something went wrong"
+      - takeScreenshot: ${SHOTS}/world

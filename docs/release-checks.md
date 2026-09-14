@@ -2,6 +2,13 @@
 
 These checks target the 1.0.33 photo-upload crash and the undeployed `followerActivities:mine` query found during the 1.0.34 release. They run at different stages because a clean dev launch cannot establish that an existing signed-in install works after an update. They reduce release risk; they do not prove every feature on every device works.
 
+## Commands that trigger these checks
+
+- **"Submit builds" / "submit new builds" / "run new builds":** execute the full release workflow, including checks on the new candidate on the physical Pixel 9a and iPhone 15 Pro before App Review/Play production promotion. Discover hardware at the start; an old version already installed on a phone does not clear the new candidate. Missing physical coverage must be resolved or explicitly reported before release completion.
+- **"Test on physical devices":** execute the physical Android and iPhone procedures below as a standalone task, including the read-only production backend check. Use current installations or already available matching updates and preserve their data. Do not start a new release, version bump, cloud build or backend deployment merely because this testing command was used.
+
+Reuse existing pairing. If connectivity or unlocking requires the user, request only that missing input and continue checks on the other available phone. Report Android UI assertions, iPhone tab/screenshot and process/crash observations, signed-in coverage and photo/upgrade coverage separately. These phrases are shared agent instructions in `AGENTS.md`, not terminal commands the user needs to run.
+
 ## Before building
 
 ```sh
@@ -60,17 +67,36 @@ xcrun devicectl list devices
 
 Use Shanavas's paired iPhone 15 Pro when reachable: CoreDevice ID `3A998669-73E7-5A25-9A43-52F0CC4FC555`, hardware UDID `00008130-0008642C0204001C`. On 2026-09-14 it was reachable through CoreDevice even though `xctrace` initially said offline and `idevice_id` found no USB/network device. The CoreDevice app/lock queries established actual connectivity. Sandbox errors connecting to CoreDeviceService or starting adb are permission boundaries, not proof that no phone exists; use the permitted host execution path.
 
+**Established wireless UI route:** keep the paired phone unlocked on the Mac's Wi-Fi with USB unplugged, query `device info lockState --device Shanavass-iPhone.coredevice.local`, and require `passcodeRequired: false`. Device details must report `transportType: localNetwork` and `tunnelState: connected` before calling a run wireless. The native five-tab XCTest suite passed this way on 2026-09-14 with **NordLayer still connected**. An earlier USB route timed out through the VPN interface; retrying wirelessly worked without a VPN pause. Save the actual connection state with the result.
+
 [Maestro supports physical Android devices and iOS simulators](https://docs.maestro.dev/get-started/supported-platform). It does not currently provide physical iPhone UI automation. Do not report a simulator run as an iPhone hardware test. The local runner records device type explicitly.
 
-Physical iPhone **UI automation** needs a separately configured XCTest/Appium runner with valid development signing. Basic physical-device startup/crash checks are already possible with `devicectl`; do not skip them because Maestro cannot tap on the phone:
+Use **Apple's native XCTest** for physical iPhone UI checks; the user does not want Appium or other third-party iPhone automation tools. The standalone suite and repeatable commands are in [tests/physical-ios](../tests/physical-ios/README.md). The helper builds separately and targets the installed FlyRight app. Keep these `devicectl` startup/crash checks as well:
 
 1. Query `device info apps` and `device info lockState` with `--device <CoreDevice-ID>`. Require the intended FlyRight version/build and an unlocked phone. Preserve the existing installation and data.
 2. Record `device info files --domain-type systemCrashLogs --filter 'Name CONTAINS "FlyRight"'` before launching.
 3. Run `device process launch --terminate-existing --payload-url flyright://settings --device <CoreDevice-ID> com.shanavasshaji.flyright`, saving `--json-output <evidence-path>`. Wait at least 30 seconds, then query `device info processes --filter 'processIdentifier == <returned-PID>'` and require that exact launched process to remain alive. Repeat with `flyright://world`.
 4. Read crash-log names again and fail on new FlyRight logs; allow time for reports to appear. Save the commands' JSON results and observation times. Process survival and no new crash log establish only the observed startup window: they do not prove sign-in, image rendering, successful navigation or all feature behavior.
 
-Prefix each subcommand above with `xcrun devicectl`, use `--timeout 20`, and save evidence under `.maestro/out/`. Request visual confirmation or use an available capture/UI runner for screen assertions; do not invent a screenshot result. The installed `idevicescreenshot` could not reach the phone through its CoreDevice wireless tunnel on 2026-09-14. Earlier scanner testing used an EAS ad hoc preview installed with `devicectl device install app`, followed by a launch and physical scanning; it was not a Maestro physical-iPhone flow.
+Prefix each subcommand above with `xcrun devicectl`, use `--timeout 20`, and save evidence under `.maestro/out/`. A cached device listing or partial details response does not establish a working connection: require successful live queries.
 
-Validate camera scanning, Apple Wallet sharing, push delivery and Live Activities on the actual iPhone when affected, and record the observed result. A physical Android phone can run the same Maestro flows once connected through adb. Missing hardware coverage must be recorded; it cannot be replaced by a green simulator report.
+5. Run the native XCTest tab suite on the **physical hardware UDID**. On each of two cold starts, tap **My travels, World, People, Claims and Settings**, assert selected tabs and loaded content, check for visible errors, and save each screen. Claims is required even though the earlier Maestro core flow covers only the other four tabs.
+6. Export XCTest attachments and inspect all five tab screenshots, including actual map rendering and retained trip content. Save the result bundle, images and before/after crash results. Record account state and the exact installed binary. A built/signed helper is not a passed UI run; connectivity, unlock, UI Automation or signing failures must be reported as blocked checks. Never claim screenshots or taps from a deep-link/process-only run.
+
+The installed `idevicescreenshot` could not reach the phone through its CoreDevice wireless tunnel on 2026-09-14; XCTest provides its own capture API. Earlier scanner testing used an EAS ad hoc preview installed with `devicectl device install app`, followed by a launch and physical scanning; it was not a Maestro physical-iPhone flow. These tab checks do not exercise every action within each screen or replace the retained-photo candidate gate.
+
+Validate camera scanning, Apple Wallet sharing, push delivery and Live Activities on the actual iPhone when affected, and record the observed result. A physical Android phone can run Maestro once connected through adb. Shanavas's **Pixel 9a** was connected on 2026-09-14 with `adb connect 192.168.0.55:36465`; the Mac was already paired. Wireless addresses/ports can change, so verify discovery or request the current connection address rather than treating this endpoint as permanent. `ro.product.device=tegu` identifies this handset; `emulator-5554` is a separate virtual Pixel.
+
+For existing installations, `.maestro/release-core.yaml` runs two cold starts and My travels, Settings, People and World. Pass `ACCOUNT_STATE=signed-in` plus an escaped `ACCOUNT_EMAIL` regex, or explicitly use `ACCOUNT_STATE=signed-out`. It preserves app data and permissions. Android navigation uses tab taps because the Pixel also had a legacy `com.sshanavas.flyright` installed, which claims the same `flyright://` scheme and raises a chooser when opening links. Do not remove the legacy installation or count that chooser as an app crash merely to make a test pass.
+
+```sh
+~/.maestro/bin/maestro --device <physical-adb-serial> test \
+  --format JUNIT --output <evidence-directory>/results.xml \
+  --debug-output <evidence-directory>/maestro \
+  -e ACCOUNT_STATE=signed-out -e SHOTS=<absolute-evidence-directory> \
+  .maestro/release-core.yaml
+```
+
+Check installed versions and production configuration separately, compare pre/post-update trip evidence and Android crash/exit records, and inspect screenshots. A signed-out core pass does not satisfy the signed-in/retained-photo candidate gate. If extending the screen timeout to keep physical-device tests visible, record and restore its original value afterwards. Missing hardware coverage must be recorded; it cannot be replaced by a green simulator report.
 
 Each device run saves a dated `report.json`, JUnit results, screenshots and failure details under `.maestro/out/release/` (gitignored). Copy useful screenshots/recordings to `~/Downloads` with descriptive release/platform names when sharing verification evidence with the user. Record both platform results, native versions, commit, backend deployment, upgrade-versus-fresh-install coverage and physical-device checks in `docs/release-state.md` before promotion. Re-run after code, native config, backend or candidate changes; historical passing reports do not clear a new candidate.

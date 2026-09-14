@@ -2,6 +2,46 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-14 — physical iPhone wireless five-tab UI check passed, 11:34–11:37 UTC
+
+Apple XCTest **passed on Shanavas's physical iPhone 15 Pro, iOS 26.0.1, FlyRight 1.0.34 (51)**. The single test exercises two cold starts, each with a 30-second startup observation, and actually taps **My travels, World, People, Claims and Settings** on each pass before returning to My travels. It completed in **123.355 seconds with zero failures**. USB was disconnected; CoreDevice reported `localNetwork` before and after. **NordLayer remained connected and unchanged.** No Appium or third-party iPhone automation was used.
+
+Reviewed the five second-pass screenshots plus the first-pass trip list. My travels retained its **24 trips / 107k km / 8 countries** summary and trip cards across the two starts. World rendered Apple Maps tiles, routes and airport markers. People loaded the existing signed-in circle and trip cards. Claims rendered its empty state. Settings showed the existing signed-in account and settings. No app data, account, permission or setting was cleared/changed by the test. Normal app effects from opening People, such as marking updates seen, still apply.
+
+The eight previous FlyRight crash-log names were unchanged: **no new FlyRight crash report** appeared. The second launched process, PID 8998, remained alive in the post-test query. App version/build stayed **1.0.34 (51)**. No app reinstall or store/backend deployment occurred.
+
+Evidence: `.maestro/out/physical-ios-wireless-2026-09-14T11-31-59Z/` contains the passing `results.xcresult`, `test-summary.json`, test log, all ten tab screenshots and UI hierarchies, final-state capture, before/after device/app/crash metadata, VPN status and scoped `report.json`. Reviewed second-pass screenshots were copied to Downloads as `FlyRight-1.0.34-physical-iPhone-15-Pro-wireless-<screen>-2026-09-14.png`.
+
+This establishes **signed-in physical iPhone tab/navigation/rendering smoke coverage**. It does not clear the separate retained-photo upgrade/upload regression, every action inside each tab, or camera/Wallet/purchase/push/Live Activity checks. The standalone signed-out branch and independent inspection of bundled production configuration were not exercised in this run. `fullReleaseGatePassed` remains false for those broader requirements.
+
+The repeatable Apple-only commands are in [tests/physical-ios](../tests/physical-ios/README.md), and the check is included in both release requests and **"test on physical devices"**. Prefer the established wireless route when USB hits the tunnel error below; a VPN pause is not inherently required.
+
+## 2026-09-14 — native Apple iPhone tab suite built; initial device run blocked
+
+Added `tests/physical-ios`, a standalone Apple XCTest UI suite targeting the installed FlyRight bundle. It taps **all five tabs — My travels, World, People, Claims and Settings** across two cold starts, asserts selected tabs/loaded content and absence of common errors, and attaches screenshots and UI hierarchies. The saved release and "test on physical devices" steps now require this tab check and visual review. No Appium or other third-party iPhone automation tool was installed.
+
+The helper **built and signed successfully** with Xcode 26.6, the existing Apple Development identity and the team's existing Xcode-managed wildcard provisioning profile. Initial manual profile selection failed because this profile requires automatic signing; the project now uses automatic selection. No new certificate, Apple login or provisioning mutation was needed.
+
+**The initial physical tab attempt was blocked before execution.** Live CoreDevice lock queries failed with `RemotePairingError` / tunnel connection errors, even while discovery listed the phone as available. Xcode's physical-device run exited 70 before executing tests: "Shanavas's iPhone may need to be unlocked to recover from previously reported preparation errors." That attempt produced no tab taps or UI screenshots and could not freshly verify the installed version. The later wireless run recorded above resolved this blocker and passed; these failed-attempt logs remain as diagnostic evidence.
+
+The read-only production backend inventory passed again for all **57** client functions. Evidence: `.maestro/out/physical-ios-tabs-2026-09-14/` contains both build logs, the signed helper, attempted XCTest result bundle, device-query evidence, failed test log and scoped `report.json`. Signed-in retained-photo upgrade coverage remains pending separately.
+
+Follow-up after the user unlocked and connected the phone: Apple USB discovery confirmed the exact physical UDID, and Xcode listed it online. Live CoreDevice queries still failed after restarting the current user's CoreDevice service and refreshing the existing pairing. `remotepairingd` logs showed connection timeouts through **utun4**, verified by `scutil --nc status` as the active **NordLayer NordLynx** VPN interface. The follow-up evidence directory is `.maestro/out/physical-ios-tabs-2026-09-14T11-23-02Z/`.
+
+**Wireless recovery, with NordLayer unchanged:** after USB was unplugged, queries targeting `Shanavass-iPhone.coredevice.local` succeeded. CoreDevice reported `transportType: localNetwork`, `tunnelState: connected` and a fresh connection at **11:33 UTC**. The installed app was freshly verified as **1.0.34 (51)** and the crash baseline was read. No VPN setting was changed. Evidence is under `.maestro/out/physical-ios-wireless-2026-09-14T11-31-59Z/`, including the subsequent passing XCTest run described above.
+
+## 2026-09-14 — physical Pixel 9a upgrade and UI verification
+
+Connected Shanavas's **Google Pixel 9a on Android 17** using the provided wireless adb address. It initially had **1.0.33 (47)** and was signed out, with nine local trips. Updated through its **Google Play beta listing** to **1.0.34 (48)** without uninstalling or clearing data. Inspection of the installed APK confirmed a non-debuggable build with production Convex/Clerk configuration; the production backend inventory again passed all 57 client references.
+
+The new `.maestro/release-core.yaml` passed two cold starts and My travels, Settings, People and World on the physical phone (45 seconds). Reviewed the screenshots, including the rendered Google map. Before/after UI evidence retained the **9 trips / 40,001 km / 6 countries** summary and the visible AS2205 trip. No new FlyRight crash-buffer entries appeared; new exit records contained only the test's deliberate force stops and the Play package update. Runtime permission grants were unchanged, and the temporary screen timeout was restored to **30 seconds**.
+
+Evidence: `.maestro/out/physical-android-2026-09-14/` contains the report, APK configuration check, upgrade screenshots, before/after UI and crash records, and passing `retry/results.xml`. Screenshots were also copied to Downloads as `FlyRight-1.0.34-physical-Pixel-9a-<screen>-2026-09-14.png`.
+
+The first Maestro run failed on Android's app chooser: legacy `com.sshanavas.flyright` also claims the `flyright://` scheme. That failed result remains recorded. The reusable flow now launches the current package directly and uses Android tab taps, preserving both installations. Its signed-in branch also passed on the existing iOS simulator development account (30 seconds; `.maestro/out/release-core-ios-2026-09-14/`). The candidate flow's World assertion was corrected to check its period selector; Recenter is intentionally hidden until a pan.
+
+**Coverage limit:** the Pixel remained signed out throughout. This is a real Play upgrade/core-UI pass with retained local trip evidence, not a signed-in production/photo-sync pass. The complete signed-in retained-photo candidate gate remains required for the next release.
+
 ## 2026-09-14 — physical iPhone startup verification, 09:06–09:09 UTC
 
 Shanavas's paired **iPhone 15 Pro** was reachable through CoreDevice and already had **1.0.34 (51)** installed. No reinstall or data clearing was needed. Two cold starts requested the Settings and World deep links; their exact launched processes were still alive after **44 seconds** and **73 seconds**, respectively. The eight pre-existing FlyRight crash-log names were unchanged after testing: **no new FlyRight crash report** appeared during the observation. The read-only production backend check again verified all **57** referenced public functions.

@@ -48,8 +48,8 @@ tags:
       - tapOn: "Close"
       - openLink: "flyright://world"
       - extendedWaitUntil:
-          visible:
-            id: "world-map-recenter"
+          # Recenter is deliberately hidden until the map has been panned.
+          visible: "Showing .*"
           timeout: 30000
       - assertNotVisible: "Something went wrong"
 - takeScreenshot: ${SHOTS}/signed-in-cold-start

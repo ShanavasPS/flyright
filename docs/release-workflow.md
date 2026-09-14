@@ -4,6 +4,10 @@ This is the shared operational reference for the full release flow in [AGENTS.md
 
 The request authorizes versioning, both production builds/uploads, hosting deployment, local dev rebuilds, store notes/screenshots, App Store review submission, Play production promotion, and commit/push. Run the workflow through to its verified endpoints without intermediate confirmation. Follow an explicitly narrower user request when given.
 
+Every release request includes physical checks on Shanavas's Pixel 9a and iPhone 15 Pro using the new candidate before store promotion. The separate phrase **"test on physical devices"** runs those device checks without starting a release. Follow the exact scope, connection recipes and coverage distinctions in [release-checks.md](release-checks.md) and `AGENTS.md`.
+
+For the physical iPhone, use Apple's `devicectl` and the native [XCTest tab suite](../tests/physical-ios/README.md), with no Appium or third-party iPhone automation. Include actual taps and reviewed screenshots for My travels, World, People, Claims and Settings. Report a blocked device/UI run explicitly; building the test helper or surviving deep-link launches does not clear the tab check.
+
 ## Before building
 
 - Follow [release-checks.md](release-checks.md): deploy both backends, pass the preflight, and run the native photo regressions on iOS and Android. Before App Review/Play production promotion, pass the signed-in candidate checks using production-configured release binaries with retained test data. Failed or missing coverage blocks promotion.
