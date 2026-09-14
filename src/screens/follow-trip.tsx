@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/expo';
-import { useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -11,6 +11,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { AirlineLogo } from '@/components/airline-logo';
 import { AppHandoff } from '@/components/app-handoff';
 import { Card } from '@/components/card';
+import { FollowerActivityControl } from '@/components/follower-activity-control';
 import { PrimaryButton } from '@/components/primary-button';
 import { RouteLeg } from '@/components/route-leg';
 import { ThemedText } from '@/components/themed-text';
@@ -35,10 +36,14 @@ import {
 /** The public "follow this trip" page behind getflyright.com/t/<token> —
  * reactive on web for anyone, and the in-app follower view with a Follow
  * button when signed in. */
-export function FollowTrip({ token }: { token: string }) {
+export function FollowTrip({ token, sessionId }: { token?: string; sessionId?: Id<'liveSessions'> }) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
-  const result = useQuery(api.live.byToken, { token });
+  const { isAuthenticated } = useConvexAuth();
+  const tokenResult = useQuery(api.live.byToken, token ? { token } : 'skip');
+  const followedResult = useQuery(api.live.byFollow, sessionId && isAuthenticated ? { sessionId } : 'skip');
+  const result = sessionId ? followedResult : tokenResult;
+  const tripPath = sessionId ? `/following/${sessionId}` : `/t/${token}`;
   const follow = useMutation(api.live.follow);
   const react = useMutation(api.updates.react);
   const now = useNow();
@@ -51,6 +56,7 @@ export function FollowTrip({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
 
   const onFollow = async () => {
+    if (!token) return;
     setBusy(true);
     try {
       const result = await follow({ token });
@@ -72,7 +78,9 @@ export function FollowTrip({ token }: { token: string }) {
   };
 
   let body: React.ReactNode;
-  if (result === undefined) {
+  if (sessionId && isSignedIn === false) {
+    body = <PrimaryButton label="Sign in to view this trip" onPress={() => router.push({ pathname: '/sign-in', params: { next: tripPath } })} />;
+  } else if (result === undefined) {
     body = <ActivityIndicator style={styles.spinner} />;
   } else if ('gone' in result) {
     body = (
@@ -101,7 +109,7 @@ export function FollowTrip({ token }: { token: string }) {
           )
         ) : Platform.OS === 'web' ? (
           <AppHandoff
-            path={`/t/${token}`}
+            path={tripPath}
             title="Follow along in FlyRight"
             blurb={`Follow ${who}'s trips and get a heads-up the day before each one.`}
             openLabel="Open in FlyRight"
@@ -109,7 +117,7 @@ export function FollowTrip({ token }: { token: string }) {
         ) : (
           <PrimaryButton
             label="Sign in to follow"
-            onPress={() => router.push({ pathname: '/sign-in', params: { next: `/t/${token}` } })}
+            onPress={() => router.push({ pathname: '/sign-in', params: { next: tripPath } })}
           />
         )}
       </Card>
@@ -164,6 +172,7 @@ export function FollowTrip({ token }: { token: string }) {
         />
 
         <TravelDayTimeline journey={journey} state={state} facts={facts} plan={plan} readOnly />
+        <FollowerActivityControl sessionId={session.sessionId} />
 
         {/* The traveller's own words and pictures from the trip. The heart
             needs an account (and a follow); on the open web page it reads
@@ -225,7 +234,7 @@ export function FollowTrip({ token }: { token: string }) {
           )
         ) : Platform.OS === 'web' ? (
           <AppHandoff
-            path={`/t/${token}`}
+            path={tripPath}
             title="Follow along in FlyRight"
             blurb={`Get a push the moment ${who} is through security, on board, and landed.`}
             openLabel="Open this trip"
@@ -233,7 +242,7 @@ export function FollowTrip({ token }: { token: string }) {
         ) : (
           <PrimaryButton
             label="Sign in to follow"
-            onPress={() => router.push({ pathname: '/sign-in', params: { next: `/t/${token}` } })}
+            onPress={() => router.push({ pathname: '/sign-in', params: { next: tripPath } })}
           />
         )}
       </>

@@ -1,5 +1,6 @@
 import { limit, DAY } from './abuse';
 import { safeAvatar } from './profileShared';
+import { deleteFollow } from './followerActivityHelpers';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
@@ -141,7 +142,7 @@ export async function hideSessionsFromCircle(ctx: MutationCtx, userId: string, n
       .withIndex('by_session', (q) => q.eq('sessionId', session._id))
       .collect();
     for (const f of follows) {
-      if (!keep.has(f.followerId)) await ctx.db.delete(f._id);
+      if (!keep.has(f.followerId)) await deleteFollow(ctx, f);
     }
   }
 }
@@ -170,7 +171,7 @@ export async function syncCloseAccess(ctx: MutationCtx, ownerId: string, memberI
         q.eq('sessionId', session._id).eq('followerId', memberId),
       )
       .unique();
-    if (row) await ctx.db.delete(row._id);
+    if (row) await deleteFollow(ctx, row);
   }
   if (close) await armHeadsUpsForOwner(ctx, ownerId);
 }
@@ -263,7 +264,7 @@ export async function severCircle(ctx: MutationCtx, ownerId: string, memberId: s
     .withIndex('by_follower', (q) => q.eq('followerId', memberId))
     .collect();
   for (const f of follows) {
-    if (f.ownerId === ownerId) await ctx.db.delete(f._id);
+    if (f.ownerId === ownerId) await deleteFollow(ctx, f);
   }
 }
 

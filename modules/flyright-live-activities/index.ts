@@ -11,6 +11,7 @@ import { requireOptionalNativeModule, type NativeModule } from 'expo';
 declare class LiveActivitiesModule extends NativeModule {
   listActivityIds(): Promise<string[]>;
   endActivities(except: string[]): Promise<number>;
+  endFollowerActivities(except: string[]): Promise<number>;
 }
 
 const native = requireOptionalNativeModule<LiveActivitiesModule>('FlyRightLiveActivities');
@@ -23,8 +24,14 @@ export function listLiveActivityIds(): Promise<string[] | null> {
   return native?.listActivityIds() ?? Promise.resolve(null);
 }
 
-/** End every activity of ours except the ids in `keep`. Resolves with how
- * many were ended. */
+/** End traveller activities except the ids in `keep`. Follower activities
+ * have a separate authenticated cleanup path. Resolves with how many ended. */
 export function endOrphanLiveActivities(keep: string[]): Promise<number> {
   return native?.endActivities(keep) ?? Promise.resolve(0);
+}
+
+export const supportsFollowerActivities = () => !!native?.endFollowerActivities;
+
+export function endOrphanFollowerActivities(keep: string[]): Promise<number> {
+  return native?.endFollowerActivities?.(keep) ?? Promise.resolve(0);
 }

@@ -150,6 +150,7 @@ export const push = mutation({
             sessionId: session._id,
             kind: 'removed',
           });
+          await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId: session._id });
         }
       }
     }

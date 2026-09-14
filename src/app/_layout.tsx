@@ -48,6 +48,7 @@ import {
 } from "@/services/notification-lifecycle";
 import { initNotifications } from "@/services/notifications";
 import { reconcileTravelDay } from "@/services/travel-day-lifecycle";
+import { FollowerActivitySync } from "@/components/follower-activity-sync";
 import { initPurchases } from "@/services/purchases";
 import { applyStoredTheme } from "@/services/theme";
 
@@ -117,6 +118,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
       <JourneySync />
       <PhotoSync />
       <TravelDaySync />
+      <FollowerActivitySync />
       <ProfileSync />
       <PushIdentitySync />
       <EntitlementSync />

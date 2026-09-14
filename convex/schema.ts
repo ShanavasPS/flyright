@@ -206,6 +206,12 @@ export default defineSchema({
     ownerId: v.string(),
     followerId: v.string(),
     muted: v.boolean(),
+    /** Explicit, per-trip Lock Screen opt-in. Never inherits the owner's activity. */
+    liveActivityEnabled: v.optional(v.boolean()),
+    liveActivityId: v.optional(v.union(v.string(), v.null())),
+    liveActivityStartedAt: v.optional(v.number()),
+    liveActivityWakeId: v.optional(v.id('_scheduled_functions')),
+    liveActivityError: v.optional(v.boolean()),
     createdAt: v.string(),
   })
     .index('by_session', ['sessionId'])

@@ -29,12 +29,28 @@ public class FlyRightLiveActivitiesModule: Module {
       Task {
         let live = Activity<DefaultLiveActivityAttributes>.activities
         var ended = 0
-        for activity in live where !keep.contains(activity.attributes.onesignal.activityId) {
+        for activity in live where !activity.attributes.onesignal.activityId.hasPrefix("following~") && !keep.contains(activity.attributes.onesignal.activityId) {
           await activity.end(nil, dismissalPolicy: .immediate)
           ended += 1
         }
         if ended > 0 {
           NSLog("[FlyRightLiveActivities] ended %d orphan(s) of %d live activities", ended, live.count)
+        }
+        promise.resolve(ended)
+      }
+    }
+
+    // Followers have a separate authenticated lifecycle; the local journal
+    // never owns their cards. Called after auth and the follower query settle.
+    AsyncFunction("endFollowerActivities") { (keep: [String], promise: Promise) in
+      Task {
+        var ended = 0
+        for activity in Activity<DefaultLiveActivityAttributes>.activities {
+          let id = activity.attributes.onesignal.activityId
+          if id.hasPrefix("following~") && !keep.contains(id) {
+            await activity.end(nil, dismissalPolicy: .immediate)
+            ended += 1
+          }
         }
         promise.resolve(ended)
       }

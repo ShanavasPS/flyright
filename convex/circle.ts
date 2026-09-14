@@ -12,6 +12,7 @@ import { isPro } from './entitlements';
 import { onwardLegs } from './itinerary';
 import {
   armHeadsUpsForOwner,
+  activeSessionForKey,
   circleFull,
   circleMembers,
   ensureCircleInvite,
@@ -765,13 +766,13 @@ export const trip = query({
     }
 
     const who = await personCard(ctx, ownerId);
-    const session = await liveFor(ctx, me, ownerId);
-    const liveHere = session && session.naturalKey === journey.naturalKey ? session : null;
+    const liveHere = await activeSessionForKey(ctx, ownerId, journey.naturalKey);
     return {
       owner: who,
       trip: publicTrip(journey),
       updates: await updatesFor(ctx, ownerId, journey.naturalKey, me),
       token: liveHere?.shareToken ?? null,
+      sessionId: liveHere?._id ?? null,
       session: liveHere
         ? toPublicSession(
             liveHere,

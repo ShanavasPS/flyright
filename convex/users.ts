@@ -2,6 +2,7 @@ import { safeAvatar } from './profileShared';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import { deleteFollow } from './followerActivityHelpers';
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server';
 import { firstNameKey, searchKey } from './circleShared';
 import { bounded, limit, HOUR } from './abuse';
@@ -70,7 +71,7 @@ export const purge = internalMutation({
         .query('follows')
         .withIndex('by_session', (q) => q.eq('sessionId', session._id))
         .collect();
-      for (const f of follows) await ctx.db.delete(f._id);
+      for (const f of follows) await deleteFollow(ctx, f);
       await ctx.db.delete(session._id);
     }
 
@@ -79,7 +80,7 @@ export const purge = internalMutation({
       .query('follows')
       .withIndex('by_follower', (q) => q.eq('followerId', userId))
       .collect();
-    for (const f of theirFollows) await ctx.db.delete(f._id);
+    for (const f of theirFollows) await deleteFollow(ctx, f);
 
     // Circle rows in both directions, and any invite links they minted.
     for (const index of ['by_owner', 'by_member'] as const) {

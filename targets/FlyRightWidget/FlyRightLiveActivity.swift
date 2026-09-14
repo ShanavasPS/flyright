@@ -8,7 +8,7 @@
 // Content-state keys are the LiveContent contract produced by
 // src/services/travel-day.ts#liveContent and sent via
 // src/services/live-activity.ts — keep the two files in sync:
-//   attributes: journeyId, title, fromCode, toCode, flightLabel
+//   attributes: journeyId, title, fromCode, toCode, flightLabel, deepLink (followers)
 //   state: headline, subtitle, progress (0…1, flight progress: 0 until
 //          departure, then time-based, 1 landed), stageLabel, compactLabel,
 //          departsAt, arrivesAt, countdownEnd (ms since epoch, 0 = unknown),
@@ -40,6 +40,7 @@ private enum Brand {
 /// Typed view over the loosely-typed OneSignal default-attributes dicts.
 private struct TravelDayModel {
     let journeyId: String
+    let followerDeepLink: String?
     let title: String
     let fromCode: String?
     let toCode: String?
@@ -78,6 +79,7 @@ private struct TravelDayModel {
             return value.asDouble() ?? value.asInt().map(Double.init)
         }
         journeyId = context.attributes.data["journeyId"]?.asString() ?? ""
+        followerDeepLink = text(context.attributes.data["deepLink"]?.asString())
         title = text(context.attributes.data["title"]?.asString()) ?? "Travel day"
         fromCode = text(context.attributes.data["fromCode"]?.asString())
         toCode = text(context.attributes.data["toCode"]?.asString())
@@ -115,7 +117,10 @@ private struct TravelDayModel {
     }
 
     var deepLink: URL? {
-        URL(string: "flyright://journey/\(journeyId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? journeyId)")
+        if let followerDeepLink, followerDeepLink.hasPrefix("flyright://following/") {
+            return URL(string: followerDeepLink)
+        }
+        return URL(string: "flyright://journey/\(journeyId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? journeyId)")
     }
 }
 

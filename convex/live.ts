@@ -4,6 +4,7 @@ import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { maySee } from './audience';
+import { deleteFollow, followerActivityAccess } from './followerActivityHelpers';
 import {
   activeSessionForKey,
   audienceFor,
@@ -150,6 +151,7 @@ export const setStage = mutation({
         kind: 'stage',
       });
     }
+    await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId: session._id });
     return { shared: true };
   },
 });
@@ -159,7 +161,10 @@ export const revokeShare = mutation({
   handler: async (ctx, { naturalKey }) => {
     const identity = await requireIdentity(ctx);
     const session = await activeSessionForKey(ctx, identity.subject, naturalKey);
-    if (session) await ctx.db.patch(session._id, { shareToken: null });
+    if (session) {
+      await ctx.db.patch(session._id, { shareToken: null });
+      await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId: session._id });
+    }
   },
 });
 
@@ -176,6 +181,7 @@ export const close = mutation({
       pollScheduledId: null,
       updatedAt: new Date().toISOString(),
     });
+    await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId: session._id });
   },
 });
 
@@ -247,7 +253,7 @@ export const unfollow = mutation({
         q.eq('sessionId', sessionId).eq('followerId', identity.subject),
       )
       .unique();
-    if (row) await ctx.db.delete(row._id);
+    if (row) await deleteFollow(ctx, row);
   },
 });
 
@@ -308,7 +314,28 @@ export const byToken = query({
         await followerCount(ctx, session._id),
       ),
       viewerFollows,
+      sessionId: viewerFollows && identity?.subject !== session.userId ? session._id : null,
       updates: await updatesFor(ctx, session.userId, session.naturalKey, identity?.subject ?? null),
+    };
+  },
+});
+
+/** Stable, signed-in destination for a follower's Lock Screen card. */
+export const byFollow = query({
+  args: { sessionId: v.id('liveSessions') },
+  handler: async (ctx, { sessionId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { gone: true as const };
+    const follow = await ctx.db.query('follows').withIndex('by_session_follower', q =>
+      q.eq('sessionId', sessionId).eq('followerId', identity.subject)).unique();
+    const access = follow && await followerActivityAccess(ctx, follow);
+    if (!access || access.session.status !== 'active') return { gone: true as const };
+    const s = access.session;
+    return {
+      ...toPublicSession(s, await travelerName(ctx, s.userId), await followerCount(ctx, s._id)),
+      viewerFollows: true,
+      sessionId: s._id,
+      updates: await updatesFor(ctx, s.userId, s.naturalKey, identity.subject),
     };
   },
 });

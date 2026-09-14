@@ -163,6 +163,7 @@ export const applyFlightFacts = internalMutation({
     }
 
     await ctx.db.patch(sessionId, patch as never);
+    await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId });
 
     // iOS ends a Live Activity eight hours in; the device can only restart
     // one while open. The chain does it from here: mint the id (the device
@@ -198,7 +199,7 @@ export const poll = internalAction({
     if (!session || session.status !== 'active') return;
     // No audience → skip the metered call but keep the chain alive.
     let facts = null;
-    if (session.shareToken || session.activityId) {
+    if (session.shareToken || session.activityId || await ctx.runQuery(internal.followerActivities.hasAudience, { sessionId })) {
       facts = await fetchFlightFacts(
         ctx,
         session.number,
@@ -320,6 +321,8 @@ export const closeExpired = internalMutation({
       .withIndex('by_status', (q) => q.eq('status', 'active'))
       .collect();
     for (const session of active) {
+      // Recover follower wakeups after a failed scheduled job as well.
+      await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId: session._id });
       if (Date.parse(session.expiresAt) < now) {
         if (session.pollScheduledId) await ctx.scheduler.cancel(session.pollScheduledId).catch(() => {});
         await ctx.db.patch(session._id, {

@@ -135,9 +135,10 @@ export async function pushLiveActivity(
   activityId: string,
   event: 'update' | 'end',
   contentState: Record<string, unknown>,
-): Promise<void> {
+  dismissImmediately = false,
+): Promise<boolean> {
   const cfg = oneSignalConfig();
-  if (!cfg) return;
+  if (!cfg) return false;
   const res = await fetch(
     `https://api.onesignal.com/apps/${cfg.appId}/live_activities/${encodeURIComponent(activityId)}/notifications`,
     {
@@ -149,10 +150,11 @@ export async function pushLiveActivity(
         // update payload must nest under "data" or decoding fails and iOS
         // dims the widget behind a stuck spinner.
         event_updates: { data: contentState },
-        ...(event === 'end' ? { dismissal_date: Math.floor(Date.now() / 1000) + 15 * 60 } : {}),
+        ...(event === 'end' ? { dismissal_date: Math.floor(Date.now() / 1000) + (dismissImmediately ? 0 : 15 * 60) } : {}),
         name: `travel-day ${event}`,
       }),
     },
   );
   if (!res.ok) console.warn('[onesignal] LA failed', res.status, (await res.text()).slice(0, 200));
+  return res.ok || (event === 'end' && res.status === 404);
 }

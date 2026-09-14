@@ -61,9 +61,13 @@ function context(subject = 'attacker', email = 'attacker@example.invalid') {
       getUrl: async id => `https://storage.example.invalid/api/storage/${id}`,
       delete: async id => { deletedFiles.push(id); },
     },
-    scheduler: { runAfter: async (...args) => { scheduled.push(args); return `task:${scheduled.length}`; }, cancel: async () => {} },
+    scheduler: {
+      runAfter: async (...args) => { scheduled.push(args); return `task:${scheduled.length}`; },
+      runAt: async (...args) => { scheduled.push(args); return `task:${scheduled.length}`; },
+      cancel: async () => {},
+    },
   };
-  ctx.runMutation = ctx.runAction = async (ref, args) => {
+  ctx.runQuery = ctx.runMutation = ctx.runAction = async (ref, args) => {
     const [module, name] = ref.__path;
     const fn = load(`convex/${module}.ts`)[name];
     return (fn.handler ?? fn)(ctx, args);
@@ -82,6 +86,146 @@ async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}
   const { inviteUsable } = load('convex/liveHelpers.ts');
   const { safeAvatar } = load('convex/profileShared.ts');
   const photo = { photoId: 'photo', journeyKey: 'trip', storageId: 'victim-file', width: 1, height: 1, createdAt: '2026-09-12T00:00:00Z', updatedAt: '2026-09-12T00:00:00Z', deletedAt: null };
+  const activities = load('convex/followerActivities.ts');
+  const live = load('convex/live.ts');
+  const { followerActivityWindow, followerContentState } = load('convex/followerActivityShared.ts');
+  const { ACTIVITY_LIFETIME_MS } = load('convex/liveShared.ts');
+  async function followerFixture(overrides = {}) {
+    const s = context('viewer');
+    const now = Date.now();
+    const journeyId = await s.ctx.db.insert('journeys', { userId: 'owner', naturalKey: 'private-owner-key', deletedAt: null });
+    const sessionId = await s.ctx.db.insert('liveSessions', {
+      userId: 'owner', naturalKey: 'private-owner-key', number: 'AY1', carrier: 'Finnair', fromCode: 'HEL', toCode: 'LHR',
+      status: 'active', shareToken: 'token', activityId: 'owner-activity',
+      currentStage: 'security', stageTimes: {}, notifiedStages: {}, pendingNotify: false,
+      scheduledDeparture: new Date(now + 2 * 3_600_000).toISOString(),
+      scheduledArrival: new Date(now + 5 * 3_600_000).toISOString(),
+      expiresAt: new Date(now + 48 * 3_600_000).toISOString(),
+      delayMinutes: null, gate: '12', terminal: '2', baggageBelt: null, flightStatus: null,
+      ...overrides,
+    });
+    const followId = await s.ctx.db.insert('follows', { sessionId, ownerId: 'owner', followerId: 'viewer', muted: false });
+    return { ...s, sessionId, followId, journeyId };
+  }
+  await check('follower Lock Screen opt-in targets only the caller and exposes no owner activity credential', async () => {
+    const s = await followerFixture();
+    await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true });
+    const f = await s.ctx.db.get(s.followId);
+    assert.match(f.liveActivityId, /^following~/);
+    const target = await activities.delivery.handler(s.ctx, { followId: s.followId, activityId: f.liveActivityId });
+    assert.equal(target.followerId, 'viewer');
+    assert.equal(target.attributes.deepLink, `flyright://following/${s.sessionId}`);
+    assert.equal(target.attributes.journeyId, '');
+    assert(!JSON.stringify(target).includes('private-owner-key'));
+    assert(!JSON.stringify(target).includes('owner-activity'));
+    assert.equal((await live.byFollow.handler(s.ctx, { sessionId: s.sessionId })).viewerFollows, true);
+    const jobs = s.scheduled.length;
+    await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true });
+    assert.equal(s.scheduled.length, jobs, 'repeated enable must not mint or start a duplicate');
+    s.ctx.auth.getUserIdentity = async () => ({ subject: 'stranger' });
+    assert.equal(await activities.status.handler(s.ctx, { sessionId: s.sessionId }), null);
+    assert.deepEqual(await activities.mine.handler(s.ctx, {}), []);
+    assert.deepEqual(await live.byFollow.handler(s.ctx, { sessionId: s.sessionId }), { gone: true });
+    await assert.rejects(activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true }), /no longer shared/);
+  });
+  await check('private, close-circle, blocked and revoked trips cannot deliver follower activities', async () => {
+    for (const change of ['private', 'close', 'blocked', 'revoked', 'deleted']) {
+      const s = await followerFixture();
+      await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true });
+      const activityId = (await s.ctx.db.get(s.followId)).liveActivityId;
+      if (change === 'private') await s.ctx.db.patch(s.journeyId, { privateTrip: true });
+      if (change === 'close') await s.ctx.db.patch(s.journeyId, { hiddenFromCircle: true });
+      if (change === 'blocked') await s.ctx.db.insert('blocks', { blockerId: 'owner', blockedId: 'viewer' });
+      if (change === 'revoked') await s.ctx.db.patch(s.sessionId, { shareToken: null });
+      if (change === 'deleted') await s.ctx.db.patch(s.journeyId, { deletedAt: 'now' });
+      assert.equal(await activities.delivery.handler(s.ctx, { followId: s.followId, activityId }), null, change);
+      await activities.syncSession.handler(s.ctx, { sessionId: s.sessionId });
+      assert.equal((await s.ctx.db.get(s.followId)).liveActivityEnabled, false, change);
+      assert(s.scheduled.some(([, ref, args]) => ref.__path.join('.') === 'followerActivities.endActivity' && args.activityId === activityId), change);
+    }
+  });
+  await check('close-circle members keep permitted Lock Screen access; removing them ends the card', async () => {
+    const s = await followerFixture();
+    await s.ctx.db.patch(s.journeyId, { hiddenFromCircle: true });
+    await s.ctx.db.insert('circle', { ownerId: 'owner', memberId: 'viewer', close: true, muted: true });
+    await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true });
+    const activityId = (await s.ctx.db.get(s.followId)).liveActivityId;
+    assert(await activities.delivery.handler(s.ctx, { followId: s.followId, activityId }));
+    await load('convex/liveHelpers.ts').severCircle(s.ctx, 'owner', 'viewer');
+    assert.equal(await s.ctx.db.get(s.followId), null);
+    assert(s.scheduled.some(([, ref, args]) => ref.__path.join('.') === 'followerActivities.endActivity' && args.activityId === activityId));
+  });
+  await check('unfollow and account deletion retain enough information to end cards after records disappear', async () => {
+    for (const action of ['unfollow', 'owner-delete', 'follower-delete']) {
+      const s = await followerFixture();
+      await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true });
+      const activityId = (await s.ctx.db.get(s.followId)).liveActivityId;
+      if (action === 'unfollow') await live.unfollow.handler(s.ctx, { sessionId: s.sessionId });
+      else await users.purge.handler(s.ctx, { userId: action === 'owner-delete' ? 'owner' : 'viewer' });
+      assert.equal(await s.ctx.db.get(s.followId), null);
+      assert(s.scheduled.some(([, ref, args]) => ref.__path.join('.') === 'followerActivities.endActivity' && args.activityId === activityId));
+    }
+  });
+  await check('future trips wait until T-4h and long flights rotate the follower activity without touching the owner', async () => {
+    const s = await followerFixture({ scheduledDeparture: new Date(Date.now() + 20 * 3_600_000).toISOString(), scheduledArrival: new Date(Date.now() + 30 * 3_600_000).toISOString() });
+    await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true });
+    assert.equal((await s.ctx.db.get(s.followId)).liveActivityId, undefined);
+    assert(!s.scheduled.some(([, ref]) => ref.__path.join('.') === 'followerActivities.deliver'));
+    await s.ctx.db.patch(s.sessionId, { scheduledDeparture: new Date(Date.now() + 3_600_000).toISOString() });
+    await activities.wake.handler(s.ctx, { followId: s.followId });
+    const first = (await s.ctx.db.get(s.followId)).liveActivityId;
+    await s.ctx.db.patch(s.followId, { liveActivityStartedAt: Date.now() - ACTIVITY_LIFETIME_MS });
+    await activities.wake.handler(s.ctx, { followId: s.followId });
+    assert.notEqual((await s.ctx.db.get(s.followId)).liveActivityId, first);
+    assert.equal((await s.ctx.db.get(s.sessionId)).activityId, 'owner-activity');
+  });
+  await check('landing, cancellation and expiry end the card; follower copy reports events and timetable uncertainty', async () => {
+    const s = await followerFixture();
+    const session = await s.ctx.db.get(s.sessionId);
+    const now = Date.now();
+    assert.equal(followerActivityWindow(session, now).phase, 'live');
+    assert.equal(followerActivityWindow({ ...session, estimatedDeparture: new Date(now + 8 * 3_600_000).toISOString() }, now).phase, 'live', 'a delay must not hide an active card');
+    assert.equal(followerContentState(session, 'Anna', now).subtitle, 'Anna · Through security');
+    const landed = { ...session, currentStage: 'landed', actualArrival: new Date(now).toISOString(), baggageBelt: '3' };
+    assert.equal(followerActivityWindow(landed, now + 59 * 60_000).phase, 'live');
+    assert.equal(followerActivityWindow(landed, now + 60 * 60_000).phase, 'ended');
+    assert.equal(followerContentState(landed, 'Anna', now).countdownEnd, 0);
+    assert.equal(followerContentState(landed, 'Anna', now).subtitle, 'Anna · Landed · Bags at belt 3');
+    assert.equal(followerActivityWindow({ ...session, flightStatus: 'Canceled' }, now).phase, 'ended');
+    assert.equal(followerActivityWindow({ ...session, expiresAt: new Date(now).toISOString() }, now).phase, 'ended');
+    const timetable = { ...session, currentStage: null, scheduledDeparture: new Date(now - 3_600_000).toISOString() };
+    assert.equal(followerContentState(timetable, 'Anna', now).subtitle, 'Anna · Going by the timetable');
+  });
+  await check('traveller stage taps schedule follower activity refreshes independently of notification debounce', async () => {
+    const s = await followerFixture();
+    s.ctx.auth.getUserIdentity = async () => ({ subject: 'owner' });
+    await live.setStage.handler(s.ctx, { naturalKey: 'private-owner-key', stage: 'boarded', stamps: { boarded: new Date().toISOString() }, activityId: null });
+    assert(s.scheduled.some(([, ref, args]) => ref.__path.join('.') === 'followerActivities.syncSession' && args.sessionId === s.sessionId));
+  });
+  await check('a follower disabling during an in-flight start gets an end after the start completes', async () => {
+    const s = await followerFixture();
+    await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: true });
+    const activityId = (await s.ctx.db.get(s.followId)).liveActivityId;
+    const onesignal = load('convex/onesignal.ts');
+    const originalStart = onesignal.startLiveActivity, originalPush = onesignal.pushLiveActivity;
+    const events = [];
+    try {
+      onesignal.startLiveActivity = async (followerId, id) => {
+        assert.equal(followerId, 'viewer'); assert.equal(id, activityId);
+        await activities.setEnabled.handler(s.ctx, { sessionId: s.sessionId, enabled: false });
+        events.push('start'); return true;
+      };
+      onesignal.pushLiveActivity = async (id, event, content, immediate) => {
+        assert.equal(id, activityId); assert.equal(immediate, true);
+        assert(!JSON.stringify(content).includes('Anna'));
+        events.push(event); return true;
+      };
+      await activities.deliver.handler(s.ctx, { followId: s.followId, activityId, start: true });
+      assert.deepEqual(events, ['start', 'end']);
+    } finally {
+      onesignal.startLiveActivity = originalStart; onesignal.pushLiveActivity = originalPush;
+    }
+  });
   await check('client cannot claim an email, including against a trusted existing profile', async () => {
     const s = context();
     await users.syncMyProfile.handler(s.ctx, { name: 'Friend', imageUrl: null, email: 'friend@example.invalid' });

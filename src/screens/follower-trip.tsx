@@ -7,6 +7,7 @@ import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 
 import { Card } from '@/components/card';
+import { FollowerActivityControl } from '@/components/follower-activity-control';
 import { RouteHero, type Schedule } from '@/components/route-hero';
 import { RouteMap } from '@/components/route-map';
 import { ThemedText } from '@/components/themed-text';
@@ -31,9 +32,8 @@ import { hasLanded, type TravelStage } from '@/services/travel-day';
  * tapped. This works from the journey itself and lets the live facts ride
  * along only once there are any.
  *
- * There is nothing to press here on purpose. A follower reads; the traveller
- * owns the trip. Mute and unfollow are on the person's page, which is where
- * decisions about a person belong.
+ * The follower can pin the shared trip to their own Lock Screen. Trip edits
+ * still belong to the traveller; mute and unfollow live on the person's page.
  */
 export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyId: string }) {
   const router = useRouter();
@@ -108,6 +108,8 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             schedule={scheduleOf(trip)}
           />
         </View>
+
+        <FollowerActivityControl sessionId={result.sessionId} />
 
         {session ? (
           (() => {
