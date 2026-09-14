@@ -1,0 +1,11 @@
+# Guest flight lookups
+
+Signed-out travellers can look up flights by number or from imported documents. The existing Convex anonymous meter permits five fresh lookups per UTC day, shared across mobile and web callers with the same network address. The server hashes the address before storing a quota key; there is no client-controlled daily counter. Travellers on shared Wi-Fi can therefore share an allowance.
+
+Cached flight results are free. A guest request spends one lookup, including when it requests inbound aircraft data; the separate monthly provider pool still accounts for every provider call. A genuine missing flight uses a lookup. The existing provider-error refund returns allowance for upstream failures, and an unavailable meter refuses paid calls. Automatic background refreshes require a signed-in session and do not spend guest allowance.
+
+When the daily allowance is spent, the API returns HTTP 429 with `guest_quota_exceeded`. The app offers sign-in for more lookups or manual journal entry. Importing a document preserves every flight, even when some lookups are refused. Flight queries include account identity in their keys so signing in retries a refused lookup under the existing account allowance (20/day for free accounts, 100/day for Pro). The native sign-in screen retains Clerk's original combined flow and the production Clerk setting remains `bulk`.
+
+Delivery requires an EAS Hosting deployment of the API route and an app update for the guest request marker and UI. The Convex quota functions and schema already support this allowance; this feature introduces no new Convex function or schema. It has not been deployed or installed on phones as part of implementation.
+
+Validation: 778 Jest tests across 72 suites, TypeScript and focused ESLint checks passed. All 24 offline security regression checks passed, including the actual Convex handler's fifth/sixth lookup boundary, next-day reset, account allowance, cached result, refund and shared-secret enforcement. Component coverage verifies signed-out search, retry after sign-in and document preservation after quota exhaustion. These checks do not constitute physical-device or production-provider acceptance testing.

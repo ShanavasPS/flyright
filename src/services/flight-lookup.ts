@@ -2,9 +2,10 @@
  * server in development and the expo-router `origin` in production builds.
  *
  * Live lookups are metered per account (the route proxies a paid provider),
- * so every request carries the Clerk session token when there is one. Signed
- * out, the route answers 401 and the screens offer sign-in instead; over the
- * daily budget it answers 429 and the trip is saved as a journal row. */
+ * so every request carries the Clerk session token when there is one. Guests
+ * get five fresh lookups per UTC day, metered server-side per network address.
+ * A spent guest allowance offers sign-in; paid-provider outages still allow
+ * saving a trip as a journal row. */
 
 import { getClerkInstance } from '@clerk/expo';
 import { Platform } from 'react-native';
@@ -61,14 +62,15 @@ export class FlightLookupError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly code?: string,
   ) {
     super(message);
     this.name = 'FlightLookupError';
   }
 
-  /** The caller must sign in before live lookups work. */
+  /** An expired session or a spent guest allowance needs sign-in. */
   get signInRequired(): boolean {
-    return this.status === 401;
+    return this.status === 401 || this.code === 'guest_quota_exceeded';
   }
 
   /** Today's live-lookup budget is spent. Resets at midnight UTC. */
@@ -108,20 +110,22 @@ const lookupQueue = createSerialQueue(LOOKUP_GAP_MS);
 export async function lookupFlight(
   flight: string,
   date: string,
-  options?: { inbound?: boolean },
+  options?: { inbound?: boolean; background?: boolean },
 ): Promise<FlightStatus> {
   const inbound = options?.inbound ? '&inbound=1' : '';
   const token = await sessionToken();
+  // The guest allowance is for searches the traveller initiates. A headless
+  // refresh must not spend it before they next open the app.
+  if (options?.background && !token) {
+    throw new FlightLookupError('Sign in for background flight updates.', 401);
+  }
   const headers: Record<string, string> = {};
   if (token) {
     headers.Authorization = `Bearer ${token}`;
-  } else if (Platform.OS === 'web') {
-    // The public compensation checker on our own site is the one anonymous
-    // caller the route allows, budgeted per address. Browsers omit `Origin`
-    // on same-origin GETs (and a referrer policy can drop `Referer`), so the
-    // web client says so explicitly. This is not a secret — the daily
-    // per-address budget, not the header, is what limits abuse.
-    headers['X-FlyRight-Web'] = '1';
+  } else {
+    // These markers survive EAS Hosting's forwarded Origin/Referer. They
+    // identify the guest flow; the server's per-address meter limits it.
+    headers[Platform.OS === 'web' ? 'X-FlyRight-Web' : 'X-FlyRight-Guest'] = '1';
   }
   // Through the queue: one provider call at a time, a breath apart, whoever
   // asked — the import's legs, the flight watch, add-flight.
@@ -133,19 +137,23 @@ export async function lookupFlight(
   );
 
   if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const code = typeof body?.error === 'string' ? body.error : undefined;
     const message =
-      response.status === 404
-        ? 'No flight found for that number and day.'
-        : response.status === 401
-          ? 'Sign in to look flights up live.'
-          : response.status === 429
-            ? "Today's live lookups are used up — try again tomorrow."
-            : response.status === 503
-              ? 'Live flight data is paused right now — you can add this flight by hand.'
-              : response.status === 501
-                ? 'Flight lookup is not configured yet.'
-                : 'Flight lookup failed — try again.';
-    throw new FlightLookupError(message, response.status);
+      code === 'guest_quota_exceeded'
+        ? "You've used today's 5 guest lookups. Sign in to look up more flights."
+        : response.status === 404
+          ? 'No flight found for that number and day.'
+          : response.status === 401
+            ? 'Sign in to look flights up live.'
+            : response.status === 429
+              ? "Today's live lookups are used up — try again tomorrow."
+              : response.status === 503
+                ? 'Live flight data is paused right now — you can add this flight by hand.'
+                : response.status === 501
+                  ? 'Flight lookup is not configured yet.'
+                  : 'Flight lookup failed — try again.';
+    throw new FlightLookupError(message, response.status, code);
   }
 
   return response.json();

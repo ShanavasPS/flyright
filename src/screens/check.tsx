@@ -1,3 +1,4 @@
+import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -57,6 +58,7 @@ function toJourney(flight: FlightStatus): Journey {
 
 export function CheckFlight() {
   const theme = useTheme();
+  const { userId, isLoaded: authLoaded } = useAuth();
   const [today] = useState(() => new Date());
   const [flightInput, setFlightInput] = useState('');
   const [dateInput, setDateInput] = useState('');
@@ -69,9 +71,9 @@ export function CheckFlight() {
   const date = DATE_PATTERN.test(dateInput.trim()) ? dateInput.trim() : null;
 
   const lookup = useQuery({
-    queryKey: ['flight-status', checked?.flight, checked?.date],
+    queryKey: ['flight-status', checked?.flight, checked?.date, userId ?? 'guest'],
     queryFn: () => lookupFlight(checked!.flight, checked!.date),
-    enabled: !!checked,
+    enabled: !!checked && authLoaded,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
@@ -167,6 +169,7 @@ export function CheckFlight() {
 
 function LookupResult({ lookup }: { lookup: ReturnType<typeof useQuery<FlightStatus>> }) {
   const theme = useTheme();
+  const router = useRouter();
 
   if (lookup.isPending) {
     return (
@@ -187,6 +190,12 @@ function LookupResult({ lookup }: { lookup: ReturnType<typeof useQuery<FlightSta
             ? lookup.error.message
             : 'Flight lookup failed — try again.'}
         </ThemedText>
+        {lookup.error instanceof FlightLookupError && lookup.error.signInRequired && (
+          <PrimaryButton
+            label="Sign in for more lookups →"
+            onPress={() => router.push({ pathname: '/sign-in', params: { next: '/check' } })}
+          />
+        )}
         <ThemedText type="small" themeColor="textSecondary">
           Airlines owe compensation for up to 2–6 years back, but flight-status providers
           forget sooner. The FlyRight app can still build your claim from the ticket details.

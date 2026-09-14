@@ -7,10 +7,10 @@
  *  1. Identity (`identifyCaller`). A `Bearer` Clerk session token identifies
  *     an account; the token is verified here against the Clerk instance's
  *     JWKS (RS256, via WebCrypto — the route runs on Cloudflare Workers and
- *     in the Expo dev server, both of which have it). No token: only the web
- *     compensation checker may proceed, recognised by its Origin/Referer, and
- *     it is budgeted per address. The native app signed out gets 401 and
- *     offers sign-in instead. This half is local and free.
+ *     in the Expo dev server, both of which have it). Signed-out apps and the
+ *     web compensation checker share the anonymous daily budget per address.
+ *     Their request markers are not credentials; the durable meter enforces
+ *     the allowance. This half is local and free.
  *  2. Spending (`beginLookup`). One Convex round trip that answers three
  *     questions at once — is this answer already cached, is there monthly
  *     provider pool left, and does this caller have daily allowance — because
@@ -64,7 +64,7 @@ export async function identifyCaller(request: Request): Promise<GateResult> {
     const userId = await verifiedSubject(token);
     if (!userId) return { ok: false, status: 401, error: 'invalid_token' };
     subject = { kind: 'user', userId };
-  } else if (isWebChecker(request)) {
+  } else if (header(request, 'x-flyright-guest') === '1' || isWebChecker(request)) {
     subject = { kind: 'anonymous', address: await hashed(clientAddress(request)) };
   } else {
     return { ok: false, status: 401, error: 'sign_in_required' };
@@ -106,8 +106,7 @@ function webOriginAllowed(origin: string): boolean {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin);
 }
 
-/** Our own public compensation checker, the only caller allowed without an
- * account.
+/** Our own public compensation checker, also allowed without an account.
  *
  * The page's own marker decides first. It is not a credential — anyone can
  * copy it — but a *website* cannot make a visitor's browser send it: a

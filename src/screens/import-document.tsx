@@ -135,7 +135,7 @@ export function ImportDocument() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { userId, isLoaded: authLoaded } = useAuth();
   // `type` comes from the in-app pickers, which know the mime type; a share
   // arrives with the file name only and is read by its extension.
   const { handle, via } = useLocalSearchParams<{ handle?: string; via?: string }>();
@@ -197,9 +197,9 @@ export function ImportDocument() {
 
   const segments = phase.kind === 'review' || phase.kind === 'saving' ? phase.segments : [];
 
-  // Live lookups are per-account; signed out, every leg is saved from the
-  // document alone and the header says how to get tracking.
-  const lookupAllowed = !!isSignedIn;
+  // Guests share the same daily allowance as manual flight searches. Once
+  // it is spent, the remaining legs can still be saved from the document.
+  const lookupAllowed = authLoaded;
   // The legs are looked up together, but lookupFlight itself queues calls
   // one at a time (see services/lookup-queue): a four-leg receipt used to
   // fire four provider calls in the same instant, the provider's per-second
@@ -207,7 +207,7 @@ export function ImportDocument() {
   // entries with no live tracking — a real receipt lost two of four that way.
   const lookups = useQueries({
     queries: segments.map((s) => ({
-      queryKey: ['flight-status', s.flight, s.date],
+      queryKey: ['flight-status', s.flight, s.date, userId ?? 'guest'],
       queryFn: () => lookupFlight(s.flight!, s.date!),
       enabled:
         lookupAllowed &&
@@ -248,7 +248,7 @@ export function ImportDocument() {
       selectable,
       selected,
       edited,
-      error: lookupAllowed ? query.error : new FlightLookupError('Sign in to look flights up live.', 401),
+      error: query.error,
     };
   });
 
@@ -568,10 +568,12 @@ export function ImportDocument() {
                 ? ` · e-ticket ${phase.tickets[0]}`
                 : ''}
           </ThemedText>
-          {!lookupAllowed && (
-            <Pressable onPress={() => router.push('/sign-in')} hitSlop={Spacing.two}>
+          {rows.some((row) => row.error instanceof FlightLookupError && row.error.signInRequired) && (
+            <Pressable
+              onPress={() => router.push({ pathname: '/sign-in', params: { next: '/import-document' } })}
+              hitSlop={Spacing.two}>
               <ThemedText type="small" themeColor="textSecondary">
-                Saved as journal entries.{' '}
+                Some flights need sign-in for a live lookup.{' '}
                 <ThemedText type="small" themeColor="tint">
                   Sign in to track them live →
                 </ThemedText>

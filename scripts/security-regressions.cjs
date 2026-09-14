@@ -354,6 +354,51 @@ async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}
     process.env.PUSH_IDENTITY_SECRET = 'b'.repeat(43);
     assert.notEqual(await pushAlias('user_public'), a);
   });
+  await check('guest lookup allowance permits five fresh requests, then resets the next UTC day', async () => {
+    const previousSecret = process.env.LOOKUP_QUOTA_SECRET;
+    const previousPool = process.env.AERODATABOX_MONTHLY_UNITS;
+    process.env.LOOKUP_QUOTA_SECRET = 'fixture-lookup-secret';
+    process.env.AERODATABOX_MONTHLY_UNITS = '10000';
+    try {
+      const { begin, record } = load('convex/provider.ts');
+      const { ctx, rows } = context(null);
+      const args = {
+        secret: 'fixture-lookup-secret', day: '2026-09-14', date: '2026-09-14',
+        flight: 'AY1', want: 'base', kind: 'interactive', cost: 1,
+        subject: { kind: 'anonymous', address: 'hashed-network' },
+      };
+      for (let n = 1; n <= 5; n++) {
+        assert.equal((await begin.handler(ctx, { ...args, flight: `AY${n}` })).outcome, 'permit');
+      }
+      assert.equal(rows('lookupQuota')[0].count, 5);
+      assert.equal((await begin.handler(ctx, { ...args, flight: 'AY6' })).reason, 'quota');
+      assert.equal(rows('lookupQuota')[0].count, 5);
+      // Signing in starts the separate account allowance on the same network.
+      assert.equal((await begin.handler(ctx, { ...args, subject: { kind: 'user', userId: 'new-account' } })).outcome, 'permit');
+      assert.equal((await begin.handler(ctx, { ...args, day: '2026-09-15' })).outcome, 'permit');
+      // A shared cached result is free even after the five fresh lookups.
+      await ctx.db.insert('flightFacts', {
+        key: 'AY9:2026-09-14', flight: 'AY9', date: '2026-09-14',
+        payload: '{"flight":"AY9"}', expiresAt: Date.now() + 60000,
+      });
+      assert.equal((await begin.handler(ctx, { ...args, flight: 'AY9' })).outcome, 'cached');
+      assert.equal(rows('lookupQuota')[0].count, 5);
+      // An upstream failure gives the guest their unit back.
+      await record.handler(ctx, {
+        secret: args.secret, flight: 'AY5', date: args.date, want: 'base',
+        payload: null, phase: 'uncacheable', expiresAt: 0, units: 1, reported: null,
+        refund: { day: args.day, cost: 1, subject: args.subject },
+      });
+      assert.equal(rows('lookupQuota')[0].count, 4);
+      assert.equal((await begin.handler(ctx, { ...args, flight: 'AY6' })).outcome, 'permit');
+      await assert.rejects(begin.handler(ctx, { ...args, secret: 'wrong' }), /forbidden/);
+    } finally {
+      if (previousSecret === undefined) delete process.env.LOOKUP_QUOTA_SECRET;
+      else process.env.LOOKUP_QUOTA_SECRET = previousSecret;
+      if (previousPool === undefined) delete process.env.AERODATABOX_MONTHLY_UNITS;
+      else process.env.AERODATABOX_MONTHLY_UNITS = previousPool;
+    }
+  });
   await check('paid lookup fails closed when production metering is missing or unavailable', async () => {
     process.env.NODE_ENV = 'production';
     delete process.env.LOOKUP_QUOTA_SECRET;

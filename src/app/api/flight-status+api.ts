@@ -189,17 +189,17 @@ export async function GET(request: Request) {
     );
   }
 
-  // Who is asking: a verified account, or the web checker by address.
-  // Signed-out app users get 401 and are offered sign-in. (The mock is free,
-  // so this only guards real provider calls.)
+  // Who is asking: a verified account, or a guest metered by address.
+  // The mock is free, so this only guards real provider calls.
   const caller = await identifyCaller(request);
   if (!caller.ok) {
     return Response.json({ error: caller.error }, { status: caller.status });
   }
 
   const want = wantInbound ? 'inbound' : 'base';
-  // The inbound rotation is an extra provider call, so it costs two units.
-  const cost = wantInbound ? 2 : 1;
+  // Guests get five lookups, even when one includes an inbound rotation.
+  // Actual provider calls are still charged separately to our monthly pool.
+  const cost = caller.subject.kind === 'anonymous' ? 1 : wantInbound ? 2 : 1;
   // One round trip: is this answer already bought, is there pool left, and
   // does this caller have daily allowance?
   const begin = await beginLookup(caller.subject, {
@@ -224,7 +224,10 @@ export async function GET(request: Request) {
     // midnight UTC; a spent monthly pool is ours, and saying so honestly
     // lets the app offer "add it manually" instead of "try again".
     return begin.reason === 'quota'
-      ? Response.json({ error: 'quota_exceeded' }, { status: 429 })
+      ? Response.json(
+          { error: caller.subject.kind === 'anonymous' ? 'guest_quota_exceeded' : 'quota_exceeded' },
+          { status: 429 },
+        )
       : Response.json(
           { error: 'live_data_paused', reason: 'provider_budget' },
           { status: 503 },

@@ -133,7 +133,7 @@ export function AddFlight() {
   // not SafeAreaView — inside a fullScreenModal the native SafeAreaView can
   // resolve its top inset as 0 on iOS (same workaround as onboarding).
   const insets = useSafeAreaInsets();
-  const { userId, isSignedIn } = useAuth();
+  const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
   // Edit mode: the journey detail screen reopens this sheet with ?editId=<id>
   // for a manual entry, prefilled below. The row id stays stable across the
   // save so claims/disruptions references and the cloud sync key survive.
@@ -446,16 +446,17 @@ export function AddFlight() {
     });
   };
 
-  // Live lookups are per-account (the route meters a paid provider), so the
-  // result step asks for sign-in first instead of firing a request that
-  // would be refused. The journal path stays open without an account.
-  const lookupAllowed = !!isSignedIn;
+  // Wait for session hydration before choosing the account or guest budget.
+  // Identity in the key retries a guest refusal after signing in.
+  const lookupAllowed = authLoaded;
   const lookup = useQuery({
-    queryKey: ['flight-status', flightNumber, date],
+    queryKey: ['flight-status', flightNumber, date, userId ?? 'guest'],
     queryFn: () => lookupFlight(flightNumber!, date!),
     enabled: step === 'result' && !!flightNumber && !!date && lookupAllowed,
     retry: false,
   });
+  const signInError = lookup.error instanceof FlightLookupError && lookup.error.signInRequired
+    ? lookup.error : null;
 
   const flight = lookup.data;
   const routeKnown = !!flight?.from.code && !!flight?.to.code;
@@ -929,6 +930,7 @@ export function AddFlight() {
                     style={styles.coverageText}>
                     Flight lookup covers about a year back and 11 months ahead — the
                     journal takes older trips.
+                    {authLoaded && !isSignedIn ? ' Try 5 live lookups a day without an account.' : ''}
                   </ThemedText>
                 </View>
               </>
@@ -992,21 +994,21 @@ export function AddFlight() {
           </View>
         )}
 
-        {step === 'result' && !lookupAllowed && (
+        {step === 'result' && signInError && (
           <PassCard>
             <MicroLabel>Live tracking</MicroLabel>
             <ThemedText type="smallBold" style={styles.passTitle}>
-              Sign in to look up {flightNumber} live
+              {signInError.message}
             </ThemedText>
             <ThemedText type="small" style={styles.passHint}>
-              Live status, gates, delays and what you&apos;re owed come with a free
-              account. Without one, the flight still goes in your journal.
+              Sign in with a free account for more lookups. Your guest allowance
+              resets at midnight UTC, and you can save this flight to your journal now.
             </ThemedText>
             <PassDivider />
             <PassAction
               icon={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }}
               label="Sign in →"
-              onPress={() => router.push('/sign-in')}
+              onPress={() => router.push({ pathname: '/sign-in', params: { next: '/add-flight' } })}
             />
             <Pressable onPress={startManual} hitSlop={Spacing.two}>
               <ThemedText type="smallBold" style={[styles.passLink, styles.centered]}>
@@ -1016,7 +1018,7 @@ export function AddFlight() {
           </PassCard>
         )}
 
-        {step === 'result' && lookupAllowed && lookup.isPending && (
+        {step === 'result' && lookup.isPending && (
           <PassCard style={styles.loadingCard}>
             <ActivityIndicator color={WHITE} />
             <ThemedText type="small" style={styles.passHint}>
@@ -1025,7 +1027,7 @@ export function AddFlight() {
           </PassCard>
         )}
 
-        {step === 'result' && lookupAllowed && lookup.isError && (
+        {step === 'result' && lookupAllowed && lookup.isError && !signInError && (
           <ThemedView type="backgroundElement" style={styles.card}>
             <ThemedText type="smallBold">
               {lookup.error instanceof FlightLookupError

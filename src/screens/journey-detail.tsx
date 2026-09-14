@@ -53,7 +53,7 @@ import {
 } from '@/services/dates';
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
-import { lookupFlight } from '@/services/flight-lookup';
+import { FlightLookupError, lookupFlight } from '@/services/flight-lookup';
 import { inboundNewsworthy, inboundOutlook, type InboundOutlook } from '@/services/inbound';
 import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
 import { noteSuccess } from '@/services/haptics';
@@ -123,7 +123,7 @@ export function JourneyDetail({
   // claim-window math reads the same clock and doesn't mind the updates.
   const now = useNow(60_000).getTime();
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId, isLoaded: authLoaded } = useAuth();
   const isDemo = isDemoJourneyId(journeyId);
   const { row, loaded: rowLoaded, error: rowError } = useJourney(journeyId ?? 'demo', userId);
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
@@ -150,14 +150,14 @@ export function JourneyDetail({
   // straddles UTC midnight (see dates.flightDay).
   const lookupDay = row ? lookupDayFor(row) : undefined;
   const status = useQuery({
-    queryKey: ['flight-status', journey?.number, lookupDay, inboundUnlocked],
+    queryKey: ['flight-status', journey?.number, lookupDay, userId ?? 'guest', inboundUnlocked],
     queryFn: () =>
       lookupFlight(journey!.number, lookupDay!, {
         // Pre-departure only: past that, the rotation can't predict anything
         // and the server would skip the extra provider call anyway.
         inbound: inboundUnlocked,
       }),
-    enabled: isLookupable,
+    enabled: isLookupable && authLoaded,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
@@ -381,6 +381,19 @@ export function JourneyDetail({
               router.navigate('/world');
             }}
           />
+        )}
+
+        {status.error instanceof FlightLookupError && status.error.signInRequired && (
+          <Card>
+            <ThemedText type="smallBold">{status.error.message}</ThemedText>
+            <Pressable
+              onPress={() => router.push({
+                pathname: '/sign-in',
+                params: { next: `/journey/${encodeURIComponent(journey.id)}` },
+              })}>
+              <ThemedText type="link">Sign in for live flight updates →</ThemedText>
+            </Pressable>
+          </Card>
         )}
 
         <RouteHero

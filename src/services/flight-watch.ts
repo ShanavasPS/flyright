@@ -82,6 +82,7 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
       const upcoming = Date.parse(row.scheduledDeparture) > now.getTime();
       const status = await lookupFlight(row.number, lookupDayFor(row), {
         inbound: upcoming && inboundUnlocked,
+        background: true,
       });
       await noteFlightFacts(row.id, status);
       // The airline may have moved the flight since the ticket was read. This

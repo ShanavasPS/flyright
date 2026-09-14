@@ -13,8 +13,8 @@ declare const process: { env: Record<string, string | undefined> };
  * durable memory of its own, so it asks here before every provider call.
  *
  * Callable only with the shared LOOKUP_QUOTA_SECRET — the route has already
- * verified the caller's Clerk token (or decided it is an anonymous web
- * visitor) and passes the resulting subject; this mutation must not become
+ * verified the caller's Clerk token (or identified a guest on mobile or web)
+ * and passes the resulting subject; this mutation must not become
  * a public counter anyone can spend. The Pro limit is read from the
  * entitlements mirror, never from the client.
  */

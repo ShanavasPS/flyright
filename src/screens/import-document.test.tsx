@@ -151,13 +151,37 @@ it('includes trips whose live lookup fails, using their printed PDF details', as
     .toEqual(['lookup', 'lookup', 'lookup', 'manual', 'manual']);
 });
 
-it('saves all five trips while signed out, without waiting for disabled lookups', async () => {
+it('looks up and saves all five trips without an account', async () => {
   mockSignedIn = false;
   await mount();
-  expect(lookupFlight).not.toHaveBeenCalled();
+  expect(lookupFlight).toHaveBeenCalledTimes(5);
+  expect(button().props.disabled).toBe(true);
+  await finish(0, 1, 2, 3, 4);
   expect(button().props.disabled).toBe(false);
   await pressAdd();
   expect(savedFlights()).toEqual(segments.map(segment => segment.flight));
+  expect(jest.mocked(saveImportedJourney).mock.calls.map(([, row]) => row?.source))
+    .toEqual(['lookup', 'lookup', 'lookup', 'lookup', 'lookup']);
+});
+
+it('preserves every imported flight when the guest allowance runs out mid-document', async () => {
+  mockSignedIn = false;
+  await mount();
+  await finish(0, 1);
+  await act(async () => {
+    for (const index of [2, 3, 4]) {
+      pending.get(segments[index].flight!)!.reject(
+        new FlightLookupError('Guest allowance used up', 429, 'guest_quota_exceeded'),
+      );
+    }
+  });
+  await flushQueries();
+  expect(JSON.stringify(screen!.toJSON())).toContain('Sign in to track them live');
+  expect(button().props.disabled).toBe(false);
+  await pressAdd();
+  expect(savedFlights()).toEqual(segments.map(segment => segment.flight));
+  expect(jest.mocked(saveImportedJourney).mock.calls.map(([, row]) => row?.source))
+    .toEqual(['lookup', 'lookup', 'manual', 'manual', 'manual']);
 });
 
 it('preserves a traveller’s deselection while the other lookups finish', async () => {

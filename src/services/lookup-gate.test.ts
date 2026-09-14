@@ -25,6 +25,23 @@ describe('identifyCaller', () => {
     expect(result).toEqual({ ok: false, status: 401, error: 'sign_in_required' });
   });
 
+  it('accepts a signed-out app using the guest allowance', async () => {
+    const headers = { 'x-flyright-guest': '1', 'cf-connecting-ip': '203.0.113.7' };
+    const guest = await identifyCaller(request(headers));
+    expect(guest.ok).toBe(true);
+    if (!guest.ok) throw new Error('Guest refused');
+    expect(guest.subject).toEqual({ kind: 'anonymous', address: expect.any(String) });
+    expect(JSON.stringify(guest.subject)).not.toContain('203.0.113.7');
+    expect(await identifyCaller(request({ ...headers, 'x-flyright-web': '1' }))).toEqual(guest);
+    expect(await identifyCaller(request({ 'x-flyright-web': '1', 'cf-connecting-ip': '203.0.113.7' }))).toEqual(guest);
+    expect(await identifyCaller(request({ ...headers, 'cf-connecting-ip': '203.0.113.8' }))).not.toEqual(guest);
+  });
+
+  it('does not let a guest marker bypass an invalid session token', async () => {
+    expect(await identifyCaller(request({ 'x-flyright-guest': '1', authorization: 'Bearer invalid' })))
+      .toEqual({ ok: false, status: 401, error: 'invalid_token' });
+  });
+
   it('lets our web checker through when it identifies itself, keyed by address', async () => {
     // A browser sends no Origin on a same-origin GET, so the page says so.
     const result = await identifyCaller(

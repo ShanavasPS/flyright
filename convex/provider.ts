@@ -262,7 +262,7 @@ function assertSecret(secret: string): void {
 /**
  * The flight-status route's one round trip before calling the provider.
  * Secret-gated exactly like lookups.consume: the route has already verified
- * the caller's Clerk token (or decided it is an anonymous web visitor) and
+ * the caller's Clerk token (or identified a guest on mobile or web) and
  * passes the resulting subject, so this must never become a public counter.
  */
 export const begin = mutation({

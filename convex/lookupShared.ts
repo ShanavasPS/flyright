@@ -4,10 +4,11 @@
  *
  *  - signed-in Pro:  generous — a travel day of polling plus a few imports
  *  - signed-in free: enough for a busy import and some manual adds
- *  - anonymous:      the web compensation checker only, capped per address
+ *  - anonymous:      guests on mobile and web, capped per network address
  *
- * A request that also resolves the inbound rotation is two provider calls
- * and costs two units. */
+ * Signed-in requests that also resolve the inbound rotation cost two daily
+ * units. Guests spend one unit per fresh lookup; the monthly pool still pays
+ * for every provider call. Cached responses do not spend daily allowance. */
 
 export type LookupSubject =
   | { kind: 'user'; userId: string; pro: boolean }
