@@ -118,6 +118,19 @@ export function AddPerson() {
       const result = await requestFollow({ userId: person.userId });
       Observe.logEvent('circle.invited');
       trackEvent('circle_invite_sent', { channel: 'in_app' });
+      // Search results are fetched once per term so the lookup can be metered.
+      // Update the visible card from the confirmed response instead of
+      // waiting for the user to leave and reopen the screen.
+      const relation = result.status === 'sharing' ? 'sharing' : 'invited';
+      setAnswer((current) => {
+        if (!current || current.term !== term) return current;
+        return {
+          ...current,
+          people: current.people.map((candidate) =>
+            candidate.userId === person.userId ? { ...candidate, relation } : candidate,
+          ),
+        };
+      });
       if (result.status === 'sharing') setError(`${person.name} already follows your trips.`);
     } catch (e) {
       setError(
