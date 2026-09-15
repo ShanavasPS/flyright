@@ -30,6 +30,15 @@ The dependency is pinned to **1.0.0-alpha08**, which supports compileSdk 36 and 
 
 **Gemini availability is not guaranteed by registration.** Google's current documentation restricts the complete pipeline to selected early-access apps. This implementation prepares testable functions; it does not enroll FlyRight or claim public Gemini support.
 
+### Gemini status — checked 2026-09-15
+
+- Google's AppFunctions page states that the Gemini integration is "in a private preview with trusted testers" and that "only a limited number of apps and system agents can access the entire pipeline." Access is by an Early Access Program.
+- The EAP registration form linked from that page (`forms.gle/GN5ybjQFhzHRCguM7`) now shows only "Thank you for your interest in the Android AppFunctions Early Access Program. The Early Access Program is currently at capacity." There is nothing to submit. It points to a developer feedback form (`forms.gle/uTjn571hKdN6vFw96`, Google sign-in; asks for the package name, the Play listing link, screen recordings of the functions and API feedback), which is the only remaining channel to Google.
+- App Actions (`shortcuts.xml` capabilities with built-in intents such as `actions.intent.OPEN_APP_FEATURE`) are documented for Google Assistant only; none of Google's App Actions pages mention Gemini. They are not built here. If Google publishes Gemini support for App Actions, add a config plugin that writes `shortcuts.xml` with one `OPEN_APP_FEATURE` capability per action, accept the App Actions terms in Play Console (Advanced settings → App Actions) and wait for Google's review.
+- Library: `androidx.appfunctions` released alpha09 (May 2026), alpha10 (July 2026, introduces `AppFunctionServiceEntryPoint`; every `@AppFunction` must live inside the annotated service) and alpha11 (August 2026). All three need compileSdk 37 / AGP 9.1, so the module stays on alpha08 until the Expo toolchain moves.
+
+Until Google opens the pipeline, the Android functions can be exercised only through the platform CLI (`adb shell cmd app_function …`) or the [AppFunctions testing agent](https://github.com/android/appfunctions) built from Google's sample, not through the Gemini app.
+
 ## Verification
 
 Run `npx expo prebuild`, then compile both native apps. SDK 57 recreates native directories by default; use `--no-clean` for an incremental regeneration, or run CocoaPods installation again after an iOS clean prebuild. Confirm the iOS app's `Metadata.appintents` contains all three intents and phrases, and that the Android APK contains `assets/app_functions.xml`, `assets/app_functions_v2.xml`, and the protected service.

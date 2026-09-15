@@ -2,6 +2,10 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-15 — Android AppFunctions on the Pixel 9a: reachable, locked, check pending
+
+Gemini access to FlyRight was reviewed for parity with the iOS App Intents work. The Pixel 9a (`tegu`, Android 17, build `CP2A.260805.005`) was rediscovered over mDNS and connected at `192.168.0.55:44257`; it runs the Play-installed **1.0.35 (49)** release and Android already indexes all three FlyRight app functions (`cmd app_function list-app-functions`). The phone stayed on its lock screen (`deviceLocked=1`) for the whole 20-minute wait, so the cold/warm execution of the three functions with screenshots and crash-record diffs was **not run**; the crash/exit baseline was saved under `.maestro/out/physical-pixel-appfunctions-2026-09-15T18-30-34Z/` and no data was modified. Google's AppFunctions↔Gemini pipeline remains a private preview whose Early Access Program form reads "currently at capacity" (details in [assistant-actions.md](assistant-actions.md)). Resume by unlocking the phone and running the prepared CLI sequence; a CLI pass still does not demonstrate Gemini invocation.
+
 ## 2026-09-15 — 1.0.35 submitted for App Review and Play production
 
 The user requested commit/push, simulator/emulator checks, physical checks **if available**, and new store builds while they slept. That explicit conditional physical scope applies to this release. Neither phone cleared a 1.0.35 physical check: the paired iPhone's live wireless lock queries timed out, and the Pixel was initially reachable but locked, then disconnected with no wireless service advertised. Neither phone was cleared, uninstalled or modified to bypass its lock. Previous 1.0.34 hardware results do not count as 1.0.35 coverage.
