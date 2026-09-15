@@ -1,0 +1,39 @@
+[
+  {
+    "id": "01-ticket",
+    "source": "01-open-share.mp4",
+    "start": 5.1,
+    "end": 7.02,
+    "duration": 2,
+    "title": ["Open your", "ticket."],
+    "body": ["Start with the file", "already on your phone."]
+  },
+  {
+    "id": "02-share",
+    "source": "02-import.mp4",
+    "start": 3.6,
+    "end": 7.16,
+    "duration": 2.5,
+    "title": ["Share to", "FlyRight."],
+    "body": ["The app reads the file", "and finds your flight."]
+  },
+  {
+    "id": "03-review",
+    "source": "03-save.mp4",
+    "start": 3.4,
+    "end": 7.7,
+    "duration": 3.5,
+    "title": ["Review.", "Then add."],
+    "body": ["Check the route,", "date and times."]
+  },
+  {
+    "id": "04-saved",
+    "source": "04-journal.mp4",
+    "start": 0,
+    "end": 0.06,
+    "hold": true,
+    "duration": 2,
+    "title": ["A ticket becomes", "a trip."],
+    "body": ["Saved to My travels.", "Ready for your story."]
+  }
+]

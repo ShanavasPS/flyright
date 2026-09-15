@@ -1,0 +1,17 @@
+appId: com.shanavasshaji.flyright
+---
+- startRecording: ${OUT}/03-save
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- tapOn: "Add 1 flight to My travels.*"
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- takeScreenshot: ${OUT}/04-journal
+- stopRecording

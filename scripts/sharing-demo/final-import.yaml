@@ -1,0 +1,13 @@
+# Begin in Photos viewing the final receipt. The app is already running at
+# My travels, and development overlays have been disabled in its process.
+appId: com.shanavasshaji.flyright
+---
+- tapOn:
+    point: "9%,94%"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- runFlow: record-import.yaml
+- assertVisible: "Booking DEMO26"
+- runFlow: record-save.yaml

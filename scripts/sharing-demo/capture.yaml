@@ -1,0 +1,27 @@
+# Start in Photos viewing the first fixture, with the revised receipt as the
+# next thumbnail. No app/account resets or remote writes.
+appId: com.shanavasshaji.flyright
+---
+- tapOn:
+    point: "59%,87%"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- startRecording: ${OUT}/01-open-share
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- takeScreenshot: ${OUT}/01-ticket
+- tapOn:
+    point: "9%,94%"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- takeScreenshot: ${OUT}/02-share-sheet
+- stopRecording
+- runFlow: record-import.yaml
+- assertVisible: "Booking DEMO26"
+- runFlow: record-save.yaml
