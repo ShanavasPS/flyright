@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { WorldMap, mapColors } from '@/components/world-map';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { buildWorldMap, fitViewBox, type RouteSource } from '@/services/geo';
+import { buildWorldMap, fitViewBox, type RoutePaths, type RouteSource } from '@/services/geo';
 
 /** The offline SVG atlas fitted to one route — the web World tab's renderer,
  * and the native inset's fallback for routes too wide for a map SDK's
@@ -11,9 +11,12 @@ import { buildWorldMap, fitViewBox, type RouteSource } from '@/services/geo';
  * ~89° at most). Fills its parent. */
 export function RouteAtlas({
   journeys,
+  paths,
   height,
   pad = 0.35,
 }: {
+  /** Real lines for the journeys that have one — see geo.RoutePaths. */
+  paths?: RoutePaths;
   /** One leg, or somebody's whole travel — the atlas fits whatever it is
    * given, which is why it and not the map SDK draws a person's world: a
    * lifetime of routes spans more longitude than the SDK will zoom out to. */
@@ -28,7 +31,7 @@ export function RouteAtlas({
 }) {
   const { sea } = mapColors(useColorScheme() === 'dark');
   const [now] = useState(() => new Date());
-  const data = useMemo(() => buildWorldMap(journeys, now), [journeys, now]);
+  const data = useMemo(() => buildWorldMap(journeys, now, paths), [journeys, now, paths]);
   const [width, setWidth] = useState(0);
   // Extra padding: the arc's polar apex must clear the top edge with room to
   // spare, and the endpoint labels need space to the right of their dots.

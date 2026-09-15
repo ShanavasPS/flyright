@@ -1,11 +1,13 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { PathCaption } from '@/components/path-caption';
 import { RouteAtlas } from '@/components/route-atlas';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getAirport } from '@/services/airports';
-import type { RouteSource } from '@/services/geo';
+import { pathCaption, type RoutePath, type RouteSource } from '@/services/geo';
 
 export const ROUTE_MAP_HEIGHT = 220;
 
@@ -17,21 +19,32 @@ export const ROUTE_MAP_HEIGHT = 220;
  * otherwise by staying pressable. */
 export function RouteMap({
   journey,
+  path,
   onPress,
 }: {
   journey: RouteSource;
+  path?: RoutePath | null;
   onPress?: () => void;
 }) {
   const theme = useTheme();
+  const paths = useMemo(() => (path ? { [journey.id]: path } : undefined), [journey.id, path]);
   if (!getAirport(journey.fromCode) || !getAirport(journey.toCode)) return null;
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : 'image'}
-      accessibilityLabel={onPress ? 'Open in World' : 'Route map'}
+      accessibilityLabel={[
+        path
+          ? `${pathCaption(path)} from ${journey.fromCode} to ${journey.toCode}`
+          : `Overview route from ${journey.fromCode} to ${journey.toCode}; actual flight path may differ`,
+        onPress ? 'Open in World' : null,
+      ]
+        .filter(Boolean)
+        .join('. ')}
       onPress={onPress}
       disabled={!onPress}
       style={[styles.card, { borderColor: theme.hairline }]}>
-      <RouteAtlas journeys={[journey]} height={ROUTE_MAP_HEIGHT} />
+      <RouteAtlas journeys={[journey]} paths={paths} height={ROUTE_MAP_HEIGHT} />
+      <PathCaption path={path} />
       <View style={[styles.expand, { backgroundColor: theme.backgroundElement }]}>
         <ThemedText type="smallBold" style={{ color: theme.tint }}>
           World

@@ -480,4 +480,32 @@ export default defineSchema({
     reportedAt: v.union(v.number(), v.null()),
     updatedAt: v.string(),
   }).index('by_period', ['period']),
+
+  /** Shared cache of flight paths — the recorded track or filed route the
+   * detail map draws — keyed `<FLIGHT>:<YYYY-MM-DD>` like flightFacts, from
+   * a second provider (FlightAware AeroAPI) with its own licence: raw data
+   * may be kept thirty days, so `crons.ts` prunes on that horizon and
+   * `expiresAt` follows the flight (a landed track is final; one in the air
+   * grows by the minute). `payload` null is a cached "nothing to draw", so a
+   * flight without coverage is not bought again on every open. See
+   * flightPathShared.ts. */
+  flightPaths: defineTable({
+    key: v.string(),
+    payload: v.union(v.string(), v.null()),
+    /** 'track' | 'planned' | 'none', for debugging TTL choices. */
+    kind: v.string(),
+    fetchedAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index('by_key', ['key'])
+    .index('by_fetchedAt', ['fetchedAt']),
+
+  /** The month's spend on flight paths, in the provider's list-price cents
+   * (flightPathShared.PRICE_CENTS), against FLIGHTAWARE_MONTHLY_CENTS. The
+   * provider sends no budget headers, so this counter is the only reading. */
+  flightPathBudget: defineTable({
+    period: v.string(),
+    cents: v.number(),
+    updatedAt: v.string(),
+  }).index('by_period', ['period']),
 });

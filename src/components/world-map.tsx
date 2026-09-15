@@ -51,18 +51,33 @@ export const WorldMap = memo(function WorldMap({ box, pxWidth, routes, airports 
 
       {routes.map((route) => {
         const width = (1.6 + Math.min(route.count - 1, 4) * 0.3) * u;
-        return route.paths.map((d, i) => (
-          <Path
-            key={`${route.key}-${i}`}
-            d={d}
-            fill="none"
-            stroke={theme.tint}
-            strokeWidth={width}
-            strokeLinecap="round"
-            strokeOpacity={route.upcomingOnly ? 0.85 : 1}
-            strokeDasharray={route.upcomingOnly ? `${4.5 * u},${3.5 * u}` : undefined}
-          />
-        ));
+        return [
+          ...route.paths.map((d, i) => (
+            <Path
+              key={`${route.key}-${i}`}
+              d={d}
+              fill="none"
+              stroke={theme.tint}
+              strokeWidth={width}
+              strokeLinecap="round"
+              strokeOpacity={route.upcomingOnly ? 0.85 : 1}
+              strokeDasharray={route.upcomingOnly ? `${4.5 * u},${3.5 * u}` : undefined}
+            />
+          )),
+          // Still to fly (a flight in the air): dashed and lighter.
+          ...(route.remainingPaths ?? []).map((d, i) => (
+            <Path
+              key={`${route.key}-rest-${i}`}
+              d={d}
+              fill="none"
+              stroke={theme.tint}
+              strokeWidth={width * 0.85}
+              strokeLinecap="round"
+              strokeOpacity={0.55}
+              strokeDasharray={`${4.5 * u},${3.5 * u}`}
+            />
+          )),
+        ];
       })}
       {/* A soft tint halo per airport anchors the arcs to their endpoints. */}
       {airports.map((airport) => (

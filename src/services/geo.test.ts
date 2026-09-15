@@ -12,6 +12,7 @@ import {
   greatCircle,
   haversineKm,
   nearestRoute,
+  pathCaption,
   pointAlong,
   project,
   routePlane,
@@ -402,5 +403,67 @@ describe('fitViewBox', () => {
   it('never zooms tighter than minWidth for a short hop', () => {
     const points = [project(60.3, 24.9), project(59.4, 24.8)]; // HEL–TLL
     expect(fitViewBox(points, 1).width).toBeGreaterThanOrEqual(WORLD.width / 8);
+  });
+});
+
+describe('real flight paths', () => {
+  const hel = getAirport('HEL')!;
+  const lhr = getAirport('LHR')!;
+  const flown = row({ id: 'p1', number: 'AY1331', fromCode: 'HEL', toCode: 'LHR', scheduledDeparture: '2026-08-30T08:00:00Z' });
+  // A track that bows well south of the great circle.
+  const track: [number, number][] = [
+    [hel.lat, hel.lon],
+    [57, 15],
+    [53, 5],
+    [lhr.lat, lhr.lon],
+  ];
+
+  it('draws the supplied path instead of the great circle, and says so', () => {
+    const data = buildWorldRoutes([flown], NOW, { p1: { kind: 'track', points: track, complete: true } });
+    const route = data.routes[0];
+    expect(route.path).toEqual({ kind: 'track', complete: true });
+    expect(route.remaining).toEqual([]);
+    expect(route.segments[0].map((c) => [c.latitude, c.longitude])).toEqual(track);
+    expect(pathCaption(route.path)).toBe('Flown path');
+    // The plane sits mid-track for a finished flight, as it does mid-arc.
+    const plane = routePlane(route);
+    expect(plane.upcoming).toBe(false);
+    expect(plane.coordinate.latitude).toBeCloseTo(55, 0);
+  });
+
+  it('keeps the great circle when the path is missing or degenerate', () => {
+    const none = buildWorldRoutes([flown], NOW, { p1: null });
+    expect(none.routes[0].path).toBeNull();
+    expect(pathCaption(none.routes[0].path)).toBe('Overview');
+    const short = buildWorldRoutes([flown], NOW, { p1: { kind: 'track', points: [[1, 1]], complete: true } });
+    expect(short.routes[0].path).toBeNull();
+    expect(short.routes[0].segments).toEqual(arcCoordinates(hel, lhr));
+  });
+
+  it('puts an airborne plane at the end of its track and dashes the rest of the way', () => {
+    const partial = track.slice(0, 3);
+    const data = buildWorldRoutes([flown], NOW, { p1: { kind: 'track', points: partial, complete: false } });
+    const route = data.routes[0];
+    expect(pathCaption(route.path)).toBe('Live path');
+    expect(route.remaining!.length).toBe(1);
+    const rest = route.remaining![0];
+    expect(rest[0].latitude).toBeCloseTo(53, 9);
+    expect(rest[0].longitude).toBeCloseTo(5, 9);
+    expect(rest[rest.length - 1].latitude).toBeCloseTo(lhr.lat, 5);
+    const plane = routePlane(route);
+    expect(plane.coordinate).toEqual({ latitude: 53, longitude: 5 });
+    expect(plane.upcoming).toBe(false);
+    // Nose toward London: south-west of the last position.
+    expect(plane.heading).toBeGreaterThan(180);
+    expect(plane.heading).toBeLessThan(300);
+    // The camera fit covers the dashed remainder too.
+    expect(data.fitCoords.some((c) => Math.abs(c.latitude - lhr.lat) < 0.01)).toBe(true);
+  });
+
+  it('projects the remainder into the SVG atlas', () => {
+    const map = buildWorldMap([flown], NOW, { p1: { kind: 'planned', points: track, complete: false } });
+    expect(map.routes[0].paths).toHaveLength(1);
+    expect(map.routes[0].remainingPaths).toEqual([]);
+    expect(pathCaption(map.routes[0].path)).toBe('Filed route');
   });
 });

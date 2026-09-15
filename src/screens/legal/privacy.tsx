@@ -16,7 +16,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Flight lookups',
-    body: 'When you add a flight, the flight number and date are sent to our lookup service, which queries an aviation data provider (AeroDataBox) to fetch the schedule, route, and delay status. We keep the answer about that flight for up to seven days so the same question is not bought twice — it describes the flight, not you, and is never linked to your identity.',
+    body: 'When you add a flight, the flight number and date are sent to our lookup service, which queries an aviation data provider (AeroDataBox) to fetch the schedule, route, and delay status. We keep the answer about that flight for up to seven days so the same question is not bought twice — it describes the flight, not you, and is never linked to your identity. The line a flight actually flew, drawn on the trip’s map, comes from a second provider (FlightAware AeroAPI) the same way and is kept for up to thirty days. Contains AeroAPI data © FlightAware LLC.',
   },
   {
     title: 'Purchases',

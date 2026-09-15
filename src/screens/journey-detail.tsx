@@ -54,6 +54,7 @@ import {
 import { resolveDelayMinutes } from '@/services/arrival-delay';
 import { recordDelay, useDisruption } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight } from '@/services/flight-lookup';
+import { useFlightPath } from '@/services/flight-path';
 import { inboundNewsworthy, inboundOutlook, type InboundOutlook } from '@/services/inbound';
 import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
 import { noteSuccess } from '@/services/haptics';
@@ -161,6 +162,23 @@ export function JourneyDetail({
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  // The line the inset map draws: the flight's recorded track or filed
+  // route, when the path lookup has one; the great circle until then. Only
+  // for tracked flights — a journal entry has nothing to look up.
+  const flightPath = useFlightPath(
+    isLookupable && row && lookupDay
+      ? {
+          number: journey!.number,
+          fromCode: row.fromCode,
+          toCode: row.toCode,
+          scheduledDeparture: row.scheduledDeparture,
+          scheduledArrival: row.scheduledArrival,
+          date: lookupDay,
+        }
+      : null,
+    now,
+  );
 
   // Cache any observed delay so the journeys list can badge this row as owed
   // without its own status call (see services/disruptions.ts).
@@ -374,6 +392,7 @@ export function JourneyDetail({
         {mapSource && (
           <RouteMap
             journey={mapSource}
+            path={flightPath}
             onPress={() => {
               // Hand the trip to the World tab (see services/world-focus).
               // The demo isn't a DB row, so World shows every travel for it.

@@ -18,8 +18,10 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { airportZone, getAirport } from '@/services/airports';
 import { flightInstant, formatTime, tripDateTitle } from '@/services/dates';
+import { useFlightPath } from '@/services/flight-path';
 import { haversineKm } from '@/services/geo';
 import { adaptPublicSession, travellerEyebrow, tripDone } from '@/services/public-session';
+import { lookupDayFor } from '@/services/schedule-change-lifecycle';
 import { hasLanded, type TravelStage } from '@/services/travel-day';
 
 /**
@@ -50,6 +52,20 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
   const title = shown
     ? tripDateTitle(shown.scheduledDeparture, now, airportZone(shown.fromCode))
     : 'Trip';
+  // The same real line the traveller's own map draws, when there is one.
+  const flightPath = useFlightPath(
+    shown && shown.number
+      ? {
+          number: shown.number,
+          fromCode: shown.fromCode,
+          toCode: shown.toCode,
+          scheduledDeparture: shown.scheduledDeparture,
+          scheduledArrival: shown.scheduledArrival,
+          date: lookupDayFor(shown),
+        }
+      : null,
+    now.getTime(),
+  );
 
   let body: React.ReactNode;
   if (result === undefined) {
@@ -71,6 +87,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             their map, not the viewer's World tab — which draws the viewer's
             own journal and would quietly show the wrong travel. */}
         <RouteMap
+          path={flightPath}
           onPress={() =>
             router.push({
               pathname: '/person/[id]/world',

@@ -56,6 +56,16 @@ When the user asks for a release, do ALL of this without being reminded:
 - Run `npm run release:backend` as the read-only production inventory check. Preserve existing accounts, trips, photos and permissions, and restore temporary device settings. Report signed-in and retained-photo coverage separately; a signed-out or process-survival pass cannot clear those checks.
 - Save dated results and evidence, copy useful screenshots to Downloads, and update `docs/release-state.md`. If one phone is unavailable, finish the checks possible on the other and identify what is needed to complete the missing platform. Never label simulator results as physical-device results.
 
+# Flight paths (FlightAware AeroAPI)
+
+The trip map draws the flight's real track / filed route when
+`FLIGHTAWARE_API_KEY` is set on Convex + Hosting; otherwise the great circle,
+captioned "Overview". Read [docs/flight-paths.md](docs/flight-paths.md) before
+touching it — the AeroAPI licence caps raw storage at 30 days, forbids use
+alongside another real-time provider without written permission, and forbids
+use for EU261 claims. Cost is per result set of 15 records; the monthly cap is
+`FLIGHTAWARE_MONTHLY_CENTS`.
+
 # Android Maps key
 
 `app.config.js` injects `GOOGLE_MAPS_ANDROID_API_KEY` into the `react-native-maps`

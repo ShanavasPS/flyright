@@ -105,6 +105,16 @@ export function normalizeFlightNumber(input: string): string | null {
   return FLIGHT_NUMBER.test(compact) ? compact : null;
 }
 
+/** Who is asking, for every metered route: the session token when signed
+ * in, else the guest marker. The markers survive EAS Hosting's forwarded
+ * Origin/Referer; they identify the guest flow, and the server's
+ * per-address meter limits it. */
+export async function lookupHeaders(): Promise<Record<string, string>> {
+  const token = await sessionToken();
+  if (token) return { Authorization: `Bearer ${token}` };
+  return { [Platform.OS === 'web' ? 'X-FlyRight-Web' : 'X-FlyRight-Guest']: '1' };
+}
+
 const lookupQueue = createSerialQueue(LOOKUP_GAP_MS);
 
 export async function lookupFlight(
@@ -113,19 +123,11 @@ export async function lookupFlight(
   options?: { inbound?: boolean; background?: boolean },
 ): Promise<FlightStatus> {
   const inbound = options?.inbound ? '&inbound=1' : '';
-  const token = await sessionToken();
+  const headers = await lookupHeaders();
   // The guest allowance is for searches the traveller initiates. A headless
   // refresh must not spend it before they next open the app.
-  if (options?.background && !token) {
+  if (options?.background && !headers.Authorization) {
     throw new FlightLookupError('Sign in for background flight updates.', 401);
-  }
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  } else {
-    // These markers survive EAS Hosting's forwarded Origin/Referer. They
-    // identify the guest flow; the server's per-address meter limits it.
-    headers[Platform.OS === 'web' ? 'X-FlyRight-Web' : 'X-FlyRight-Guest'] = '1';
   }
   // Through the queue: one provider call at a time, a breath apart, whoever
   // asked — the import's legs, the flight watch, add-flight.

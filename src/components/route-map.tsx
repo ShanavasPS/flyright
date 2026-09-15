@@ -3,14 +3,15 @@ import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 
-import { AirportMarker, PlaneMarker } from '@/components/map-layers';
+import { AirportMarker, PlaneMarker, alphaHex } from '@/components/map-layers';
+import { PathCaption } from '@/components/path-caption';
 import { RouteAtlas } from '@/components/route-atlas';
 import { ThemedText } from '@/components/themed-text';
 import { mapColors } from '@/components/world-map';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { buildWorldRoutes, routePlane, type RouteSource } from '@/services/geo';
+import { buildWorldRoutes, pathCaption, routePlane, type RoutePath, type RouteSource } from '@/services/geo';
 
 import { CLUTTER_OFF, GOOGLE_NIGHT, frameInset, regionFor, regionHolds } from '@/services/map-region';
 
@@ -33,11 +34,16 @@ export const ROUTE_MAP_HEIGHT = 220;
  * the World tab draws the viewer's OWN journal and has nothing to open it
  * on — so there the card is a picture, not a button, and does not pretend
  * otherwise by staying pressable. */
+/** `path` is the flight's real line when the path lookup has one (see
+ * services/flight-path) — the track it flew, or the route it filed. Without
+ * one the card draws the great circle, and its caption says "Overview". */
 export function RouteMap({
   journey,
+  path,
   onPress,
 }: {
   journey: RouteSource;
+  path?: RoutePath | null;
   onPress?: () => void;
 }) {
   const theme = useTheme();
@@ -46,7 +52,8 @@ export function RouteMap({
   // Frozen per mount, same as the World tab — the flown/upcoming cutoff
   // doesn't need to tick.
   const [now] = useState(() => new Date());
-  const data = useMemo(() => buildWorldRoutes([journey], now), [journey, now]);
+  const paths = useMemo(() => (path ? { [journey.id]: path } : undefined), [journey.id, path]);
+  const data = useMemo(() => buildWorldRoutes([journey], now, paths), [journey, now, paths]);
   const route = data.routes[0];
   const plane = useMemo(() => (route ? routePlane(route) : null), [route]);
   // How much of the world a map SDK can show here depends on how wide the
@@ -72,11 +79,14 @@ export function RouteMap({
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : 'image'}
-      accessibilityLabel={
-        onPress
-          ? `Map of ${route.from.iata} to ${route.to.iata}. Open in World`
-          : `Map of ${route.from.iata} to ${route.to.iata}`
-      }
+      accessibilityLabel={[
+        route.path
+          ? `${pathCaption(route.path)} from ${route.from.iata} to ${route.to.iata}`
+          : `Overview route from ${route.from.iata} to ${route.to.iata}; actual flight path may differ`,
+        onPress ? 'Open in World' : null,
+      ]
+        .filter(Boolean)
+        .join('. ')}
       onPress={onPress}
       disabled={!onPress}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
@@ -88,8 +98,11 @@ export function RouteMap({
         <MapView
           // One map per route: `initialRegion` is honoured on mount only, so
           // a map instance carried from one journey to the next would keep
-          // the old window and show none of the new route.
-          key={route.key}
+          // the old window and show none of the new route. A path arriving
+          // after the great circle re-frames the same way — a track bows
+          // differently — but a live track growing by the minute does not:
+          // the frame it started in already reaches the destination.
+          key={`${route.key}-${route.path?.kind ?? 'arc'}`}
           style={styles.map}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
           initialRegion={frame.region}
@@ -125,6 +138,18 @@ export function RouteMap({
               lineCap="round"
             />
           ))}
+          {/* Still to fly: dashed and lighter, from where the aircraft is
+              to where it is going. */}
+          {(route.remaining ?? []).map((coordinates, i) => (
+            <Polyline
+              key={`${route.key}-rest-${i}`}
+              coordinates={coordinates}
+              strokeColor={`${theme.tint}${alphaHex(0.55)}`}
+              strokeWidth={2.5}
+              lineDashPattern={[6, 6]}
+              lineCap="round"
+            />
+          ))}
           <PlaneMarker plane={plane} />
           {data.airports.map((airport) => (
             <AirportMarker
@@ -136,8 +161,9 @@ export function RouteMap({
           ))}
         </MapView>
       ) : (
-        <RouteAtlas journeys={[journey]} height={ROUTE_MAP_HEIGHT} />
+        <RouteAtlas journeys={[journey]} paths={paths} height={ROUTE_MAP_HEIGHT} />
       )}
+      <PathCaption path={route.path} />
       {/* Catches the tap for the Pressable on both platforms — Google Maps
           would otherwise swallow it even with gestures off. Still wanted
           without an onPress: it stops the map panning under a finger on a

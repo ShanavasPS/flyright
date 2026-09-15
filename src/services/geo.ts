@@ -142,16 +142,16 @@ export function splitAtAntimeridian<T extends ShadedLatLng>(points: T[]): T[][] 
   return segments.filter((segment) => segment.length > 1);
 }
 
+/** [lat, lon] pairs as map-SDK polyline segments, split at the antimeridian. */
+function toSegments(pairs: [number, number][]): LatLng[][] {
+  return splitAtAntimeridian(pairs.map(([latitude, longitude]) => ({ latitude, longitude })));
+}
+
 /** Great-circle arc as map-SDK polyline coordinates. Usually one segment;
  * arcs that wrap the antimeridian (LAX–NRT) split into two, each ending
  * exactly at ±180° so neither polyline draws the long way around the globe. */
 export function arcCoordinates(from: Airport, to: Airport): LatLng[][] {
-  return splitAtAntimeridian(
-    greatCircle(from.lat, from.lon, to.lat, to.lon).map(([latitude, longitude]) => ({
-      latitude,
-      longitude,
-    })),
-  );
+  return toSegments(greatCircle(from.lat, from.lon, to.lat, to.lon));
 }
 
 /** The arc's raw samples in drawing order, undoing the antimeridian split
@@ -236,9 +236,41 @@ export interface GeoRoute {
   count: number;
   /** True when every journey on the pair is still ahead — drawn animated. */
   upcomingOnly: boolean;
+  /** The line drawn solid: the flight's own path when one was supplied
+   * (see RoutePath), else the great circle. */
   segments: LatLng[][];
+  /** What `segments` is — null for the great circle. Read by routePlane
+   * and by the caption that says which line the viewer is looking at. */
+  path?: { kind: RoutePathKind; complete: boolean } | null;
+  /** The rest of the way for a flight still in the air: the great circle
+   * from the track's last position to the destination, drawn dashed. */
+  remaining?: LatLng[][];
   /** Every journey on the pair, earliest departure first. */
   legs: RouteLeg[];
+}
+
+export type RoutePathKind = 'track' | 'planned';
+
+/** A flight's real line, from the path lookup (services/flight-path): the
+ * recorded track, or the route it filed. In flying order, so it replaces
+ * the great circle of the journey it belongs to. */
+export interface RoutePath {
+  kind: RoutePathKind;
+  /** [lat, lon] pairs. */
+  points: [number, number][];
+  /** A track is complete once the flight has landed. */
+  complete: boolean;
+}
+
+/** Paths by journey id, for the journeys that have one. */
+export type RoutePaths = Record<string, RoutePath | null | undefined>;
+
+/** What the map's caption calls the line it is drawing. The great circle is
+ * named too: a smooth arc looks like a flight path, and isn't one. */
+export function pathCaption(path: { kind: RoutePathKind; complete: boolean } | null | undefined): string {
+  if (!path) return 'Overview';
+  if (path.kind === 'planned') return 'Filed route';
+  return path.complete ? 'Flown path' : 'Live path';
 }
 
 /** The plane glyph drawn on a route: its position, heading and which leg it
@@ -276,12 +308,15 @@ export function routePlane(route: GeoRoute): RoutePlane {
   const next = route.legs.find((leg) => !leg.flown);
   const leg = next ?? route.legs[route.legs.length - 1];
   const forward = leg.from.iata === route.from.iata;
-  const t = next ? originOffset(route) : 0.5;
+  // A track still being flown ends where the aircraft is: the plane sits
+  // there, nose along the last stretch, rather than at a notional midpoint.
+  const inAir = route.path?.kind === 'track' && !route.path.complete;
+  const t = inAir ? 1 : next ? originOffset(route) : 0.5;
   const { coordinate, heading } = pointAlong(route.segments, forward ? t : 1 - t);
   return {
     coordinate,
     heading: forward ? heading : (heading + 180) % 360,
-    upcoming: next != null,
+    upcoming: next != null && !inAir,
     leg,
     forward,
   };
@@ -387,11 +422,22 @@ export interface WorldRoutesData {
 
 /** Collapse journeys into distinct route arcs + visited airports. Rows whose
  * codes aren't in the bundled airport set (manual train/bus entries with
- * non-IATA codes) are skipped — no coordinates, nothing to draw. */
-export function buildWorldRoutes(rows: RouteSource[], now: Date): WorldRoutesData {
+ * non-IATA codes) are skipped — no coordinates, nothing to draw.
+ *
+ * `paths` swaps a journey's great circle for its real line. The first
+ * journey seen on a pair decides that pair's geometry, as it always has —
+ * the detail map draws one journey, and the World tab's overview is the
+ * great circle either way. */
+export function buildWorldRoutes(rows: RouteSource[], now: Date, paths?: RoutePaths): WorldRoutesData {
   const routes = new Map<string, GeoRoute>();
   const airports = new Map<string, GeoAirport>();
   const fitCoords: LatLng[] = [];
+  const sample = (segments: LatLng[][]) => {
+    for (const segment of segments) {
+      for (let i = 0; i < segment.length; i += 4) fitCoords.push(segment[i]);
+      fitCoords.push(segment[segment.length - 1]);
+    }
+  };
 
   for (const row of rows) {
     const from = getAirport(row.fromCode);
@@ -421,12 +467,26 @@ export function buildWorldRoutes(rows: RouteSource[], now: Date): WorldRoutesDat
       route.upcomingOnly = route.upcomingOnly && !flown;
       route.legs.push(leg);
     } else {
-      const segments = arcCoordinates(from, to);
-      for (const segment of segments) {
-        for (let i = 0; i < segment.length; i += 4) fitCoords.push(segment[i]);
-        fitCoords.push(segment[segment.length - 1]);
-      }
-      routes.set(key, { key, from, to, count: 1, upcomingOnly: !flown, segments, legs: [leg] });
+      const own = paths?.[row.id];
+      const path = own && own.points.length >= 2 ? own : null;
+      const segments = path ? toSegments(path.points) : arcCoordinates(from, to);
+      // A flight in the air has flown the track so far and has the rest
+      // of the great circle still to go, from wherever it is now.
+      const last = path?.kind === 'track' && !path.complete ? path.points[path.points.length - 1] : null;
+      const remaining = last ? toSegments(greatCircle(last[0], last[1], to.lat, to.lon)) : [];
+      sample(segments);
+      sample(remaining);
+      routes.set(key, {
+        key,
+        from,
+        to,
+        count: 1,
+        upcomingOnly: !flown,
+        segments,
+        path: path ? { kind: path.kind, complete: path.complete } : null,
+        remaining,
+        legs: [leg],
+      });
     }
   }
 
@@ -438,8 +498,10 @@ export function buildWorldRoutes(rows: RouteSource[], now: Date): WorldRoutesDat
 
 // —— SVG derivations, used by the web fallback map ——
 
-export interface MapRoute extends Omit<GeoRoute, 'segments'> {
+export interface MapRoute extends Omit<GeoRoute, 'segments' | 'remaining'> {
   paths: string[];
+  /** `remaining` as SVG paths — the dashed rest of the way. */
+  remainingPaths: string[];
 }
 
 export interface MapAirport extends Airport, MapPoint {
@@ -452,20 +514,26 @@ export interface WorldMapData {
   fitPoints: MapPoint[];
 }
 
+/** Polyline segments as SVG path `d` strings in the world-map viewBox. */
+function svgPaths(segments: LatLng[][]): string[] {
+  return segments.map((points) =>
+    points
+      .map((c, i) => {
+        const p = project(c.latitude, c.longitude);
+        return `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+      })
+      .join(''),
+  );
+}
+
 /** `buildWorldRoutes` projected into the SVG world map. */
-export function buildWorldMap(rows: RouteSource[], now: Date): WorldMapData {
-  const { routes, airports, fitCoords } = buildWorldRoutes(rows, now);
+export function buildWorldMap(rows: RouteSource[], now: Date, paths?: RoutePaths): WorldMapData {
+  const { routes, airports, fitCoords } = buildWorldRoutes(rows, now, paths);
   return {
-    routes: routes.map(({ segments, ...route }) => ({
+    routes: routes.map(({ segments, remaining, ...route }) => ({
       ...route,
-      paths: segments.map((points) =>
-        points
-          .map((c, i) => {
-            const p = project(c.latitude, c.longitude);
-            return `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
-          })
-          .join(''),
-      ),
+      paths: svgPaths(segments),
+      remainingPaths: svgPaths(remaining ?? []),
     })),
     airports: airports.map((airport) => ({ ...airport, ...project(airport.lat, airport.lon) })),
     fitPoints: fitCoords.map((c) => project(c.latitude, c.longitude)),
