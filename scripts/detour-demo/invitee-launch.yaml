@@ -1,0 +1,89 @@
+# The invitee's phone, part 2, after `xcrun simctl install <udid> demo/out/detour/FlyRight.app`:
+# dismiss the simulator's itms-apps alert, Home, open FlyRight, Skip, the
+# tracking prompt — the deferred link lands on the invitation — then sign in
+# as a Clerk test user (OTP 424242), finish the profile, and the pending
+# follow is redeemed: "Waiting for Daniel" → Open People → Daniel "Requested".
+#   maestro --device <udid> test -e EMAIL=emma+clerk_test@example.com -e FIRST=Emma -e LAST=Laurent scripts/detour-demo/invitee-launch.yaml
+appId: com.apple.springboard
+---
+- tapOn:
+    text: "OK"
+    optional: true
+- pressKey: Home
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- tapOn: "FlyRight"
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "Allow"
+    timeout: 15000
+    optional: true
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- tapOn:
+    text: "Allow"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*invited you.*"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- tapOn: "Sign in to follow"
+- runFlow:
+    file: ../../.maestro/clerk-dev-sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+- extendedWaitUntil:
+    visible: ".*(First name|Waiting for|invited you|Not now).*"
+    timeout: 30000
+- runFlow:
+    when:
+      visible: "First name"
+    commands:
+      - tapOn: "First name"
+      - inputText: ${FIRST}
+      - tapOn: "Last name"
+      - inputText: ${LAST}
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    visible: ".*(Waiting for|Allow|Not now).*"
+    timeout: 40000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- tapOn:
+    text: "Allow"
+    optional: true
+- tapOn:
+    text: "Not now"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*Waiting for.*"
+    timeout: 20000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- tapOn: "Open People"
+- extendedWaitUntil:
+    visible: ".*(Requested|Daniel).*"
+    timeout: 20000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 5000
+- takeScreenshot: ${OUT}/emma-people

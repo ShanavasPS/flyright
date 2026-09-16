@@ -1,0 +1,46 @@
+# The invitee's phone, part 1: the link Daniel sent sits in Reminders (the
+# simulator has no Notes, and Messages cannot receive). Tap it → Safari lands
+# on the invitation → App Store → Detour. Record with
+# `xcrun simctl io <udid> recordVideo` around this and invitee-launch.yaml.
+# Prep: a reminder whose note is the invite link (see README).
+appId: com.apple.reminders
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My Lists"
+    timeout: 15000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+# The "Reminders" list row under My Lists (its text is not matchable).
+- tapOn:
+    point: "50%,45%"
+- extendedWaitUntil:
+    visible: ".*From Daniel.*"
+    timeout: 15000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+# The note's link is not exposed as text; it sits under the title.
+- tapOn:
+    point: "30%,25%"
+- extendedWaitUntil:
+    visible: ".*invited you.*"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- scroll
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- tapOn:
+    point: "20%,77%"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 6000

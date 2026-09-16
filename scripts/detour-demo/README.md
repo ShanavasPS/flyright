@@ -44,6 +44,32 @@ to know the token on a fresh install. (The app deliberately does not rely on
 it in production — a real iOS install missed once on 2026-09-06 — which is why
 the landing also offers `flyright://` and People has "paste an invite link".)
 
+## Two phones (third cut, the one to post)
+
+`flyright-deferred-link-two-phones.mp4` — 38 s, Daniel's simulator on the
+left, Emma's on the right, the live side lit and the other dimmed, so the
+hand-off from one phone to the other is unmistakable. Renderer
+`render2.mjs`, scenes in `edit2.json` (each phone per scene: clip segments
+sped to fit, a still lifted from a recording, or a PNG).
+
+Story: Daniel invites and sends (left, `01-invite.mp4`) → Emma taps the link
+Daniel sent (it sits in Reminders: the simulator has no Notes and Messages
+cannot receive) → web invitation → App Store → Detour → install → first
+launch lands on the invitation → sign in (Clerk test user
+`emma+clerk_test@example.com`, OTP 424242, profile "Emma Laurent" + Unsplash
+portrait `1494790108377-be9c29b29330` set afterwards through Edit profile) →
+"Waiting for Daniel" → her People tab shows Daniel "Asked to follow" (right,
+`10-invitee.mp4`, one 165 s take: `invitee-link.yaml`, `simctl install`,
+`invitee-launch.yaml` under `simctl io recordVideo`) → Daniel's People tab
+shows "Emma · opened your invite link" → Allow → Followers 1 (left,
+`allow.yaml` → `11-allow.mp4`). Recorded 2026-09-16 on a fresh "FlyRight
+Invitee" simulator (`invitee-udid.txt`); Detour matched the install again.
+
+Simulator gotchas: system alerts (dictation, "Open in FlyRight?") swallow
+Maestro taps and my own point taps kept re-triggering the mic; the Reminders
+link is not a text element (tap by position); `openLink` on an app already in
+front raises the Open-in dialog — navigate through the tab bar instead.
+
 ## The physical iPhone (second cut, same day)
 
 The store and first-launch scenes were re-shot on Shanavas's iPhone 15 Pro

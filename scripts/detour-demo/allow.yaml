@@ -1,0 +1,31 @@
+# The inviter's phone, closing scene: Emma's follow request is waiting in
+# People → Allow → she is a follower.
+# Run: maestro --device <udid> test -e OUT="$PWD/demo/out/detour" scripts/detour-demo/allow.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "People"
+- extendedWaitUntil:
+    visible: ".*Emma.*"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- startRecording: ${OUT}/11-allow
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- takeScreenshot: ${OUT}/12-request
+- tapOn:
+    id: "allow-follow"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 5000
+- takeScreenshot: ${OUT}/13-follower
+- stopRecording

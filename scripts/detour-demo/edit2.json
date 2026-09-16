@@ -1,0 +1,279 @@
+[
+  {
+    "id": "01-invite",
+    "active": "left",
+    "duration": 3.5,
+    "left": {
+      "clip": "01-invite.mp4",
+      "segments": [
+        [
+          2.0,
+          8.2
+        ]
+      ]
+    },
+    "right": {
+      "still": {
+        "clip": "10-invitee.mp4",
+        "at": 38.5
+      }
+    },
+    "title": "Daniel invites someone to follow his trips.",
+    "body": "People → Invite someone → Send. One link is all it takes."
+  },
+  {
+    "id": "02-share",
+    "active": "left",
+    "duration": 2.5,
+    "left": {
+      "clip": "01-invite.mp4",
+      "segments": [
+        [
+          8.6,
+          11.5
+        ]
+      ]
+    },
+    "right": {
+      "still": {
+        "clip": "10-invitee.mp4",
+        "at": 38.5
+      }
+    },
+    "title": "He sends it to Emma.",
+    "body": "Messages, WhatsApp, email — or printed as a QR code."
+  },
+  {
+    "id": "03-link",
+    "active": "right",
+    "duration": 3.5,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          38.5,
+          44.5
+        ]
+      ]
+    },
+    "title": "Emma taps the link. No FlyRight on her phone.",
+    "body": "It opens the invitation on the web, with who and why."
+  },
+  {
+    "id": "04-store",
+    "active": "right",
+    "duration": 4.0,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          46.0,
+          54.2
+        ]
+      ]
+    },
+    "title": "App Store — and Detour remembers the click.",
+    "body": "Nothing to copy, nothing to type."
+  },
+  {
+    "id": "05-install",
+    "active": "right",
+    "duration": 2.5,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          96.5,
+          100.0
+        ]
+      ]
+    },
+    "title": "Install. Open.",
+    "body": "A fresh install, first launch."
+  },
+  {
+    "id": "06-intro",
+    "active": "right",
+    "duration": 2.0,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          106.5,
+          108.9
+        ]
+      ]
+    },
+    "title": "Skip the intro…",
+    "body": "Detour matches this install to the click from a moment ago."
+  },
+  {
+    "id": "07-invitation",
+    "active": "right",
+    "duration": 2.5,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          112.0,
+          115.0
+        ]
+      ]
+    },
+    "title": "…and land on Daniel's invitation.",
+    "body": "No paste, no search. Sign in to follow."
+  },
+  {
+    "id": "08-sign-in",
+    "active": "right",
+    "duration": 4.5,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          113.3,
+          114.6
+        ],
+        [
+          119.5,
+          122.6
+        ],
+        [
+          124.5,
+          127.6
+        ],
+        [
+          136.5,
+          139.5
+        ]
+      ]
+    },
+    "title": "Email, one-time code, a name.",
+    "body": "The invitation is remembered through sign-up."
+  },
+  {
+    "id": "09-follow",
+    "active": "right",
+    "duration": 3.0,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          139.4,
+          141.4
+        ],
+        [
+          144.0,
+          145.5
+        ]
+      ]
+    },
+    "title": "Follow request sent.",
+    "body": "Daniel confirms each follower first."
+  },
+  {
+    "id": "10-people",
+    "active": "right",
+    "duration": 3.0,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "10-invitee.mp4",
+      "segments": [
+        [
+          154.0,
+          158.0
+        ]
+      ]
+    },
+    "title": "Emma's People tab: Daniel, waiting.",
+    "body": "Asked to follow — waiting for them."
+  },
+  {
+    "id": "11-allow",
+    "active": "left",
+    "duration": 4.0,
+    "left": {
+      "clip": "11-allow.mp4",
+      "segments": [
+        [
+          1.0,
+          8.0
+        ]
+      ]
+    },
+    "right": {
+      "still": {
+        "clip": "10-invitee.mp4",
+        "at": 158.0
+      }
+    },
+    "title": "Daniel's People tab: Emma asked to follow.",
+    "body": "Allow — and she's a follower."
+  },
+  {
+    "id": "12-done",
+    "active": "both",
+    "duration": 3.0,
+    "left": {
+      "still": {
+        "clip": "11-allow.mp4",
+        "at": 9.0
+      }
+    },
+    "right": {
+      "still": {
+        "clip": "10-invitee.mp4",
+        "at": 158.0
+      }
+    },
+    "title": "Two phones, one link.",
+    "body": "Emma gets a heads-up before every flight Daniel takes."
+  }
+]
