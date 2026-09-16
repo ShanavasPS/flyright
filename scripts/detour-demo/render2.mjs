@@ -14,11 +14,12 @@ const work = `${out}/work2`;
 await mkdir(work, { recursive: true });
 await mkdir(`${out}/segments2`, { recursive: true });
 const scenes = JSON.parse(await readFile(new URL('./edit2.json', import.meta.url), 'utf8'));
-const phone = { width: 410, height: 891, radius: 50, y: 290 };
+const phone = { width: 410, height: 892, radius: 50, y: 290 };
 const sides = { left: { x: 62, label: 'DANIEL · THE INVITER' }, right: { x: 608, label: 'EMMA · THE INVITEE' } };
 const esc = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const icon = await sharp('assets/images/icon.png').resize(64, 64).png().toBuffer();
-const ff = args => execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit' });
+// -nostdin: ffmpeg otherwise waits on a terminal that a background run never has.
+const ff = args => execFileSync('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit' });
 
 const mask = `<svg xmlns="http://www.w3.org/2000/svg" width="${phone.width}" height="${phone.height}"><rect width="100%" height="100%" fill="black"/><rect width="100%" height="100%" rx="${phone.radius}" fill="white"/></svg>`;
 await sharp(Buffer.from(mask)).removeAlpha().png().toFile(`${work}/mask.png`);
@@ -26,23 +27,24 @@ await sharp(Buffer.from(mask)).removeAlpha().png().toFile(`${work}/mask.png`);
 /** One phone's footage for a scene, as a 30 fps clip of exactly `duration` seconds. */
 function phoneClip(spec, duration, name) {
   const file = `${work}/${name}.mp4`;
-  const fit = `scale=${phone.width}:${phone.height}:flags=lanczos,setsar=1,format=rgba[v];[m:v]format=gray[mm];[v][mm]alphamerge,format=yuva420p`;
+  const fit = `scale=${phone.width}:${phone.height}:flags=lanczos,setsar=1,format=yuv420p`;
   if (spec.image || spec.still) {
     let png = spec.image ? `${out}/${spec.image}` : `${work}/${name}-still.png`;
     if (spec.still) ff(['-ss', String(spec.still.at), '-i', `${out}/${spec.still.clip}`, '-frames:v', '1', png]);
-    ff(['-loop', '1', '-framerate', '30', '-i', png, '-loop', '1', '-framerate', '30', '-i', `${work}/mask.png`,
-      '-filter_complex', `[0:v]${fit.replace('[m:v]', '[1:v]')}[o]`, '-map', '[o]', '-t', String(duration), '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '20', `${work}/${name}.webm`]);
-    return `${work}/${name}.webm`;
+    ff(['-loop', '1', '-framerate', '30', '-i', png, '-filter_complex', `[0:v]${fit}[o]`, '-map', '[o]', '-t', String(duration), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', file]);
+    return file;
   }
   const segs = spec.segments;
   const total = segs.reduce((a, [s, e]) => a + (e - s), 0);
   const factor = duration / total;
-  const trims = segs.map(([s, e], i) => `[0:v]trim=start=${s}:end=${e},setpts=PTS-STARTPTS[t${i}]`).join(';');
+  // fps first: simulator recordings only hold a frame where pixels changed, so a
+  // trim inside a static stretch would otherwise be empty.
+  const trims = segs.map(([s, e], i) => `[0:v]fps=30,trim=start=${s}:end=${e},setpts=PTS-STARTPTS[t${i}]`).join(';');
   const cat = segs.map((_, i) => `[t${i}]`).join('') + `concat=n=${segs.length}:v=1:a=0`;
-  ff(['-i', `${out}/${spec.clip}`, '-loop', '1', '-framerate', '30', '-i', `${work}/mask.png`,
-    '-filter_complex', `${trims};${cat},fps=30,setpts=${factor.toFixed(6)}*PTS,fps=30,tpad=stop_mode=clone:stop_duration=${duration},${fit.replace('[m:v]', '[1:v]')}[o]`,
-    '-map', '[o]', '-t', String(duration), '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '20', `${work}/${name}.webm`]);
-  return `${work}/${name}.webm`;
+  ff(['-i', `${out}/${spec.clip}`,
+    '-filter_complex', `${trims};${cat},fps=30,setpts=${factor.toFixed(6)}*PTS,fps=30,tpad=stop_mode=clone:stop_duration=${duration},${fit}[o]`,
+    '-map', '[o]', '-t', String(duration), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', file]);
+  return file;
 }
 
 let offset = 0;
@@ -81,8 +83,9 @@ for (const [index, scene] of scenes.entries()) {
   await sharp(Buffer.from(dim)).png().toFile(dimmer);
   const left = phoneClip(scene.left, scene.duration, `${scene.id}-L`);
   const right = phoneClip(scene.right, scene.duration, `${scene.id}-R`);
-  ff(['-loop', '1', '-framerate', '30', '-i', background, '-c:v', 'libvpx-vp9', '-i', left, '-c:v', 'libvpx-vp9', '-i', right, '-loop', '1', '-framerate', '30', '-i', dimmer,
-    '-filter_complex', `[0:v][1:v]overlay=${sides.left.x}:${phone.y}[a];[a][2:v]overlay=${sides.right.x}:${phone.y}[b];[b][3:v]overlay=0:0,format=yuv420p[o]`,
+  // Rounded corners come from the mask here, once per side, on the cheap H.264 phone clips.
+  ff(['-loop', '1', '-framerate', '30', '-i', background, '-i', left, '-i', right, '-loop', '1', '-framerate', '30', '-i', dimmer, '-loop', '1', '-framerate', '30', '-i', `${work}/mask.png`,
+    '-filter_complex', `[4:v]format=gray,split[m1][m2];[1:v]format=rgba[l];[l][m1]alphamerge[L];[2:v]format=rgba[r];[r][m2]alphamerge[R];[0:v][L]overlay=${sides.left.x}:${phone.y}:shortest=1[a];[a][R]overlay=${sides.right.x}:${phone.y}[b];[b][3:v]overlay=0:0,format=yuv420p[o]`,
     '-map', '[o]', '-t', String(scene.duration), '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-movflags', '+faststart', `${out}/segments2/${scene.id}.mp4`]);
   captions.push(`${index + 1}\n${timestamp(offset)} --> ${timestamp(offset + scene.duration)}\n${scene.title}\n${scene.body}\n`);
   offset += scene.duration;
