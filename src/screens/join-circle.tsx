@@ -257,19 +257,19 @@ export function JoinCircle({ token }: { token: string }) {
 
     body = (
       <>
-        <View style={styles.hero}>
-          <Avatar name={name} imageUrl={invite.ownerImageUrl} size={72} pro={invite.ownerPro} />
-          <ThemedText type="title" themeColor="heading" style={styles.centered}>
+        <View style={[styles.hero, web && styles.heroWeb]}>
+          <Avatar name={name} imageUrl={invite.ownerImageUrl} size={web ? 60 : 72} pro={invite.ownerPro} />
+          <ThemedText type="title" themeColor="heading" style={[styles.centered, web && styles.titleWeb]}>
             {name} invited you to follow their trips
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+          <ThemedText type="small" themeColor="textSecondary" style={[styles.centered, web && styles.subWeb]}>
             {name} confirms each follower first. You can stop following at any time.
           </ThemedText>
         </View>
-        <Card>
-          <Bullet>A heads-up 24 hours before {name} flies</Bullet>
-          <Bullet>A nudge at every step — at the airport, through security, on board, landed</Bullet>
-          <Bullet>Delays and gate changes as they happen</Bullet>
+        <Card style={web ? styles.bulletsWeb : undefined}>
+          <Bullet compact={web}>A heads-up 24 hours before {name} flies</Bullet>
+          <Bullet compact={web}>A nudge at every step — at the airport, through security, on board, landed</Bullet>
+          <Bullet compact={web}>Delays and gate changes as they happen</Bullet>
         </Card>
         {action}
       </>
@@ -283,7 +283,7 @@ export function JoinCircle({ token }: { token: string }) {
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={[styles.scrollContent, web && styles.scrollContentWeb]}>
           {body}
         </ScrollView>
       </SafeAreaView>
@@ -291,18 +291,22 @@ export function JoinCircle({ token }: { token: string }) {
   );
 }
 
-function Bullet({ children }: { children: React.ReactNode }) {
+function Bullet({ children, compact }: { children: React.ReactNode; compact?: boolean }) {
   return (
     <View style={styles.bullet}>
-      <ThemedText type="small" themeColor="tint">
+      <ThemedText type="small" themeColor="tint" style={compact && styles.bulletCompact}>
         ✓
       </ThemedText>
-      <ThemedText type="small" style={styles.bulletText}>
+      <ThemedText type="small" style={[styles.bulletText, compact && styles.bulletCompact]}>
         {children}
       </ThemedText>
     </View>
   );
 }
+
+/** The web landing has to make its case above the fold of a phone browser:
+ * a tighter hero, tighter copy, and the store badges in reach of a thumb. */
+const web = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
   container: {
@@ -326,6 +330,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     paddingTop: Spacing.three,
+  },
+  heroWeb: {
+    paddingTop: Spacing.two,
+    gap: Spacing.one,
+  },
+  titleWeb: {
+    fontSize: 22,
+    lineHeight: 28,
+    paddingTop: Spacing.one,
+  },
+  subWeb: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  scrollContentWeb: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    gap: Spacing.three,
+  },
+  bulletsWeb: {
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  bulletCompact: {
+    fontSize: 13,
+    lineHeight: 19,
   },
   centered: {
     textAlign: 'center',

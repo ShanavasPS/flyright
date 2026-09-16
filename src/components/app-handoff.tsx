@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
@@ -114,49 +114,83 @@ export function AppHandoff({ path, title, blurb, openLabel }: Props) {
     if (inApp) window.location.assign(inApp);
   };
 
+  // Official store badges, side by side — the two taps the page exists for,
+  // so they sit where a thumb lands without scrolling.
   const stores = (
     <View style={styles.storeRow}>
-      <Pressable onPress={toStore('ios')}>
-        <ThemedText type="linkPrimary">App Store</ThemedText>
+      <Pressable onPress={toStore('ios')} accessibilityRole="link" accessibilityLabel="Download on the App Store">
+        <Image source={require('../../assets/images/badge-app-store.png')} style={styles.badgeAppStore} />
       </Pressable>
-      <Pressable onPress={toStore('android')}>
-        <ThemedText type="linkPrimary">Google Play</ThemedText>
+      <Pressable onPress={toStore('android')} accessibilityRole="link" accessibilityLabel="Get it on Google Play">
+        <Image source={require('../../assets/images/badge-google-play.png')} style={styles.badgeGooglePlay} />
       </Pressable>
     </View>
   );
 
   return returning ? (
-    <Card>
-      <ThemedText type="subtitle">Installed it? {openLabel}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+    <Card style={styles.card}>
+      <ThemedText type="smallBold">Installed it? {openLabel}</ThemedText>
+      <ThemedText style={styles.blurb} themeColor="textSecondary">
         FlyRight is on this phone now — open it here and it lands straight on this page.
       </ThemedText>
       <PrimaryButton label={openLabel} onPress={toApp} />
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText style={styles.blurb} themeColor="textSecondary">
         Still installing? Get it here.
       </ThemedText>
       {stores}
     </Card>
   ) : (
-    <Card>
-      <ThemedText type="subtitle">{title}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+    <Card style={styles.card}>
+      <ThemedText type="smallBold" style={styles.centered}>
+        {title}
+      </ThemedText>
+      <ThemedText style={[styles.blurb, styles.centered]} themeColor="textSecondary">
         {blurb}
       </ThemedText>
       {stores}
       <Pressable onPress={toApp} style={styles.alreadyHaveIt}>
-        <ThemedText type="link">Already have FlyRight? {openLabel}</ThemedText>
+        <ThemedText type="link" style={styles.already}>
+          Already have FlyRight? {openLabel}
+        </ThemedText>
       </Pressable>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
+  card: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    padding: Spacing.three,
+  },
+  centered: {
+    textAlign: 'center',
+  },
+  blurb: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   storeRow: {
     flexDirection: 'row',
-    gap: Spacing.four,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingTop: Spacing.one,
+  },
+  // 132 px badges at 40 pt, aspect preserved.
+  badgeAppStore: {
+    width: 120,
+    height: 40,
+  },
+  badgeGooglePlay: {
+    width: 134,
+    height: 40,
   },
   alreadyHaveIt: {
-    paddingTop: Spacing.one,
+    paddingTop: Spacing.half,
+  },
+  already: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
