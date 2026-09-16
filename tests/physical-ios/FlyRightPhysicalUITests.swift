@@ -131,6 +131,125 @@ final class FlyRightPhysicalUITests: XCTestCase {
         XCTAssertGreaterThan(index, 0)
     }
 
+    /// Demo footage helper: the share moment. In the installed app: People →
+    /// Invite someone → Send → the system share sheet → Messages → the compose
+    /// sheet with the invite text. Frames every FLYRIGHT_CAPTURE_INTERVAL
+    /// seconds throughout; the draft is discarded at the end so nothing is
+    /// sent and nothing lingers. Frames start once the "Add someone" sheet is
+    /// up, so the People list itself is never captured.
+    func testCaptureShareFrames() throws {
+        let env = ProcessInfo.processInfo.environment
+        let interval = Double(env["FLYRIGHT_CAPTURE_INTERVAL"] ?? "") ?? 0.3
+        let started = Date()
+        var index = 0
+        func frame() {
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot(), quality: .original)
+            shot.name = String(format: "frame-%04d-%06.2fs", index, Date().timeIntervalSince(started))
+            shot.lifetime = .keepAlways
+            add(shot)
+            index += 1
+        }
+        func frames(for seconds: Double) {
+            let until = Date().addingTimeInterval(seconds)
+            while Date() < until { frame(); Thread.sleep(forTimeInterval: interval) }
+        }
+        func waitTaking(_ candidates: [XCUIElement], timeout: Double) -> XCUIElement? {
+            let until = Date().addingTimeInterval(timeout)
+            while Date() < until {
+                frame()
+                if let hit = candidates.first(where: { $0.exists }) { return hit }
+                Thread.sleep(forTimeInterval: interval)
+            }
+            return nil
+        }
+        app.launch()
+        // Optional prelude: sign the phone's current account out and a Clerk
+        // test account in (OTP 424242), so the footage belongs to the demo
+        // persona. No frames are taken while the real account is on screen.
+        if let email = env["FLYRIGHT_SWITCH_EMAIL"], !email.isEmpty {
+            let settings = app.tabBars.buttons["Settings"]
+            XCTAssertTrue(settings.waitForExistence(timeout: 30))
+            settings.tap()
+            let accountRow = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS '@'")).firstMatch
+            if accountRow.waitForExistence(timeout: 10) {
+                accountRow.tap()
+                let signOut = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Sign out'")).firstMatch
+                XCTAssertTrue(signOut.waitForExistence(timeout: 15), "No Sign out on the account screen")
+                signOut.tap()
+                let confirm = app.alerts.buttons["Sign out"]
+                if confirm.waitForExistence(timeout: 4) { confirm.tap() }
+                let sheetConfirm = app.buttons.matching(NSPredicate(format: "label == 'Sign out'")).element(boundBy: 1)
+                if sheetConfirm.waitForExistence(timeout: 2) { sheetConfirm.tap() }
+                let back = app.navigationBars.buttons.firstMatch
+                if !app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Sign in or create account'")).firstMatch.waitForExistence(timeout: 10), back.exists { back.tap() }
+            }
+            let signIn = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Sign in or create account'")).firstMatch
+            XCTAssertTrue(signIn.waitForExistence(timeout: 20), "No sign-in entry in Settings after sign-out")
+            signIn.tap()
+            // Clerk's native sheet: the field is not always an XCUI text field.
+            let byType = app.textFields.matching(NSPredicate(format: "placeholderValue CONTAINS[c] 'email' OR label CONTAINS[c] 'email' OR value CONTAINS[c] 'email'")).firstMatch
+            let byLabel = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] 'Enter your email' OR placeholderValue CONTAINS[c] 'Enter your email' OR value CONTAINS[c] 'Enter your email'")).firstMatch
+            let welcome = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Sign in to continue'")).firstMatch
+            XCTAssertTrue(byType.waitForExistence(timeout: 8) || byLabel.waitForExistence(timeout: 8) || welcome.waitForExistence(timeout: 8), "No sign-in sheet")
+            if byType.exists { byType.tap() } else if byLabel.exists { byLabel.tap() } else {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.424)).tap()
+            }
+            Thread.sleep(forTimeInterval: 1)
+            let softKeyboard = app.keyboards.firstMatch
+            XCTAssertTrue(softKeyboard.waitForExistence(timeout: 8), "Keyboard did not appear for the email field")
+            app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 60))
+            app.typeText(email)
+            let cont = app.buttons["Continue"]
+            XCTAssertTrue(cont.waitForExistence(timeout: 10))
+            cont.tap()
+            let check = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Check your email'")).firstMatch
+            XCTAssertTrue(check.waitForExistence(timeout: 20), "No OTP step")
+            Thread.sleep(forTimeInterval: 1)
+            app.typeText("424242")
+            let notNow = app.buttons["Not now"]
+            _ = notNow.waitForExistence(timeout: 25)
+            if notNow.exists { notNow.tap() }
+            Thread.sleep(forTimeInterval: 2)
+        }
+        let people = app.tabBars.buttons["People"]
+        XCTAssertTrue(people.waitForExistence(timeout: 30))
+        people.tap()
+        let invite = app.buttons["Invite someone to follow your trips"]
+        XCTAssertTrue(invite.waitForExistence(timeout: 30), "No invite button — is this account's People tab empty?")
+        invite.tap()
+        let send = app.buttons["share-invite-link"]
+        XCTAssertTrue(send.waitForExistence(timeout: 15))
+        frames(for: 2)
+        send.tap()
+        // The share sheet is SpringBoard's; Messages is its cell.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let messagesCell = springboard.cells["Messages"]
+        let messagesButton = springboard.buttons["Messages"]
+        let messagesAny = springboard.descendants(matching: .any).matching(NSPredicate(format: "label == 'Messages'")).firstMatch
+        if let hit = waitTaking([messagesCell, messagesButton, messagesAny], timeout: 12) {
+            frames(for: 2.5)
+            hit.tap()
+        } else {
+            // iOS 26's share sheet does not expose its app row; Messages sits
+            // second in that row (measured on the iPhone 15 Pro, 2026-09-16).
+            frames(for: 1)
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.39, dy: 0.74)).tap()
+        }
+        // The compose sheet (Messages' own process): the draft with the link.
+        let messages = XCUIApplication(bundleIdentifier: "com.apple.MobileSMS")
+        _ = waitTaking([messages.navigationBars["New Message"], messages.staticTexts["New Message"], messages.textViews.firstMatch], timeout: 20)
+        frames(for: 4)
+        // Discard: the X in the compose sheet, then "Delete Draft" if offered.
+        let close = messages.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == 'Close' OR identifier == 'Cancel'")).firstMatch
+        if close.waitForExistence(timeout: 5) { close.tap() }
+        let delete = springboard.buttons["Delete Draft"]
+        if delete.waitForExistence(timeout: 4) { delete.tap() }
+        let delete2 = messages.buttons["Delete Draft"]
+        if delete2.waitForExistence(timeout: 2) { delete2.tap() }
+        frames(for: 1)
+        XCTAssertGreaterThan(index, 0)
+    }
+
     func testAllTabsAcrossTwoColdStarts() throws {
         for pass in 1...2 {
             app.terminate()

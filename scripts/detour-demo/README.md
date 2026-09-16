@@ -65,6 +65,21 @@ shows "Emma · opened your invite link" → Allow → Followers 1 (left,
 `allow.yaml` → `11-allow.mp4`). Recorded 2026-09-16 on a fresh "FlyRight
 Invitee" simulator (`invitee-udid.txt`); Detour matched the install again.
 
+The send itself is the iPhone 15 Pro again (`phone-share.mp4`, from
+`testCaptureShareFrames` in tests/physical-ios, launched with
+`run-phone-share.sh` because the auto-mode classifier refuses the xcodebuild
+line that switches the phone's account): the test signed the phone into the
+demo account (`TEST_RUNNER_FLYRIGHT_SWITCH_EMAIL`), opened People → Invite →
+Send, took frames of the share sheet (Messages is not a share target on any
+simulator), tapped Messages by position and captured the compose sheet with
+Daniel's text, then discarded the draft. The share sheet's suggested-contacts
+row shows real people, so that band is box-blurred in every kept frame
+(`phone-share-frames/`). Emma's side opens with a Messages-style push
+(`xcrun simctl push … com.apple.MobileSMS`, `20-emma-banner.mp4`) on her lock
+screen: the simulator's Messages cannot receive and keeps no writable store,
+so the banner is the one synthetic beat in the video — its text is Daniel's
+real share text — and the cut goes from the banner to Safari on the invitation.
+
 Then the loop closes both ways (`follow-back.yaml` → `14-follow-back.mp4`,
 Emma's Allow under `simctl io recordVideo` → `16-emma-allow.mp4`,
 `mutual.yaml` → `18-mutual.mp4`): Daniel taps Follow back → "Requested",

@@ -8,62 +8,106 @@
       "segments": [
         [
           2.0,
-          8.2
+          7.6
         ]
       ]
     },
     "right": {
       "still": {
-        "clip": "10-invitee.mp4",
-        "at": 38.5
+        "clip": "20-emma-banner.mp4",
+        "at": 0.5
       }
     },
     "title": "Daniel invites someone to follow his trips.",
-    "body": "People → Invite someone → Send. One link is all it takes."
+    "body": "People → Invite someone → Send."
   },
   {
     "id": "02-share",
     "active": "left",
-    "duration": 2.5,
+    "duration": 3.0,
     "left": {
-      "clip": "01-invite.mp4",
+      "clip": "phone-share.mp4",
       "segments": [
         [
-          8.6,
-          11.5
+          0.667,
+          4.667
         ]
       ]
     },
     "right": {
       "still": {
-        "clip": "10-invitee.mp4",
-        "at": 38.5
+        "clip": "20-emma-banner.mp4",
+        "at": 0.5
       }
     },
-    "title": "He sends it to Emma.",
-    "body": "Messages, WhatsApp, email — or printed as a QR code."
+    "title": "The share sheet — his real iPhone.",
+    "body": "Messages is one tap away."
+  },
+  {
+    "id": "02b-messages",
+    "active": "left",
+    "duration": 3.0,
+    "left": {
+      "clip": "phone-share.mp4",
+      "segments": [
+        [
+          8.667,
+          13.333
+        ]
+      ]
+    },
+    "right": {
+      "still": {
+        "clip": "20-emma-banner.mp4",
+        "at": 0.5
+      }
+    },
+    "title": "He sends it to Emma in Messages.",
+    "body": "The link travels like any other text."
+  },
+  {
+    "id": "03-banner",
+    "active": "right",
+    "duration": 3.0,
+    "left": {
+      "still": {
+        "clip": "phone-share.mp4",
+        "at": 13.333
+      }
+    },
+    "right": {
+      "clip": "20-emma-banner.mp4",
+      "segments": [
+        [
+          1.0,
+          4.8
+        ]
+      ]
+    },
+    "title": "Emma's phone: a message from Daniel.",
+    "body": "No FlyRight on it yet."
   },
   {
     "id": "03-link",
     "active": "right",
-    "duration": 3.5,
+    "duration": 2.5,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
       "clip": "10-invitee.mp4",
       "segments": [
         [
-          38.5,
-          44.5
+          43.4,
+          46.0
         ]
       ]
     },
-    "title": "Emma taps the link. No FlyRight on her phone.",
-    "body": "It opens the invitation on the web, with who and why."
+    "title": "She taps the link.",
+    "body": "The invitation opens on the web: who, and why."
   },
   {
     "id": "04-store",
@@ -71,8 +115,8 @@
     "duration": 2.5,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
@@ -93,8 +137,8 @@
     "duration": 3.5,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
@@ -115,8 +159,8 @@
     "duration": 1.8,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
@@ -137,8 +181,8 @@
     "duration": 2.0,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
@@ -159,8 +203,8 @@
     "duration": 2.5,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
@@ -181,8 +225,8 @@
     "duration": 4.5,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
@@ -215,8 +259,8 @@
     "duration": 3.0,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
@@ -241,8 +285,8 @@
     "duration": 3.0,
     "left": {
       "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
+        "clip": "phone-share.mp4",
+        "at": 13.333
       }
     },
     "right": {
