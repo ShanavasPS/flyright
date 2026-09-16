@@ -42,8 +42,8 @@ const SHOTS = [
   },
   {
     raw: 'phone-06-world.png',
-    headline: 'Your world, mapped',
-    sub: "Every route you've flown, on one map",
+    headline: 'Your world, on a globe',
+    sub: "Every route you've flown, on the earth itself",
   },
   {
     raw: 'phone-02-stats.png',

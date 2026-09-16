@@ -15,6 +15,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.36',
+    date: '2026-09-16',
+    notes: [
+      'The World tab is a globe now: drag to turn it, pinch to zoom in to country level, double tap to jump closer.',
+      'Zoom all the way out to see the whole earth with every trip on it, or in until coastlines and borders sharpen.',
+      'Your routes, planes and airports sit on the globe, and the trip page shows each flight on the same earth.',
+      'Import cards now say what happened to each flight rather than what to do next.',
+    ],
+  },
+  {
     version: '1.0.35',
     date: '2026-09-14',
     notes: [

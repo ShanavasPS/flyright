@@ -1,0 +1,7 @@
+FlyRight 1.0.36 replaces the World tab's map with a globe drawn by the app.
+
+The World tab and each trip page now show routes on a rendered globe instead of an Apple Maps view. Drag turns it, pinch zooms it in to country level, a double tap zooms in about that point, and the Recenter control animates back to the fitted view. Routes, the plane on each route, airport codes and country borders are drawn by the app from bundled Natural Earth data; no third-party map SDK or map tiles are used, and no location permission is requested.
+
+Reviewing the World tab requires trips in the journal. Sign in with the configured reviewer account: enter the demo email, then choose Use another method and Sign in with your password. The existing demo credentials are unchanged, and that account already holds trips. Alternatively add a flight manually from My travels.
+
+No purchase is required for the globe or for manual journaling. Existing account and trip data are retained on update.
