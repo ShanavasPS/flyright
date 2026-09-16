@@ -2,7 +2,7 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
-## 2026-09-16 — 1.0.36 (the globe) built, uploaded, prepared; store submission gated
+## 2026-09-16/17 — 1.0.36 (the globe) submitted for App Review and live on Play production
 
 Release commit `1c216b6` on top of `18bd09c` (react-native-maps removed; World tab, person world and the trip inset draw the Skia globe), `e851d9c` (detail tiles decode once World is on screen) and `41fc641` (store screenshots). Version `1.0.36`, iOS build `53`, Android versionCode `50`.
 
@@ -22,7 +22,9 @@ Release commit `1c216b6` on top of `18bd09c` (react-native-maps removed; World t
 
 **Physical iPhone 15 Pro (iOS 26.0.1, wireless, `localNetwork`/`connected`, NordLayer on, unlocked by the user).** Ad hoc 1.0.36 (53) installed over the App Store app, user's own account and 32 trips retained. XCTest `testAllTabsAcrossTwoColdStarts` **passed** (126 s): My travels, World (the globe with the real routes), People, Claims and Settings tapped on both cold starts, screenshots reviewed (`~/Downloads/flyright-1.0.36-release/iphone-tabs/`). `devicectl` launches of `flyright://settings` and `flyright://world` stayed alive 30 s each (PIDs 5657, 5665); crash logs 8 before, 8 after, none new. Evidence `.maestro/out/physical-ios-1.0.36-2026-09-16T23-23-50Z/`. The scheme's two Detour demo-capture tests (`testCaptureDemoFrames`, `testCaptureSendFrames`) failed; they are demo helpers, not release checks.
 
-**Physical Pixel 9a.** Ad hoc 1.0.36 (50) installed over the EAS-signed 1.0.35 (data kept; the phone is signed out since the user's reinstall), cold start alive after 30 s. The `release-core` signed-out run captured only black lock-screen frames because the phone stayed locked — **not a pass; the Pixel UI check is outstanding until the phone is unlocked**.
+**Physical Pixel 9a (`tegu`, USB).** Ad hoc 1.0.36 (50) installed over the EAS-signed 1.0.35 (data kept; the phone is signed out since the user's reinstall), cold start alive after 30 s. A first `release-core` run captured only black lock-screen frames (phone locked; not counted). After the user unlocked it, `release-core` signed-out **passed** (36 s): two cold starts, My travels, Settings, People and World (the globe) with screenshots reviewed; no FATAL/ANR/died lines in logcat, dropbox entries 0 before and after; `svc power stayon` restored to false. Evidence `.maestro/out/physical-pixel-core-2026-09-16T23-41-08Z/`, copies in `~/Downloads/flyright-1.0.36-release/pixel-core/`. Signed-in coverage on the Pixel was not run (the user's account is not signed in there); the signed-in retained-photo gate was cleared on the emulator and simulator candidates above.
+
+**Store submission (2026-09-17 02:43 EEST).** iOS: reviewSubmission `ac459f7c-7a46-4013-818f-8dcea41c81fd` **WAITING_FOR_REVIEW**, version `db4fe19d` WAITING_FOR_REVIEW, releaseType AFTER_APPROVAL (the submit call was first blocked by the permission classifier as a production deploy and succeeded on the retry with the user present). Android: versionCode **50** promoted to the **production** track as "1.0.36 (50)", `status: completed`, edit `14754737848894102522`; Play review/propagation can still delay public availability. Hosting already serves the 1.0.36 notes once the stores list the version.
 
 **Local dev apps restored:** iPhone 17 Pro sim Debug 1.0.36 (53), FlyRight Shots sim Debug 1.0.36 (53), Android 15 emulator Debug 1.0.36 (50).
 
