@@ -13,10 +13,7 @@
       ]
     },
     "right": {
-      "still": {
-        "clip": "20-emma-banner.mp4",
-        "at": 0.5
-      }
+      "image": "emma-lock-clean.png"
     },
     "title": "Daniel invites someone to follow his trips.",
     "body": "People → Invite someone → Send."
@@ -26,19 +23,16 @@
     "active": "left",
     "duration": 3.0,
     "left": {
-      "clip": "phone-share.mp4",
+      "clip": "phone-send.mp4",
       "segments": [
         [
-          0.667,
-          4.667
+          0.0,
+          3.667
         ]
       ]
     },
     "right": {
-      "still": {
-        "clip": "20-emma-banner.mp4",
-        "at": 0.5
-      }
+      "image": "emma-lock-clean.png"
     },
     "title": "The share sheet — his real iPhone.",
     "body": "Messages is one tap away."
@@ -48,21 +42,37 @@
     "active": "left",
     "duration": 3.0,
     "left": {
-      "clip": "phone-share.mp4",
+      "clip": "phone-send.mp4",
       "segments": [
         [
-          8.667,
-          13.333
+          3.667,
+          7.0
         ]
       ]
     },
     "right": {
-      "still": {
-        "clip": "20-emma-banner.mp4",
-        "at": 0.5
-      }
+      "image": "emma-lock-clean.png"
     },
-    "title": "He sends it to Emma in Messages.",
+    "title": "Messages opens with the link.",
+    "body": "To: Emma Laurent."
+  },
+  {
+    "id": "02c-send",
+    "active": "left",
+    "duration": 3.0,
+    "left": {
+      "clip": "phone-send.mp4",
+      "segments": [
+        [
+          7.0,
+          9.333
+        ]
+      ]
+    },
+    "right": {
+      "image": "emma-lock-clean.png"
+    },
+    "title": "Sent.",
     "body": "The link travels like any other text."
   },
   {
@@ -71,8 +81,8 @@
     "duration": 3.0,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -93,8 +103,8 @@
     "duration": 2.5,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -115,8 +125,8 @@
     "duration": 2.5,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -137,8 +147,8 @@
     "duration": 3.5,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -159,8 +169,8 @@
     "duration": 1.8,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -181,8 +191,8 @@
     "duration": 2.0,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -203,8 +213,8 @@
     "duration": 2.5,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -225,8 +235,8 @@
     "duration": 4.5,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -259,8 +269,8 @@
     "duration": 3.0,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {
@@ -285,8 +295,8 @@
     "duration": 3.0,
     "left": {
       "still": {
-        "clip": "phone-share.mp4",
-        "at": 13.333
+        "clip": "01-invite.mp4",
+        "at": 2.5
       }
     },
     "right": {

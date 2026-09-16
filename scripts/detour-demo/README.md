@@ -65,6 +65,17 @@ shows "Emma · opened your invite link" → Allow → Followers 1 (left,
 `allow.yaml` → `11-allow.mp4`). Recorded 2026-09-16 on a fresh "FlyRight
 Invitee" simulator (`invitee-udid.txt`); Detour matched the install again.
 
+The send (sixth cut) is `testCaptureSendFrames` → `phone-send.mp4`: share
+sheet → Messages → "Em" typed in To → the "Emma Laurent" suggestion → the
+green SMS pill → Messages' own `sendButton` → the sheet closes. It really
+sent: Emma Laurent had to exist as a contact on the phone (vCard in the
+Downloads folder, AirDropped) and the SMS went to the number on that card —
+the placeholder +1 (555) 010-4477, a reserved fictional-range number, because
+the user's own number never got entered. The frames with the To-field
+suggestion list (real contacts) are dropped, the share sheet's contacts band
+is blurred. Emma's phone shows a clean lock screen (`emma-lock-clean.png`)
+until the send, then the banner.
+
 The send itself is the iPhone 15 Pro again (`phone-share.mp4`, from
 `testCaptureShareFrames` in tests/physical-ios, launched with
 `run-phone-share.sh` because the auto-mode classifier refuses the xcodebuild

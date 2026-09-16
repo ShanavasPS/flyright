@@ -250,6 +250,89 @@ final class FlyRightPhysicalUITests: XCTestCase {
         XCTAssertGreaterThan(index, 0)
     }
 
+    /// Demo footage helper: the send. Share sheet → Messages → type the
+    /// recipient's name in To (FLYRIGHT_TO_NAME, a contact on this phone),
+    /// pick the suggestion, send, and keep taking frames while "Delivered"
+    /// appears. The message really goes out — point the contact at a number
+    /// you own. Frames start on the "Add someone" sheet.
+    func testCaptureSendFrames() throws {
+        let env = ProcessInfo.processInfo.environment
+        let interval = Double(env["FLYRIGHT_CAPTURE_INTERVAL"] ?? "") ?? 0.3
+        let toName = env["FLYRIGHT_TO_NAME"] ?? "Emma"
+        let started = Date()
+        var index = 0
+        func frame() {
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot(), quality: .original)
+            shot.name = String(format: "frame-%04d-%06.2fs", index, Date().timeIntervalSince(started))
+            shot.lifetime = .keepAlways
+            add(shot)
+            index += 1
+        }
+        func frames(for seconds: Double) {
+            let until = Date().addingTimeInterval(seconds)
+            while Date() < until { frame(); Thread.sleep(forTimeInterval: interval) }
+        }
+        func waitTaking(_ candidates: [XCUIElement], timeout: Double) -> XCUIElement? {
+            let until = Date().addingTimeInterval(timeout)
+            while Date() < until {
+                frame()
+                if let hit = candidates.first(where: { $0.exists }) { return hit }
+                Thread.sleep(forTimeInterval: interval)
+            }
+            return nil
+        }
+        app.launch()
+        let people = app.tabBars.buttons["People"]
+        XCTAssertTrue(people.waitForExistence(timeout: 30))
+        people.tap()
+        let invite = app.buttons["Invite someone to follow your trips"]
+        XCTAssertTrue(invite.waitForExistence(timeout: 30))
+        invite.tap()
+        let send = app.buttons["share-invite-link"]
+        XCTAssertTrue(send.waitForExistence(timeout: 15))
+        frames(for: 1.5)
+        send.tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let messages = XCUIApplication(bundleIdentifier: "com.apple.MobileSMS")
+        let messagesCell = springboard.descendants(matching: .any).matching(NSPredicate(format: "label == 'Messages'")).firstMatch
+        if waitTaking([messagesCell], timeout: 10) != nil { frames(for: 2); messagesCell.tap() } else {
+            frames(for: 1)
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.39, dy: 0.74)).tap()
+        }
+        _ = waitTaking([messages.staticTexts["New Message"], messages.navigationBars["New Message"]], timeout: 20)
+        frames(for: 1.5)
+        // The compose sheet is a Messages extension hosted INSIDE FlyRight's
+        // process, so it is queried through `app`. The To field has focus.
+        app.typeText(toName)
+        let inApp = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@ AND NOT (label ==[c] %@)", toName, toName))
+        let matchCell = app.tables.cells.matching(NSPredicate(format: "label CONTAINS[c] %@", toName)).firstMatch
+        let matchAny = inApp.matching(NSPredicate(format: "label CONTAINS 'Laurent' OR label CONTAINS 'mobile' OR label CONTAINS 'iPhone'")).firstMatch
+        if let hit = waitTaking([matchCell, matchAny], timeout: 10) {
+            frames(for: 1.5)
+            hit.tap()
+        } else {
+            // Fall back to the first suggestion row under the To field.
+            frames(for: 1)
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.19)).tap()
+        }
+        frames(for: 2)
+        let tree = XCTAttachment(string: app.debugDescription)
+        tree.name = "compose-hierarchy"
+        tree.lifetime = .keepAlways
+        add(tree)
+        // Messages' own arrow: identifier 'sendButton' (FlyRight's "Send an
+        // invite link" button also contains "send", so match the identifier only).
+        let sendButton = app.buttons.matching(NSPredicate(format: "identifier == 'sendButton'")).firstMatch
+        if sendButton.waitForExistence(timeout: 5) {
+            sendButton.tap()
+        } else {
+            // Where the arrow sat on the iPhone 15 Pro with the keyboard up: (332.7, 492) pt of 393 × 852.
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.895, dy: 0.594)).tap()
+        }
+        frames(for: 6)
+        XCTAssertGreaterThan(index, 0)
+    }
+
     func testAllTabsAcrossTwoColdStarts() throws {
         for pass in 1...2 {
             app.terminate()

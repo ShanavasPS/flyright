@@ -1,6 +1,6 @@
 # LinkedIn post — deferred deep links with Detour
 
-Video: `demo/out/detour/flyright-deferred-link-two-phones.mp4` (52 s, 1080 × 1350, two phones side by side, captions burned in, works muted). Cover: `flyright-deferred-link-two-phones-cover.png`. The single-phone 20 s cut (`flyright-deferred-link.mp4`) is the short alternative.
+Video: `demo/out/detour/flyright-deferred-link-two-phones.mp4` (55 s, 1080 × 1350, two phones side by side, captions burned in, works muted). Cover: `flyright-deferred-link-two-phones-cover.png`. The single-phone 20 s cut (`flyright-deferred-link.mp4`) is the short alternative.
 
 ---
 
