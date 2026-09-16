@@ -1,6 +1,6 @@
 import { AlphaType, ColorType, Skia, useImage, type SkImage } from '@shopify/react-native-skia';
 import { useEffect, useState } from 'react';
-import { Image } from 'react-native';
+import { Image, InteractionManager } from 'react-native';
 
 /**
  * The globe's textures (see scripts/generate-globe-texture.mjs): every one
@@ -103,19 +103,26 @@ function loadDetail(): Promise<Pick<GlobeTextures, 'detail' | 'borders'>> {
 }
 
 /** The globe's textures, the base at once and the detail set when it has
- * loaded. Call it where the globe will be shown (the World screen, a trip
- * page) so the decode starts before the traveller zooms in. */
-export function useGlobeTextures(): GlobeTextures {
+ * loaded. The detail decode is a second or so of work on the JS thread, so
+ * it starts only once `wanted` is true — the World tab on screen, a trip
+ * page open — and after the screen's own transitions have settled, never
+ * during app start-up (the tab screens mount before the traveller ever
+ * looks at World). Once loaded it stays loaded for every globe. */
+export function useGlobeTextures(wanted = true): GlobeTextures {
   const base = useImage(BASE_TEXTURE);
   const [detail, setDetail] = useState<Pick<GlobeTextures, 'detail' | 'borders'>>({ detail: null, borders: null });
   useEffect(() => {
+    if (!wanted) return;
     let live = true;
-    void loadDetail().then((loaded) => {
-      if (live) setDetail(loaded);
+    const task = InteractionManager.runAfterInteractions(() => {
+      void loadDetail().then((loaded) => {
+        if (live) setDetail(loaded);
+      });
     });
     return () => {
       live = false;
+      task.cancel();
     };
-  }, []);
+  }, [wanted]);
   return { base, detail: detail.detail, borders: detail.borders };
 }

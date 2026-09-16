@@ -120,7 +120,8 @@ export function WorldCanvas({
   const dark = useColorScheme() === 'dark';
   const theme = useTheme();
   const focused = useIsFocused();
-  const textures = useGlobeTextures();
+  // The detail tiles decode once the tab is actually on screen.
+  const textures = useGlobeTextures(focused);
   const appActive = useAppActive();
 
   // Which slice of the journal is on the globe. Kept for the session, not
