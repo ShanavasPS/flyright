@@ -32,6 +32,7 @@ import { trackEvent } from '@/services/analytics';
 import { dayOffset, formatDayLabel, formatTime, localDateString, zonedTimestamp } from '@/services/dates';
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
+import { importStatus } from '@/services/import-status';
 import { haversineKm } from '@/services/geo';
 import { extractItinerary, type ImportedSegment } from '@/services/itinerary';
 import { shiftYears } from '@/services/year-choice';
@@ -690,41 +691,16 @@ function SegmentCard({
   const marketingName = flight?.carrier.name ?? carrier?.name ?? 'Flight';
   const carrierName = operator?.name ?? marketingName;
 
-  const status = (() => {
-    if (attachable) return { text: segment.pass ? 'In My travels — update boarding pass' : segment.ticket ? 'In My travels — save ticket for check-in' : 'In My travels — update flight details', color: '#2FD68C' };
-    if (already) return { text: 'Already in My travels', color: WHITE_DIM };
-    if (plan.kind === 'pending') return { text: 'Looking up…', color: WHITE_DIM };
-    if (plan.kind === 'lookup') {
-      const f = plan.flight;
-      if (f.landed) {
-        // A null delay on a landed flight means the provider never reported
-        // the arrival (see flightNormalize): it flew, and that is all we know.
-        if (f.delayMinutes == null) return { text: 'Arrived', color: '#2FD68C' };
-        return f.delayMinutes > 0
-          ? { text: `Arrived ${f.delayMinutes} min late — a verdict is waiting`, color: PASS_AMBER }
-          : { text: 'Arrived on time', color: '#2FD68C' };
-      }
-      return { text: "Scheduled — we'll watch it for delays", color: WHITE_DIM };
-    }
-    if (plan.kind === 'journal') {
-      if (edited) return { text: 'Year changed by you — saved as printed', color: WHITE_DIM };
-      // 404: the provider has no such flight. Any other failure (502, offline)
-      // is the lookup's problem, not the flight's. No error at all means the
-      // date was outside the provider's reach and the lookup never ran.
-      const why =
-        lookupError instanceof FlightLookupError && lookupError.signInRequired
-          ? 'Sign in for live tracking'
-          : lookupError instanceof FlightLookupError && lookupError.quotaExceeded
-            ? "Today's live lookups are used up"
-            : lookupError instanceof FlightLookupError && lookupError.status === 404
-              ? 'No live record for this flight'
-              : lookupError
-                ? 'Live lookup unavailable right now'
-                : 'Outside live lookup';
-      return { text: `${why} — saved as a journal entry, times as printed`, color: WHITE_DIM };
-    }
-    return { text: 'Route not recognised — add the airports to save it', color: PASS_AMBER };
-  })();
+  const status = importStatus({
+    pass: !!segment.pass,
+    ticket: !!segment.ticket,
+    attachable,
+    already,
+    plan,
+    edited,
+    lookupError,
+  });
+  const statusColor = status.tone === 'good' ? '#2FD68C' : status.tone === 'warn' ? PASS_AMBER : WHITE_DIM;
 
   const details = [
     operator && `Codeshare · sold as ${marketingName}`,
@@ -811,7 +787,7 @@ function SegmentCard({
             {carrierName}
             {segment.flight ? ` ${segment.flight}` : ''}
           </ThemedText>
-          <ThemedText type="small" style={{ color: status.color }}>
+          <ThemedText type="small" style={[styles.passStatus, { color: statusColor }]}>
             {status.text}
           </ThemedText>
           {!!details && (
@@ -935,6 +911,9 @@ const styles = StyleSheet.create({
   },
   passCarrier: {
     color: COBALT,
+  },
+  passStatus: {
+    flexShrink: 1,
   },
   addedBadge: {
     alignItems: 'center',
