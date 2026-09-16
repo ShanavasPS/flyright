@@ -28,10 +28,10 @@
     "segments": [
       [
         0.3,
-        2.0
+        1.0
       ]
     ],
-    "duration": 1.8,
+    "duration": 0.8,
     "title": [
       "Tap the link."
     ],
@@ -47,11 +47,11 @@
     "source": "02-landing-v2.mp4",
     "segments": [
       [
-        3.8,
+        4.6,
         7.2
       ]
     ],
-    "duration": 2.5,
+    "duration": 1.8,
     "title": [
       "No app? App Store."
     ],
@@ -125,11 +125,11 @@
     "source": "10-invitee.mp4",
     "segments": [
       [
-        111.9,
+        113.2,
         115.0
       ]
     ],
-    "duration": 2.5,
+    "duration": 1.5,
     "title": [
       "…and land on",
       "Daniel's invitation."
