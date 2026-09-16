@@ -1,0 +1,238 @@
+[
+  {
+    "id": "01-banner",
+    "device": "ios",
+    "role": "invitee",
+    "source": "20-emma-banner.mp4",
+    "segments": [
+      [
+        1.0,
+        4.8
+      ]
+    ],
+    "duration": 3.0,
+    "title": [
+      "A message",
+      "from Daniel."
+    ],
+    "body": [
+      "A link to follow his trips.",
+      "No FlyRight on this phone yet."
+    ]
+  },
+  {
+    "id": "02-link",
+    "device": "ios",
+    "role": "invitee",
+    "source": "10-invitee.mp4",
+    "segments": [
+      [
+        43.4,
+        46.0
+      ]
+    ],
+    "duration": 2.5,
+    "title": [
+      "Tap the link."
+    ],
+    "body": [
+      "The invitation opens on the web:",
+      "who, and why."
+    ]
+  },
+  {
+    "id": "03-store",
+    "device": "ios",
+    "role": "invitee",
+    "source": "10-invitee.mp4",
+    "segments": [
+      [
+        46.0,
+        51.6
+      ]
+    ],
+    "duration": 2.5,
+    "title": [
+      "No app? App Store."
+    ],
+    "body": [
+      "Detour records the tap",
+      "on its way to the store."
+    ]
+  },
+  {
+    "id": "04-get",
+    "device": "ios",
+    "role": "invitee",
+    "source": "phone-flow.mp4",
+    "segments": [
+      [
+        4.0,
+        9.0
+      ]
+    ],
+    "duration": 3.5,
+    "title": [
+      "Get FlyRight."
+    ],
+    "body": [
+      "Nothing to copy, nothing to type."
+    ]
+  },
+  {
+    "id": "05-open",
+    "device": "ios",
+    "role": "invitee",
+    "source": "phone-flow.mp4",
+    "segments": [
+      [
+        9.0,
+        11.0
+      ]
+    ],
+    "duration": 1.8,
+    "title": [
+      "Open."
+    ],
+    "body": [
+      "First launch on a fresh install."
+    ]
+  },
+  {
+    "id": "06-intro",
+    "device": "ios",
+    "role": "invitee",
+    "source": "10-invitee.mp4",
+    "segments": [
+      [
+        106.5,
+        108.35
+      ]
+    ],
+    "duration": 2.0,
+    "title": [
+      "Skip the intro…"
+    ],
+    "body": [
+      "Detour matches this install",
+      "to the click from a moment ago."
+    ]
+  },
+  {
+    "id": "07-invitation",
+    "device": "ios",
+    "role": "invitee",
+    "source": "10-invitee.mp4",
+    "segments": [
+      [
+        111.9,
+        115.0
+      ]
+    ],
+    "duration": 2.5,
+    "title": [
+      "…and land on",
+      "Daniel's invitation."
+    ],
+    "body": [
+      "No paste, no search.",
+      "Sign in to follow."
+    ]
+  },
+  {
+    "id": "08-sign-in",
+    "device": "ios",
+    "role": "invitee",
+    "source": "10-invitee.mp4",
+    "segments": [
+      [
+        113.3,
+        114.6
+      ],
+      [
+        119.5,
+        122.6
+      ],
+      [
+        124.5,
+        127.6
+      ],
+      [
+        136.5,
+        139.5
+      ]
+    ],
+    "duration": 4.5,
+    "title": [
+      "Email, one-time code,",
+      "a name."
+    ],
+    "body": [
+      "The invitation is remembered",
+      "through sign-up."
+    ]
+  },
+  {
+    "id": "09-follow",
+    "device": "ios",
+    "role": "invitee",
+    "source": "10-invitee.mp4",
+    "segments": [
+      [
+        139.4,
+        140.2
+      ],
+      [
+        143.7,
+        145.5
+      ]
+    ],
+    "duration": 3.0,
+    "title": [
+      "Follow request sent."
+    ],
+    "body": [
+      "Daniel confirms each follower first."
+    ]
+  },
+  {
+    "id": "10-open-people",
+    "device": "ios",
+    "role": "invitee",
+    "source": "10-invitee.mp4",
+    "segments": [
+      [
+        152.5,
+        155.7
+      ]
+    ],
+    "duration": 2.0,
+    "title": [
+      "Open People."
+    ],
+    "body": [
+      ""
+    ]
+  },
+  {
+    "id": "11-people",
+    "device": "ios",
+    "role": "invitee",
+    "source": "16-emma-allow.mp4",
+    "segments": [
+      [
+        23.7,
+        24.0
+      ]
+    ],
+    "duration": 4.0,
+    "title": [
+      "Daniel, in Following.",
+      "Share back if you like."
+    ],
+    "body": [
+      "A heads-up before every flight",
+      "he takes, from now on."
+    ]
+  }
+]

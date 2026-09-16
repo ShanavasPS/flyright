@@ -11,7 +11,7 @@ import QRCode from 'qrcode';
 const out = resolve('demo/out/detour');
 await mkdir(`${out}/graphics`, { recursive: true });
 await mkdir(`${out}/segments`, { recursive: true });
-const scenes = JSON.parse(await readFile(new URL('./edit.json', import.meta.url), 'utf8'));
+const scenes = JSON.parse(await readFile(new URL(process.env.EDIT ?? './edit-invitee.json', import.meta.url), 'utf8'));
 // Both frames share a top edge and a centre line; the Pixel is a little
 // narrower and taller than the iPhone at the same scale.
 const frames = {
@@ -49,7 +49,7 @@ for (const [index, scene] of scenes.entries()) {
       <text x="56" y="338" font-size="60" font-weight="700" letter-spacing="-2">Any phone.</text>
       <text x="56" y="405" font-size="25" fill="#A9BBD2">Even before the app is installed.</text>
       <rect x="56" y="515" width="62" height="5" rx="2.5" fill="#70B8FF"/>
-      <text x="56" y="573" font-size="18" fill="#70B8FF" letter-spacing="3">${String(index + 1).padStart(2, '0')} / ${String(scenes.length).padStart(2, '0')} · ${esc(scene.role === 'inviter' ? 'THE INVITER' : 'THE INVITEE')} · ${esc(scene.device === 'ios' ? 'iPHONE' : 'ANDROID')}</text>
+      <text x="56" y="573" font-size="18" fill="#70B8FF" letter-spacing="3">${String(index + 1).padStart(2, '0')} / ${String(scenes.length).padStart(2, '0')} · ${esc(scene.role === 'inviter' ? 'DANIEL · THE INVITER' : 'EMMA · THE INVITEE')}</text>
       ${scene.title.map((line, j) => `<text x="56" y="${638 + j * 51}" font-size="42" font-weight="650">${esc(line)}</text>`).join('')}
       ${scene.body.map((line, j) => `<text x="56" y="${797 + j * 35}" font-size="25" fill="#BAC9DD">${esc(line)}</text>`).join('')}
       <text x="56" y="900" font-size="24" fill="#70B8FF" font-weight="600">Detour by Software Mansion</text>
@@ -59,7 +59,7 @@ for (const [index, scene] of scenes.entries()) {
       <image href="data:image/png;base64,${appStore.toString('base64')}" x="298" y="1038" width="174" height="58"/>
       <image href="data:image/png;base64,${googlePlay.toString('base64')}" x="298" y="1130" width="${googlePlayMeta.width}" height="58"/>
       <text x="56" y="1268" font-size="24" font-weight="600">getflyright.com</text>
-      <text x="56" y="1314" font-size="16" fill="#849BB7">Simulator + iPhone 15 Pro demonstration</text>
+      <text x="56" y="1314" font-size="16" fill="#849BB7">iOS 26 simulator + iPhone 15 Pro</text>
       ${scenes.map((_, j) => `<rect x="${880 + j * 39}" y="1305" width="${j === index ? 29 : 11}" height="5" rx="2.5" fill="${j === index ? '#70B8FF' : '#3C5574'}"/>`).join('')}
     </g>
     <rect x="${phone.x - 10}" y="${phone.y - 10}" width="${phone.width + 20}" height="${phone.height + 20}" rx="${phone.radius + 10}" fill="url(#edge)"/>
@@ -73,23 +73,27 @@ for (const [index, scene] of scenes.entries()) {
   // A scene may hold a still (scene.image, a PNG) instead of a clip.
   if (scene.image) {
     const filter = `[1:v]scale=${phone.width}:${phone.height}:flags=lanczos,setsar=1,format=rgba[v];[2:v]format=gray[m];[v][m]alphamerge[screen];[0:v][screen]overlay=${phone.x}:${phone.y}:shortest=1,format=yuv420p[result]`;
-    execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-loop', '1', '-framerate', '30', '-i', background, '-loop', '1', '-framerate', '30', '-i', `${out}/${scene.image}`, '-loop', '1', '-framerate', '30', '-i', `${out}/graphics/mask-${scene.device}.png`, '-filter_complex', filter, '-map', '[result]', '-t', String(scene.duration), '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-movflags', '+faststart', `${out}/segments/${scene.id}.mp4`], { stdio: 'inherit' });
+    execFileSync('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', '-loop', '1', '-framerate', '30', '-i', background, '-loop', '1', '-framerate', '30', '-i', `${out}/${scene.image}`, '-loop', '1', '-framerate', '30', '-i', `${out}/graphics/mask-${scene.device}.png`, '-filter_complex', filter, '-map', '[result]', '-t', String(scene.duration), '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-movflags', '+faststart', `${out}/segments/${scene.id}.mp4`], { stdio: 'inherit' });
     captions.push(`${index + 1}\n${timestamp(offset)} --> ${timestamp(offset + scene.duration)}\n${scene.title.join(' ')}\n${scene.body.join(' ')}\n`);
     offset += scene.duration;
     console.log(`Rendered ${scene.id} (still)`);
     continue;
   }
-  const sourceDuration = scene.end - scene.start;
+  const segs = scene.segments ?? [[scene.start, scene.end]];
+  const sourceDuration = segs.reduce((a, [b, e]) => a + (e - b), 0);
   const factor = scene.hold ? 1 : scene.duration / sourceDuration;
-  const hold = scene.hold ? `,tpad=stop_mode=clone:stop_duration=${scene.duration}` : '';
-  const filter = `[1:v]fps=30,trim=start=${scene.start}:end=${scene.end},setpts=${factor.toFixed(6)}*(PTS-STARTPTS),fps=30${hold},scale=${phone.width}:${phone.height}:flags=lanczos,setsar=1,format=rgba[v];[2:v]format=gray[m];[v][m]alphamerge[screen];[0:v][screen]overlay=${phone.x}:${phone.y}:shortest=1,format=yuv420p[result]`;
-  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-loop', '1', '-framerate', '30', '-i', background, '-i', `${out}/${scene.source}`, '-loop', '1', '-framerate', '30', '-i', `${out}/graphics/mask-${scene.device}.png`, '-filter_complex', filter, '-map', '[result]', '-t', String(scene.duration), '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-movflags', '+faststart', `${out}/segments/${scene.id}.mp4`], { stdio: 'inherit' });
+  const hold = scene.hold ? `,tpad=stop_mode=clone:stop_duration=${scene.duration}` : `,tpad=stop_mode=clone:stop_duration=${scene.duration}`;
+  // fps before trim: simulator recordings only carry frames where pixels changed.
+  const trims = segs.map(([b, e], i) => `[1:v]fps=30,trim=start=${b}:end=${e},setpts=PTS-STARTPTS[t${i}]`).join(';');
+  const cat = segs.map((_, i) => `[t${i}]`).join('') + `concat=n=${segs.length}:v=1:a=0`;
+  const filter = `${trims};${cat},setpts=${factor.toFixed(6)}*PTS,fps=30${hold},scale=${phone.width}:${phone.height}:flags=lanczos,setsar=1,format=rgba[v];[2:v]format=gray[m];[v][m]alphamerge[screen];[0:v][screen]overlay=${phone.x}:${phone.y}:shortest=1,format=yuv420p[result]`;
+  execFileSync('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', '-loop', '1', '-framerate', '30', '-i', background, '-i', `${out}/${scene.source}`, '-loop', '1', '-framerate', '30', '-i', `${out}/graphics/mask-${scene.device}.png`, '-filter_complex', filter, '-map', '[result]', '-t', String(scene.duration), '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-movflags', '+faststart', `${out}/segments/${scene.id}.mp4`], { stdio: 'inherit' });
   captions.push(`${index + 1}\n${timestamp(offset)} --> ${timestamp(offset + scene.duration)}\n${scene.title.join(' ')}\n${scene.body.join(' ')}\n`);
   offset += scene.duration;
   console.log(`Rendered ${scene.id}`);
 }
 await writeFile(`${out}/segments/list.txt`, scenes.map(s => `file '${s.id}.mp4'`).join('\n'));
-execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', `${out}/segments/list.txt`, '-c', 'copy', '-movflags', '+faststart', `${out}/flyright-deferred-link.mp4`], { stdio: 'inherit' });
-await writeFile(`${out}/flyright-deferred-link.srt`, captions.join('\n'));
-execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', `${out}/flyright-deferred-link.mp4`, '-frames:v', '1', `${out}/flyright-deferred-link-cover.png`], { stdio: 'inherit' });
-console.log(`Exported ${offset}s to ${out}/flyright-deferred-link.mp4`);
+execFileSync('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', `${out}/segments/list.txt`, '-c', 'copy', '-movflags', '+faststart', `${out}/flyright-deferred-link-invitee.mp4`], { stdio: 'inherit' });
+await writeFile(`${out}/flyright-deferred-link-invitee.srt`, captions.join('\n'));
+execFileSync('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', '-i', `${out}/flyright-deferred-link-invitee.mp4`, '-frames:v', '1', `${out}/flyright-deferred-link-invitee-cover.png`], { stdio: 'inherit' });
+console.log(`Exported ${offset}s to ${out}/flyright-deferred-link-invitee.mp4`);
