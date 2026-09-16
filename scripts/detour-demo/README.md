@@ -65,6 +65,13 @@ shows "Emma · opened your invite link" → Allow → Followers 1 (left,
 `allow.yaml` → `11-allow.mp4`). Recorded 2026-09-16 on a fresh "FlyRight
 Invitee" simulator (`invitee-udid.txt`); Detour matched the install again.
 
+The store and install beats on Emma's side are the iPhone 15 Pro frames
+(`phone-flow.mp4`, scenes `04b-get` and `05-install`): the simulator cannot
+show the App Store, the phone can — so the cut goes simulator landing → real
+App Store listing → cloud re-download → Open → simulator splash/intro. The
+phone's status bar (11:29, "◀ Safari") differs from the simulator's 9:41 for
+those five seconds.
+
 Simulator gotchas: system alerts (dictation, "Open in FlyRight?") swallow
 Maestro taps and my own point taps kept re-triggering the mic; the Reminders
 link is not a text element (tap by position); `openLink` on an app already in

@@ -68,28 +68,6 @@
   {
     "id": "04-store",
     "active": "right",
-    "duration": 4.0,
-    "left": {
-      "still": {
-        "clip": "01-invite.mp4",
-        "at": 11.4
-      }
-    },
-    "right": {
-      "clip": "10-invitee.mp4",
-      "segments": [
-        [
-          46.0,
-          54.2
-        ]
-      ]
-    },
-    "title": "App Store — and Detour remembers the click.",
-    "body": "Nothing to copy, nothing to type."
-  },
-  {
-    "id": "05-install",
-    "active": "right",
     "duration": 2.5,
     "left": {
       "still": {
@@ -101,13 +79,57 @@
       "clip": "10-invitee.mp4",
       "segments": [
         [
-          96.5,
-          100.0
+          46.0,
+          51.6
         ]
       ]
     },
-    "title": "Install. Open.",
-    "body": "A fresh install, first launch."
+    "title": "No app yet? App Store.",
+    "body": "Detour records the tap on its way to the store."
+  },
+  {
+    "id": "04b-get",
+    "active": "right",
+    "duration": 3.5,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "phone-flow.mp4",
+      "segments": [
+        [
+          4.0,
+          9.0
+        ]
+      ]
+    },
+    "title": "Get FlyRight — the real App Store, real iPhone.",
+    "body": "Nothing to copy, nothing to type."
+  },
+  {
+    "id": "05-install",
+    "active": "right",
+    "duration": 1.8,
+    "left": {
+      "still": {
+        "clip": "01-invite.mp4",
+        "at": 11.4
+      }
+    },
+    "right": {
+      "clip": "phone-flow.mp4",
+      "segments": [
+        [
+          9.0,
+          11.0
+        ]
+      ]
+    },
+    "title": "Open.",
+    "body": "First launch on a fresh install."
   },
   {
     "id": "06-intro",
