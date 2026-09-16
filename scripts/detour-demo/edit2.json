@@ -2,13 +2,13 @@
   {
     "id": "01-invite",
     "active": "left",
-    "duration": 3.5,
+    "duration": 2.0,
     "left": {
       "clip": "01-invite.mp4",
       "segments": [
         [
           2.0,
-          7.6
+          4.3
         ]
       ]
     },
@@ -16,37 +16,37 @@
       "image": "emma-lock-clean.png"
     },
     "title": "Daniel invites someone to follow his trips.",
-    "body": "People → Invite someone → Send."
+    "body": "People → Invite someone."
   },
   {
     "id": "02-share",
     "active": "left",
-    "duration": 3.0,
+    "duration": 2.0,
     "left": {
       "clip": "phone-send.mp4",
       "segments": [
         [
-          0.0,
-          3.667
+          0.667,
+          2.667
         ]
       ]
     },
     "right": {
       "image": "emma-lock-clean.png"
     },
-    "title": "The share sheet — his real iPhone.",
+    "title": "Send — the share sheet on his iPhone.",
     "body": "Messages is one tap away."
   },
   {
     "id": "02b-messages",
     "active": "left",
-    "duration": 3.0,
+    "duration": 1.8,
     "left": {
       "clip": "phone-send.mp4",
       "segments": [
         [
-          3.667,
-          7.0
+          4.333,
+          5.667
         ]
       ]
     },
@@ -59,12 +59,16 @@
   {
     "id": "02c-send",
     "active": "left",
-    "duration": 3.0,
+    "duration": 2.5,
     "left": {
       "clip": "phone-send.mp4",
       "segments": [
         [
-          7.0,
+          6.333,
+          7.0
+        ],
+        [
+          8.333,
           9.333
         ]
       ]
@@ -72,7 +76,7 @@
     "right": {
       "image": "emma-lock-clean.png"
     },
-    "title": "Sent.",
+    "title": "To: Emma Laurent. Sent.",
     "body": "The link travels like any other text."
   },
   {
