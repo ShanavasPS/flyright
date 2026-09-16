@@ -1,0 +1,118 @@
+[
+  {
+    "id": "01-invite",
+    "device": "ios",
+    "source": "01-invite.mp4",
+    "start": 2.0,
+    "end": 8.2,
+    "duration": 3.5,
+    "title": [
+      "Invite someone",
+      "to follow your trips."
+    ],
+    "body": [
+      "People → Invite someone → Send.",
+      "One link is all it takes."
+    ],
+    "role": "inviter"
+  },
+  {
+    "id": "02-share",
+    "device": "ios",
+    "source": "01-invite.mp4",
+    "start": 8.6,
+    "end": 11.5,
+    "duration": 2.5,
+    "title": [
+      "Send it",
+      "anywhere."
+    ],
+    "body": [
+      "Messages, WhatsApp, email —",
+      "or printed as a QR code."
+    ],
+    "role": "inviter"
+  },
+  {
+    "id": "03-landing",
+    "device": "ios",
+    "source": "02-landing.mp4",
+    "start": 2.0,
+    "end": 8.4,
+    "duration": 3.5,
+    "title": [
+      "No app yet?",
+      "The link still works."
+    ],
+    "body": [
+      "Tap it, or scan the QR code.",
+      "The invitation opens on the web."
+    ],
+    "role": "invitee"
+  },
+  {
+    "id": "04-store",
+    "device": "ios",
+    "source": "02-landing.mp4",
+    "start": 8.8,
+    "end": 11.9,
+    "duration": 2.5,
+    "title": [
+      "App Store opens.",
+      "Click remembered."
+    ],
+    "body": [
+      "Detour records the tap on its way",
+      "to the store. Nothing to copy."
+    ],
+    "role": "invitee"
+  },
+  {
+    "id": "05-install",
+    "device": "ios",
+    "source": "03-first-launch.mp4",
+    "start": 26.3,
+    "end": 28.6,
+    "duration": 2.0,
+    "title": [
+      "Install.",
+      "Open."
+    ],
+    "body": [
+      "A fresh phone, first launch.",
+      "No link in sight."
+    ],
+    "role": "invitee"
+  },
+  {
+    "id": "06-first-launch",
+    "device": "ios",
+    "source": "03-first-launch.mp4",
+    "start": 44.0,
+    "end": 46.6,
+    "duration": 2.5,
+    "title": [
+      "Skip the intro…"
+    ],
+    "body": [
+      "Detour matches this install",
+      "to the click from a moment ago."
+    ],
+    "role": "invitee"
+  },
+  {
+    "id": "07-invitation",
+    "device": "ios",
+    "role": "invitee",
+    "image": "09-invitation.png",
+    "duration": 3.5,
+    "title": [
+      "…and land on",
+      "the invitation."
+    ],
+    "body": [
+      "Who invited you, what you'll get,",
+      "one tap to follow. No paste, no search."
+    ]
+  }
+]

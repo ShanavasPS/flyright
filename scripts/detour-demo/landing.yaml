@@ -1,0 +1,36 @@
+# The invitee's phone, no FlyRight installed: the invite link opens the web
+# landing in Safari, App Store goes through Detour (which records the click)
+# and on to the store page. Run on a simulator that has never had the app:
+#   maestro --device <udid> test -e OUT="$PWD/demo/out/detour" -e LINK=https://getflyright.com/i/<token> scripts/detour-demo/landing.yaml
+appId: com.apple.mobilesafari
+---
+- openLink: ${LINK}
+- extendedWaitUntil:
+    visible: ".*invited you.*"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- startRecording: ${OUT}/02-landing
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- takeScreenshot: ${OUT}/04-landing
+- scroll
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- takeScreenshot: ${OUT}/05-landing-store
+# The "App Store" link, by position after the scroll (iPhone 17 Pro): a text
+# match once landed on nothing.
+- tapOn:
+    point: "20%,77%"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 7000
+- takeScreenshot: ${OUT}/06-app-store
+- stopRecording

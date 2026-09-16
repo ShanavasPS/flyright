@@ -1,0 +1,51 @@
+# The inviter's phone: People → Invite someone → Send the link → share sheet →
+# Copy. Recorded on the signed-in demo simulator; Copy leaves the invite link
+# on the simulator pasteboard (`xcrun simctl pbpaste <udid>`), which is where
+# the invitee scenes and the QR code take it from.
+# Run: maestro --device <udid> test -e OUT="$PWD/demo/out/detour" scripts/detour-demo/invite.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "People"
+- extendedWaitUntil:
+    visible: ".*Invite someone.*"
+    timeout: 45000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- startRecording: ${OUT}/01-invite
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- takeScreenshot: ${OUT}/01-people
+- tapOn: ".*Invite someone.*"
+- extendedWaitUntil:
+    visible:
+      id: "share-invite-link"
+    timeout: 15000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- takeScreenshot: ${OUT}/02-add-person
+- tapOn:
+    id: "share-invite-link"
+- extendedWaitUntil:
+    visible: "Copy"
+    timeout: 20000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
+- takeScreenshot: ${OUT}/03-share-sheet
+- tapOn: "Copy"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- stopRecording

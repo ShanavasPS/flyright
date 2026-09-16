@@ -1,0 +1,49 @@
+# The invitee's phone, right after the store install: dismiss the simulator's
+# "cannot open itms-apps" alert, go Home, open FlyRight from its icon, skip
+# the intro — and the deferred link lands on the invitation. Run on the same
+# simulator as landing.yaml, inside Detour's 15-minute window, with the app
+# installed in between (`xcrun simctl install <udid> demo/out/detour/FlyRight.app`).
+# Recording comes from `xcrun simctl io <udid> recordVideo`, started before.
+appId: com.apple.springboard
+---
+- tapOn:
+    text: "OK"
+    optional: true
+- pressKey: Home
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- takeScreenshot: ${OUT}/07-home
+- tapOn: "FlyRight"
+- extendedWaitUntil:
+    visible: "Allow"
+    timeout: 15000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2000
+- takeScreenshot: ${OUT}/08-intro
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "Not now"
+    timeout: 8000
+    optional: true
+- tapOn:
+    text: "Not now"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*invited you.*"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 4000
+- takeScreenshot: ${OUT}/09-invitation
