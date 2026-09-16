@@ -1,4 +1,4 @@
-# Journey detail → World hand-off: the detail's inset route map opens the
+# Journey detail → World hand-off: the detail's inset route globe opens the
 # World tab on that one trip (route header, "All travels" pill, docked route
 # card), "All travels" restores every route, and a plain revisit of the tab
 # is unfiltered again (the focus clears when the tab blurs).
@@ -27,7 +27,7 @@ appId: com.shanavasshaji.flyright
 # The tab bar steps aside on a trip (see (tabs)/_layout IMMERSIVE) and is
 # back the moment the hand-off lands on the World tab.
 - assertNotVisible: "Tab Bar"
-# The inset map card sits directly under the stack header.
+# The inset globe card sits directly under the stack header.
 - tapOn:
     point: "50%,27%"
 # Text inside a Pressable with accessibilityRole="button" isn't matchable by
@@ -35,7 +35,10 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Show all travels"
     timeout: 10000
-- assertVisible: "Tab Bar"
+# The bar slides back in with the tab switch; give it a moment.
+- extendedWaitUntil:
+    visible: "Tab Bar"
+    timeout: 5000
 - assertVisible: "DXB → LAX"
 - assertVisible: "EK215 · .*"
 - tapOn: "Show all travels"

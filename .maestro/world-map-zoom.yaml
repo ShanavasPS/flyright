@@ -1,6 +1,6 @@
-# World tab pan/zoom: double-tap zooms the native map in and the recenter
-# control appears once the camera leaves the fitted view; tapping it re-fits
-# and hides itself again.
+# World tab zoom: a double tap zooms the globe in about the tapped point and
+# the recenter control appears once the camera leaves the fitted view;
+# tapping it animates back to the fit and hides itself again.
 #
 # PRECONDITION: seeded journeys (recipe in world-map.yaml's header) — with an
 # empty journal there is no fitted view to deviate from, so the recenter
@@ -17,18 +17,17 @@ appId: com.shanavasshaji.flyright
     timeout: 90000
 - openLink: "flyright://world"
 - extendedWaitUntil:
-    visible: "Everywhere you've been"
+    visible: "Everywhere you.ve been"
     timeout: 15000
-# Two double-taps = two native zoom-in steps (same recognizer family as
-# pinch, which Maestro can't synthesize).
+# Two double taps = two zoom-in steps (pinch can't be synthesized by Maestro).
 - doubleTapOn:
     point: "50%,40%"
 - doubleTapOn:
     point: "50%,40%"
 - extendedWaitUntil:
-    visible: "Recenter the map on your travels"
+    visible: "Recenter the globe on your travels"
     timeout: 10000
-- tapOn: "Recenter the map on your travels"
+- tapOn: "Recenter the globe on your travels"
 - extendedWaitUntil:
-    notVisible: "Recenter the map on your travels"
+    notVisible: "Recenter the globe on your travels"
     timeout: 10000

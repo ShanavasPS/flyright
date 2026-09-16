@@ -66,19 +66,15 @@ alongside another real-time provider without written permission, and forbids
 use for EU261 claims. Cost is per result set of 15 records; the monthly cap is
 `FLIGHTAWARE_MONTHLY_CENTS`.
 
-# Android Maps key
+# World tab globe
 
-`app.config.js` injects `GOOGLE_MAPS_ANDROID_API_KEY` into the `react-native-maps`
-plugin — the key is deliberately NOT in `app.json`, because this repo is public.
-It lives in `.env` (gitignored, for local prebuilds) and in the EAS `production`,
-`preview`, and `development` environments. EAS CLI resolves the app config before
-injecting env vars, so a missing key only throws on the build worker (`EAS_BUILD`);
-locally it warns. If the Android map ever renders blank, check that variable first.
-
-The key is API-restricted to `maps-android-backend.googleapis.com` (Maps SDK for
-Android, which Google bills at zero), so it shipping inside the APK costs nothing.
-It still has no Android application restriction — adding one needs the Play app
-signing SHA-1 from Play Console, and a wrong value blanks the map for testers.
+The World tab and the trip page's inset draw their own globe with
+react-native-skia (`src/components/globe-view.tsx`, maths in
+`src/services/globe.ts`, textures from `scripts/generate-globe-texture.mjs`).
+react-native-maps and the Android Google Maps key are gone; the EAS
+`GOOGLE_MAPS_ANDROID_API_KEY` variable and the GCP key are unused and can be
+deleted. Skia is a native dependency: rebuild the dev clients after pulling
+a change to it.
 
 <!-- stripe-projects-cli managed:agents-md:start -->
 ## Stripe Projects CLI

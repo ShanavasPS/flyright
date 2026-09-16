@@ -1,6 +1,6 @@
-# Flight paths on the trip map
+# Flight paths on the trip globe
 
-The inset map on a trip (journey detail, and a follower's view of someone
+The inset globe on a trip (journey detail, and a follower's view of someone
 else's trip) draws the line the flight actually flew — or, before it leaves,
 the route it filed — when the flight-path lookup has one. Until then it draws
 the great circle it always drew, captioned **Overview**; a real line is

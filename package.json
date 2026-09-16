@@ -58,7 +58,6 @@
     "react-i18next": "^17.0.11",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
-    "react-native-maps": "1.27.2",
     "react-native-onesignal": "^5.5.5",
     "react-native-purchases": "^10.5.0",
     "react-native-purchases-ui": "^10.5.0",

@@ -221,3 +221,133 @@ export function wrapLambda(lambda: number): number {
 
 /** Radius of the globe that fits a strip of the canvas with some air. */
 export const fitRadius = (width: number, height: number) => (Math.min(width, height) / 2) * 0.9;
+
+/** Where the globe looks and how big it is: the orientation plus the size
+ * relative to the fitted radius. */
+export interface GlobeCamera extends GlobeOrientation {
+  scale: number;
+}
+
+/** The globe as big as the World tab lets it get. At a 3× phone this puts
+ * the 8192-wide detail texture at about one texel per one and a half
+ * points, where coastlines still read as lines rather than steps. */
+export const MAX_SCALE = 12;
+export const MIN_SCALE = 0.7;
+
+/** Undo the antimeridian split the map SDKs needed: a route's samples in
+ * one list, the two ±180° edge points collapsed into one hop. On a sphere
+ * there is no edge to split at. */
+export function mergeSegments(segments: { latitude: number; longitude: number }[][]): {
+  latitude: number;
+  longitude: number;
+}[] {
+  const samples: { latitude: number; longitude: number }[] = [];
+  for (const segment of segments) {
+    for (const point of segment) {
+      const prev = samples[samples.length - 1];
+      if (prev && prev.latitude === point.latitude && Math.abs(prev.longitude) === 180) continue;
+      samples.push(point);
+    }
+  }
+  return samples;
+}
+
+/** The camera that frames a set of packed vectors: facing their centroid,
+ * as close as the strip allows with `pad` of air. A point `theta` away from
+ * the centre projects `r · sin(theta)` from it, so the radius that puts the
+ * farthest point at the strip's edge is half the strip over that sine.
+ * Anything spread wider than a hemisphere's worth just gets the whole globe
+ * (scale 1). With nothing to frame, a gentle default over the Atlantic. */
+export function fitCamera(
+  packed: Float32Array[],
+  stripWidth: number,
+  stripHeight: number,
+  fitR: number,
+  maxScale: number,
+  pad = 0.82,
+): GlobeCamera {
+  let sx = 0;
+  let sy = 0;
+  let sz = 0;
+  let count = 0;
+  for (const p of packed) {
+    for (let i = 0; i < p.length; i += 3) {
+      sx += p[i];
+      sy += p[i + 1];
+      sz += p[i + 2];
+      count += 1;
+    }
+  }
+  const len = Math.hypot(sx, sy, sz);
+  if (!count || len < 1e-6) return { lambda: -20 * RAD, phi: 25 * RAD, scale: 1 };
+  const cx = sx / len;
+  const cy = sy / len;
+  const cz = sz / len;
+  let maxTheta = 0;
+  for (const p of packed) {
+    for (let i = 0; i < p.length; i += 3) {
+      const dot = Math.max(-1, Math.min(1, p[i] * cx + p[i + 1] * cy + p[i + 2] * cz));
+      maxTheta = Math.max(maxTheta, Math.acos(dot));
+    }
+  }
+  const phi = Math.max(-MAX_TILT, Math.min(MAX_TILT, Math.asin(Math.max(-1, Math.min(1, cy)))));
+  const lambda = Math.atan2(cx, cz);
+  // Below a couple of degrees (one airport, a hop) the fit would zoom past
+  // anything useful; hold it at a city-region view.
+  const theta = Math.max(maxTheta, 1.5 * RAD);
+  const half = (Math.min(stripWidth, stripHeight) / 2) * pad;
+  const r = theta >= 80 * RAD ? fitR : half / Math.sin(theta);
+  const scale = Math.max(1, Math.min(maxScale, r / fitR));
+  return { lambda, phi, scale };
+}
+
+/** The shortest turn from one longitude to another, so an animation to a
+ * fit never goes the long way round. Returns the target expressed next to
+ * `from` (possibly outside [−π, π); wrap it after the animation). */
+export function nearestLambda(from: number, to: number): number {
+  'worklet';
+  return from + wrapLambda(to - from);
+}
+
+/** A point `km` along `bearing` (degrees clockwise from north) from a
+ * coordinate — used to give a plane a second point to aim at, so its screen
+ * angle can be read off the projection rather than guessed from the
+ * compass heading. */
+export function offsetAlong(lat: number, lon: number, bearing: number, km: number): { latitude: number; longitude: number } {
+  const d = km / 6371;
+  const la = lat * RAD;
+  const lo = lon * RAD;
+  const b = bearing * RAD;
+  const la2 = Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d) * Math.cos(b));
+  const lo2 = lo + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(la), Math.cos(d) - Math.sin(la) * Math.sin(la2));
+  return { latitude: la2 * DEG, longitude: ((((lo2 * DEG + 180) % 360) + 360) % 360) - 180 };
+}
+
+/** The stretch of a packed route lit by a travelling comet: sample index
+ * range [from, to] for a head at fraction `head` (0–1+length) of the way,
+ * plus what `cometAlpha` needs to ramp each index 0 at the tail to 1 at the
+ * head. No closures: worklets call this. */
+export function cometRange(
+  count: number,
+  head: number,
+  length: number,
+): { from: number; to: number; last: number; tail: number } | null {
+  'worklet';
+  const last = count - 1;
+  const t0 = Math.max(0, head - length);
+  const t1 = Math.min(1, head);
+  if (t1 - t0 < 0.005) return null;
+  // A hair of slack: 0.5 − 0.28 lands a rounding error under 0.22.
+  return {
+    from: Math.max(0, Math.floor(t0 * last + 1e-6)),
+    to: Math.min(last, Math.ceil(t1 * last - 1e-6)),
+    last,
+    tail: head - length,
+  };
+}
+
+/** The comet's alpha at sample index `i` of a range from `cometRange`. */
+export function cometAlpha(range: { last: number; tail: number }, i: number, length: number): number {
+  'worklet';
+  return Math.max(0, Math.min(1, (i / range.last - range.tail) / length));
+}

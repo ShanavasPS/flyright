@@ -1,18 +1,15 @@
 import { useAuth } from '@clerk/expo';
 import { Link, useIsFocused, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppState, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline, type Region } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
 import { DataErrorCard } from '@/components/data-state';
-import { GlobeView, globePalette, useGlobeTexture } from '@/components/globe-view';
+import { GlobeView, globePalette } from '@/components/globe-view';
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
-import { AirportMarker, PlaneMarker, alphaHex } from '@/components/map-layers';
 import { ThemedText } from '@/components/themed-text';
-import { mapColors } from '@/components/world-map';
 import { EmptyPeriodCard, PeriodButton, PeriodCard } from '@/components/world-period-card';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -20,29 +17,15 @@ import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { formatDayLabel, formatDayLabelWithYear } from '@/services/dates';
 import {
-  COMET_LENGTH,
   buildWorldRoutes,
-  cometSegments,
   haversineKm,
-  nearestRoute,
   routePlane,
   type GeoRoute,
-  type LatLng,
   type RouteLeg,
   type RoutePlane,
 } from '@/services/geo';
 import { useJourneys, type JourneyRow } from '@/services/journeys';
-import {
-  CLUTTER_OFF,
-  GOOGLE_NIGHT,
-  MAX_LAT,
-  freshFloorWatch,
-  getZoomFloorLon,
-  learnZoomFloor,
-  pushesPastFloor,
-  regionFor,
-  type FloorWatch,
-} from '@/services/map-region';
+import { useGlobeTextures } from '@/services/globe-textures';
 import { cityOf, formatKm, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 import { ALL_TIME, filterByPeriod, periodKey, type WorldPeriod } from '@/services/world-period';
@@ -55,37 +38,14 @@ const HEADER_HEIGHT = 83;
 const STATS_CARD_HEIGHT = 80;
 const RECENTER_CONTROL_HEIGHT = 56;
 
-/** Upcoming routes draw faint and let the travelling comet carry the colour;
- * two hex digits of alpha appended to the theme tint. */
-const UPCOMING_ALPHA = '59';
-/** Animation clock tick — comets and the pulse both update at this rate. Each
- * tick re-sends a handful of short polylines over the bridge, so 30 fps is
- * plenty and far cheaper than 60. */
-const TICK_MS = 33;
-/** One comet pass, origin to clear of the destination, in ms. Longer arcs get
- * a little longer so the light doesn't race across a long haul. */
-const cometPeriod = (samples: number) => Math.min(5200, 2400 + samples * 12);
-const PULSE_PERIOD_MS = 1400;
-/** How close, in screen points, a tap must land to a route to select it. */
-const ROUTE_TAP_TOLERANCE = 22;
-/** Offset of the probe point used to measure the map's local scale. */
-const SCALE_PROBE_PT = 50;
-/** How long after requesting a fit its settle events are still "ours". iOS
- * can report the same animation twice (once for the camera, once after a
- * layout pass); a flag cleared on the first would read the second as a pan. */
-const FIT_SETTLE_MS = 1200;
-/** When the map comes back from the globe it opens this much tighter than
- * the floor, so the very next pinch-out has somewhere to go. */
-const RETURN_SPAN = 0.6;
-
-/** Your travels on a real map — Apple Maps on iOS, Google Maps on Android —
- * with every route drawn as a great-circle arc between its origin and
- * destination. Flown routes are solid with a plane mid-arc showing the way
- * the latest leg flew; upcoming ones are faint with a light running toward
- * the destination and a pulsing plane waiting by the origin. Tapping a plane
- * docks the route's journeys where the stats card sits. A period pill in the
- * header narrows the map to a year, a month or a custom range. Pan/zoom is
- * the map SDK's own. */
+/** Your travels on a globe — a lit earth drawn by the app itself (see
+ * components/globe-view) — with every route drawn as a great-circle arc
+ * between its origin and destination. Flown routes are solid with a plane
+ * mid-arc showing the way the latest leg flew; upcoming ones are faint with
+ * a light running toward the destination and a pulsing plane waiting by the
+ * origin. Tapping a route docks its journeys where the stats card sits. A
+ * period pill in the header narrows the globe to a year, a month or a
+ * custom range. Drag turns the globe, pinch and double tap zoom it. */
 export function World() {
   const { userId } = useAuth();
   const { data: journeys, error } = useJourneys(userId);
@@ -135,34 +95,35 @@ export function WorldCanvas({
   onBack,
   shareable = false,
 }: {
-  /** Every journey the map may draw. The canvas narrows it itself: to the
+  /** Every journey the globe may draw. The canvas narrows it itself: to the
    * focused trip while there is one, otherwise to the chosen period. */
   rows: JourneyRow[];
-  /** Set when the caller arrived from one trip: the map draws that leg alone
-   * and offers "All travels" to widen back out. */
+  /** Set when the caller arrived from one trip: the globe frames that leg
+   * alone and offers "All travels" to widen back out. */
   focusedRow?: JourneyRow;
-  /** False while the rows are still loading — an empty map mid-fetch is not
-   * the same as somebody with no travel. */
+  /** False while the rows are still loading — an empty globe mid-fetch is
+   * not the same as somebody with no travel. */
   loaded: boolean;
   onClearFocus: () => void;
   /** Shown when nothing is focused; the focused labels name the flight. */
   eyebrow: string;
   title: string;
   emptyCard: React.ReactNode;
-  /** A pushed screen draws its own back button, since the map runs full
+  /** A pushed screen draws its own back button, since the globe runs full
    * bleed under where a header would be. The tab has none. */
   onBack?: () => void;
-  /** Offers the share poster. Only for the traveller's own map — somebody
+  /** Offers the share poster. Only for the traveller's own globe — somebody
    * else's travel is theirs to post, not the viewer's. */
   shareable?: boolean;
 }) {
   const router = useRouter();
   const dark = useColorScheme() === 'dark';
   const theme = useTheme();
-  const { sea } = mapColors(dark);
   const focused = useIsFocused();
+  const textures = useGlobeTextures();
+  const appActive = useAppActive();
 
-  // Which slice of the journal is on the map. Kept for the session, not
+  // Which slice of the journal is on the globe. Kept for the session, not
   // reset on blur: tapping a flight on the route card leaves the tab, and
   // coming back to "All time" after every such trip would undo the choice
   // the traveller just made. A journey hand-off is a new subject and resets it.
@@ -174,187 +135,65 @@ export function WorldCanvas({
   );
 
   // "Flown vs upcoming" cutoff, frozen per mount — a live clock would redraw
-  // the map mid-session for no visible gain.
+  // the globe mid-session for no visible gain.
   const [now] = useState(() => new Date());
   const data = useMemo(() => buildWorldRoutes(visible, now), [visible, now]);
   const recap = useMemo(() => travelRecap(visible), [visible]);
-  const airportLons = useMemo(() => data.airports.map((a) => a.lon), [data]);
 
-  const mapRef = useRef<MapView>(null);
-  // True once the user pans/zooms away from the fitted view; new flights
-  // stop re-fitting the camera the moment the user takes the wheel. Detected
-  // by comparing regions against the last fit, not `details.isGesture` —
-  // Apple Maps doesn't report that flag.
+  // The camera frames the routes until the traveller takes it somewhere;
+  // from then on new flights don't yank it back. Clearing `moved` — a
+  // recenter, a hand-off, a new period, a return to the tab — animates the
+  // globe back to the fit of what it shows.
   const [moved, setMoved] = useState(false);
-  const [fitRevision, setFitRevision] = useState(0);
-  // Timestamp of the latest fit request; settles within FIT_SETTLE_MS are its own.
-  const fitStarted = useRef(0);
-  const fitQueued = useRef(false);
-  const fitted = useRef<Region | null>(null);
 
-  // The SDK's zoom-out floor in degrees of longitude — see regionFor and
-  // map-region's seed. Refined from whatever the SDK grants for the initial
-  // region and for fits, kept for the session.
-  const [maxLonSpan, setMaxLonSpan] = useState(getZoomFloorLon);
-  const initial = useMemo(
-    () => regionFor(data.fitCoords, airportLons, maxLonSpan),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-time camera only
-    [],
-  );
-  const requested = useRef<Region>(initial);
-
-  const fit = useCallback(
-    (animated: boolean) => {
-      if (!data.fitCoords.length) return;
-      fitStarted.current = Date.now();
-      requested.current = regionFor(data.fitCoords, airportLons, maxLonSpan);
-      mapRef.current?.animateToRegion(requested.current, animated ? 600 : 0);
-    },
-    [data, airportLons, maxLonSpan],
-  );
-
-  const [ready, setReady] = useState(false);
-  const mapSize = useRef({ width: 0, height: 0 });
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
-  // Past the SDK's floor the map can't zoom out any further, but the globe
-  // can: a pinch that settles at the floor swaps the map for the globe,
-  // centred where the map was. Two things say the traveller meant it — the
-  // span grew to reach the floor, or the previous settle was already there
-  // and they pushed again — so the first pan after a floor-wide fit stays a
-  // pan. `globe` is the coordinate the globe should face on arrival.
-  const [globe, setGlobe] = useState<LatLng | null>(null);
-  const globeTexture = useGlobeTexture();
-  const floorWatch = useRef<FloorWatch>(freshFloorWatch(initial.longitudeDelta));
-  const openGlobe = (region: Region) => {
-    setChoosing(false);
-    setGlobe({ latitude: region.latitude, longitude: region.longitude });
-  };
-  const noteUserSettle = (region: Region) => {
-    if (pushesPastFloor(floorWatch.current, region.longitudeDelta, maxLonSpan)) openGlobe(region);
-  };
-  /** Pinching in on the globe: continue on the map, centred where the globe
-   * faced, a notch tighter than the floor. The map underneath is positioned
-   * first so the swap reads as the zoom carrying on. */
-  const leaveGlobe = (centre: LatLng) => {
-    const { width, height } = mapSize.current;
-    const longitudeDelta = maxLonSpan * RETURN_SPAN;
-    const region: Region = {
-      latitude: Math.max(-MAX_LAT, Math.min(MAX_LAT, centre.latitude)),
-      longitude: centre.longitude,
-      latitudeDelta: longitudeDelta * (width && height ? height / width : 1.5),
-      longitudeDelta,
-    };
-    requested.current = region;
-    fitStarted.current = Date.now();
-    floorWatch.current = freshFloorWatch(longitudeDelta);
-    setMoved(true);
-    setGlobe(null);
-    mapRef.current?.animateToRegion(region, 0);
-  };
-
-  /** Select whichever route the tap landed on, or clear. The map's degrees-
-   * per-point scale is measured live from two probe points at the view centre
-   * (`coordinateForPoint`, so mapPadding can't skew it), with latitude
-   * corrected to the tap's Mercator stretch. */
-  const selectAt = async (tap: LatLng) => {
-    const map = mapRef.current;
-    const { width, height } = mapSize.current;
-    setChoosing(false);
-    if (!map || !width) return setSelectedKey(null);
-    try {
-      const centre = { x: width / 2, y: height / 2 };
-      const [c0, c1] = await Promise.all([
-        map.coordinateForPoint(centre),
-        map.coordinateForPoint({ x: centre.x + SCALE_PROBE_PT, y: centre.y + SCALE_PROBE_PT }),
-      ]);
-      const toRad = Math.PI / 180;
-      const stretch = Math.cos(tap.latitude * toRad) / Math.cos(c0.latitude * toRad);
-      const scale = {
-        lon: Math.abs(c1.longitude - c0.longitude) / SCALE_PROBE_PT,
-        lat: (Math.abs(c1.latitude - c0.latitude) / SCALE_PROBE_PT) * stretch,
-      };
-      setChoosing(false);
-      setSelectedKey(nearestRoute(data.routes, tap, scale, ROUTE_TAP_TOLERANCE));
-    } catch {
-      setSelectedKey(null);
-    }
-  };
-
-  // The header fade and the stats card cover the map's top and bottom. Their
-  // heights are derived, not measured: a padding that changes after the first
-  // fit makes Google Maps re-seat the camera and shift the fitted view, and
-  // the shift then reads as a user pan. Fits centre in the strip between them
-  // and the SDK's legal label sits above the card.
+  // The header fade and the stats card cover the globe's top and bottom.
+  // Their heights are derived, not measured, so the fit lands in the strip
+  // between them from the first frame.
   const insets = useSafeAreaInsets();
-  // iOS: the map runs under the tab bar (iOS 26 glass) or ends at it (iOS 18),
-  // and insets.bottom reflects whichever — use it. Android: the native tab
-  // bar already sits above the system bar and the screen ends at the tab
-  // bar, yet insets.bottom still reports the system bar; adding it would
+  // iOS: the globe runs under the tab bar (iOS 26 glass) or ends at it (iOS
+  // 18), and insets.bottom reflects whichever — use it. Android: the native
+  // tab bar already sits above the system bar and the screen ends at the
+  // tab bar, yet insets.bottom still reports the system bar; adding it would
   // float the card a nav-bar height too high.
   const footerInset = (Platform.OS === 'ios' ? insets.bottom : 0) + Spacing.three;
-  const mapPadding = {
+  const strip = {
     top: insets.top + HEADER_HEIGHT,
-    // Keep room for the recenter control so showing it doesn't shift the camera.
+    // Keep room for the recenter control so showing it doesn't shift the fit.
     bottom: footerInset + STATS_CARD_HEIGHT + RECENTER_CONTROL_HEIGHT,
-    left: 0,
-    right: 0,
   };
-  useEffect(() => {
-    if (!focused || !ready || moved) return;
-    // NativeTabs reattaches Google's map after React reports focus. Camera
-    // commands sent in that gap are ignored. Let the native transition
-    // finish, and cancel the pending fit if the traveller starts panning.
-    fitQueued.current = true;
-    const timer = setTimeout(() => {
-      fitQueued.current = false;
-      fit(true);
-    }, Platform.OS === 'android' ? 300 : 0);
-    return () => {
-      clearTimeout(timer);
-      fitQueued.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- explicit requests also refit an unchanged period
-  }, [focused, ready, moved, data, maxLonSpan, fitRevision]);
 
   // A plain return to World starts from the chosen period's overview,
-  // rather than inheriting the last trip's zoom. Keep the date selection.
+  // rather than inheriting the last zoom. Keep the date selection.
   const [wasFocused, setWasFocused] = useState(focused);
   if (wasFocused !== focused) {
     setWasFocused(focused);
-    if (focused) {
-      setMoved(false);
-      setGlobe(null);
-    }
+    if (focused) setMoved(false);
   }
 
-  // Tapping a plane docks a detail card in the stats card's slot; tapping the
-  // map or its close button brings the stats back.
+  // Tapping a plane or a route docks a detail card in the stats card's slot;
+  // tapping the globe elsewhere or its close button brings the stats back.
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const recenter = () => {
-    setMoved(false);
-    setGlobe(null);
-    floorWatch.current = freshFloorWatch(floorWatch.current.span);
-    setFitRevision((revision) => revision + 1);
-  };
+  const recenter = () => setMoved(false);
   const choosePeriod = (next: WorldPeriod) => {
     setPeriod(next);
     setSelectedKey(null);
-    // Selecting "All time" again is an explicit request for the overview,
-    // even though the filter value and route data haven't changed.
+    // Selecting "All time" again is an explicit request for the overview:
+    // clearing `moved` refits even though the route data hasn't changed
+    // (and if it was never moved, the globe is already there).
     recenter();
   };
 
   // A hand-off (or its clearing) is a new subject: the camera refits even if
   // the user had panned, and the trip's route card docks straight away.
-  // Reset during render (not in an effect) so the fit effect below already
+  // Reset during render (not in an effect) so the refit effect above already
   // sees `moved` false on the render that carries the new data.
   const [seenFocus, setSeenFocus] = useState(focusedRow?.id);
   if (seenFocus !== focusedRow?.id) {
     setSeenFocus(focusedRow?.id);
     setMoved(false);
-    setGlobe(null);
     setChoosing(false);
     if (focusedRow) setPeriod(ALL_TIME);
     setSelectedKey(focusedRow ? (data.routes[0]?.key ?? null) : null);
@@ -365,7 +204,6 @@ export function WorldCanvas({
   if (seenPeriod !== periodKey(period)) {
     setSeenPeriod(periodKey(period));
     setMoved(false);
-    setGlobe(null);
     setSelectedKey(null);
   }
 
@@ -378,11 +216,9 @@ export function WorldCanvas({
     () => data.routes.map((route) => ({ route, plane: routePlane(route) })),
     [data],
   );
-  const upcoming = useMemo(() => planes.filter(({ plane }) => plane.upcoming), [planes]);
-
   const selected = planes.find(({ route }) => route.key === selectedKey) ?? null;
 
-  /** What the poster shows follows what the map shows: the tapped route's
+  /** What the poster shows follows what the globe shows: the tapped route's
    * legs, the handed-off trip, else the period's rows. */
   const shareVisible = () => {
     if (selected) {
@@ -396,181 +232,35 @@ export function WorldCanvas({
     router.push('/share-world');
   };
 
-  // Animation clock for the comets and the pulsing undeparted planes. Runs
-  // only while there is something to animate and the tab is on screen in a
-  // foregrounded app — background polyline updates would burn battery for
-  // nobody. Comets are derived from the clock, never accumulated, so pauses
-  // resume seamlessly.
-  const [clock, setClock] = useState(0);
-  useEffect(() => {
-    // The globe covers the map: no point re-sending comet polylines under it.
-    if (!focused || !upcoming.length || globe) return;
-    let active = AppState.currentState === 'active';
-    let last = 0;
-    let frame = 0;
-    const tick = (t: number) => {
-      if (active && t - last >= TICK_MS) {
-        last = t;
-        setClock(t);
-      }
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    const appState = AppState.addEventListener('change', (state) => {
-      active = state === 'active';
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-      appState.remove();
-    };
-  }, [focused, upcoming.length, globe]);
-
-  const comets = useMemo(
-    () =>
-      upcoming.map(({ route, plane }, i) => {
-        const samples = route.segments.reduce((n, segment) => n + segment.length, 0);
-        const period = cometPeriod(samples);
-        // Stagger passes so several upcoming routes don't move in lockstep.
-        const head = (((clock + i * 700) % period) / period) * (1 + COMET_LENGTH);
-        return { key: route.key, segments: cometSegments(route.segments, plane.forward, head) };
-      }),
-    [upcoming, clock],
-  );
-  // Soft pulse between 35% and 100%, driven by the same clock so it pauses
-  // with it. Marker opacity is a native prop — no view re-snapshot per frame.
-  const pulse =
-    Math.round((0.675 + 0.325 * Math.sin((clock / PULSE_PERIOD_MS) * 2 * Math.PI)) * 100) / 100;
-
   return (
-    <View style={styles.flex}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-        initialRegion={initial}
-        // Sea-coloured placeholder while the first tiles load, instead of the
-        // SDK's grey grid; the indicator is painted the same so nothing spins.
-        loadingEnabled
-        loadingBackgroundColor={sea}
-        loadingIndicatorColor={sea}
-        onMapReady={() => setReady(true)}
-        // Gated on ready: the Android bridge calls GoogleMap.setPadding on a
-        // null map if the prop changes between layout and onMapReady.
-        mapPadding={ready ? mapPadding : undefined}
-        onRegionChangeComplete={(region, details) => {
-          if (details?.isGesture) {
-            setMoved(true);
-            noteUserSettle(region);
-            return;
-          }
-          // A reattachment can report the old camera before the queued fit.
-          // It is neither a user pan nor evidence of the SDK's zoom limit.
-          if (fitQueued.current) return;
-          // The settle of the initial region or of our own animateToRegion —
-          // record what the SDK actually granted (it clamps extreme spans) as
-          // the baseline, and learn its floor from the clamp.
-          if (!fitted.current || Date.now() - fitStarted.current < FIT_SETTLE_MS) {
-            fitted.current = region;
-            floorWatch.current = freshFloorWatch(region.longitudeDelta);
-            const floor = learnZoomFloor(requested.current.longitudeDelta, region.longitudeDelta);
-            if (floor != null) setMaxLonSpan(floor);
-            return;
-          }
-          const base = fitted.current;
-          const tolerance = Math.max(base.latitudeDelta, base.longitudeDelta) * 0.02;
-          if (
-            Math.abs(region.latitude - base.latitude) > tolerance ||
-            Math.abs(region.longitude - base.longitude) > tolerance ||
-            Math.abs(region.latitudeDelta - base.latitudeDelta) > tolerance ||
-            Math.abs(region.longitudeDelta - base.longitudeDelta) > tolerance
-          ) {
-            setMoved(true);
-            noteUserSettle(region);
-          }
-        }}
-        onLayout={(e) => {
-          mapSize.current = e.nativeEvent.layout;
-          const { width, height } = e.nativeEvent.layout;
-          setCanvasSize((size) =>
-            size.width === width && size.height === height ? size : { width, height },
-          );
-        }}
-        onPress={(e) => {
-          // Android reports marker taps here too, tagged — leave those to the marker.
-          if (e.nativeEvent.action !== 'marker-press') void selectAt(e.nativeEvent.coordinate);
-        }}
-        customMapStyle={dark ? GOOGLE_NIGHT : CLUTTER_OFF}
-        userInterfaceStyle={dark ? 'dark' : 'light'}
-        showsPointsOfInterests={false}
-        showsMyLocationButton={false}
-        toolbarEnabled={false}
-        rotateEnabled={false}
-        pitchEnabled={false}>
-        {data.routes.map((route) =>
-          route.segments.map((coordinates, i) => (
-            <Polyline
-              key={`${route.key}-${i}`}
-              coordinates={coordinates}
-              strokeColor={route.upcomingOnly ? `${theme.tint}${UPCOMING_ALPHA}` : theme.tint}
-              strokeWidth={
-                2.5 + Math.min(route.count - 1, 4) * 0.5 + (route.key === selectedKey ? 1.5 : 0)
-              }
-              lineCap="round"
-            />
-          )),
-        )}
-        {comets.map(({ key, segments }) =>
-          segments.map((points, i) => (
-            <Polyline
-              key={`comet-${key}-${i}`}
-              coordinates={points}
-              strokeColor={theme.tint}
-              strokeColors={points.map((p) => `${theme.tint}${alphaHex(p.alpha ?? 1)}`)}
-              strokeWidth={3.5}
-              lineCap="round"
-            />
-          )),
-        )}
-        {planes.map(({ route, plane }) => (
-          <PlaneMarker
-            // Google drops cached marker images when NativeTabs detaches
-            // the map. Recreate them on visibility changes so returning to
-            // World restores planes as well as the route polylines.
-            key={Platform.OS === 'android' ? `${route.key}-${focused}` : route.key}
-            plane={plane}
-            opacity={plane.upcoming ? pulse : 1}
-            onPress={() => {
-              setChoosing(false);
-              setSelectedKey(route.key);
-            }}
-          />
-        ))}
-        {data.airports.map((airport) => (
-          <AirportMarker
-            key={Platform.OS === 'android' ? `${airport.iata}-${focused}` : airport.iata}
-            iata={airport.iata}
-            city={airport.city}
-            coordinate={{ latitude: airport.lat, longitude: airport.lon }}
-          />
-        ))}
-      </MapView>
-
-      {globe && canvasSize.width > 0 && (
+    <View
+      style={styles.flex}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setCanvasSize((size) =>
+          size.width === width && size.height === height ? size : { width, height },
+        );
+      }}>
+      {canvasSize.width > 0 && (
         <GlobeView
           routes={data.routes}
           airports={data.airports}
           selectedKey={selectedKey}
           width={canvasSize.width}
           height={canvasSize.height}
-          strip={{ top: mapPadding.top, bottom: mapPadding.bottom }}
-          centre={globe}
+          strip={strip}
+          textures={textures}
           colors={{ ...globePalette(dark), tint: theme.tint, background: theme.background }}
-          land={globeTexture}
+          holdFit={moved}
+          // Comets and pulses only while the tab is on screen in a
+          // foregrounded app — animation for nobody would burn battery.
+          animate={focused && appActive}
           onSelect={(key) => {
             setChoosing(false);
             setSelectedKey(key);
           }}
-          onZoomIn={leaveGlobe}
+          onMoved={() => setMoved(true)}
+          testID="world-globe"
         />
       )}
 
@@ -626,18 +316,8 @@ export function WorldCanvas({
       <View
         style={[styles.footer, { paddingBottom: footerInset }]}
         pointerEvents="box-none">
-        {!choosing && !empty && !emptyPeriod && (
-          <View style={styles.controls} pointerEvents="box-none">
-            {(moved || globe) && <RecenterButton onPress={recenter} />}
-            {globe ? (
-              <GlobeButton
-                mode="map"
-                onPress={() => leaveGlobe(fitted.current ?? requested.current)}
-              />
-            ) : (
-              <GlobeButton mode="globe" onPress={() => openGlobe(fitted.current ?? requested.current)} />
-            )}
-          </View>
+        {!choosing && !empty && !emptyPeriod && moved && (
+          <RecenterButton onPress={recenter} />
         )}
         {empty ? (
           emptyCard
@@ -668,6 +348,17 @@ export function WorldCanvas({
       </View>
     </View>
   );
+}
+
+/** Whether the app is in the foreground — the globe's animations pause
+ * otherwise. */
+function useAppActive(): boolean {
+  const [active, setActive] = useState(AppState.currentState === 'active');
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => setActive(state === 'active'));
+    return () => subscription.remove();
+  }, []);
+  return active;
 }
 
 /** "AY1331 · Finnair"; just the number when the carrier is only its IATA code
@@ -891,7 +582,7 @@ function RecenterButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Recenter the map on your travels"
+      accessibilityLabel="Recenter the globe on your travels"
       testID="world-map-recenter"
       onPress={onPress}
       style={[styles.recenterLabel, { backgroundColor: theme.backgroundElement }]}>
@@ -910,45 +601,9 @@ function RecenterButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Swaps between the map and the globe. On the map it reads "Globe": the
- * way to see everything at once, since the map's zoom stops short of the
- * whole world. On the globe it reads "Map". */
-function GlobeButton({ mode, onPress }: { mode: 'globe' | 'map'; onPress: () => void }) {
-  const theme = useTheme();
-  const toGlobe = mode === 'globe';
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={toGlobe ? 'Show your travels on a globe' : 'Back to the map'}
-      testID={toGlobe ? 'world-globe-open' : 'world-globe-close'}
-      onPress={onPress}
-      style={[styles.recenterLabel, { backgroundColor: theme.backgroundElement }]}>
-      <SymbolView
-        name={toGlobe ? { ios: 'globe', android: 'public', web: 'public' } : { ios: 'map', android: 'map', web: 'map' }}
-        size={18}
-        weight="semibold"
-        tintColor={theme.tint}
-      />
-      <ThemedText type="smallBold" style={{ color: theme.tint }}>{toGlobe ? 'Globe' : 'Map'}</ThemedText>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  controls: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    alignItems: 'center',
-  },
   flex: {
     flex: 1,
-  },
-  map: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
   },
   overlay: {
     position: 'absolute',
@@ -961,7 +616,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    // Runs past the header so the fade tails off over open map, not text.
+    // Runs past the header so the fade tails off over open globe, not text.
     bottom: -Spacing.six,
   },
   header: {

@@ -1,4 +1,12 @@
 import {
+  DEG,
+  MAX_SCALE,
+  cometAlpha,
+  cometRange,
+  fitCamera,
+  mergeSegments,
+  nearestLambda,
+  offsetAlong,
   fitRadius,
   nearestProjected,
   packVectors,
@@ -109,5 +117,74 @@ describe('helpers', () => {
   });
   it('fits the shorter side', () => {
     expect(fitRadius(400, 600)).toBe(180);
+  });
+});
+
+describe('fitCamera', () => {
+  const fitR = 180;
+  it('faces the centroid and zooms in on a tight cluster', () => {
+    const cluster = packVectors([
+      { latitude: 60.3, longitude: 24.9 },
+      { latitude: 59.6, longitude: 17.9 },
+      { latitude: 55.6, longitude: 12.6 },
+    ]);
+    const cam = fitCamera([cluster], 400, 500, fitR, MAX_SCALE);
+    expect(cam.phi * DEG).toBeGreaterThan(55);
+    expect(cam.phi * DEG).toBeLessThan(61);
+    expect(cam.lambda * DEG).toBeGreaterThan(12);
+    expect(cam.lambda * DEG).toBeLessThan(25);
+    expect(cam.scale).toBeGreaterThan(3);
+    expect(cam.scale).toBeLessThanOrEqual(MAX_SCALE);
+  });
+  it('shows the whole globe for a far-flung set', () => {
+    const wide = packVectors([
+      { latitude: 34, longitude: -118 },
+      { latitude: 35.7, longitude: 139.7 },
+      { latitude: -33.9, longitude: 151.2 },
+      { latitude: 51.5, longitude: -0.1 },
+    ]);
+    expect(fitCamera([wide], 400, 500, fitR, MAX_SCALE).scale).toBe(1);
+  });
+  it('caps the zoom for a single point', () => {
+    const one = packVectors([{ latitude: 25.25, longitude: 55.36 }]);
+    const cam = fitCamera([one], 400, 500, fitR, MAX_SCALE);
+    expect(cam.scale).toBeLessThanOrEqual(MAX_SCALE);
+    expect(cam.scale).toBeGreaterThan(1);
+  });
+  it('falls back to a default view with nothing to frame', () => {
+    expect(fitCamera([], 400, 500, fitR, MAX_SCALE)).toEqual({ lambda: -20 * RAD, phi: 25 * RAD, scale: 1 });
+  });
+});
+
+describe('helpers', () => {
+  it('merges antimeridian-split segments back into one line', () => {
+    const merged = mergeSegments([
+      [
+        { latitude: 34, longitude: -118 },
+        { latitude: 45, longitude: -180 },
+      ],
+      [
+        { latitude: 45, longitude: 180 },
+        { latitude: 35.7, longitude: 139.7 },
+      ],
+    ]);
+    expect(merged).toHaveLength(3);
+  });
+  it('turns the short way round', () => {
+    expect(nearestLambda(170 * RAD, -170 * RAD) * DEG).toBeCloseTo(190, 6);
+    expect(nearestLambda(-170 * RAD, 170 * RAD) * DEG).toBeCloseTo(-190, 6);
+  });
+  it('offsets along a bearing', () => {
+    const p = offsetAlong(0, 0, 90, 111.19);
+    expect(p.latitude).toBeCloseTo(0, 3);
+    expect(p.longitude).toBeCloseTo(1, 2);
+  });
+  it('lights a comet window with a ramp', () => {
+    const range = cometRange(101, 0.5, 0.28)!;
+    expect(range.from).toBe(22);
+    expect(range.to).toBe(50);
+    expect(cometAlpha(range, 50, 0.28)).toBeCloseTo(1, 6);
+    expect(cometAlpha(range, 22, 0.28)).toBeLessThan(0.05);
+    expect(cometRange(101, 0.001, 0.28)).toBeNull();
   });
 });
