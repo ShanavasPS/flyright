@@ -6,11 +6,11 @@
     "source": "20-emma-banner.mp4",
     "segments": [
       [
-        1.0,
+        2.9,
         4.8
       ]
     ],
-    "duration": 3.0,
+    "duration": 1.8,
     "title": [
       "A message",
       "from Daniel."
@@ -27,11 +27,11 @@
     "source": "10-invitee.mp4",
     "segments": [
       [
-        43.4,
-        46.0
+        43.6,
+        45.2
       ]
     ],
-    "duration": 2.5,
+    "duration": 1.8,
     "title": [
       "Tap the link."
     ],
@@ -67,13 +67,13 @@
     "source": "phone-flow.mp4",
     "segments": [
       [
-        4.0,
+        7.33,
         9.0
       ]
     ],
-    "duration": 3.5,
+    "duration": 1.5,
     "title": [
-      "Get FlyRight."
+      "Installing."
     ],
     "body": [
       "Nothing to copy, nothing to type."
@@ -90,7 +90,7 @@
         11.0
       ]
     ],
-    "duration": 1.8,
+    "duration": 1.5,
     "title": [
       "Open."
     ],
@@ -184,10 +184,10 @@
       ],
       [
         143.7,
-        145.5
+        144.5
       ]
     ],
-    "duration": 3.0,
+    "duration": 1.8,
     "title": [
       "Follow request sent."
     ],
@@ -202,11 +202,11 @@
     "source": "10-invitee.mp4",
     "segments": [
       [
-        152.5,
-        155.7
+        155.0,
+        155.75
       ]
     ],
-    "duration": 2.0,
+    "duration": 0.8,
     "title": [
       "Open People."
     ],
@@ -225,7 +225,7 @@
         24.0
       ]
     ],
-    "duration": 4.0,
+    "duration": 1.0,
     "title": [
       "Daniel, in Following.",
       "Share back if you like."
