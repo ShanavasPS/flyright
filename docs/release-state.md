@@ -2,6 +2,24 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-16 — 1.0.36 (the globe) built, uploaded, prepared; store submission gated
+
+Release commit `1c216b6` on top of `18bd09c` (react-native-maps removed; World tab, person world and the trip inset draw the Skia globe), `e851d9c` (detail tiles decode once World is on screen) and `41fc641` (store screenshots). Version `1.0.36`, iOS build `53`, Android versionCode `50`.
+
+| Item | Observed result |
+| --- | --- |
+| Backend | `release:deploy-backend` deployed production and development; both inventories 60 client functions. `release:preflight`: TypeScript, backend-contract tests, Jest 843 tests / 76 suites, production inventory all passed (Jest's known "did not exit" hang was killed after the run; the inventory step was run separately and passed) |
+| Hosting | Deployment `96hqgv0jeb` promoted; `https://flyright.expo.app` serves `entry-a2d501f3bd9e4b1929e31664417dcaf7.js` = local export; bundle has the production Convex URL and `pk_live` key, no development URL |
+| iOS EAS build | `96cc64e7-8973-4f71-9580-e56692b6d806` FINISHED (1.0.36 / 53, commit 1c216b6); submission `e61bbb03-c03f-4cc4-9e91-9b9df184e68b` FINISHED |
+| ASC | Version `db4fe19d-e050-478a-9119-66add12d9a13` created (AFTER_APPROVAL), build `9d607c89-77a6-4ecc-a20b-e8290e504abe` VALID and attached, whatsNew set on localization `7174ca23`, review notes (`store/apple/review-notes-1.0.36.txt`) PATCHed onto detail `86d1951d` with the demo account preserved. Screenshots replaced: 6 iPhone 6.5" + 3 iPad 12.9" uploaded, old ones deleted, all COMPLETE. **Not yet submitted for review** (see gate) |
+| Android EAS build | `96d1beb1-2d96-42af-b35e-accb4eec573c` FINISHED (1.0.36 / 50); submission `6c3fecd8-30f1-4c9f-8403-dd8f2076b6ce` FINISHED to Play internal. **Production promotion not yet done** (see gate) |
+| Ad hoc builds for the phones | iOS `81997309-639f-4d5c-8707-2981104ead01` installed on Shanavas's iPhone 15 Pro over the App Store app (`device info apps` shows 1.0.36 (53)); Android `dbec9a38-617f-44ef-829a-10e772c720fe` installed on the Pixel 9a over the earlier EAS-signed 1.0.35 build (`adb install -r`), cold-started, process alive after 30 s |
+| Screenshots | World panel reshot on both stores' devices from the 1.0.36 Release builds (FlyRight Shots iPhone 17 Pro sim, seeded anonymously; FlyRight_Release_Demo AVD resized to 1080×2424 and seeded through the debug APK before upgrading to the release APK); iPad journal + detail reshot on iPad Pro 13" (M4), resized 2048×2732; all six framed panels regenerated with the new World caption; Play image sets uploaded by `scripts/upload-play-assets.mjs` |
+| Native regressions | `release:devices --mode native` passed on iOS Debug 1.0.36 (53) (FlyRight Shots sim) and Android Debug 1.0.36 (50) (`emulator-5556`, FlyRight_Release_API35); report `.maestro/out/release/2026-09-16T19-36-26.013Z/report.json` |
+| Local dev apps | Android 15 emulator Debug 1.0.36 (50); iOS Debug 1.0.36 (53) on the FlyRight Shots sim. The iPhone 17 Pro dev sim holds the production Release 1.0.36 (53) for the candidate check and gets the Debug build back once that check is done |
+
+**Gate.** Both candidate hosts (iPhone 17 Pro / iOS 26.5 sim with the production Release build, Pixel_9a Android 17 emulator with the release APK) came up signed out: no reviewer session survived from 1.0.35. The reviewer password lives only in App Store Connect and the permission classifier blocked reading it, so the signed-in retained-photo candidate checks and the Pixel's signed-in check could not run. The Pixel was also locked when its signed-out `release-core` run started (black frames, "My travels" not visible — not counted). The iPhone was locked throughout (ad hoc install succeeded; XCTest five-tab suite and devicectl launches not run). Per AGENTS.md, App Review submission and Play production promotion wait for these.
+
 ## 2026-09-16 — End-to-end regression on iOS and Android after the flight-path and import changes
 
 Purpose: confirm nothing regressed after commits 822aeb8 (flight paths), 9e17aaf/1.0.35 (assistant actions) and 8050051 (import status wording), with the sign-up path and the "undeployed function" failure explicitly in scope. Targets: the current tree served by Metro to the **development clients** on the iPhone 17 Pro / iOS 26.5 simulator (1.0.35 build 52) and the Android 15 emulator `emulator-5556` (1.0.35 vc49). Both stayed signed in to their dev test users; no state was cleared.
