@@ -1,0 +1,31 @@
+# The inviter's phone, last look: Following → Emma, "You follow each other".
+# Run: maestro --device <udid> test -e OUT="$PWD/demo/out/detour" scripts/detour-demo/mutual.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "People"
+- extendedWaitUntil:
+    visible: ".*Following, 1.*"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- startRecording: ${OUT}/18-mutual
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- tapOn: "Following, 1"
+- extendedWaitUntil:
+    visible: ".*follow each other.*"
+    timeout: 20000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 4000
+- takeScreenshot: ${OUT}/19-daniel-following
+- stopRecording

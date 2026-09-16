@@ -1,0 +1,35 @@
+# The inviter's phone: Emma is a follower now — Follow back → "Requested".
+# Run: maestro --device <udid> test -e OUT="$PWD/demo/out/detour" scripts/detour-demo/follow-back.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- tapOn: "People"
+- extendedWaitUntil:
+    visible: "Followers, 1"
+    timeout: 30000
+- tapOn: "Followers, 1"
+# Emma's row is one accessibility element ("…, Ask to follow Emma's trips");
+# the Follow back chip is tapped where it sits in the row.
+- extendedWaitUntil:
+    visible: ".*Ask to follow Emma.*"
+    timeout: 20000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- startRecording: ${OUT}/14-follow-back
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- tapOn:
+    point: "75%,30%"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 4000
+- takeScreenshot: ${OUT}/15-requested
+- stopRecording

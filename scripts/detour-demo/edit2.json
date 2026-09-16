@@ -280,14 +280,17 @@
     "body": "Allow — and she's a follower."
   },
   {
-    "id": "12-done",
-    "active": "both",
+    "id": "12-follow-back",
+    "active": "left",
     "duration": 3.0,
     "left": {
-      "still": {
-        "clip": "11-allow.mp4",
-        "at": 9.0
-      }
+      "clip": "14-follow-back.mp4",
+      "segments": [
+        [
+          0.3,
+          4.7
+        ]
+      ]
     },
     "right": {
       "still": {
@@ -295,7 +298,50 @@
         "at": 158.0
       }
     },
-    "title": "Two phones, one link.",
-    "body": "Emma gets a heads-up before every flight Daniel takes."
+    "title": "Daniel follows back.",
+    "body": "One tap — Emma gets a request in return."
+  },
+  {
+    "id": "13-emma-allows",
+    "active": "right",
+    "duration": 4.0,
+    "left": {
+      "image": "15-requested.png"
+    },
+    "right": {
+      "clip": "16-emma-allow.mp4",
+      "segments": [
+        [
+          23.0,
+          24.5
+        ],
+        [
+          28.3,
+          30.5
+        ],
+        [
+          78.6,
+          80.4
+        ]
+      ]
+    },
+    "title": "Emma allows it.",
+    "body": "Daniel · You follow each other."
+  },
+  {
+    "id": "14-mutual",
+    "active": "both",
+    "duration": 3.5,
+    "left": {
+      "still": {
+        "clip": "18-mutual.mp4",
+        "at": 2.0
+      }
+    },
+    "right": {
+      "image": "17-emma-followers.png"
+    },
+    "title": "Two phones, one link — and they follow each other.",
+    "body": "A heads-up on the other phone before every flight."
   }
 ]

@@ -1,12 +1,12 @@
 # LinkedIn post — deferred deep links with Detour
 
-Video: `demo/out/detour/flyright-deferred-link-two-phones.mp4` (38 s, 1080 × 1350, two phones side by side, captions burned in, works muted). Cover: `flyright-deferred-link-two-phones-cover.png`. The single-phone 20 s cut (`flyright-deferred-link.mp4`) is the short alternative.
+Video: `demo/out/detour/flyright-deferred-link-two-phones.mp4` (47 s, 1080 × 1350, two phones side by side, captions burned in, works muted). Cover: `flyright-deferred-link-two-phones-cover.png`. The single-phone 20 s cut (`flyright-deferred-link.mp4`) is the short alternative.
 
 ---
 
 Daniel sends Emma a link to follow his trips. Emma doesn't have the app yet.
 
-She taps the link. Installs FlyRight from the store. Opens it — and it opens on Daniel's invitation. His photo, his name, one button to follow. A moment later her request is on Daniel's phone, and one tap makes her a follower.
+She taps the link. Installs FlyRight from the store. Opens it — and it opens on Daniel's invitation. His photo, his name, one button to follow. A moment later her request is on Daniel's phone; one tap makes her a follower, one more follows her back, and both People tabs say the same thing: you follow each other.
 
 No "paste the link again". No "search for Daniel". The link survived the trip through the App Store.
 

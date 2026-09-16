@@ -65,6 +65,15 @@ shows "Emma · opened your invite link" → Allow → Followers 1 (left,
 `allow.yaml` → `11-allow.mp4`). Recorded 2026-09-16 on a fresh "FlyRight
 Invitee" simulator (`invitee-udid.txt`); Detour matched the install again.
 
+Then the loop closes both ways (`follow-back.yaml` → `14-follow-back.mp4`,
+Emma's Allow under `simctl io recordVideo` → `16-emma-allow.mp4`,
+`mutual.yaml` → `18-mutual.mp4`): Daniel taps Follow back → "Requested",
+Emma's Followers tab shows "Daniel wants to follow your trips" → Allow →
+"You follow each other", and the last scene lights both phones: Daniel's
+Following tab with Emma, Emma's Followers tab with Daniel. Daniel and Emma
+now follow each other on production. Row chips are merged into one
+accessibility element on iOS, so those taps are by position.
+
 The store and install beats on Emma's side are the iPhone 15 Pro frames
 (`phone-flow.mp4`, scenes `04b-get` and `05-install`): the simulator cannot
 show the App Store, the phone can — so the cut goes simulator landing → real
