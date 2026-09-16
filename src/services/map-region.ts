@@ -33,6 +33,37 @@ export function learnZoomFloor(askedLonDelta: number, grantedLonDelta: number): 
   return zoomFloorLon;
 }
 
+/** What the last camera settle looked like, for telling a pinch that has
+ * run into the SDK's zoom-out floor from an ordinary pan. */
+export interface FloorWatch {
+  /** Longitude span the camera last settled at. */
+  span: number;
+  /** Whether that settle was a user's, at the floor. */
+  atFloor: boolean;
+}
+
+/** A settle this close to the floor counts as being at it — the floor
+ * drifts a few degrees with the latitude of the view. */
+const FLOOR_TOLERANCE = 0.93;
+/** Growth in longitude span that reads as a zoom-out rather than jitter. */
+const GREW_BY = 2;
+
+/** After a fit or a hand-off: the camera sits here, and it wasn't the user. */
+export const freshFloorWatch = (span: number): FloorWatch => ({ span, atFloor: false });
+
+/** Record a user settle and say whether it pushed against the floor: the
+ * span grew to reach the floor, or the previous settle was already at the
+ * floor and the user moved again. The first pan after a floor-wide fit is
+ * just a pan. Mutates `watch`. */
+export function pushesPastFloor(watch: FloorWatch, lonDelta: number, floor: number): boolean {
+  const atFloor = lonDelta >= floor * FLOOR_TOLERANCE;
+  const grew = lonDelta > watch.span + GREW_BY;
+  const pushing = atFloor && watch.atFloor;
+  watch.atFloor = atFloor;
+  watch.span = lonDelta;
+  return atFloor && (grew || pushing);
+}
+
 /** Region containing every coordinate, wraparound-aware. The camera is set
  * from this instead of `fitToCoordinates` because antimeridian-split routes
  * defeat a naive bounding box (their ±180° endpoints make it span the whole

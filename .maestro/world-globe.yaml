@@ -1,0 +1,51 @@
+# World tab globe: the "Globe" pill swaps the native map for the Skia globe
+# (the map's zoom-out stops short of the whole world; the globe shows it),
+# a drag turns it, a tap on the globe clears any route card, and "Map"
+# hands back to the map with the recenter control showing.
+#
+# PRECONDITION: seeded journeys (recipe in world-map.yaml's header) and the
+# dev build served by `npx expo start` on :8081. Pinch can't be synthesized
+# by Maestro, so the pill is the way in and out here; the pinch hand-offs
+# are checked by hand.
+#
+# Run: maestro --device <device> test .maestro/world-globe.yaml
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "World"
+    timeout: 90000
+- openLink: "flyright://world"
+- extendedWaitUntil:
+    visible: "Everywhere you.ve been"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Show your travels on a globe"
+    timeout: 10000
+- tapOn: "Show your travels on a globe"
+- extendedWaitUntil:
+    visible: "Back to the map"
+    timeout: 5000
+- takeScreenshot: world-globe-arrived
+# Turn the globe a quarter of the way round and let it settle.
+- swipe:
+    start: "70%,50%"
+    end: "30%,50%"
+    duration: 400
+- takeScreenshot: world-globe-turned
+- swipe:
+    start: "50%,40%"
+    end: "50%,60%"
+    duration: 400
+- takeScreenshot: world-globe-tilted
+- tapOn: "Back to the map"
+- extendedWaitUntil:
+    visible: "Show your travels on a globe"
+    timeout: 5000
+- assertVisible: "Recenter the map on your travels"
+- tapOn: "Recenter the map on your travels"
+- extendedWaitUntil:
+    notVisible: "Recenter the map on your travels"
+    timeout: 10000
+- takeScreenshot: world-globe-back-on-map

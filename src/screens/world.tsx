@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/card';
 import { DataErrorCard } from '@/components/data-state';
+import { GlobeView, globePalette, useGlobeTexture } from '@/components/globe-view';
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { AirportMarker, PlaneMarker, alphaHex } from '@/components/map-layers';
 import { ThemedText } from '@/components/themed-text';
@@ -34,9 +35,13 @@ import { useJourneys, type JourneyRow } from '@/services/journeys';
 import {
   CLUTTER_OFF,
   GOOGLE_NIGHT,
+  MAX_LAT,
+  freshFloorWatch,
   getZoomFloorLon,
   learnZoomFloor,
+  pushesPastFloor,
   regionFor,
+  type FloorWatch,
 } from '@/services/map-region';
 import { cityOf, formatKm, travelRecap } from '@/services/timeline';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
@@ -69,6 +74,9 @@ const SCALE_PROBE_PT = 50;
  * can report the same animation twice (once for the camera, once after a
  * layout pass); a flag cleared on the first would read the second as a pan. */
 const FIT_SETTLE_MS = 1200;
+/** When the map comes back from the globe it opens this much tighter than
+ * the floor, so the very next pinch-out has somewhere to go. */
+const RETURN_SPAN = 0.6;
 
 /** Your travels on a real map — Apple Maps on iOS, Google Maps on Android —
  * with every route drawn as a great-circle arc between its origin and
@@ -207,6 +215,43 @@ export function WorldCanvas({
 
   const [ready, setReady] = useState(false);
   const mapSize = useRef({ width: 0, height: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  // Past the SDK's floor the map can't zoom out any further, but the globe
+  // can: a pinch that settles at the floor swaps the map for the globe,
+  // centred where the map was. Two things say the traveller meant it — the
+  // span grew to reach the floor, or the previous settle was already there
+  // and they pushed again — so the first pan after a floor-wide fit stays a
+  // pan. `globe` is the coordinate the globe should face on arrival.
+  const [globe, setGlobe] = useState<LatLng | null>(null);
+  const globeTexture = useGlobeTexture();
+  const floorWatch = useRef<FloorWatch>(freshFloorWatch(initial.longitudeDelta));
+  const openGlobe = (region: Region) => {
+    setChoosing(false);
+    setGlobe({ latitude: region.latitude, longitude: region.longitude });
+  };
+  const noteUserSettle = (region: Region) => {
+    if (pushesPastFloor(floorWatch.current, region.longitudeDelta, maxLonSpan)) openGlobe(region);
+  };
+  /** Pinching in on the globe: continue on the map, centred where the globe
+   * faced, a notch tighter than the floor. The map underneath is positioned
+   * first so the swap reads as the zoom carrying on. */
+  const leaveGlobe = (centre: LatLng) => {
+    const { width, height } = mapSize.current;
+    const longitudeDelta = maxLonSpan * RETURN_SPAN;
+    const region: Region = {
+      latitude: Math.max(-MAX_LAT, Math.min(MAX_LAT, centre.latitude)),
+      longitude: centre.longitude,
+      latitudeDelta: longitudeDelta * (width && height ? height / width : 1.5),
+      longitudeDelta,
+    };
+    requested.current = region;
+    fitStarted.current = Date.now();
+    floorWatch.current = freshFloorWatch(longitudeDelta);
+    setMoved(true);
+    setGlobe(null);
+    mapRef.current?.animateToRegion(region, 0);
+  };
 
   /** Select whichever route the tap landed on, or clear. The map's degrees-
    * per-point scale is measured live from two probe points at the view centre
@@ -277,7 +322,10 @@ export function WorldCanvas({
   const [wasFocused, setWasFocused] = useState(focused);
   if (wasFocused !== focused) {
     setWasFocused(focused);
-    if (focused) setMoved(false);
+    if (focused) {
+      setMoved(false);
+      setGlobe(null);
+    }
   }
 
   // Tapping a plane docks a detail card in the stats card's slot; tapping the
@@ -286,6 +334,8 @@ export function WorldCanvas({
 
   const recenter = () => {
     setMoved(false);
+    setGlobe(null);
+    floorWatch.current = freshFloorWatch(floorWatch.current.span);
     setFitRevision((revision) => revision + 1);
   };
   const choosePeriod = (next: WorldPeriod) => {
@@ -304,6 +354,7 @@ export function WorldCanvas({
   if (seenFocus !== focusedRow?.id) {
     setSeenFocus(focusedRow?.id);
     setMoved(false);
+    setGlobe(null);
     setChoosing(false);
     if (focusedRow) setPeriod(ALL_TIME);
     setSelectedKey(focusedRow ? (data.routes[0]?.key ?? null) : null);
@@ -314,6 +365,7 @@ export function WorldCanvas({
   if (seenPeriod !== periodKey(period)) {
     setSeenPeriod(periodKey(period));
     setMoved(false);
+    setGlobe(null);
     setSelectedKey(null);
   }
 
@@ -351,7 +403,8 @@ export function WorldCanvas({
   // resume seamlessly.
   const [clock, setClock] = useState(0);
   useEffect(() => {
-    if (!focused || !upcoming.length) return;
+    // The globe covers the map: no point re-sending comet polylines under it.
+    if (!focused || !upcoming.length || globe) return;
     let active = AppState.currentState === 'active';
     let last = 0;
     let frame = 0;
@@ -370,7 +423,7 @@ export function WorldCanvas({
       cancelAnimationFrame(frame);
       appState.remove();
     };
-  }, [focused, upcoming.length]);
+  }, [focused, upcoming.length, globe]);
 
   const comets = useMemo(
     () =>
@@ -407,6 +460,7 @@ export function WorldCanvas({
         onRegionChangeComplete={(region, details) => {
           if (details?.isGesture) {
             setMoved(true);
+            noteUserSettle(region);
             return;
           }
           // A reattachment can report the old camera before the queued fit.
@@ -417,6 +471,7 @@ export function WorldCanvas({
           // the baseline, and learn its floor from the clamp.
           if (!fitted.current || Date.now() - fitStarted.current < FIT_SETTLE_MS) {
             fitted.current = region;
+            floorWatch.current = freshFloorWatch(region.longitudeDelta);
             const floor = learnZoomFloor(requested.current.longitudeDelta, region.longitudeDelta);
             if (floor != null) setMaxLonSpan(floor);
             return;
@@ -430,10 +485,15 @@ export function WorldCanvas({
             Math.abs(region.longitudeDelta - base.longitudeDelta) > tolerance
           ) {
             setMoved(true);
+            noteUserSettle(region);
           }
         }}
         onLayout={(e) => {
           mapSize.current = e.nativeEvent.layout;
+          const { width, height } = e.nativeEvent.layout;
+          setCanvasSize((size) =>
+            size.width === width && size.height === height ? size : { width, height },
+          );
         }}
         onPress={(e) => {
           // Android reports marker taps here too, tagged — leave those to the marker.
@@ -495,6 +555,25 @@ export function WorldCanvas({
         ))}
       </MapView>
 
+      {globe && canvasSize.width > 0 && (
+        <GlobeView
+          routes={data.routes}
+          airports={data.airports}
+          selectedKey={selectedKey}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          strip={{ top: mapPadding.top, bottom: mapPadding.bottom }}
+          centre={globe}
+          colors={{ ...globePalette(dark), tint: theme.tint, background: theme.background }}
+          land={globeTexture}
+          onSelect={(key) => {
+            setChoosing(false);
+            setSelectedKey(key);
+          }}
+          onZoomIn={leaveGlobe}
+        />
+      )}
+
       <SafeAreaView style={styles.overlay} edges={['top']} pointerEvents="box-none">
         <View
           pointerEvents="none"
@@ -547,8 +626,18 @@ export function WorldCanvas({
       <View
         style={[styles.footer, { paddingBottom: footerInset }]}
         pointerEvents="box-none">
-        {!choosing && !empty && !emptyPeriod && moved && (
-          <RecenterButton onPress={recenter} />
+        {!choosing && !empty && !emptyPeriod && (
+          <View style={styles.controls} pointerEvents="box-none">
+            {(moved || globe) && <RecenterButton onPress={recenter} />}
+            {globe ? (
+              <GlobeButton
+                mode="map"
+                onPress={() => leaveGlobe(fitted.current ?? requested.current)}
+              />
+            ) : (
+              <GlobeButton mode="globe" onPress={() => openGlobe(fitted.current ?? requested.current)} />
+            )}
+          </View>
         )}
         {empty ? (
           emptyCard
@@ -821,7 +910,36 @@ function RecenterButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** Swaps between the map and the globe. On the map it reads "Globe": the
+ * way to see everything at once, since the map's zoom stops short of the
+ * whole world. On the globe it reads "Map". */
+function GlobeButton({ mode, onPress }: { mode: 'globe' | 'map'; onPress: () => void }) {
+  const theme = useTheme();
+  const toGlobe = mode === 'globe';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={toGlobe ? 'Show your travels on a globe' : 'Back to the map'}
+      testID={toGlobe ? 'world-globe-open' : 'world-globe-close'}
+      onPress={onPress}
+      style={[styles.recenterLabel, { backgroundColor: theme.backgroundElement }]}>
+      <SymbolView
+        name={toGlobe ? { ios: 'globe', android: 'public', web: 'public' } : { ios: 'map', android: 'map', web: 'map' }}
+        size={18}
+        weight="semibold"
+        tintColor={theme.tint}
+      />
+      <ThemedText type="smallBold" style={{ color: theme.tint }}>{toGlobe ? 'Globe' : 'Map'}</ThemedText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  controls: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    alignItems: 'center',
+  },
   flex: {
     flex: 1,
   },

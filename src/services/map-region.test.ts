@@ -1,6 +1,13 @@
 import { getAirport } from '@/services/airports';
 import { arcCoordinates } from '@/services/geo';
-import { frameInset, maxLonSpanFor, regionFor, regionHolds } from '@/services/map-region';
+import {
+  frameInset,
+  freshFloorWatch,
+  maxLonSpanFor,
+  pushesPastFloor,
+  regionFor,
+  regionHolds,
+} from '@/services/map-region';
 
 /** The journey inset as an iPhone 17 lays it out: a 346-point-wide card,
  * 220 points tall. The SDK grants about 124° of longitude in it. */
@@ -96,5 +103,44 @@ describe('regionHolds', () => {
     const points = coords('NRT', 'LAX');
     const settled = { latitude: 45, longitude: -180, latitudeDelta: 60, longitudeDelta: 140 };
     expect(regionHolds(settled, points)).toBe(true);
+  });
+});
+
+describe('pushesPastFloor', () => {
+  const floor = 89;
+
+  it('opens when a pinch-out settles at the floor', () => {
+    const watch = freshFloorWatch(40);
+    expect(pushesPastFloor(watch, 88, floor)).toBe(true);
+  });
+
+  it('treats a settle a few degrees short of the floor as at it', () => {
+    const watch = freshFloorWatch(40);
+    expect(pushesPastFloor(watch, floor * 0.95, floor)).toBe(true);
+  });
+
+  it('lets the first pan after a floor-wide fit stay a pan', () => {
+    const watch = freshFloorWatch(88.7);
+    expect(pushesPastFloor(watch, 88.7, floor)).toBe(false);
+  });
+
+  it('opens when the user pushes against the floor a second time', () => {
+    const watch = freshFloorWatch(88.7);
+    expect(pushesPastFloor(watch, 88.7, floor)).toBe(false);
+    expect(pushesPastFloor(watch, 88.9, floor)).toBe(true);
+  });
+
+  it('never opens below the floor, however the span grows', () => {
+    const watch = freshFloorWatch(10);
+    expect(pushesPastFloor(watch, 30, floor)).toBe(false);
+    expect(pushesPastFloor(watch, 60, floor)).toBe(false);
+    expect(watch).toEqual({ span: 60, atFloor: false });
+  });
+
+  it('forgets the floor once the user zooms back in', () => {
+    const watch = freshFloorWatch(40);
+    expect(pushesPastFloor(watch, 88, floor)).toBe(true);
+    expect(pushesPastFloor(watch, 30, floor)).toBe(false);
+    expect(pushesPastFloor(watch, 31, floor)).toBe(false);
   });
 });
