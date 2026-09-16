@@ -148,6 +148,16 @@ the other the GET query never matched the cloud icon (its clean store frames
 are `phone-store/`, later frames with message banners deleted). The kept
 frames show only Safari on the invitation, the App Store listing and FlyRight.
 
+## Single-phone invitee cut (the short one)
+
+`flyright-deferred-link-invitee.mp4` (≈22 s, `render.mjs` + `edit-invitee.json`):
+Emma's side only — message banner → link → the reworked web landing
+(store badges above the fold, shipped to hosting 2026-09-16) → App Store from
+the install spinner → Open → intro → invitation → sign-in → "Waiting for
+Daniel" (≈1 s) → Open People → Daniel in Following with Share back, held 1 s.
+Landing scenes come from `landing-v2.yaml` on a fresh simulator
+(`02-landing-v2.mp4`); the rest is the same footage as the two-phone cut.
+
 ## Retake
 
 ```sh

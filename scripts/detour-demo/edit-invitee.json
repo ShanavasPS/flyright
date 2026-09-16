@@ -24,11 +24,11 @@
     "id": "02-link",
     "device": "ios",
     "role": "invitee",
-    "source": "10-invitee.mp4",
+    "source": "02-landing-v2.mp4",
     "segments": [
       [
-        43.6,
-        45.2
+        0.3,
+        2.0
       ]
     ],
     "duration": 1.8,
@@ -44,11 +44,11 @@
     "id": "03-store",
     "device": "ios",
     "role": "invitee",
-    "source": "10-invitee.mp4",
+    "source": "02-landing-v2.mp4",
     "segments": [
       [
-        46.0,
-        51.6
+        3.8,
+        7.2
       ]
     ],
     "duration": 2.5,

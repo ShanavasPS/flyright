@@ -1,0 +1,29 @@
+# The invitee's phone: the invite link opens the (reworked) web landing in
+# Safari — nothing to scroll — and the App Store badge goes through Detour.
+# Run on a simulator that has never had the app:
+#   maestro --device <udid> test -e OUT="$PWD/demo/out/detour" -e LINK=https://getflyright.com/i/<token> scripts/detour-demo/landing-v2.yaml
+appId: com.apple.mobilesafari
+---
+- openLink: ${LINK}
+- extendedWaitUntil:
+    visible: ".*invited you.*"
+    timeout: 30000
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 1500
+- startRecording: ${OUT}/02-landing-v2
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- takeScreenshot: ${OUT}/04-landing-v2
+# The App Store badge (iPhone 17 Pro, iOS 26 Safari).
+- tapOn:
+    point: "32%,66%"
+- runScript:
+    file: ../shipaton-demo/hold.js
+    env:
+      HOLD_MS: 6000
+- takeScreenshot: ${OUT}/06-app-store-v2
+- stopRecording
