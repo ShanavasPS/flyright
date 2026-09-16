@@ -1,0 +1,90 @@
+# Sign-up round trip on a Clerk DEV build: sign the current user out, create a
+# brand-new account through the sign-in sheet (a fresh +clerk_test address is
+# a sign-UP, not a sign-in — Clerk creates the user on first OTP), confirm
+# Settings shows it, sign out again and sign the original user back in, so
+# the device ends where it started. Covers the sign-up path that was silently
+# dead on Android between 2026-08-31 and 2026-09-15 as far as email OTP goes;
+# Google's Credential Manager sheet cannot be driven from a flow.
+#
+# Preserves the journal: no clearState, no reinstall. Needs Metro on :8081
+# for a dev client, a signed-in +clerk_test user, and two addresses:
+#   NEW_EMAIL      a never-used  <anything>+clerk_test@example.com
+#   ORIGINAL_EMAIL the address currently signed in (also +clerk_test)
+#   ORIGINAL_MATCH a regex that matches how Settings shows it (iOS ellipsises
+#                  long addresses, so pass a prefix like 'release-ios-1035-.*')
+# Run: maestro --device <udid|serial> test \
+#   -e NEW_EMAIL=e2e-ios-20260916+clerk_test@example.com \
+#   -e ORIGINAL_EMAIL=release-ios-1035-20260915+clerk_test@example.com \
+#   -e ORIGINAL_MATCH='release-ios-1035-.*' -e SHOTS=/tmp/signup \
+#   .maestro/e2e-signup-roundtrip.yaml
+# Android emulator: Maestro's inputText can stall in Clerk's field — the shared
+# clerk-dev-sign-in.yaml handles typing; if it stalls, type with adb instead.
+appId: com.shanavasshaji.flyright
+tags:
+  - release
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: ${ORIGINAL_MATCH}
+    timeout: 30000
+- tapOn: ${ORIGINAL_MATCH}
+- extendedWaitUntil:
+    visible: "Sign out"
+    timeout: 20000
+- tapOn: "Sign out"
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+- extendedWaitUntil:
+    visible: "Sign in or create account"
+    timeout: 30000
+- takeScreenshot: ${SHOTS}/01-signed-out
+- tapOn: "Sign in or create account"
+- runFlow:
+    file: clerk-dev-sign-in.yaml
+    env:
+      EMAIL: ${NEW_EMAIL}
+- extendedWaitUntil:
+    visible: ".*(My travels|Settings|Welcome|Every flight).*"
+    timeout: 60000
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: ".*e2e-.*"
+    timeout: 30000
+- assertNotVisible: "Sign in or create account"
+- assertNotVisible: "Something went wrong"
+- takeScreenshot: ${SHOTS}/02-new-account
+- tapOn: ".*e2e-.*"
+- extendedWaitUntil:
+    visible: "Sign out"
+    timeout: 20000
+- tapOn: "Sign out"
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+- extendedWaitUntil:
+    visible: "Sign in or create account"
+    timeout: 30000
+- tapOn: "Sign in or create account"
+- runFlow:
+    file: clerk-dev-sign-in.yaml
+    env:
+      EMAIL: ${ORIGINAL_EMAIL}
+- extendedWaitUntil:
+    visible: ".*(My travels|Settings|Welcome|Every flight).*"
+    timeout: 60000
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: ${ORIGINAL_MATCH}
+    timeout: 30000
+- assertNotVisible: "Something went wrong"
+- takeScreenshot: ${SHOTS}/03-original-back

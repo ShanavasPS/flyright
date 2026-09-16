@@ -1,0 +1,59 @@
+# Android: upload a picture of a boarding pass through the in-app picker and
+# read the import review — the path a traveller takes from Add flight →
+# "Upload a ticket PDF or screenshot" → Files. Unlike import-document.yaml this
+# drives the real system picker (documentsui), so it covers the hardened
+# intake that no longer accepts a `?uri=` deep link. Closes the review without
+# saving, so the journal is untouched.
+#
+# Stage the image in Downloads first (a PDF417 BCBP PNG; scripts/seed-demo-data
+# or zxing-wasm's writer can render one):
+#   adb -s <serial> push pass.png /sdcard/Download/mock-boarding-pass.png
+#   adb -s <serial> shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE \
+#     -d file:///sdcard/Download/mock-boarding-pass.png
+# Then, with the app on My travels and (for a dev client) Metro on :8081:
+#   maestro --device <serial> test -e IMAGE_NAME=mock-boarding-pass.png \
+#     -e FLIGHT='Qatar Airways QR304' -e SHOTS=/tmp/import .maestro/import-upload-android.yaml
+# Remove the image afterwards: adb shell rm /sdcard/Download/mock-boarding-pass.png
+# The picker's "Recent files" grid lists the newest file first; the flow taps
+# it by name, which documentsui exposes as the card's title text.
+appId: com.shanavasshaji.flyright
+tags:
+  - release
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 90000
+- openLink: "flyright://add-flight"
+- extendedWaitUntil:
+    visible: ".*Upload a ticket.*"
+    timeout: 20000
+- tapOn: ".*Upload a ticket.*"
+- extendedWaitUntil:
+    visible: "FILES"
+    timeout: 10000
+- tapOn: "FILES"
+- extendedWaitUntil:
+    visible: ${IMAGE_NAME}
+    timeout: 20000
+- tapOn: ${IMAGE_NAME}
+- extendedWaitUntil:
+    visible: "Add from document"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: ".*boarding pass(es)? read.*"
+    timeout: 30000
+- assertVisible: ${FLIGHT}
+- extendedWaitUntil:
+    notVisible: "Looking up…"
+    timeout: 60000
+    optional: true
+- assertNotVisible: "Something went wrong"
+- takeScreenshot: ${SHOTS}/import-review
+# Leave without saving: the X in the header.
+- tapOn:
+    point: "92%,7%"
+- extendedWaitUntil:
+    notVisible: "Add from document"
+    timeout: 15000
