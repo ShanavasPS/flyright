@@ -44,6 +44,42 @@ to know the token on a fresh install. (The app deliberately does not rely on
 it in production — a real iOS install missed once on 2026-09-06 — which is why
 the landing also offers `flyright://` and People has "paste an invite link".)
 
+## The physical iPhone (second cut, same day)
+
+The store and first-launch scenes were re-shot on Shanavas's iPhone 15 Pro
+(iOS 26.0.1) after the user deleted FlyRight from it. Capture =
+`testCaptureDemoFrames` in `tests/physical-ios/FlyRightPhysicalUITests.swift`:
+an XCTest that opens the invite link, taps App Store on the landing, the store
+button (GET, or the cloud re-download icon by position), Open, Skip and Allow,
+taking a full-screen frame every 0.35 s the whole way; frames come out of the
+result bundle with `xcrun xcresulttool export attachments`. Run over Wi-Fi
+(USB tunnels fail on this Mac):
+
+```sh
+OUT=".maestro/out/physical-ios-detour-demo-$(date -u +%Y-%m-%dT%H-%M-%SZ)"; mkdir -p "$OUT"
+TEST_RUNNER_FLYRIGHT_OPEN_URL=https://getflyright.com/i/<token> xcodebuild test \
+  -project tests/physical-ios/FlyRightPhysicalUITests.xcodeproj -scheme FlyRightPhysicalUITests \
+  -destination 'platform=iOS,id=00008130-0008642C0204001C' -parallel-testing-enabled NO \
+  -only-testing:FlyRightPhysicalUITests/FlyRightPhysicalUITests/testCaptureDemoFrames \
+  -derivedDataPath "$OUT/build" -resultBundlePath "$OUT/results.xcresult" DEVELOPMENT_TEAM=7NNC4W2FUU
+xcrun xcresulttool export attachments --path "$OUT/results.xcresult" --output-path "$OUT/attachments"
+```
+
+On 2026-09-16 11:29 the whole chain ran in 30 s: landing → Detour → App Store
+listing → cloud re-download (no Face ID for a previously downloaded free app)
+→ Open → intro → Skip → tracking prompt → "Daniel invited you to follow their
+trips" with a live "Follow Daniel's trips" button. Detour matched the install
+on the real phone too. Frames are index-based at 3 fps in `phone-flow.mp4`
+(`phone-frames/`); `phone-invitation.png` is the closing still. QuickTime /
+ffmpeg screen capture of the phone over USB never exposed the device, so
+frames it is.
+
+Two earlier runs were discarded: in one nobody tapped and the phone locked
+(lock-screen frames with notification previews — deleted, nothing kept); in
+the other the GET query never matched the cloud icon (its clean store frames
+are `phone-store/`, later frames with message banners deleted). The kept
+frames show only Safari on the invitation, the App Store listing and FlyRight.
+
 ## Retake
 
 ```sh

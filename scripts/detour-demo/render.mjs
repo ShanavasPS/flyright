@@ -59,7 +59,7 @@ for (const [index, scene] of scenes.entries()) {
       <image href="data:image/png;base64,${appStore.toString('base64')}" x="298" y="1038" width="174" height="58"/>
       <image href="data:image/png;base64,${googlePlay.toString('base64')}" x="298" y="1130" width="${googlePlayMeta.width}" height="58"/>
       <text x="56" y="1268" font-size="24" font-weight="600">getflyright.com</text>
-      <text x="56" y="1314" font-size="16" fill="#849BB7">Simulator + emulator demonstration</text>
+      <text x="56" y="1314" font-size="16" fill="#849BB7">Simulator + iPhone 15 Pro demonstration</text>
       ${scenes.map((_, j) => `<rect x="${880 + j * 39}" y="1305" width="${j === index ? 29 : 11}" height="5" rx="2.5" fill="${j === index ? '#70B8FF' : '#3C5574'}"/>`).join('')}
     </g>
     <rect x="${phone.x - 10}" y="${phone.y - 10}" width="${phone.width + 20}" height="${phone.height + 20}" rx="${phone.radius + 10}" fill="url(#edge)"/>
