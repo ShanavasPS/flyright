@@ -47,6 +47,50 @@ final class FlyRightPhysicalUITests: XCTestCase {
         XCTAssertTrue(button.isSelected, "Tab did not become selected: \(title)")
     }
 
+    /// Unlocks the phone from the lock screen when a passcode is supplied
+    /// (`TEST_RUNNER_FLYRIGHT_PASSCODE` on the xcodebuild side), so a device
+    /// that auto-locked between steps does not block the UI checks. Presses
+    /// home, swipes the lock screen up and types the digits on Springboard's
+    /// passcode pad. With no lock screen showing (no pad within a few
+    /// seconds) it presses home again to leave whatever the swipe opened.
+    /// Never persisted: the passcode only ever arrives through the environment.
+    private func unlockIfNeeded() {
+        guard let passcode = ProcessInfo.processInfo.environment["FLYRIGHT_PASSCODE"], !passcode.isEmpty else { return }
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 1)
+        let start = springboard.coordinate(withNormalizedOffset: CGPoint(x: 0.5, y: 0.96))
+        let end = springboard.coordinate(withNormalizedOffset: CGPoint(x: 0.5, y: 0.35))
+        start.press(forDuration: 0.1, thenDragTo: end)
+        let firstKey = springboard.keys[String(passcode.first!)]
+        guard firstKey.waitForExistence(timeout: 4) else {
+            XCUIDevice.shared.press(.home)
+            return
+        }
+        for digit in passcode {
+            let key = springboard.keys[String(digit)]
+            if key.waitForExistence(timeout: 2) { key.tap() }
+        }
+        Thread.sleep(forTimeInterval: 1.5)
+    }
+
+    /// Locks the phone with the side button, then proves `unlockIfNeeded`
+    /// gets back to the home screen and can launch FlyRight.
+    func testUnlockFromLockScreen() throws {
+        guard let passcode = ProcessInfo.processInfo.environment["FLYRIGHT_PASSCODE"], !passcode.isEmpty else {
+            throw XCTSkip("FLYRIGHT_PASSCODE not supplied")
+        }
+        app.terminate()
+        XCUIDevice.shared.perform(NSSelectorFromString("pressLockButton"))
+        Thread.sleep(forTimeInterval: 2)
+        capture("locked")
+        unlockIfNeeded()
+        capture("after-unlock")
+        app.launch()
+        XCTAssertTrue(app.tabBars.buttons["My travels"].waitForExistence(timeout: 60), "FlyRight did not come up after the unlock")
+        capture("launched-after-unlock")
+    }
+
     /// Demo footage helper: full-screen frames while the invite → App Store →
     /// install → first-launch story plays out on the phone. Opens the invite
     /// link, taps App Store on the landing, Get and Open in the App Store, Skip
@@ -334,6 +378,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
     }
 
     func testAllTabsAcrossTwoColdStarts() throws {
+        unlockIfNeeded()
         for pass in 1...2 {
             app.terminate()
             app.launch()

@@ -55,6 +55,13 @@ The Maestro flow cold-starts twice, waits for the expected signed-in account, lo
 
 Use the existing `.maestro/` feature flows for changed areas: Wallet/PDF/photo intake, live activities, invites, journal editing, support and purchases. Document fixture setup and any required device interaction. A base smoke pass does not replace testing the feature changed in that release. Do not send support messages, invite real people or make purchases merely to satisfy a smoke test.
 
+## Unlocking the phones for a run
+
+Passcodes are supplied by the user per session (chat), used inline, and never written to the repo, memory files, logs or the macOS Keychain (the Keychain write was refused by the permission classifier on 2026-09-17). Clean `~/.maestro/tests/<date>/` after any flow that typed a code.
+
+- **Pixel 9a (works, verified 2026-09-17):** `adb shell input keyevent KEYCODE_WAKEUP`, then `adb shell input swipe 540 1500 540 300 200` (a swipe that starts near the bottom edge is read as the home gesture and does nothing), then `adb shell input text <PIN>` and `adb shell input keyevent 66`. Confirm with `dumpsys window | grep mDreamingLockscreen` = false. Run `svc power stayon true` for the session and restore it to false afterwards.
+- **iPhone 15 Pro (partial):** `xcodebuild test` cannot open a session on a locked phone ("Ensure the device is unlocked"), and once the phone sleeps its wireless CoreDevice tunnel drops. The session therefore has to START with the phone unlocked and on Wi-Fi; the practical setting for a test session is Auto-Lock = Never. For a lock that happens mid-run, the XCTest helper's `unlockIfNeeded()` (home, swipe the lock screen up, type the digits on Springboard's passcode pad) runs at the start of `testAllTabsAcrossTwoColdStarts` when `TEST_RUNNER_FLYRIGHT_PASSCODE=<code>` is set on the xcodebuild command; `testUnlockFromLockScreen` locks with the side button and proves the path. Neither has completed on the phone yet — the first attempt failed at session start because the phone had already locked.
+
 ## Physical devices and evidence
 
 Discover actual hardware before deciding which tests to run:
