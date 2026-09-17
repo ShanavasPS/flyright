@@ -1,0 +1,9 @@
+FlyRight 1.0.37 redraws the Travel stats screen and the Add Flight flow.
+
+Travel stats (My travels → the navy summary card → "All travel stats") now shows a passport-style summary, the longest flight drawn on the app's own globe, the top destination in its country's flag colours, the most-flown airline in the colours of its logo, and the most-flown aircraft type. Each card opens a list: every flight, every place by country, every airline, every aircraft type, and an aircraft type opens the flights flown on it. Airline logos are loaded from a public image CDN, flag images from flagcdn.com; both are read only to pick the card colour. No new permission is requested.
+
+Add Flight (the + on My travels) is now a sequence of screens inside My travels with the standard back button: flight number → date → details → result. The first screen offers finding a flight by number (with Scan and Upload) or adding a trip by hand. Choosing an airline for a hand-entered trip opens a searchable list of every airline.
+
+Reviewing Travel stats requires trips in the journal. Sign in with the configured reviewer account: enter the demo email, then choose Use another method and Sign in with your password. The existing demo credentials are unchanged, and that account already holds trips. Alternatively add a flight manually from My travels. The aircraft section appears only for flights found by their number, once the airline has assigned an aircraft.
+
+No purchase is required for any of this. Existing account and trip data are retained on update; the local database gains two columns for the aircraft type, migrated automatically on first launch.

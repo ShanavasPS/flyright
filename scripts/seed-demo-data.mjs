@@ -77,6 +77,23 @@ const TRIPS = [
   ['demo-fra', 'Lufthansa', 'DE', 'LH400', 'FRA', 'JFK', now - 340 * DAY, 8.6],
 ];
 
+/** The aircraft a looked-up flight records (type as the provider names it,
+ *  and the registration), so the stats panel's aircraft card has something to
+ *  show. Plausible types for each route; the two A350 legs share an airframe
+ *  and the A320 legs don't, so both "1 aircraft" and "2 different aircraft"
+ *  read appear in the list. */
+const AIRCRAFT = {
+  'demo-upcoming': ['Airbus A321', 'OH-LZR'],
+  'demo-mad': ['Airbus A320', 'OH-LXK'],
+  'demo-arn': ['Airbus A320', 'OH-LXM'],
+  'demo-jfk': ['Airbus A350-900', 'OH-LWA'],
+  'demo-cdg': ['Embraer 190', 'OH-LKO'],
+  'demo-dxb': ['Boeing 777-300ER', 'A6-EQA'],
+  'demo-nrt': ['Boeing 787-9 Dreamliner', 'JA861J'],
+  'demo-sin': ['Airbus A350-900', 'OH-LWA'],
+  'demo-fra': ['Boeing 747-8', 'D-ABYA'],
+};
+
 /** A 3h15m arrival delay on a 1500-3500km EU flight is exactly the 400 EUR
  *  band — the badge that makes the compensation panel worth a screenshot. */
 const DELAYED_TRIP = 'demo-mad';
@@ -133,8 +150,9 @@ function seed(dbPath) {
     scheduled_departure, scheduled_arrival, ticket_price_amount, ticket_price_currency,
     notes, notes_updated_at, rating, booking_reference, seat,
     pass_code, pass_format, pass_captured_at,
+    aircraft_model, aircraft_reg,
     source, created_at, updated_at, deleted_at, synced_at
-  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
   for (const [id, carrier, carrierCountry, number, from, to, departs, hours] of TRIPS) {
     const j = id === JOURNAL.id ? JOURNAL : id === PASS.id ? PASS : {};
@@ -163,6 +181,8 @@ function seed(dbPath) {
       pass ? pass.code() : null,
       pass ? pass.format : null,
       pass ? iso(now - 2 * HOUR) : null,
+      AIRCRAFT[id]?.[0] ?? null,
+      AIRCRAFT[id]?.[1] ?? null,
       'manual',
       iso(departs),
       iso(departs),
