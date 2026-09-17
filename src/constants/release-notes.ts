@@ -15,6 +15,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.37',
+    date: '2026-09-18',
+    notes: [
+      'Travel stats is redrawn: your longest flight on the globe, your top destination in its country’s colours, your most-flown airline in its own — and each card opens the full list behind it.',
+      'New in stats: the aircraft you have flown, by type and maker, with every flight on each one.',
+      'Adding a flight is now step by step — go back to any step — with a clearer choice between finding a flight by number and writing a trip in yourself.',
+      'Choosing an airline opens a proper search that browses every airline and forgives typos.',
+      'Ten Caribbean airlines added, from Caribbean Airlines and Bahamasair to Arajet and Sunrise Airways.',
+    ],
+  },
+  {
     version: '1.0.36',
     date: '2026-09-16',
     notes: [
