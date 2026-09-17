@@ -42,6 +42,10 @@ export interface RemoteJourney {
   ticketCode?: string | null;
   ticketFormat?: string | null;
   ticketCapturedAt?: string | null;
+  /** The aircraft type and registration; omitted by clients older than the
+   * aircraft stats, null when the flight was never looked up. */
+  aircraftModel?: string | null;
+  aircraftReg?: string | null;
   /** Omitted by clients older than trip privacy; absent means visible. */
   hiddenFromCircle?: boolean;
   privateTrip?: boolean;
@@ -89,6 +93,8 @@ export function toRemoteJourney(row: JourneyRow): RemoteJourney {
     ticketCode: row.ticketCode,
     ticketFormat: row.ticketFormat,
     ticketCapturedAt: row.ticketCapturedAt,
+    aircraftModel: row.aircraftModel,
+    aircraftReg: row.aircraftReg,
     hiddenFromCircle: row.hiddenFromCircle,
     privateTrip: row.privateTrip,
     source: row.source,

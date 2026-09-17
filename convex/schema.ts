@@ -60,6 +60,10 @@ export default defineSchema({
     ticketCode: v.optional(v.union(v.string(), v.null())),
     ticketFormat: v.optional(v.union(v.string(), v.null())),
     ticketCapturedAt: v.optional(v.union(v.string(), v.null())),
+    /** The aircraft type and registration the provider reported for a flight
+     * found by number; omitted by older clients, null for journal entries. */
+    aircraftModel: v.optional(v.union(v.string(), v.null())),
+    aircraftReg: v.optional(v.union(v.string(), v.null())),
     /** Close circle only: members outside the owner's close circle get no
      * People-tab listing, no push, no follow of its live session, and a
      * shared link shows them the traveler, not the trip. They still count

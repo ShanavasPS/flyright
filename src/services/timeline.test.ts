@@ -42,6 +42,8 @@ function row(overrides: Partial<JourneyRow>): JourneyRow {
     ticketCode: null,
     ticketFormat: null,
     ticketCapturedAt: null,
+    aircraftModel: null,
+    aircraftReg: null,
     hiddenFromCircle: false,
     privateTrip: false,
     source: 'lookup',

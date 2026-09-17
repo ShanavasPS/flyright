@@ -563,6 +563,8 @@ export function AddFlight({ step }: { step: Step }) {
       distanceKm: flight.distanceKm ?? 0,
       scheduledDeparture: flight.scheduledDeparture ?? `${flight.date}T00:00:00Z`,
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
+      aircraftModel: flight.aircraft?.model ?? null,
+      aircraftReg: flight.aircraft?.reg ?? null,
       ...tripDetails(bookingRef, seat),
       ...passFields(scannedPass, { number: flight.flight, fromCode: flight.from.code!, toCode: flight.to.code!, date: flight.date }),
       ...flagsFor(audience),

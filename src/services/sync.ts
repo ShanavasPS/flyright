@@ -47,6 +47,8 @@ export async function applyRemoteJourney(remote: RemoteJourney, userId: string) 
     ticketCode: remote.ticketCode ?? null,
     ticketFormat: remote.ticketFormat ?? null,
     ticketCapturedAt: remote.ticketCapturedAt ?? null,
+    aircraftModel: remote.aircraftModel ?? null,
+    aircraftReg: remote.aircraftReg ?? null,
     hiddenFromCircle: remote.hiddenFromCircle ?? false,
     privateTrip: remote.privateTrip ?? false,
     source: remote.source as (typeof journeys.$inferInsert)['source'],

@@ -14,6 +14,7 @@ import m0009 from './0009_abnormal_korg.sql';
 import m0010 from './0010_private_trip.sql';
 import m0011 from './0011_boarding_pass.sql';
 import m0012 from './0012_ticket_code.sql';
+import m0013 from './0013_aircraft.sql';
 
   export default {
     journal,
@@ -30,7 +31,8 @@ m0008,
 m0009,
 m0010,
 m0011,
-m0012
+m0012,
+m0013
     }
   }
   

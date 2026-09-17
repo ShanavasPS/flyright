@@ -1,36 +1,53 @@
 import { useAuth } from '@clerk/expo';
-import { SymbolView } from 'expo-symbols';
-import { useMemo, type ReactNode } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { AirlineLogo } from '@/components/airline-logo';
 import { DataErrorState, LoadingState } from '@/components/data-state';
-import { IconBadge, SheenCard } from '@/components/sheen-card';
+import {
+  AircraftCard,
+  AirlineCard,
+  DestinationCard,
+  MiniTile,
+  RecordCard,
+  SectionLink,
+  StatsHero,
+} from '@/components/stats-cards';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useCountUp } from '@/hooks/use-count-up';
-import { useTheme } from '@/hooks/use-theme';
-import { airportZone } from '@/services/airports';
-import { formatDayLabelWithYear } from '@/services/dates';
-import { useJourneys, type JourneyRow } from '@/services/journeys';
+import { useJourneys } from '@/services/journeys';
+import { cityOf, travelRecap } from '@/services/timeline';
 import {
-  airlineOf,
-  cityOf,
-  formatKm,
-  timeAloftComparison,
-  travelRecap,
-} from '@/services/timeline';
+  aircraftRanks,
+  airlineRanks,
+  destinationDetail,
+  makerRanks,
+  formatStars,
+  plural,
+} from '@/services/travel-recap';
 
-/** The deep-dive behind the My travels summary card: records, places,
- * airlines, and logbook facts computed from the same local journey rows. */
+/** The deep-dive behind the My travels summary card. A passport hero with
+ * the totals, then three cards that each wear what they show and open the
+ * list behind it — the record flight on the globe, the top destination
+ * under its own sky, the most-flown airline in its own colour — and the
+ * small facts as tiles. Everything comes from the same local journey rows. */
 export function TravelStats() {
+  const router = useRouter();
   const { userId } = useAuth();
   const { data: journeys, error } = useJourneys(userId);
-  const recap = useMemo(() => travelRecap(journeys ?? []), [journeys]);
-  // The headline number counts up on entry — a logbook total should feel
-  // accumulated, not printed.
-  const shownKm = useCountUp(recap.totalKm, 1100);
+  const rows = useMemo(() => journeys ?? [], [journeys]);
+  const recap = useMemo(() => travelRecap(rows), [rows]);
+  const airlines = useMemo(() => airlineRanks(rows), [rows]);
+  const aircraft = useMemo(() => aircraftRanks(rows), [rows]);
+  const makers = useMemo(() => makerRanks(aircraft), [aircraft]);
+  const destination = useMemo(
+    () => (recap.topDestination ? destinationDetail(rows, recap.topDestination.city) : null),
+    [rows, recap.topDestination],
+  );
+  // Frozen per visit: the destination's sky is the hour it was when the
+  // screen opened, not a clock that ticks over while reading.
+  const [now] = useState(() => new Date());
 
   if (error) return <DataErrorState error={error} />;
   if (!journeys) return <LoadingState />;
@@ -45,217 +62,117 @@ export function TravelStats() {
     );
   }
 
-  const aloft = timeAloftComparison(recap.hoursAloft);
+  const topAirline = airlines[0];
+  const favourite = recap.favouriteAirline;
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.list}>
-        <View style={styles.hero}>
-          <ThemedText type="display" themeColor="heading">
-            {formatKm(shownKm)}
-          </ThemedText>
-          <ThemedText themeColor="textSecondary">kilometres flown</ThemedText>
-          {aloft && (
-            <ThemedView type="backgroundSelected" style={styles.aloftPill}>
-              <ThemedText type="smallBold" themeColor="heading">
-                {recap.hoursEstimated ? `≈ ${aloft}` : aloft}
-              </ThemedText>
-            </ThemedView>
-          )}
-        </View>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.list}>
+        <StatsHero
+          totalKm={recap.totalKm}
+          trips={recap.trips}
+          hoursAloft={recap.hoursAloft}
+          hoursEstimated={recap.hoursEstimated}
+          countries={recap.countries}
+          airports={recap.airports}
+          since={recap.firstYear}
+        />
 
         {recap.longest && (
           <>
-            <SectionLabel>Records</SectionLabel>
-            <RecordCard label="Longest flight" row={recap.longest} />
-            {recap.shortest && <RecordCard label="Shortest hop" row={recap.shortest} />}
+            <SectionLink
+              label="Longest flight"
+              link="All flights"
+              onPress={() => router.push('/stats/flights')}
+            />
+            <RecordCard row={recap.longest} tag="Longest" onPress={() => router.push('/stats/flights')} />
           </>
         )}
 
-        <SectionLabel>Places</SectionLabel>
-        <SheenCard>
-          {recap.topDestination && (
-            <Headline
-              badge={
-                <IconBadge
-                  symbol={{ ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' }}
-                  size={44}
-                />
-              }
-              value={recap.topDestination.city}
-              caption={`top destination · ${plural(recap.topDestination.landings, 'landing')}`}
-            />
-          )}
-          {recap.homeCity && (
-            <InfoRow
-              label="Home base"
-              value={`${recap.homeCity.city} · ${plural(recap.homeCity.departures, 'take-off')}`}
-            />
-          )}
-          <InfoRow label="Countries" value={`${recap.countries}`} />
-          <InfoRow label="Airports" value={`${recap.airports}`} />
-        </SheenCard>
-
-        {recap.topAirline && (
+        {destination && (
           <>
-            <SectionLabel>Airlines</SectionLabel>
-            <SheenCard>
-              <Headline
-                badge={
-                  <AirlineLogo
-                    number={recap.topAirline.number}
-                    carrier={recap.topAirline.carrier}
-                    size={44}
-                  />
-                }
-                value={recap.topAirline.carrier}
-                caption={`most flown · ${plural(recap.topAirline.flights, 'flight')}`}
-              />
-              {recap.favouriteAirline && (
-                <InfoRow
-                  label="Favourite"
-                  value={`${recap.favouriteAirline.carrier} · ${formatStars(recap.favouriteAirline.rating)} · ${plural(recap.favouriteAirline.rated, 'rating')}`}
-                />
-              )}
-              <InfoRow label="Airlines flown" value={`${recap.airlines}`} />
-            </SheenCard>
+            <SectionLink
+              label="Top destination"
+              link="All places"
+              onPress={() => router.push('/stats/places')}
+            />
+            <DestinationCard destination={destination} now={now} onPress={() => router.push('/stats/places')} />
           </>
         )}
 
-        <SectionLabel>Logbook</SectionLabel>
-        <SheenCard>
-          <InfoRow label="Trips logged" value={`${recap.trips}`} />
-          {recap.firstYear && <InfoRow label="Flying since" value={recap.firstYear} />}
-          {recap.busiestYear && (
-            <InfoRow
+        {topAirline && (
+          <>
+            <SectionLink
+              label="Most flown"
+              link="All airlines"
+              onPress={() => router.push('/stats/airlines')}
+            />
+            <AirlineCard
+              airline={topAirline}
+              totalFlights={recap.trips}
+              otherAirlines={airlines.length - 1}
+              onPress={() => router.push('/stats/airlines')}
+            />
+          </>
+        )}
+
+        {aircraft[0] && (
+          <>
+            <SectionLink
+              label="Most flown aircraft"
+              link="All aircraft"
+              onPress={() => router.push('/stats/aircraft')}
+            />
+            <AircraftCard
+              type={aircraft[0]}
+              makers={makers}
+              totalFlights={aircraft.reduce((n, t) => n + t.flights, 0)}
+              onPress={() => router.push('/stats/aircraft')}
+            />
+          </>
+        )}
+
+        <View style={styles.tiles}>
+          {recap.homeCity && (
+            <MiniTile
+              label="Home base"
+              value={recap.homeCity.city}
+              caption={plural(recap.homeCity.departures, 'take-off')}
+            />
+          )}
+          {recap.busiestYear ? (
+            <MiniTile
               label="Busiest year"
-              value={`${recap.busiestYear.year} · ${plural(recap.busiestYear.trips, 'trip')}`}
+              value={recap.busiestYear.year}
+              caption={plural(recap.busiestYear.trips, 'trip')}
             />
+          ) : (
+            recap.firstYear && <MiniTile label="Flying since" value={recap.firstYear} />
           )}
-          {recap.hoursAloft > 0 && (
-            <InfoRow
-              label="Time in the air"
-              value={`${recap.hoursEstimated ? '≈ ' : ''}${Math.round(recap.hoursAloft).toLocaleString()} h`}
-            />
-          )}
-        </SheenCard>
+        </View>
+        {(recap.shortest || favourite) && (
+          <View style={styles.tiles}>
+            {recap.shortest && (
+              <MiniTile
+                label="Shortest hop"
+                value={`${Math.round(recap.shortest.distanceKm).toLocaleString()} km`}
+                caption={`${cityOf(recap.shortest.fromCode)} to ${cityOf(recap.shortest.toCode)}`}
+              />
+            )}
+            {favourite && (
+              <MiniTile
+                label="Your favourite"
+                value={favourite.carrier}
+                caption={`${formatStars(favourite.rating)} · ${plural(favourite.rated, 'rating')}`}
+              />
+            )}
+          </View>
+        )}
       </ScrollView>
     </ThemedView>
-  );
-}
-
-/** "4.5 ★" — one decimal unless it's whole. */
-function formatStars(rating: number): string {
-  return `${Number.isInteger(rating) ? rating : rating.toFixed(1)} ★`;
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-      {children}
-    </ThemedText>
-  );
-}
-
-/** A record rendered as the boarding-pass moment it was: codes joined by a
- * dotted contrail (the app icon's motif), cities beneath, receipt line below. */
-function RecordCard({ label, row }: { label: string; row: JourneyRow }) {
-  const theme = useTheme();
-  const airline = airlineOf(row);
-  const when = formatDayLabelWithYear(row.scheduledDeparture, airportZone(row.fromCode));
-  return (
-    <SheenCard>
-      <View style={styles.spacedRow}>
-        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>
-          {label}
-        </ThemedText>
-        <ThemedText type="smallBold" style={{ color: theme.tint }}>
-          {Math.round(row.distanceKm).toLocaleString()} km
-        </ThemedText>
-      </View>
-      <View style={styles.routeRow}>
-        <ThemedText type="subtitle" themeColor="heading">
-          {row.fromCode}
-        </ThemedText>
-        <Contrail />
-        <ThemedText type="subtitle" themeColor="heading">
-          {row.toCode}
-        </ThemedText>
-      </View>
-      <View style={styles.spacedRow}>
-        <ThemedText type="small" themeColor="textSecondary">
-          {cityOf(row.fromCode)}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {cityOf(row.toCode)}
-        </ThemedText>
-      </View>
-      <ThemedText type="small" themeColor="textSecondary">
-        {airline ? `${airline} · ${when}` : when}
-      </ThemedText>
-    </SheenCard>
-  );
-}
-
-function Contrail() {
-  const theme = useTheme();
-  const dots = (side: string) =>
-    Array.from({ length: 4 }, (_, i) => (
-      <View key={`${side}${i}`} style={[styles.dot, { backgroundColor: theme.textSecondary }]} />
-    ));
-  return (
-    <View style={styles.contrail}>
-      {dots('out')}
-      <SymbolView
-        name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-        size={16}
-        tintColor={theme.tint}
-        // SF's airplane already points along the route; Material's points up.
-        style={Platform.OS === 'ios' ? undefined : styles.rotated}
-      />
-      {dots('in')}
-    </View>
-  );
-}
-
-/** The one big fact in a card — a name, not a number, gets the display size,
- * anchored by a badge (an icon or an airline logo chip) on the left. */
-function Headline({
-  badge,
-  value,
-  caption,
-}: {
-  badge: ReactNode;
-  value: string;
-  caption: string;
-}) {
-  return (
-    <View style={styles.headline}>
-      {badge}
-      <View style={styles.headlineBody}>
-        <ThemedText type="subtitle" themeColor="heading" numberOfLines={1} adjustsFontSizeToFit>
-          {value}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {caption}
-        </ThemedText>
-      </View>
-    </View>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.spacedRow}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
-    </View>
   );
 }
 
@@ -272,62 +189,13 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.five,
     gap: Spacing.two,
   },
-  hero: {
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.four,
-  },
-  aloftPill: {
-    marginTop: Spacing.two,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  sectionTitle: {
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: Spacing.two,
-  },
-  caps: {
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  spacedRow: {
+  tiles: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  routeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  contrail: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-  },
-  dot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    opacity: 0.6,
-  },
-  rotated: {
-    transform: [{ rotate: '90deg' }],
-  },
-  headline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    marginBottom: Spacing.one,
-  },
-  headlineBody: {
-    flex: 1,
-    gap: Spacing.half,
+    gap: Spacing.two,
+    marginTop: Spacing.one,
   },
 });

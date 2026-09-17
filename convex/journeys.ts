@@ -35,6 +35,8 @@ const journeyRow = v.object({
   ticketCode: v.optional(v.union(v.string(), v.null())),
   ticketFormat: v.optional(v.union(v.string(), v.null())),
   ticketCapturedAt: v.optional(v.union(v.string(), v.null())),
+  aircraftModel: v.optional(v.union(v.string(), v.null())),
+  aircraftReg: v.optional(v.union(v.string(), v.null())),
   hiddenFromCircle: v.optional(v.boolean()),
   privateTrip: v.optional(v.boolean()),
   source: v.string(),

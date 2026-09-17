@@ -45,6 +45,12 @@ export const journeys = sqliteTable('journeys', {
   passFormat: text('pass_format'),
   /** When the code was read — "Scanned 12 Sep" on the card. */
   passCapturedAt: text('pass_captured_at'),
+  /** The aircraft the flight was (or is to be) flown on, as the provider
+   *  names it — "Airbus A350-900", "Boeing 737-800" — and its registration.
+   *  Known only for flights found by number; a journal entry has neither.
+   *  Feeds the aircraft section of Travel stats. */
+  aircraftModel: text('aircraft_model'),
+  aircraftReg: text('aircraft_reg'),
   /** Receipt code for check-in; retained when a boarding pass is added. */
   ticketCode: text('ticket_code'),
   ticketFormat: text('ticket_format'),

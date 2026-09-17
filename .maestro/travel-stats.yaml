@@ -1,0 +1,106 @@
+# Travel stats and the lists behind its cards. From My travels the summary
+# card opens the stats page (hero, record flight, top destination, most-flown
+# airline, most-flown aircraft, tiles); each card's "All …" link opens
+# Flights, Places, Airlines or Aircraft, whose sort tabs reorder the list. Needs at least one trip in the
+# journal (a fresh install lands on the empty state and stops there).
+# Run: maestro test .maestro/travel-stats.yaml   (booted device with the dev
+# build installed and `npx expo start` serving :8081)
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    permissions:
+      notifications: allow
+- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 20000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+# Onboarding shows on a fresh install; a signed-in dev client may skip it.
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+# The ATT prompt can also follow onboarding (see layers-analytics); an alert
+# hides the whole hierarchy from Maestro, so clear it before going on.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Allow"
+          timeout: 15000
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "All travel stats.*"
+    timeout: 30000
+- tapOn: "All travel stats.*"
+- extendedWaitUntil:
+    visible: "Travel stats"
+    timeout: 15000
+- assertVisible: ".*around the Earth.*"
+- assertVisible: "All flights.*"
+- tapOn: "All flights.*"
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 10000
+- assertVisible: ".*flight.*"
+- tapOn: "In the air"
+- tapOn: "Newest"
+- back
+- extendedWaitUntil:
+    visible: "Travel stats"
+    timeout: 10000
+- tapOn: "All places.*"
+- extendedWaitUntil:
+    visible: "Places"
+    timeout: 10000
+- assertVisible: ".*countr.*"
+- tapOn: "A–Z"
+- tapOn: "Latest"
+- back
+- extendedWaitUntil:
+    visible: "Travel stats"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "All airlines.*"
+    direction: DOWN
+- tapOn: "All airlines.*"
+- extendedWaitUntil:
+    visible: "Airlines"
+    timeout: 10000
+- assertVisible: ".*airline.*"
+- tapOn: "Distance"
+- tapOn: "Your rating"
+- back
+- extendedWaitUntil:
+    visible: "Travel stats"
+    timeout: 10000
+# The aircraft section exists only once a flight found by number has
+# recorded its type — so this leg runs when the card is there.
+- runFlow:
+    when:
+      visible: "All aircraft.*"
+    commands:
+      - tapOn: "All aircraft.*"
+      - extendedWaitUntil:
+          visible: "Aircraft"
+          timeout: 10000
+      - assertVisible: ".*aircraft type.*"
+      - tapOn: "By distance"
+      - tapOn: "Makers"

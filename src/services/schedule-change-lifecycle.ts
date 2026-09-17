@@ -22,6 +22,7 @@ export async function applyScheduleChange(
   status: FlightStatus,
   now = new Date(),
 ): Promise<ScheduleChange | null> {
+  await rememberAircraft(row, status);
   const change = scheduleChange(row, status, now);
   if (!change) return null;
 
@@ -41,6 +42,19 @@ export async function applyScheduleChange(
     formatTime(change.departure, airportZone(row.fromCode)),
   );
   return change;
+}
+
+/** The aircraft the provider now names for the flight, kept on the trip for
+ * the aircraft section of Travel stats. Written whenever a lookup happens
+ * anyway, so trips saved before the type was recorded — or before the
+ * airline assigned one — fill in over time; the registration follows the
+ * type, since a swap changes both. No-op when nothing new is known. */
+export async function rememberAircraft(row: JourneyRow, status: FlightStatus): Promise<void> {
+  const model = status.aircraft?.model?.trim() || null;
+  if (!model) return;
+  const reg = status.aircraft?.reg || null;
+  if (row.aircraftModel === model && (row.aircraftReg ?? null) === reg) return;
+  await updateJourney(row.id, { aircraftModel: model, aircraftReg: reg });
 }
 
 /** The day to ask the provider about: the flight's own local date at its

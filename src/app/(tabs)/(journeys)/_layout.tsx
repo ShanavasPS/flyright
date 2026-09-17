@@ -19,8 +19,25 @@ export default function JourneysStack() {
         options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}
       />
       <Stack.Screen
-        name="stats"
+        name="stats/index"
         options={{ title: 'Travel stats', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      {/* The lists behind the stats cards: every flight, place and airline. */}
+      <Stack.Screen
+        name="stats/flights"
+        options={{ title: 'Flights', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen
+        name="stats/places"
+        options={{ title: 'Places', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen
+        name="stats/airlines"
+        options={{ title: 'Airlines', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen
+        name="stats/aircraft"
+        options={{ title: 'Aircraft', headerBackButtonDisplayMode: 'minimal' }}
       />
       {/* Adding a flight, one screen per step, pushed over My travels so the
         back chevron and swipe return to what was already entered (the draft
