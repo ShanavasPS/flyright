@@ -89,6 +89,21 @@ export const CARRIERS: Record<string, { name: string; country: string }> = {
   AM: { name: 'Aeroméxico', country: 'MX' },
   CM: { name: 'Copa Airlines', country: 'PA' },
   AV: { name: 'Avianca', country: 'CO' },
+  // Caribbean. Air Caraïbes and Air Antilles are French carriers (Guadeloupe).
+  BW: { name: 'Caribbean Airlines', country: 'TT' },
+  JY: { name: 'interCaribbean Airways', country: 'TC' },
+  KX: { name: 'Cayman Airways', country: 'KY' },
+  UP: { name: 'Bahamasair', country: 'BS' },
+  TX: { name: 'Air Caraïbes', country: 'FR' },
+  // Air Antilles flew as 3S until 2023 and as 4I from its 2024 relaunch until
+  // it stopped flying in April 2026; both stay for logging past trips. 4I comes
+  // first so the name resolves to it — the logo CDN's 3S mark is Air Guyane's.
+  '4I': { name: 'Air Antilles', country: 'FR' },
+  '3S': { name: 'Air Antilles Express', country: 'FR' },
+  S6: { name: 'Sunrise Airways', country: 'HT' },
+  PY: { name: 'Surinam Airways', country: 'SR' },
+  DM: { name: 'Arajet', country: 'DO' },
+  DO: { name: 'Sky High', country: 'DO' },
   // Regional operators that fly under a major's number ("Operated by: HORIZON
   // AIR" on a Qatar-sold ticket). EU261 judges the operating carrier, so the
   // import records these, not the marketing airline, on codeshare legs.
@@ -195,11 +210,34 @@ export function carrierCodeForName(name: string | null | undefined): string | nu
 
 function normalizeCarrierName(name: string): string {
   return name
+    // "Air Caraïbes" is printed "AIR CARAIBES" on most documents.
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
     .replace(/[^A-Z0-9 ]/g, ' ')
     .replace(/\b(AIRLINES?|AIRWAYS|AIR LINES|AIR|AVIATION|FLY|EXPRESS|INTERNATIONAL|THE)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Search text as typed by hand: case, accents and doubled letters folded, so
+ * "caraibes" finds Air Caraïbes and "carribean" finds Caribbean Airlines. */
+const foldSearch = (text: string) =>
+  text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/(.)\1+/g, '$1')
+    .trim();
+
+/** The airline picker's matches for a typed name or code, A–Z. An empty query
+ * lists everything. */
+export function searchCarriers(query: string) {
+  const q = foldSearch(query);
+  const code = query.trim().toUpperCase();
+  return Object.entries(CARRIERS)
+    .filter(([iata, c]) => !q || iata === code || foldSearch(c.name).includes(q))
+    .sort((a, b) => a[1].name.localeCompare(b[1].name));
 }
 
 export function carrierFor(flight: string) {

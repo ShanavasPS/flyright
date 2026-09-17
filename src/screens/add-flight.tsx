@@ -39,7 +39,7 @@ import { ThemedText } from '@/components/themed-text';
 import { TimeDialog } from '@/components/time-dialog';
 import { ThemedView } from '@/components/themed-view';
 import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
-import { CARRIERS, carrierCodeForName, carrierFor } from '@/constants/carriers';
+import { CARRIERS, carrierCodeForName, carrierFor, searchCarriers } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -557,16 +557,7 @@ export function AddFlight() {
 
   // The airline the entry is saved under: chosen by hand, else the number's.
   const manualCarrier = airline ?? (flightNumber ? carrierFor(flightNumber) : null);
-  const airlineMatches =
-    airlineQuery === null
-      ? []
-      : Object.entries(CARRIERS)
-          .filter(([code, c]) => {
-            const q = airlineQuery.trim().toLowerCase();
-            return !q || code.toLowerCase() === q || c.name.toLowerCase().includes(q);
-          })
-          .sort((a, b) => a[1].name.localeCompare(b[1].name))
-          .slice(0, 8);
+  const airlineMatches = airlineQuery === null ? [] : searchCarriers(airlineQuery).slice(0, 8);
 
   const saveManual = async () => {
     if (!fromAirport || !toAirport || !date) return;

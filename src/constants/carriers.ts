@@ -12,4 +12,5 @@ export {
   carrierCodeForName,
   carrierFor,
   operatingBrand,
+  searchCarriers,
 } from '../../convex/carriersShared';
