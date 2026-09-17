@@ -64,7 +64,7 @@ function SavedCodeCard({ row, prominent, ticket = false }: { row: JourneyRow; pr
         onPress={() => {
           tapLight();
           trackEvent('boarding_pass_add_tapped', { from: 'trip' });
-          router.push({ pathname: '/add-flight', params: { scan: '1', journeyId: row.id } });
+          router.push({ pathname: '/add', params: { scan: '1', journeyId: row.id } });
         }}
       />
     );

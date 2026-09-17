@@ -213,16 +213,12 @@ function RootLayout() {
           <AttentionProvider cloud={!!convex}>
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              {/* Full screen, not a sheet: the flow hosts a camera viewfinder,
-                a calendar, and the keyboard — in a 0.9 sheet the keyboard
-                buried the scan entry. The ✕ and the post-save timer are the
-                exits (root-stack modal, so router.back() stays NativeTabs-safe). */}
+              {/* The add-flight flow's old address — a redirect into the My
+                travels stack, where the steps now live (see (journeys)). No
+                animation: it is never seen. */}
               <Stack.Screen
                 name="add-flight"
-                options={{
-                  presentation: "fullScreenModal",
-                  headerShown: false,
-                }}
+                options={{ headerShown: false, animation: "none" }}
               />
               {/* A PDF shared into the app (boarding pass, e-ticket receipt,
                 booking confirmation): its flights as selectable pass cards. */}

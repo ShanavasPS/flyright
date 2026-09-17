@@ -1,4 +1,4 @@
-# Boarding-pass scanner: the "Scan ticket or boarding pass" entry on the
+# Boarding-pass scanner: the "Scan a pass" pill (scan-boarding-pass) on the
 # add-flight sheet opens the camera viewfinder and closes back to typed entry.
 # A simulator camera can't present a real barcode, so this covers the UI wiring
 # only — the BCBP parsing itself is unit-tested (src/services/bcbp.test.ts).
@@ -52,8 +52,10 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Add Flight"
     timeout: 10000
-- assertVisible: ".*Scan ticket or boarding pass.*"
-- tapOn: ".*Scan ticket or boarding pass.*"
+- assertVisible:
+    id: "scan-boarding-pass"
+- tapOn:
+    id: "scan-boarding-pass"
 # Viewfinder open: the hint replaces the entry links.
 - extendedWaitUntil:
     visible: ".*Fill the frame with the barcode.*"
@@ -62,6 +64,8 @@ appId: com.shanavasshaji.flyright
 # And close cleanly back to typed entry.
 - tapOn: ".*Type the flight instead.*"
 - extendedWaitUntil:
-    visible: ".*Scan ticket or boarding pass.*"
+    visible:
+      id: "scan-boarding-pass"
     timeout: 5000
-- assertVisible: ".*No flight number.*"
+- assertVisible:
+    id: "add-manually"

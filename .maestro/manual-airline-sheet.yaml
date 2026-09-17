@@ -1,11 +1,11 @@
-# Manual add-flight airport picker: a typed 3-letter code keeps its match
-# listed (highlighted, on top) until it is tapped; the pick moves focus to
-# the next field and prints the airport's name under the code. Also covers
-# the airport-name search tier ("Heathrow" → LHR) and the no-match message.
-# Suggestion rows carry an accessibilityLabel of "CODE, Airport name", so
-# selectors use that exact string rather than the two visible lines.
-# Run: maestro test .maestro/add-flight-airport-picker.yaml   (booted device
-# with the dev build installed and `npx expo start` serving :8081)
+# Manual add-flight airline picker: the "Airline" chip opens a sheet with the
+# search pinned to the top and the matches directly under it, so they can't
+# land under the keyboard. The search forgives doubled letters ("carribbean")
+# and a pick closes the sheet and lands on the trip card. Rows carry the test
+# ID airline-<IATA>. No hideKeyboard on the way: on Android it is a back press
+# and closes the whole screen.
+# Run: maestro test .maestro/manual-airline-sheet.yaml   (booted device with
+# the dev build installed and `npx expo start` serving :8081)
 appId: com.shanavasshaji.flyright
 ---
 - launchApp:
@@ -62,29 +62,33 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "From · city or HEL"
     timeout: 10000
-- tapOn: "From · city or HEL"
-# A full code still offers its airport — the list must not vanish.
 - inputText: "HEL"
+- tapOn: ".*Helsinki.*"
+- inputText: "POS"
+- tapOn: ".*Port of Spain.*"
+- scrollUntilVisible:
+    element:
+      id: "manual-airline"
+    direction: DOWN
+- tapOn:
+    id: "manual-airline"
 - extendedWaitUntil:
-    visible: "HEL, Helsinki Vantaa Airport"
-    timeout: 5000
-- tapOn: "HEL, Helsinki Vantaa Airport"
-# The pick closes the list, captions the field and hands focus to "To".
+    visible: "Choose an airline"
+    timeout: 10000
+# Browsable before anything is typed.
+- assertVisible:
+    id: "airline-A3"
+- inputText: "carribbean"
+- assertVisible:
+    id: "airline-BW"
+- assertVisible:
+    id: "airline-JY"
+- assertNotVisible:
+    id: "airline-A3"
+- tapOn:
+    id: "airline-BW"
+# iOS folds the chip into one label ("Airline Caribbean Airlines. Change").
 - extendedWaitUntil:
-    visible: "Helsinki Vantaa Airport"
-    timeout: 5000
-- assertNotVisible: "HEL, Helsinki Vantaa Airport"
-- inputText: "QQQ"
-- extendedWaitUntil:
-    visible: "No airport matches .*"
-    timeout: 5000
-- eraseText: 3
-- inputText: "Heathrow"
-- extendedWaitUntil:
-    visible: "LHR, London Heathrow Airport"
-    timeout: 5000
-- tapOn: "LHR, London Heathrow Airport"
-- extendedWaitUntil:
-    visible: "London Heathrow Airport"
-    timeout: 5000
-- assertVisible: "HEL → LHR"
+    visible: ".*Caribbean Airlines.*"
+    timeout: 10000
+- assertNotVisible: "Choose an airline"

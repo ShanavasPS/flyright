@@ -253,7 +253,7 @@ export function Journeys() {
           </View>
           <View style={styles.titleActions}>
             <MessagesButton />
-            <AddFlightButton onPress={() => router.push('/add-flight')} />
+            <AddFlightButton onPress={() => router.push('/add')} />
           </View>
         </View>
 
@@ -312,7 +312,7 @@ export function Journeys() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
             <SignedOutNoticeCard next="/" />
-            <JournalHero onAdd={() => router.push('/add-flight')} />
+            <JournalHero onAdd={() => router.push('/add')} />
           </ScrollView>
         )}
       </SafeAreaView>

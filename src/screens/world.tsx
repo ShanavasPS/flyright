@@ -502,7 +502,7 @@ function EmptyCard() {
           Every route you log, drawn here.
         </ThemedText>
       </View>
-      <Link href="/add-flight" asChild>
+      <Link href="/add" asChild>
         {/* Link's asChild Slot rejects array styles — keep this one flat. */}
         <Pressable
           accessibilityRole="button"

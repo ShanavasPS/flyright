@@ -1,6 +1,6 @@
 # Android: upload a picture of a boarding pass through the in-app picker and
 # read the import review — the path a traveller takes from Add flight →
-# "Upload a ticket PDF or screenshot" → Files. Unlike import-document.yaml this
+# the "Upload ticket" pill (upload-boarding-pass) → Files. Unlike import-document.yaml this
 # drives the real system picker (documentsui), so it covers the hardened
 # intake that no longer accepts a `?uri=` deep link. Closes the review without
 # saving, so the journal is untouched.
@@ -27,9 +27,11 @@ tags:
     timeout: 90000
 - openLink: "flyright://add-flight"
 - extendedWaitUntil:
-    visible: ".*Upload a ticket.*"
+    visible:
+      id: "upload-boarding-pass"
     timeout: 20000
-- tapOn: ".*Upload a ticket.*"
+- tapOn:
+    id: "upload-boarding-pass"
 - extendedWaitUntil:
     visible: "FILES"
     timeout: 10000

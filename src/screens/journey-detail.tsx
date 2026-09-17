@@ -885,7 +885,7 @@ function showTripMenu(
   if (editable) {
     items.push({
       text: 'Edit trip details',
-      onPress: () => router.push({ pathname: '/add-flight', params: { editId: journeyId } }),
+      onPress: () => router.push({ pathname: '/add-details', params: { editId: journeyId } }),
     });
   }
   if (changeAudience) {

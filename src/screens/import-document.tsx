@@ -425,10 +425,21 @@ export function ImportDocument() {
    * ("Add the route"), and any leg the traveller wants to correct before it
    * is saved ("Edit details"). Always the journal form: what the traveller
    * corrects by hand is not looked up again. */
+  /** Nothing to read here — over to typing the number. The import is a root
+   * modal and the flow lives in the My travels stack beneath it, so this
+   * closes the modal and pushes the first step. */
+  const addByNumber = () => {
+    router.dismiss();
+    router.push('/add');
+  };
+
   const completeManually = (segment: ImportedSegment) => {
     trackEvent('import_segment_edited');
+    // The form lives in the My travels stack under this modal: close the
+    // import first, then push the step, so its details are what shows.
+    router.dismiss();
     router.push({
-      pathname: '/add-flight',
+      pathname: '/add',
       params: {
         flight: segment.flight ?? '',
         date: segment.date ?? '',
@@ -536,7 +547,7 @@ export function ImportDocument() {
               screenshot or photo of a pass. Or add the flight by number.
             </ThemedText>
           </ThemedView>
-          <PrimaryButton label="Add a flight by number →" onPress={() => router.replace('/add-flight')} />
+          <PrimaryButton label="Add a flight by number →" onPress={addByNumber} />
         </View>
       )}
 
@@ -555,7 +566,7 @@ export function ImportDocument() {
                   : 'We look for flight numbers, dates and boarding-pass barcodes. Scanned images and hotel or car bookings don’t carry those — try the airline’s e-ticket or confirmation PDF.'}
             </ThemedText>
           </ThemedView>
-          <PrimaryButton label="Add a flight by number →" onPress={() => router.replace('/add-flight')} />
+          <PrimaryButton label="Add a flight by number →" onPress={addByNumber} />
         </View>
       )}
 

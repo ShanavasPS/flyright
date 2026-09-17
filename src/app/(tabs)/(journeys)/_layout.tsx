@@ -22,6 +22,25 @@ export default function JourneysStack() {
         name="stats"
         options={{ title: 'Travel stats', headerBackButtonDisplayMode: 'minimal' }}
       />
+      {/* Adding a flight, one screen per step, pushed over My travels so the
+        back chevron and swipe return to what was already entered (the draft
+        they share is services/add-flight-draft). The details screen sets its
+        own title: it doubles as a trip's editor. The confirmation has no
+        header and no swipe: it leaves by itself. */}
+      <Stack.Screen
+        name="add"
+        options={{ title: 'Add Flight', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen
+        name="add-date"
+        options={{ title: 'Departure date', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen name="add-details" options={{ headerBackButtonDisplayMode: 'minimal' }} />
+      <Stack.Screen
+        name="add-result"
+        options={{ title: 'Your flight', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen name="add-done" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   );
 }

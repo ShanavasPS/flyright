@@ -3,6 +3,7 @@ import { act, create } from 'react-test-renderer';
 
 import { PassAction } from '@/components/pass-card';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
+import { useAddFlightDraft } from '@/services/add-flight-draft';
 import { AddFlight } from './add-flight';
 
 let mockSignedIn = false;
@@ -12,8 +13,8 @@ jest.mock('@clerk/expo', () => ({
   useAuth: () => ({ userId: mockSignedIn ? 'traveller' : null, isSignedIn: mockSignedIn, isLoaded: mockAuthLoaded }),
 }));
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush, back: jest.fn(), canGoBack: () => true }),
-  useLocalSearchParams: () => ({ flight: 'AY1331', date: '2026-09-14' }),
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn(), canGoBack: () => true }),
+  useLocalSearchParams: () => ({}),
   useFocusEffect: jest.fn(),
 }));
 jest.mock('@/services/flight-lookup', () => ({
@@ -54,7 +55,9 @@ const flight: FlightStatus = {
 };
 let client: QueryClient;
 let screen: ReturnType<typeof create> | undefined;
-const content = () => <QueryClientProvider client={client}><AddFlight /></QueryClientProvider>;
+// The result step, with the flight and day the earlier steps would have
+// left in the shared draft.
+const content = () => <QueryClientProvider client={client}><AddFlight step="result" /></QueryClientProvider>;
 async function settle() { await act(async () => { await jest.advanceTimersByTimeAsync(20); }); }
 async function mount() { await act(async () => { screen = create(content()); }); await settle(); }
 
@@ -64,6 +67,7 @@ beforeEach(() => {
   mockSignedIn = false;
   mockAuthLoaded = true;
   client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+  useAddFlightDraft.getState().reset({ flightNumber: 'AY1331', flightInput: 'AY1331', date: '2026-09-14' });
   jest.mocked(lookupFlight).mockReset().mockResolvedValue(flight);
 });
 afterEach(async () => {
@@ -94,7 +98,7 @@ it('offers sign-in at the limit and retries the same flight under the new accoun
   const signIn = screen!.root.findAllByType(PassAction).find(action => action.props.label === 'Sign in →');
   expect(signIn).toBeDefined();
   act(() => signIn!.props.onPress());
-  expect(mockPush).toHaveBeenCalledWith({ pathname: '/sign-in', params: { next: '/add-flight' } });
+  expect(mockPush).toHaveBeenCalledWith({ pathname: '/sign-in', params: { next: '/add-result' } });
 
   mockSignedIn = true;
   await act(async () => screen!.update(content()));

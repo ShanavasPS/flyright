@@ -20,7 +20,7 @@ export default function AssistantActionRoute() {
   if (Platform.OS === 'web') return <Redirect href="/check" />;
   if (!isAssistantAction(action)) return <Redirect href="/" />;
   if (!isLoaded) return <AssistantMessage title="Opening FlyRight…" loading />;
-  if (action === 'add-flight') return <Redirect href="/add-flight" />;
+  if (action === 'add-flight') return <Redirect href="/add" withAnchor />;
 
   // A fresh component on identity changes cannot navigate using the last
   // account's live-query result while the replacement query is still loading.
@@ -36,7 +36,7 @@ function OpenFlight({ action, userId }: { action: 'next-flight' | 'boarding-pass
   const flight = nextAssistantFlight(data, userId);
   if (!flight) return (
     <AssistantMessage title="No upcoming flight saved" detail="Add your next flight and it will be ready here.">
-      <PrimaryButton label="Add a flight" onPress={() => router.replace('/add-flight')} />
+      <PrimaryButton label="Add a flight" onPress={() => router.replace('/add')} />
     </AssistantMessage>
   );
 

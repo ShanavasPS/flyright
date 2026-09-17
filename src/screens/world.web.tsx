@@ -288,7 +288,7 @@ function EmptyCard() {
       <ThemedText type="small" themeColor="textSecondary" style={styles.emptyCopy}>
         Add a flight — past or future — and watch its route draw itself across the map.
       </ThemedText>
-      <Link href="/add-flight" asChild>
+      <Link href="/add" asChild>
         {/* Link's asChild Slot rejects array styles — keep this one flat. */}
         <Pressable
           accessibilityRole="button"
