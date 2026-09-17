@@ -59,8 +59,8 @@ final class FlyRightPhysicalUITests: XCTestCase {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         XCUIDevice.shared.press(.home)
         Thread.sleep(forTimeInterval: 1)
-        let start = springboard.coordinate(withNormalizedOffset: CGPoint(x: 0.5, y: 0.96))
-        let end = springboard.coordinate(withNormalizedOffset: CGPoint(x: 0.5, y: 0.35))
+        let start = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.96))
+        let end = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35))
         start.press(forDuration: 0.1, thenDragTo: end)
         let firstKey = springboard.keys[String(passcode.first!)]
         guard firstKey.waitForExistence(timeout: 4) else {
