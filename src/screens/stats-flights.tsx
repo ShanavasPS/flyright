@@ -1,22 +1,16 @@
 import { useAuth } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
-import { AirlineLogo } from '@/components/airline-logo';
 import { DataErrorState, LoadingState } from '@/components/data-state';
-import { RouteLeg } from '@/components/route-leg';
 import { SegmentTabs } from '@/components/segment-tabs';
-import { SheenCard } from '@/components/sheen-card';
-import { ListHeadline, RankRow, RecordCard } from '@/components/stats-cards';
-import { ThemedText } from '@/components/themed-text';
+import { FlightRow, ListHeadline, RecordCard } from '@/components/stats-cards';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { airportZone } from '@/services/airports';
-import { formatDayLabelWithYear } from '@/services/dates';
-import { useJourneys, type JourneyRow } from '@/services/journeys';
-import { airlineOf, formatKm, travelStats } from '@/services/timeline';
-import { formatMinutes, plural, rankFlights, rowMinutes, type FlightSort } from '@/services/travel-recap';
+import { useJourneys } from '@/services/journeys';
+import { formatKm, travelStats } from '@/services/timeline';
+import { plural, rankFlights, type FlightSort } from '@/services/travel-recap';
 
 const TABS: { key: FlightSort; label: string }[] = [
   { key: 'distance', label: 'Longest' },
@@ -38,6 +32,7 @@ export function StatsFlights() {
   const { userId } = useAuth();
   const { data: journeys, error } = useJourneys(userId);
   const [sort, setSort] = useState<FlightSort>('distance');
+  const [now] = useState(() => new Date());
   const rows = useMemo(() => journeys ?? [], [journeys]);
   const ranked = useMemo(() => rankFlights(rows, sort), [rows, sort]);
   const totals = useMemo(() => travelStats(rows), [rows]);
@@ -65,61 +60,17 @@ export function StatsFlights() {
             onPress={() => router.push({ pathname: '/journey/[id]', params: { id: first.id } })}
           />
         )}
-        {rest.length > 0 && (
-          <SheenCard style={styles.rows}>
-            {rest.map((row, i) => (
-              <FlightRow
-                key={row.id}
-                row={row}
-                rank={i + 2}
-                last={i === rest.length - 1}
-                onPress={() => router.push({ pathname: '/journey/[id]', params: { id: row.id } })}
-              />
-            ))}
-          </SheenCard>
-        )}
+        {rest.map((row, i) => (
+          <FlightRow
+            key={row.id}
+            row={row}
+            now={now}
+            badge={`#${i + 2} · ${Math.round(row.distanceKm).toLocaleString()} km`}
+            onPress={() => router.push({ pathname: '/journey/[id]', params: { id: row.id } })}
+          />
+        ))}
       </ScrollView>
     </ThemedView>
-  );
-}
-
-function FlightRow({
-  row,
-  rank,
-  last,
-  onPress,
-}: {
-  row: JourneyRow;
-  rank: number;
-  last: boolean;
-  onPress: () => void;
-}) {
-  const minutes = rowMinutes(row);
-  const airline = airlineOf(row);
-  const when = formatDayLabelWithYear(row.scheduledDeparture, airportZone(row.fromCode));
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-      <RankRow
-        rank={rank}
-        lead={<AirlineLogo number={row.number} carrier={row.carrier} size={36} />}
-        value={`${Math.round(row.distanceKm).toLocaleString()} km`}
-        caption={minutes ? formatMinutes(minutes) : undefined}
-        last={last}>
-        <RouteLeg
-          compact
-          leg={{
-            fromCode: row.fromCode,
-            toCode: row.toCode,
-            departure: row.scheduledDeparture,
-            arrival: row.scheduledArrival,
-            distanceKm: row.distanceKm,
-          }}
-        />
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-          {[row.number || airline, when].filter(Boolean).join(' · ')}
-        </ThemedText>
-      </RankRow>
-    </Pressable>
   );
 }
 
@@ -135,11 +86,6 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
     paddingBottom: Spacing.five,
     gap: Spacing.two,
-  },
-  rows: {
-    padding: 0,
-    gap: 0,
-    overflow: 'hidden',
   },
 });
 

@@ -7,6 +7,7 @@ import { RecordGlobe } from '@/components/record-globe';
 import { RouteLeg } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
+import { TripRow } from '@/components/trip-row';
 import {
   COBALT,
   MiniContrail,
@@ -441,6 +442,41 @@ export function AircraftCard({
           </View>
         </View>
       )}
+    </Pressable>
+  );
+}
+
+/** A flight in one of the stats lists: the same card My travels draws
+ * (components/trip-row), so a trip looks the same wherever it is listed.
+ * The meta line's right slot, where the journal keeps its countdown, takes
+ * what the list ranks by — "#2 · 9,275 km", a registration. */
+export function FlightRow({
+  row,
+  now,
+  badge,
+  onPress,
+}: {
+  row: JourneyRow;
+  now: Date;
+  badge?: string | null;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
+      <TripRow
+        trip={row}
+        now={now}
+        badge={
+          badge ? (
+            <ThemedText type="smallBold" themeColor="heading">
+              {badge}
+            </ThemedText>
+          ) : undefined
+        }
+      />
     </Pressable>
   );
 }

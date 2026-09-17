@@ -103,4 +103,14 @@ appId: com.shanavasshaji.flyright
           timeout: 10000
       - assertVisible: ".*aircraft type.*"
       - tapOn: "By distance"
+      - tapOn: "Types"
+      # The first type opens its own page: the airframes and the flights on it.
+      - tapOn:
+          id: "aircraft-.*"
+          index: 0
+      - extendedWaitUntil:
+          visible: ".*flight.*"
+          timeout: 10000
+      - assertVisible: "Newest first"
+      - back
       - tapOn: "Makers"

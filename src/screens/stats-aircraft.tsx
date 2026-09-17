@@ -1,6 +1,7 @@
 import { useAuth } from '@clerk/expo';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DataErrorState, LoadingState } from '@/components/data-state';
 import { SegmentTabs } from '@/components/segment-tabs';
@@ -27,6 +28,7 @@ const TABS: { key: View_ | 'distance'; label: string }[] = [
  * Only flights found by number know their aircraft, and the headline says
  * how many of the trips that is. */
 export function StatsAircraft() {
+  const router = useRouter();
   const { userId } = useAuth();
   const { data: journeys, error } = useJourneys(userId);
   const [tab, setTab] = useState<View_ | 'distance'>('types');
@@ -59,6 +61,7 @@ export function StatsAircraft() {
             totalFlights={known}
             label={sort === 'distance' ? 'Furthest in' : 'Most flown aircraft'}
             compact
+            onPress={() => router.push({ pathname: '/stats/aircraft/[model]', params: { model: first.model } })}
           />
         )}
         {tab === 'makers' ? (
@@ -77,6 +80,7 @@ export function StatsAircraft() {
                   rank={i + 1}
                   share={(sort === 'distance' ? type.km : type.flights) / most}
                   last={i === types.length - 1}
+                  onPress={() => router.push({ pathname: '/stats/aircraft/[model]', params: { model: type.model } })}
                 />
               ))}
             </SheenCard>
@@ -109,15 +113,23 @@ function TypeRow({
   rank,
   share,
   last,
+  onPress,
 }: {
   type: ReturnType<typeof aircraftRanks>[number];
   rank: number;
   share: number;
   last: boolean;
+  onPress: () => void;
 }) {
   const theme = useTheme();
   const colours = makerColours(type.maker, theme.tint);
   return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${type.model}, ${plural(type.flights, 'flight')}. Open its flights`}
+      testID={`aircraft-${type.model}`}
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
     <RankRow
       rank={rank}
       lead={<MakerMark maker={type.maker} />}
@@ -136,6 +148,7 @@ function TypeRow({
         <View style={[styles.fill, { width: `${Math.max(3, Math.round(share * 100))}%`, backgroundColor: colours.light }]} />
       </View>
     </RankRow>
+    </Pressable>
   );
 }
 
