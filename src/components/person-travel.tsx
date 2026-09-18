@@ -3,15 +3,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { LayoverMark } from '@/components/layover-mark';
-import { RouteAtlas } from '@/components/route-atlas';
 import { RouteLeg } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
+import { TravelGlobe } from '@/components/travel-globe';
 import { TripRow } from '@/components/trip-row';
 import { UpdatesCard } from '@/components/trip-updates';
-import { mapColors } from '@/components/world-map';
 import { Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PublicSession } from '../../convex/liveShared';
 
@@ -130,9 +128,14 @@ export function PersonTravel({
   dimFor?: (journeyId: string) => boolean;
   afterUpcoming?: React.ReactNode;
 }) {
-  const { sea } = mapColors(useColorScheme() === 'dark');
   const routes = routesOf(p);
   const { liveJourneyId } = p;
+  // The trip they are on, for the globe: its plane where the timetable puts
+  // it, the beacon on it — or on the origin while they are still on the ground.
+  const liveOnGlobe =
+    p.live && liveJourneyId
+      ? { journeyId: liveJourneyId, progress: sessionProgress(p.live.session, now), now: now.getTime() }
+      : null;
   const allLegs = [...p.upcoming, ...p.past].map((t) => ({ ...t, id: t.journeyId }));
   const links = connectionsInto(allLegs);
   const connections = links;
@@ -197,9 +200,9 @@ export function PersonTravel({
 
   return (
     <>
-      {/* Their travel, before the list of it. Opens the same map full
-          screen — on the person, never as a mode of the viewer's own World
-          tab (see screens/person-world). */}
+      {/* Their travel, before the list of it: the same globe as the World
+          tab, still. Opens their world full screen — on the person, never as
+          a mode of the viewer's own World tab (see screens/person-world). */}
       {routes.length > 0 && (
         <Pressable
           accessibilityRole="button"
@@ -207,8 +210,8 @@ export function PersonTravel({
           disabled={!onOpenWorld}
           onPress={onOpenWorld}
           style={({ pressed }) => pressed && styles.pressed}>
-          <View style={[styles.map, { backgroundColor: sea }]}>
-            <RouteAtlas journeys={routes} height={PERSON_MAP_HEIGHT} />
+          <View style={styles.map}>
+            <TravelGlobe journeys={routes} height={PERSON_MAP_HEIGHT} live={liveOnGlobe} />
           </View>
         </Pressable>
       )}

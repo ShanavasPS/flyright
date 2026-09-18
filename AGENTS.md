@@ -68,8 +68,9 @@ use for EU261 claims. Cost is per result set of 15 records; the monthly cap is
 
 # World tab globe
 
-The World tab and the trip page's inset draw their own globe with
-react-native-skia (`src/components/globe-view.tsx`, maths in
+The World tab, the trip page's inset and the person page's travel card
+(`src/components/travel-globe.tsx`; the web twin keeps the SVG atlas) draw
+their own globe with react-native-skia (`src/components/globe-view.tsx`, maths in
 `src/services/globe.ts`, textures from `scripts/generate-globe-texture.mjs`).
 react-native-maps and the Android Google Maps key are gone; the EAS
 `GOOGLE_MAPS_ANDROID_API_KEY` variable and the GCP key are unused and can be
