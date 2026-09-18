@@ -1,4 +1,4 @@
-import { legDepartingOn, normalizeLeg } from '../../convex/flightNormalize';
+import { legDepartingOn, normalizeLeg, normalizePosition } from '../../convex/flightNormalize';
 
 // Three months after the flight: the day the receipt was imported.
 const NOW = Date.parse('2026-09-06T18:00:00Z');
@@ -97,5 +97,58 @@ describe('legDepartingOn — the provider answers a date with everything that to
   it('is null for an empty or malformed answer', () => {
     expect(legDepartingOn([], '2026-09-19')).toBeNull();
     expect(legDepartingOn(null, '2026-09-19')).toBeNull();
+  });
+});
+
+describe('normalizePosition', () => {
+  // AA1 over Kansas, as the direct gateway answered `withLocation=true` on
+  // 2026-09-18: the QNH altitude is 0 (no pressure setting), the pressure
+  // altitude is the real one, and the timestamp has no zone suffix.
+  const location = {
+    pressureAltitude: { meter: 10363.2, km: 10.36, mile: 6.44, nm: 5.6, feet: 34000 },
+    altitude: { meter: 0, km: 0, mile: 0, nm: 0, feet: 0 },
+    pressure: { hPa: 0, inHg: 0, mmHg: 0 },
+    groundSpeed: { kt: 460, kmPerHour: 852, miPerHour: 529, meterPerSecond: 237 },
+    trueTrack: { deg: 261, rad: 4.5553 },
+    vsiFpm: 64,
+    reportedAtUtc: '2026-09-18 15:11',
+    lat: 39.33879,
+    lon: -95.84509,
+  };
+
+  it('reads the fix, preferring the pressure altitude when QNH is unknown', () => {
+    expect(normalizePosition(location)).toEqual({
+      latitude: 39.33879,
+      longitude: -95.84509,
+      altitudeFt: 34000,
+      groundSpeedKt: 460,
+      trackDeg: 261,
+      reportedAt: '2026-09-18T15:11Z',
+    });
+  });
+
+  it('is null without coordinates, a time, or a location at all', () => {
+    expect(normalizePosition(null)).toBeNull();
+    expect(normalizePosition({ ...location, lat: undefined })).toBeNull();
+    expect(normalizePosition({ ...location, reportedAtUtc: undefined })).toBeNull();
+  });
+
+  it('rides along on an airborne leg and is dropped once landed', () => {
+    const airborne = normalizeLeg(
+      { ...leg('EnRoute', { predictedTime: { utc: '2026-09-18 18:09Z' } }), location },
+      'AA1',
+      '2026-09-18',
+      null,
+      Date.parse('2026-09-18T15:12:00Z'),
+    );
+    expect(airborne.position?.latitude).toBe(39.33879);
+    const landed = normalizeLeg(
+      { ...leg('Arrived', { actualTime: { utc: '2026-09-18 18:05Z' } }), location },
+      'AA1',
+      '2026-09-18',
+      null,
+      Date.parse('2026-09-18T19:00:00Z'),
+    );
+    expect(landed.position).toBeNull();
   });
 });

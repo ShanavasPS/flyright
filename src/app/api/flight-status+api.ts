@@ -80,6 +80,7 @@ function mockLeg(flight: string, date: string) {
     actualDeparture: isPast ? (delayMinutes ? `${date}T11:20Z` : `${date}T08:02Z`) : null,
     estimatedArrival: delayMinutes ? `${date}T13:50Z` : `${date}T10:35Z`,
     actualArrival: isPast ? (delayMinutes ? `${date}T13:50Z` : `${date}T10:31Z`) : null,
+    position: null,
   };
 }
 

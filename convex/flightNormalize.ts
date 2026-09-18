@@ -18,6 +18,50 @@ export function toIso(s: string | undefined | null): string | null {
   return s ? s.replace(' ', 'T') : null;
 }
 
+/** Where the aircraft was last seen — a flight in the air, from the
+ * provider's ADS-B feed (`withLocation`). Null on the ground, and over
+ * oceans and other stretches without receiver coverage, where the map has
+ * to dead-reckon along the route instead. */
+export interface FlightPosition {
+  latitude: number;
+  longitude: number;
+  altitudeFt: number | null;
+  groundSpeedKt: number | null;
+  /** True track, degrees clockwise from north. */
+  trackDeg: number | null;
+  /** ISO instant the position was reported. */
+  reportedAt: string;
+}
+
+/** The provider's `location` → FlightPosition. Its timestamp comes without
+ * a zone suffix ("2026-09-18 15:11") though it is UTC, so one is added; a
+ * record with no usable coordinates or time is no position at all. */
+export function normalizePosition(location: any): FlightPosition | null {
+  if (!location || typeof location !== 'object') return null;
+  const latitude = Number(location.lat);
+  const longitude = Number(location.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  const stamp = toIso(location.reportedAtUtc);
+  if (!stamp) return null;
+  const reportedAt = /(Z|[+-]\d\d:?\d\d)$/.test(stamp) ? stamp : `${stamp}Z`;
+  if (Number.isNaN(Date.parse(reportedAt))) return null;
+  // The QNH-corrected altitude reads 0 when the provider has no pressure
+  // setting; the pressure altitude is the one that is always there.
+  const altitude = Number(location.altitude?.feet);
+  const pressureAltitude = Number(location.pressureAltitude?.feet);
+  const altitudeFt = altitude > 0 ? altitude : pressureAltitude > 0 ? pressureAltitude : null;
+  const groundSpeed = Number(location.groundSpeed?.kt);
+  const track = Number(location.trueTrack?.deg);
+  return {
+    latitude,
+    longitude,
+    altitudeFt,
+    groundSpeedKt: Number.isFinite(groundSpeed) ? groundSpeed : null,
+    trackDeg: Number.isFinite(track) ? track : null,
+    reportedAt,
+  };
+}
+
 export interface InboundLeg {
   flight: string | null;
   from: { code: string | null };
@@ -57,6 +101,8 @@ export interface NormalizedFlight {
   actualDeparture: string | null;
   estimatedArrival: string | null;
   actualArrival: string | null;
+  /** Last reported position while airborne; null otherwise. */
+  position: FlightPosition | null;
 }
 
 /** Statuses in which the flight is under way. Before landing, an
@@ -156,6 +202,8 @@ export function normalizeLeg(
     actualDeparture: toIso(dep.actualTime?.utc ?? dep.runwayTime?.utc),
     estimatedArrival: toIso(arr.predictedTime?.utc ?? arr.revisedTime?.utc),
     actualArrival: toIso(actualArrival),
+    // A landed flight's last fix is history, not a position.
+    position: landed ? null : normalizePosition(leg.location),
   };
 }
 

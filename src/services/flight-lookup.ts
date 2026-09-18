@@ -11,6 +11,18 @@ import { getClerkInstance } from '@clerk/expo';
 import { Platform } from 'react-native';
 import { LOOKUP_GAP_MS, createSerialQueue } from '@/services/lookup-queue';
 
+/** Mirrors convex/flightNormalize's FlightPosition. */
+export interface FlightPosition {
+  latitude: number;
+  longitude: number;
+  altitudeFt: number | null;
+  groundSpeedKt: number | null;
+  /** True track, degrees clockwise from north. */
+  trackDeg: number | null;
+  /** ISO instant the position was reported. */
+  reportedAt: string;
+}
+
 export interface FlightStatus {
   flight: string;
   date: string;
@@ -41,6 +53,9 @@ export interface FlightStatus {
   actualDeparture?: string | null;
   estimatedArrival?: string | null;
   actualArrival?: string | null;
+  /** The aircraft's last reported position while in the air (null on the
+   * ground or out of receiver coverage); absent from older responses. */
+  position?: FlightPosition | null;
   /** The operating airframe, when the provider knows it. */
   aircraft?: { reg: string; model: string | null } | null;
   /** The aircraft's previous rotation leg — only present when the lookup

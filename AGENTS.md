@@ -83,7 +83,14 @@ choice is remembered (`src/services/globe-daylight.ts`); the trip inset places
 the sun at take-off / landing / now and says so in its caption. Planes are
 drawn only on upcoming routes and a flight in the air (`pastPlanes` restores
 them for the trip inset). The flight whose travel day is on the home screen
-(`useHeroTrip`) gets radar rings on its origin (`beacon` prop).
+(`useHeroTrip`) gets radar rings on its origin (`beacon` prop), and once it
+has left, its plane moves: `hooks/use-live-plane` + `services/flight-position`
+place it from the provider's last reported position (AeroDataBox
+`withLocation=true`, normalised as `position` on the flight status — null
+over oceans and on the ground) carried forward along its track, else from the
+timetable (`flightProgress`). The inset caption says which ("Plane as
+reported" / "Plane estimated"). The server side of this (`providerFetch`,
+`flightNormalize`) reaches production with the next backend + hosting deploy.
 
 <!-- stripe-projects-cli managed:agents-md:start -->
 # The website (getflyright.com)

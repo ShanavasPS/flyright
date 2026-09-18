@@ -394,6 +394,7 @@ export function JourneyDetail({
           <RouteMap
             journey={mapSource}
             path={flightPath}
+            live={row && !isDemo ? { journey: row, state: travelState, facts: getFlightFacts(row.id), now } : null}
             onPress={() => {
               // Hand the trip to the World tab (see services/world-focus).
               // The demo isn't a DB row, so World shows every travel for it.

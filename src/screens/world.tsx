@@ -14,6 +14,7 @@ import { useHeroTrip } from '@/components/travel-day-banner';
 import { EmptyPeriodCard, PeriodButton, PeriodCard } from '@/components/world-period-card';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useLivePlane } from '@/hooks/use-live-plane';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
@@ -31,6 +32,7 @@ import {
 import { useJourneys, type JourneyRow } from '@/services/journeys';
 import { useGlobeTextures } from '@/services/globe-textures';
 import { cityOf, formatKm, travelRecap } from '@/services/timeline';
+import { EMPTY_TRAVEL_DAY } from '@/services/travel-day';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 import { ALL_TIME, filterByPeriod, periodKey, type WorldPeriod } from '@/services/world-period';
 import { openWorldShare } from '@/services/world-share';
@@ -225,15 +227,29 @@ export function WorldCanvas({
 
   const daylight = useGlobeDaylight();
   // The flight whose travel day is on the home screen (T−24h through
-  // landing) gets a beacon on its origin, so the globe points at what is
-  // next the same way the hero card does — while that trip is on the globe.
-  const heroNow = useNow();
+  // landing) gets a beacon, so the globe points at what is next the same
+  // way the hero card does — on its origin until it leaves, then on the
+  // aircraft, which moves with the clock (see hooks/use-live-plane). Only
+  // while that trip is on the globe.
+  const heroNow = useNow(15_000);
   const hero = useHeroTrip(rows, heroNow);
+  const heroRoute = useMemo(
+    () => (hero ? (data.routes.find((route) => route.legs.some((leg) => leg.id === hero.journey.id)) ?? null) : null),
+    [data, hero],
+  );
+  const livePlane = useLivePlane(
+    hero?.journey ?? null,
+    hero?.state ?? EMPTY_TRAVEL_DAY,
+    heroRoute,
+    heroNow,
+    focused && appActive,
+  );
   const beacon = useMemo(() => {
-    if (!hero || !visible.some((row) => row.id === hero.journey.id)) return null;
+    if (!hero || !heroRoute) return null;
+    if (livePlane) return livePlane.coordinate;
     const origin = getAirport(hero.journey.fromCode);
     return origin ? { latitude: origin.lat, longitude: origin.lon } : null;
-  }, [hero, visible]);
+  }, [hero, heroRoute, livePlane]);
 
   /** What the poster shows follows what the globe shows: the tapped route's
    * legs, the handed-off trip, else the period's rows. */
@@ -271,6 +287,7 @@ export function WorldCanvas({
           holdFit={moved}
           daylight={daylight}
           beacon={beacon}
+          livePlane={livePlane}
           // Comets and pulses only while the tab is on screen in a
           // foregrounded app — animation for nobody would burn battery.
           animate={focused && appActive}

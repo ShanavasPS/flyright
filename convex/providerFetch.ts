@@ -99,9 +99,12 @@ export async function providerFetch(path: string): Promise<ProviderResponse> {
   };
 }
 
-/** Convenience for the two endpoints the app uses. */
+/** Convenience for the two endpoints the app uses. The status call asks for
+ * the aircraft's live position too (`withLocation`): it comes back only
+ * while the flight is in the air and within receiver coverage, and costs
+ * nothing extra — unlike `withFlightPlan`, which bills double. */
 export const flightByNumberPath = (flight: string, date: string): string =>
-  `/flights/number/${encodeURIComponent(flight)}/${date}`;
+  `/flights/number/${encodeURIComponent(flight)}/${date}?withLocation=true`;
 
 export const flightsByRegistrationPath = (reg: string, date: string): string =>
   `/flights/reg/${encodeURIComponent(reg)}/${date}`;

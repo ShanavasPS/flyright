@@ -13,6 +13,7 @@ import { landedOrLater, presumedFlightStage } from '../../convex/liveShared';
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
 import { dayOffset, dayOffsetMark, flightInstant, formatTime } from '@/services/dates';
+import type { FlightPosition } from '@/services/flight-lookup';
 import type { JourneyRow } from '@/services/journeys';
 
 /** The departure-airport walk, in order. Skipping is normal — not every
@@ -194,6 +195,9 @@ export interface FlightFacts {
   actualDeparture: string | null;
   estimatedArrival: string | null;
   actualArrival: string | null;
+  /** Last reported position while in the air (see services/flight-position);
+   * optional because facts cached before it existed lack it. */
+  position?: FlightPosition | null;
 }
 
 export const EMPTY_FACTS: FlightFacts = {
@@ -207,6 +211,7 @@ export const EMPTY_FACTS: FlightFacts = {
   actualDeparture: null,
   estimatedArrival: null,
   actualArrival: null,
+  position: null,
 };
 
 export const stageIndex = (stage: TravelStage | null): number =>

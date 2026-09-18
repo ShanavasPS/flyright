@@ -34,7 +34,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { COMET_LENGTH, routePlane, type GeoAirport, type GeoRoute } from '@/services/geo';
+import { COMET_LENGTH, routePlane, type GeoAirport, type GeoRoute, type LatLng } from '@/services/geo';
 import {
   MAX_SCALE,
   MAX_TILT,
@@ -145,6 +145,15 @@ export interface GlobeBeacon {
   longitude: number;
 }
 
+/** An aircraft in the air: which route pair it flies and where it is now.
+ * That route's own plane (pulsing by the origin, or mid-arc) gives way to it. */
+export interface GlobeLivePlane {
+  key: string;
+  coordinate: LatLng;
+  /** Compass heading, degrees clockwise from north. */
+  heading: number;
+}
+
 /**
  * The earth, lit and turning, with the traveller's routes drawn on it.
  *
@@ -193,6 +202,7 @@ export function GlobeView({
   daylight = false,
   sunAt = null,
   beacon = null,
+  livePlane = null,
   pastPlanes = false,
   onSelect,
   onMoved,
@@ -226,6 +236,8 @@ export function GlobeView({
   sunAt?: number | null;
   /** A coordinate to mark with radar rings, or null for none. */
   beacon?: GlobeBeacon | null;
+  /** A flight in the air, drawn where it is instead of its route's plane. */
+  livePlane?: GlobeLivePlane | null;
   /** Draw a plane on flown routes too (the trip page's inset). */
   pastPlanes?: boolean;
   onSelect?: (key: string | null) => void;
@@ -516,10 +528,26 @@ export function GlobeView({
   const gesture = Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
 
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  const upcomingRoutes = packed.filter((route) => route.plane.upcoming);
+  // The route with a plane in the air draws that plane and nothing else
+  // moving — no comet, no pulse by the origin.
+  const liveKey = livePlane?.key ?? null;
+  const liveRoute = useMemo<PackedRoute | null>(() => {
+    if (!livePlane) return null;
+    const route = packed.find((candidate) => candidate.key === livePlane.key);
+    if (!route) return null;
+    const { latitude, longitude } = livePlane.coordinate;
+    const aim = offsetAlong(latitude, longitude, livePlane.heading, 60);
+    return {
+      ...route,
+      plane: { ...route.plane, anchor: toVector(latitude, longitude), aim: toVector(aim.latitude, aim.longitude) },
+    };
+  }, [packed, livePlane]);
+  const upcomingRoutes = packed.filter((route) => route.plane.upcoming && route.key !== liveKey);
   // Aircraft on routes that are not waiting to leave: the one in the air,
   // and — only when asked — a plane mid-arc on a flown route.
-  const stillRoutes = packed.filter((route) => !route.plane.upcoming && (pastPlanes || route.plane.live));
+  const stillRoutes = packed.filter(
+    (route) => route.key !== liveKey && !route.plane.upcoming && (pastPlanes || route.plane.live),
+  );
   const beaconVector = useMemo(
     () => (beacon ? toVector(beacon.latitude, beacon.longitude) : null),
     [beacon],
@@ -562,6 +590,7 @@ export function GlobeView({
         {stillRoutes.map((route) => (
           <PlaneGlyph key={route.key} route={route} camera={camera} colors={colors} clock={null} />
         ))}
+        {liveRoute && <PlaneGlyph route={liveRoute} camera={camera} colors={colors} clock={null} />}
         {upcomingRoutes.length > 0 && (
           <PulsingPlanes routes={upcomingRoutes} camera={camera} colors={colors} animate={animate} />
         )}

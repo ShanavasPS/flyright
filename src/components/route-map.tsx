@@ -10,9 +10,20 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { flightInstant } from '@/services/dates';
+import { planeNow } from '@/services/flight-position';
 import { buildWorldRoutes, pathCaption, type RoutePath, type RouteSource } from '@/services/geo';
 import { useGlobeDaylight } from '@/services/globe-daylight';
 import { useGlobeTextures } from '@/services/globe-textures';
+import { flightProgress, type FlightFacts, type TravelDayState, type TravelJourney } from '@/services/travel-day';
+
+/** What the inset needs to draw the aircraft where it is during the flight:
+ * the trip's travel-day state and cached facts, read against `now`. */
+export interface RouteMapLive {
+  journey: TravelJourney;
+  state: TravelDayState;
+  facts: FlightFacts;
+  now: number;
+}
 
 /** The journey fields the inset needs: the route, plus the landing time for
  * placing the sun once the flight is over. */
@@ -61,10 +72,13 @@ export const ROUTE_MAP_HEIGHT = 220;
 export function RouteMap({
   journey,
   path,
+  live = null,
   onPress,
 }: {
   journey: RouteMapSource;
   path?: RoutePath | null;
+  /** The flight in progress, when this trip is the one under way. */
+  live?: RouteMapLive | null;
   onPress?: () => void;
 }) {
   const theme = useTheme();
@@ -79,6 +93,16 @@ export function RouteMap({
   const data = useMemo(() => buildWorldRoutes([journey], now, paths), [journey, now, paths]);
   const route = data.routes[0];
   const sun = useMemo(() => sunMoment(journey, now), [journey, now]);
+  // In the air: the plane where the flight is, from its last reported
+  // position or the timetable, instead of parked by the origin.
+  const livePlane = useMemo(() => {
+    if (!live || !route) return null;
+    const progress = flightProgress(live.journey, live.state, live.facts, new Date(live.now));
+    if (progress <= 0 || progress >= 1) return null;
+    const leg = route.legs.find((candidate) => candidate.id === live.journey.id);
+    const forward = leg ? leg.from.iata === route.from.iata : true;
+    return { key: route.key, ...planeNow(route, forward, progress, live.facts.position, live.now) };
+  }, [live, route]);
   // The globe is sized to the card as it came out, so it is measured first;
   // the sea-coloured background covers the frame until the width lands.
   const [width, setWidth] = useState(0);
@@ -120,11 +144,12 @@ export function RouteMap({
           fitPad={0.7}
           daylight={daylight}
           sunAt={sun.at}
+          livePlane={livePlane}
           // This globe is about one trip, so its aircraft stays even once flown.
           pastPlanes
         />
       )}
-      <PathCaption path={route.path} daylight={daylight ? sun.label : null} />
+      <PathCaption path={route.path} daylight={daylight ? sun.label : null} plane={livePlane?.source ?? null} />
       {/* The pill is a promise to open somewhere. Without a destination it
           would be a button that lies, so it goes rather than sits there
           inert. */}
