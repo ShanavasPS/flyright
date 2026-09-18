@@ -257,7 +257,11 @@ export function mergeSegments(segments: { latitude: number; longitude: number }[
  * the centre projects `r · sin(theta)` from it, so the radius that puts the
  * farthest point at the strip's edge is half the strip over that sine.
  * Anything spread wider than a hemisphere's worth just gets the whole globe
- * (scale 1). With nothing to frame, a gentle default over the Atlantic. */
+ * (scale 1). With nothing to frame, a gentle default over the Atlantic.
+ *
+ * With `focus` — a unit vector — the camera faces that point instead of the
+ * centroid and frames the set around it: the next flight, or the one in
+ * the air, in the middle, with as much of the rest as fits around it. */
 export function fitCamera(
   packed: Float32Array[],
   stripWidth: number,
@@ -265,6 +269,7 @@ export function fitCamera(
   fitR: number,
   maxScale: number,
   pad = 0.82,
+  focus: readonly [number, number, number] | null = null,
 ): GlobeCamera {
   let sx = 0;
   let sy = 0;
@@ -280,9 +285,9 @@ export function fitCamera(
   }
   const len = Math.hypot(sx, sy, sz);
   if (!count || len < 1e-6) return { lambda: -20 * RAD, phi: 25 * RAD, scale: 1 };
-  const cx = sx / len;
-  const cy = sy / len;
-  const cz = sz / len;
+  const cx = focus ? focus[0] : sx / len;
+  const cy = focus ? focus[1] : sy / len;
+  const cz = focus ? focus[2] : sz / len;
   let maxTheta = 0;
   for (const p of packed) {
     for (let i = 0; i < p.length; i += 3) {

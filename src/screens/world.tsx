@@ -287,6 +287,9 @@ export function WorldCanvas({
           holdFit={moved}
           daylight={daylight}
           beacon={beacon}
+          // The overview faces the trip of the day when there is one: All
+          // travels and Recenter both land with it in the middle.
+          fitFocus={beacon}
           livePlane={livePlane}
           // Comets and pulses only while the tab is on screen in a
           // foregrounded app — animation for nobody would burn battery.

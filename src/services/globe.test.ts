@@ -151,6 +151,22 @@ describe('fitCamera', () => {
     expect(cam.scale).toBeLessThanOrEqual(MAX_SCALE);
     expect(cam.scale).toBeGreaterThan(1);
   });
+  it('faces a focus instead of the centroid, and fits the set around it', () => {
+    const europe = packVectors([
+      { latitude: 60.3, longitude: 24.9 },
+      { latitude: 51.5, longitude: -0.1 },
+      { latitude: 41.3, longitude: 2.1 },
+    ]);
+    const helsinki = toVector(60.3, 24.9);
+    const cam = fitCamera([europe], 400, 500, fitR, MAX_SCALE, 0.82, helsinki);
+    expect(cam.phi * DEG).toBeCloseTo(60.3, 0);
+    expect(cam.lambda * DEG).toBeCloseTo(24.9, 0);
+    // Barcelona is farther from Helsinki than from the centroid, so the
+    // framing is a little wider than the plain fit.
+    const plain = fitCamera([europe], 400, 500, fitR, MAX_SCALE);
+    expect(cam.scale).toBeLessThan(plain.scale);
+    expect(cam.scale).toBeGreaterThan(1);
+  });
   it('falls back to a default view with nothing to frame', () => {
     expect(fitCamera([], 400, 500, fitR, MAX_SCALE)).toEqual({ lambda: -20 * RAD, phi: 25 * RAD, scale: 1 });
   });

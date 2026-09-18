@@ -203,6 +203,7 @@ export function GlobeView({
   sunAt = null,
   beacon = null,
   beaconAnimate = animate,
+  fitFocus = null,
   livePlane = null,
   pastPlanes = false,
   onSelect,
@@ -240,6 +241,10 @@ export function GlobeView({
   /** Whether the rings spread — by default with everything else; the
    * still inset keeps them moving on their own. */
   beaconAnimate?: boolean;
+  /** The coordinate the fit faces (the overview, Recenter, All travels)
+   * instead of the routes' centroid — the beacon, so the next flight or the
+   * one in the air sits in the middle. */
+  fitFocus?: GlobeBeacon | null;
   /** A flight in the air, drawn where it is instead of its route's plane. */
   livePlane?: GlobeLivePlane | null;
   /** Draw a plane on flown routes too (the trip page's inset). */
@@ -297,8 +302,9 @@ export function GlobeView({
         fitR,
         MAX_SCALE,
         fitPad,
+        fitFocus ? toVector(fitFocus.latitude, fitFocus.longitude) : null,
       ),
-    [packed, airports, width, stripHeight, fitR, fitPad],
+    [packed, airports, width, stripHeight, fitR, fitPad, fitFocus],
   );
 
   const lambda = useSharedValue(fit.lambda);
