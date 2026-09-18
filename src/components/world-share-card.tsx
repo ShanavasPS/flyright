@@ -92,7 +92,7 @@ export const WorldShareCard = forwardRef<
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}>
-                {stat.value}
+                <StatValue value={stat.value} size={story ? 24 : 20} />
               </Text>
               <Text style={[styles.statLabel, muted]} numberOfLines={1}>
                 {stat.label}
@@ -142,6 +142,28 @@ export const WorldShareCard = forwardRef<
     </View>
   );
 });
+
+/** A number with its unit the way type wants it: the digits at full size,
+ * the unit smaller and a hair apart, on the same baseline — "70 h", not
+ * "70h" in one run. Works for "45m" and "9h 40m" too; a bare number or a
+ * word passes through. */
+function StatValue({ value, size }: { value: string; size: number }) {
+  const parts = value.match(/\d[\d,.]*|[^\d\s,.]+|\s+/g) ?? [value];
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^[^\d\s,.]+$/.test(part) ? (
+          <Text key={i} style={{ fontSize: Math.round(size * 0.6), fontWeight: '700', letterSpacing: 0 }}>
+            {' '}
+            {part}
+          </Text>
+        ) : (
+          <Text key={i}>{part}</Text>
+        ),
+      )}
+    </>
+  );
+}
 
 /** The band's fade: solid card colour behind the headline, clear over the
  * middle, solid again where the numbers start. Hex-8 stops — RN's gradient
