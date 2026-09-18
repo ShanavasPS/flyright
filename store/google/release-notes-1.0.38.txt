@@ -1,0 +1,5 @@
+• The globe shows day and night as they are right now — a sun button on the World tab switches it.
+• During a flight your plane moves along its route, from its last reported position or the timetable; a radar beacon marks the trip of the day.
+• Flown routes no longer carry a plane; the trip page shows how far along a flight is.
+• Share your world as a poster: story or square, dark or light, with a glow where you fly most.
+• A person's page shows their travel on the same globe.

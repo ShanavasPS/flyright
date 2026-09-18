@@ -1,0 +1,13 @@
+FlyRight 1.0.38 changes how the World tab's globe is lit and how a flight in progress is drawn.
+
+World tab: the globe now shows day and night as they are at the moment of viewing — the sun's real position, computed on the device. The sun button in the World tab header (next to Share) switches between this and the previous fixed lighting; the choice is remembered. The trip page's small globe places the sun at the flight's take-off or landing time. No location permission is used for any of this; the position of the sun follows the clock only.
+
+Flights in progress: while a flight is between its departure and arrival times, its aircraft moves along the route on the World tab and on the trip page. The position is the aircraft's last reported location when the flight-status provider (AeroDataBox, already used for flight status) reports one, and otherwise the fraction of the flight elapsed by the timetable. Spreading rings mark the trip of the day: on the origin airport before departure, on the aircraft in the air, on the destination after landing. Aircraft glyphs are no longer drawn on flights already flown. The trip page's route line fills up as the flight progresses, and its chip reads "In the air".
+
+Share your world (World tab → Share): the poster can be a 9:16 story or a 1:1 square, in a dark or light theme, with an optional "Heat" glow layer drawn on the device's GPU showing where the traveller flies most. Sharing uses the system share sheet; nothing is uploaded by the app.
+
+People: a person's page shows their travel on the same globe, and a trip under way is no longer followed by an empty "Upcoming" section.
+
+Reviewing the moving aircraft requires a flight whose times straddle the moment of review; the reviewer account holds past trips, so the globe and trip pages can be reviewed with a flight added by hand from My travels (+ → add a trip by hand) with a departure time shortly before and an arrival time after the time of review. Sign in with the configured reviewer account: enter the demo email, then choose Use another method and Sign in with your password. The existing demo credentials are unchanged.
+
+No purchase is required for any of this. Existing account and trip data are retained on update.
