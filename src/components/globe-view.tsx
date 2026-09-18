@@ -80,10 +80,16 @@ function cometPeriod(samples: number): number {
 const PULSE_PERIOD_MS = 1400;
 /** Comet alpha is drawn in this many steps, each its own stroke. */
 const COMET_STEPS = 6;
-/** The beacon's rings: one ring's life, and how far it spreads, in points. */
+/** The beacon's rings: one ring's life, how many are in flight at once,
+ * how far each spreads (points) and how heavy it is drawn. Tuned by eye
+ * with the user (2026-09-18): clearly there across a busy globe, without
+ * shouting. */
 const BEACON_PERIOD_MS = 2000;
 const BEACON_RINGS = 2;
-const BEACON_REACH = 16;
+const BEACON_REACH = 23;
+const BEACON_STROKE = 2;
+/** A soft halo under the rings, so the spot is marked even between pulses. */
+const BEACON_HALO = 8;
 /** The sun moves a quarter of a degree a minute — under a pixel here. */
 const SUN_TICK_MS = 60_000;
 /** Flipping the switch fades between the two lightings. */
@@ -719,11 +725,17 @@ function Beacon({
   });
   const x = useDerivedValue(() => place.value.x);
   const y = useDerivedValue(() => place.value.y);
+  const haloOpacity = useDerivedValue(() => (place.value.visible ? 0.14 : 0));
   const rings = [];
   for (let i = 0; i < BEACON_RINGS; i += 1) rings.push(i);
-  return rings.map((i) => (
-    <BeaconRing key={i} index={i} x={x} y={y} place={place} clock={moving ? clock : null} color={color} />
-  ));
+  return (
+    <>
+      <Circle cx={x} cy={y} r={BEACON_HALO} color={color} opacity={haloOpacity} />
+      {rings.map((i) => (
+        <BeaconRing key={i} index={i} x={x} y={y} place={place} clock={moving ? clock : null} color={color} />
+      ))}
+    </>
+  );
 }
 
 function BeaconRing({
@@ -746,13 +758,13 @@ function BeaconRing({
     if (!clock) return index === 0 ? 0.45 : 1;
     return ((clock.value + (index * BEACON_PERIOD_MS) / BEACON_RINGS) % BEACON_PERIOD_MS) / BEACON_PERIOD_MS;
   });
-  const r = useDerivedValue(() => 3 + age.value * BEACON_REACH);
+  const r = useDerivedValue(() => 4 + age.value * BEACON_REACH);
+  // A steady fade: still visible halfway out, gone by the edge.
   const opacity = useDerivedValue(() => {
     if (!place.value.visible) return 0;
-    const left = 1 - age.value;
-    return Math.round(left * left * 90) / 100;
+    return Math.round((1 - age.value) * 90) / 100;
   });
-  return <Circle cx={x} cy={y} r={r} color={color} style="stroke" strokeWidth={1.5} opacity={opacity} />;
+  return <Circle cx={x} cy={y} r={r} color={color} style="stroke" strokeWidth={BEACON_STROKE} opacity={opacity} />;
 }
 
 /** The bright light running along each upcoming route toward its
