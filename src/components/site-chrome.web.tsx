@@ -3,8 +3,8 @@ import { UserButton } from '@clerk/expo/web';
 import { Image } from 'expo-image';
 import { Link, usePathname } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
@@ -29,10 +29,15 @@ import { setThemePreference } from '@/services/theme';
  * vertical scrolls. `bare` drops the body's padding and width cap for a page
  * that lays out its own full-bleed sections (the front page). */
 export function SiteChrome({ children, bare = false }: { children: ReactNode; bare?: boolean }) {
+  // The header lifts off the page once it has content scrolling under it.
+  const [scrolled, setScrolled] = useState(false);
   return (
     <ThemedView style={styles.shell}>
-      <SiteHeader />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <SiteHeader scrolled={scrolled} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        scrollEventThrottle={32}
+        onScroll={(event) => setScrolled(event.nativeEvent.contentOffset.y > 8)}>
         <View style={bare ? styles.bodyBare : styles.body}>{children}</View>
         <SiteFooter />
       </ScrollView>
@@ -44,7 +49,14 @@ export function SiteChrome({ children, bare = false }: { children: ReactNode; ba
  * 800, which stay narrow because a form reads better that way. */
 const HEADER_WIDTH = 1120;
 
-function SiteHeader() {
+/** CSS transitions react-native-web renders (the types do not know them). */
+const TRANSITION = {
+  transitionProperty: 'background-color, border-color, box-shadow, transform, opacity',
+  transitionDuration: '220ms',
+  transitionTimingFunction: 'ease-out',
+} as unknown as ViewStyle;
+
+function SiteHeader({ scrolled }: { scrolled: boolean }) {
   const theme = useTheme();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
@@ -52,7 +64,14 @@ function SiteHeader() {
   const { isLoaded, isSignedIn } = useUser();
 
   return (
-    <ThemedView type="backgroundElement" style={[styles.bar, { borderBottomColor: theme.hairline }]}>
+    <ThemedView
+      type="backgroundElement"
+      style={[
+        styles.bar,
+        TRANSITION,
+        { borderBottomColor: scrolled ? theme.hairline : 'transparent' },
+        { boxShadow: scrolled ? '0 6px 20px rgba(11, 20, 36, 0.10)' : '0 0 0 rgba(11, 20, 36, 0)' },
+      ]}>
       <View style={styles.barContent}>
         {/* The row is a View, not one Link around both: expo-router's Link
           renders a Text node, and a flex row of an Image + Text inside one
@@ -133,7 +152,14 @@ function ThemeToggle() {
       accessibilityLabel={dark ? 'Switch to light theme' : 'Switch to dark theme'}
       testID="theme-toggle"
       onPress={() => setThemePreference(dark ? 'light' : 'dark')}
-      style={[styles.toggle, { backgroundColor: theme.backgroundSelected }]}>
+      style={({ hovered, pressed }) => [
+        styles.toggle,
+        TRANSITION,
+        {
+          backgroundColor: theme.backgroundSelected,
+          transform: [{ scale: pressed ? 0.94 : hovered ? 1.06 : 1 }, { rotate: dark ? '0deg' : '-15deg' }],
+        },
+      ]}>
       <SymbolView
         name={dark ? { ios: 'sun.max.fill', android: 'light_mode', web: 'light_mode' } : { ios: 'moon.fill', android: 'dark_mode', web: 'dark_mode' }}
         size={16}

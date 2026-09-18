@@ -50,6 +50,19 @@ carry the app's tab bar and mount World/People/Claims behind it.
   scripts/generate-og-image.mjs`.
 - Store badges: `assets/images/badge-app-store.png`, `badge-google-play.png`.
 
+## Motion
+
+Two moves only, in `src/components/reveal.web.tsx` (native twin is a plain View):
+`Reveal` fades a block and settles it into place the first time it enters the viewport
+(IntersectionObserver, `from: 'up' | 'left' | 'right'`, `delay`, staggered in the hero and
+the claims band); `Float` drifts the hero phones (±7 px, ~6 s, offset periods). Both are
+inert under `prefers-reduced-motion`. Hover feedback (chips, buttons, the theme toggle,
+`PrimaryButton`) and the theme crossfade use CSS transitions through style objects cast to
+`ViewStyle` — react-native-web renders `transitionProperty/Duration`, the RN types don't
+list them, and native must never receive them (`PrimaryButton` gates on `Platform.OS`).
+The header takes a shadow once the page has scrolled (`SiteChrome` `onScroll`). Pressables
+with a hover *function* style must not be children of `Link asChild` — use `useRouter`.
+
 ## Layout gotchas (react-native-web)
 
 - A child of `Link asChild` must get a flattened style object, never an array

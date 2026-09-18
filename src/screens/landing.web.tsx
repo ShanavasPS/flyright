@@ -2,10 +2,11 @@ import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import { PrimaryButton } from '@/components/primary-button';
+import { Float, Reveal } from '@/components/reveal';
 import { SiteChrome, StoreBadges } from '@/components/site-chrome';
 import { ThemedText } from '@/components/themed-text';
 import { STORE_URLS } from '@/constants/store-links';
@@ -24,9 +25,30 @@ import { proPriceFrom } from '@/services/web-pricing';
 const WIDE = 1120;
 const COMPACT = 900;
 
+/** CSS transitions, which react-native-web renders and the type definitions
+ * do not know: the theme toggle crossfades surfaces, and controls answer a
+ * hover. Web-only file, so no native style validation is involved. */
+const THEMED = {
+  transitionProperty: 'background-color, border-color',
+  transitionDuration: '260ms',
+} as unknown as ViewStyle;
+const INTERACTIVE = {
+  transitionProperty: 'transform, background-color, opacity',
+  transitionDuration: '180ms',
+  transitionTimingFunction: 'ease-out',
+} as unknown as ViewStyle;
+
 /** The brand's night sky: the claims band keeps it in both themes, the way
  * the share poster does. */
-const NIGHT = { bg: '#0C1B36', surface: '#16264A', text: '#F2F6FB', muted: '#8FA2BB', green: '#2FD68C', field: '#0B1730' };
+const NIGHT = {
+  bg: '#0C1B36',
+  surface: '#16264A',
+  text: '#F2F6FB',
+  muted: '#8FA2BB',
+  green: '#2FD68C',
+  field: '#0B1730',
+  hover: '#1B2F55',
+};
 
 /** The app in the page's own theme: a dark page shows the dark app. Both
  * sets are the same seven screens from the same seeded release build. */
@@ -124,7 +146,7 @@ export function Landing() {
 
 function Section({ children, style, background }: { children: ReactNode; style?: object; background?: string }) {
   return (
-    <View style={[styles.section, background ? { backgroundColor: background } : null, style]}>
+    <View style={[styles.section, THEMED, background ? { backgroundColor: background } : null, style]}>
       <View style={styles.wrap}>{children}</View>
     </View>
   );
@@ -136,35 +158,53 @@ function Hero({ compact }: { compact: boolean }) {
   return (
     <Section style={{ paddingTop: compact ? Spacing.five : 72, paddingBottom: compact ? Spacing.four : 40 }}>
       <View style={[styles.two, compact && styles.stack]}>
+        {/* The words arrive one line after another; the phones settle in a
+          beat later and then drift, slowly and out of step with each other. */}
         <View style={[styles.copy, compact && styles.stackChild]}>
-          <ThemedText type="smallBold" themeColor="tint" style={styles.eyebrow}>
-            FLIGHT TRACKER · TRAVEL JOURNAL · EU261 CLAIMS
-          </ThemedText>
-          <ThemedText
-            role="heading"
-            aria-level={1}
-            themeColor="heading"
-            style={[styles.h1, compact && styles.h1Compact]}>
-            Your travel day, <ThemedText style={[styles.h1, compact && styles.h1Compact, { color: theme.tint }]}>live.</ThemedText>
-          </ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.lede}>
-            Gates, delays and boarding, as they happen. Shared with the people waiting for you.
-            And what you’re owed when the flight goes wrong.
-          </ThemedText>
-          <View style={styles.ctas}>
+          <Reveal>
+            <ThemedText type="smallBold" themeColor="tint" style={styles.eyebrow}>
+              FLIGHT TRACKER · TRAVEL JOURNAL · EU261 CLAIMS
+            </ThemedText>
+          </Reveal>
+          <Reveal delay={90}>
+            <ThemedText
+              role="heading"
+              aria-level={1}
+              themeColor="heading"
+              style={[styles.h1, compact && styles.h1Compact]}>
+              Your travel day, <ThemedText style={[styles.h1, compact && styles.h1Compact, { color: theme.tint }]}>live.</ThemedText>
+            </ThemedText>
+          </Reveal>
+          <Reveal delay={180}>
+            <ThemedText themeColor="textSecondary" style={styles.lede}>
+              Gates, delays and boarding, as they happen. Shared with the people waiting for you.
+              And what you’re owed when the flight goes wrong.
+            </ThemedText>
+          </Reveal>
+          <Reveal delay={270} style={styles.ctas}>
             <StoreBadges />
             <Link href="/check">
               <ThemedText type="linkPrimary">Check a flight →</ThemedText>
             </Link>
-          </View>
-          <ThemedText type="small" themeColor="textSecondary">
-            Free to start · no account needed · EU &amp; UK rules
-          </ThemedText>
+          </Reveal>
+          <Reveal delay={340}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Free to start · no account needed · EU &amp; UK rules
+            </ThemedText>
+          </Reveal>
         </View>
-        <View style={[styles.art, compact && styles.artCompact, compact && styles.stackChild]}>
-          <Phone source={shots.travelDay} width={compact ? 200 : 270} style={[styles.phoneBack, compact && styles.phoneBackCompact]} />
-          <Phone source={shots.world} width={compact ? 200 : 270} style={[styles.phoneFront, compact && styles.phoneFrontCompact]} />
-        </View>
+        <Reveal
+          delay={200}
+          distance={44}
+          duration={1000}
+          style={[styles.art, compact && styles.artCompact, compact && styles.stackChild]}>
+          <Float period={6800} style={[styles.phoneBackPos, compact && styles.phoneBackCompact]}>
+            <Phone source={shots.travelDay} width={compact ? 200 : 270} style={styles.phoneBackTilt} />
+          </Float>
+          <Float delay={1100} style={[styles.phoneFrontPos, compact && styles.phoneFrontCompact]}>
+            <Phone source={shots.world} width={compact ? 200 : 270} />
+          </Float>
+        </Reveal>
       </View>
     </Section>
   );
@@ -190,9 +230,12 @@ function Features({ compact }: { compact: boolean }) {
           <View
             key={feature.title}
             style={[styles.feature, i % 2 === 1 && !compact && styles.featureReverse, compact && styles.stack]}>
-            <View
+            <Reveal
+              from={compact ? 'up' : i % 2 === 1 ? 'right' : 'left'}
+              distance={40}
               style={[
                 styles.stage,
+                THEMED,
                 compact && styles.stageCompact,
                 compact && styles.stackChild,
                 feature.focus === 'bottom' && styles.stageFromTop,
@@ -203,8 +246,8 @@ function Features({ compact }: { compact: boolean }) {
                 width={compact ? 220 : 250}
                 style={feature.focus === 'bottom' ? styles.stagePhoneBottom : styles.stagePhone}
               />
-            </View>
-            <View style={[styles.featureCopy, compact && styles.stackChild]}>
+            </Reveal>
+            <Reveal delay={140} style={[styles.featureCopy, compact && styles.stackChild]}>
               <ThemedText type="smallBold" themeColor="tint" style={styles.eyebrow}>
                 {feature.eyebrow}
               </ThemedText>
@@ -214,7 +257,7 @@ function Features({ compact }: { compact: boolean }) {
               <ThemedText themeColor="textSecondary" style={styles.featureBody}>
                 {feature.body}
               </ThemedText>
-            </View>
+            </Reveal>
           </View>
         ))}
       </View>
@@ -237,7 +280,7 @@ function ClaimsBand({ compact }: { compact: boolean }) {
   return (
     <Section background={NIGHT.bg} style={{ paddingVertical: compact ? Spacing.five : 64 }}>
       <View style={[styles.two, compact && styles.stack]}>
-        <View style={[styles.copy, compact && styles.stackChild]}>
+        <Reveal style={[styles.copy, compact && styles.stackChild]}>
           <ThemedText type="smallBold" style={[styles.eyebrow, { color: NIGHT.green }]}>
             WHEN THE FLIGHT GOES WRONG
           </ThemedText>
@@ -253,17 +296,21 @@ function ClaimsBand({ compact }: { compact: boolean }) {
               ['€250–600', 'per passenger, by distance'],
               ['3 h+', 'delay at arrival, or a cancellation'],
               ['0 %', 'commission — the airline pays you'],
-            ].map(([big, small]) => (
-              <View key={big} style={[styles.stat, { backgroundColor: NIGHT.surface }]}>
+            ].map(([big, small], i) => (
+              <Reveal key={big} delay={200 + i * 90} distance={20} style={[styles.stat, { backgroundColor: NIGHT.surface }]}>
                 <ThemedText style={[styles.statBig, { color: NIGHT.green }]}>{big}</ThemedText>
                 <ThemedText type="small" style={{ color: NIGHT.muted }}>
                   {small}
                 </ThemedText>
-              </View>
+              </Reveal>
             ))}
           </View>
-        </View>
-        <View style={[styles.checker, compact && styles.stackChild, { backgroundColor: NIGHT.surface }]}>
+        </Reveal>
+        <Reveal
+          from={compact ? 'up' : 'right'}
+          distance={40}
+          delay={120}
+          style={[styles.checker, compact && styles.stackChild, { backgroundColor: NIGHT.surface }]}>
           <ThemedText type="smallBold" style={{ color: NIGHT.text }}>
             Your flight
           </ThemedText>
@@ -288,19 +335,24 @@ function ClaimsBand({ compact }: { compact: boolean }) {
                 accessibilityRole="button"
                 accessibilityState={{ selected: date === day }}
                 onPress={() => setDate(day)}
-                style={[styles.chip, { backgroundColor: date === day ? '#4E9BF5' : NIGHT.field }]}>
+                style={({ hovered }) => [
+                  styles.chip,
+                  INTERACTIVE,
+                  { backgroundColor: date === day ? '#4E9BF5' : hovered ? NIGHT.hover : NIGHT.field },
+                ]}>
                 <ThemedText type="smallBold" style={{ color: date === day ? '#FFFFFF' : NIGHT.text }}>
                   {label} · {formatDayLabel(day)}
                 </ThemedText>
               </Pressable>
             ))}
-            <Link href="/check" asChild>
-              <Pressable accessibilityRole="button" style={StyleSheet.flatten([styles.chip, { backgroundColor: NIGHT.field }])}>
-                <ThemedText type="smallBold" style={{ color: NIGHT.text }}>
-                  Another date
-                </ThemedText>
-              </Pressable>
-            </Link>
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.push('/check')}
+              style={({ hovered }) => [styles.chip, INTERACTIVE, { backgroundColor: hovered ? NIGHT.hover : NIGHT.field }]}>
+              <ThemedText type="smallBold" style={{ color: NIGHT.text }}>
+                Another date
+              </ThemedText>
+            </Pressable>
           </View>
           <PrimaryButton
             label="Check my compensation →"
@@ -312,7 +364,7 @@ function ClaimsBand({ compact }: { compact: boolean }) {
               No flight handy? See an example verdict →
             </ThemedText>
           </Link>
-        </View>
+        </Reveal>
       </View>
     </Section>
   );
@@ -320,12 +372,15 @@ function ClaimsBand({ compact }: { compact: boolean }) {
 
 function Pro({ compact }: { compact: boolean }) {
   const theme = useTheme();
+  const router = useRouter();
   const price = proPriceFrom(typeof navigator === 'undefined' ? undefined : navigator.language);
   return (
     <Section style={{ paddingBottom: 72 }}>
-      <View
+      <Reveal
+        distance={36}
         style={[
           styles.proBox,
+          THEMED,
           compact && styles.stack,
           { backgroundColor: theme.backgroundElement, borderColor: theme.hairline },
         ]}>
@@ -359,13 +414,22 @@ function Pro({ compact }: { compact: boolean }) {
           <ThemedText type="small" themeColor="textSecondary">
             14-day free trial · annual and lifetime at checkout · cancel anytime
           </ThemedText>
-          <Link href="/go-pro" asChild>
-            <Pressable accessibilityRole="button" style={StyleSheet.flatten([styles.button, { backgroundColor: theme.tint }])}>
-              <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
-                Start free trial
-              </ThemedText>
-            </Pressable>
-          </Link>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push('/go-pro')}
+            style={({ hovered, pressed }) => [
+              styles.button,
+              INTERACTIVE,
+              {
+                backgroundColor: theme.tint,
+                opacity: pressed ? 0.85 : 1,
+                transform: [{ translateY: hovered ? -1 : 0 }, { scale: hovered ? 1.02 : 1 }],
+              },
+            ]}>
+            <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
+              Start free trial
+            </ThemedText>
+          </Pressable>
           <ThemedText type="small" themeColor="textSecondary">
             Or start free in the app:{' '}
             <ExternalLink href={STORE_URLS.ios}>
@@ -377,7 +441,7 @@ function Pro({ compact }: { compact: boolean }) {
             </ExternalLink>
           </ThemedText>
         </View>
-      </View>
+      </Reveal>
     </Section>
   );
 }
@@ -466,17 +530,21 @@ const styles = StyleSheet.create({
     height: 470,
     width: '100%',
   },
-  phoneBack: {
+  // Position on the Float wrapper (it owns the drifting translate), the tilt
+  // on the phone itself — one transform each, nothing overwrites the other.
+  phoneBackPos: {
     position: 'absolute',
     left: 0,
     top: 60,
+  },
+  phoneBackTilt: {
     transform: [{ rotate: '-6deg' }],
   },
   phoneBackCompact: {
     left: '6%',
     top: 40,
   },
-  phoneFront: {
+  phoneFrontPos: {
     position: 'absolute',
     right: 0,
     top: 0,
