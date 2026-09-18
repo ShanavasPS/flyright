@@ -5,7 +5,10 @@
   "permissions": {
     "allow": [
       "Bash(stripe:*)",
-      "Bash(stripe projects:*)"
+      "Bash(stripe projects:*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

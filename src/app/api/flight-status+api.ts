@@ -19,7 +19,7 @@ import {
   providerConfigured,
   type ProviderResponse,
 } from '../../../convex/providerFetch';
-import { normalizeLeg, toIso } from '../../../convex/flightNormalize';
+import { legDepartingOn, normalizeLeg, toIso } from '../../../convex/flightNormalize';
 import { cacheExpiry, flightPhase, maySpend } from '../../../convex/providerShared';
 import { carrierFor } from '@/constants/carriers';
 import { lookupDay } from '../../../convex/lookupShared';
@@ -283,7 +283,9 @@ export async function GET(request: Request) {
 
   // One normalizer for both runtimes (convex/flightNormalize.ts) — the poll
   // chain reads these same cached records, so the shape must not diverge.
-  const leg = legs[0];
+  // The leg departing on `date`, not the first: an overnight flight's answer
+  // opens with yesterday's leg, which merely lands on that day.
+  const leg = legDepartingOn(legs, date);
   const dep = leg.departure ?? {};
 
   // The rotation lookup is another one or two provider calls, so it's opt-in

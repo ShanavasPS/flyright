@@ -58,9 +58,15 @@ export async function rememberAircraft(row: JourneyRow, status: FlightStatus): P
 }
 
 /** The day to ask the provider about: the flight's own local date at its
- * origin, not the UTC date of the instant we stored. See dates.flightDay. */
+ * origin, not the UTC date of the instant we stored. See dates.flightDay.
+ *
+ * Anchored on the ticket's departure once a change has been adopted. The
+ * provider indexes a flight by the day its timetable printed, and asking
+ * about the day we last adopted lets one wrong answer steer the next
+ * question — that is how QR516 walked back 24 h per lookup. */
 export function lookupDayFor(
-  row: Pick<JourneyRow, 'scheduledDeparture' | 'fromCode'>,
+  row: Pick<JourneyRow, 'scheduledDeparture' | 'fromCode'> &
+    Partial<Pick<JourneyRow, 'ticketedDeparture'>>,
 ): string {
-  return flightDay(row.scheduledDeparture, airportZone(row.fromCode));
+  return flightDay(row.ticketedDeparture ?? row.scheduledDeparture, airportZone(row.fromCode));
 }

@@ -18,6 +18,7 @@ import type { ActionCtx } from './_generated/server';
 import { internal } from './_generated/api';
 import {
   factsPatch,
+  legDepartingOn,
   normalizeLeg,
   type FlightFactsPatch,
   type NormalizedFlight,
@@ -55,8 +56,9 @@ export async function fetchFlightFacts(
     ? { remaining: response.budget.remaining, limit: response.budget.limit }
     : null;
 
-  const legs = response.body;
-  const leg = response.ok && Array.isArray(legs) && legs.length > 0 ? legs[0] : null;
+  // The leg departing on `date`, not the first one — an overnight flight's
+  // answer opens with yesterday's leg (see flightNormalize.legDepartingOn).
+  const leg = response.ok ? legDepartingOn(response.body, date) : null;
 
   if (!leg) {
     // Nothing cacheable, but the call still cost units — file them, or the

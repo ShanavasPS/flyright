@@ -2,6 +2,18 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-18 — Hotfix: overnight flights looked up a day early (backend + hosting only, no store release)
+
+Incident: Shanavas's `QR516-2026-09-19` (DOH→COK) received two "moved 24 h earlier" pushes and ended up 48 h early; his circle got a heads-up and a "departed" push for a flight he was not on. Cause: AeroDataBox's `/flights/number/{flight}/{date}` defaults to `dateLocalRole=Both`, so an overnight flight answers a date with two legs — yesterday's (which lands on that date) first — and both callers took `legs[0]`. `lookupDayFor` then asked about the adopted day, so each lookup walked the trip back another day until it fell into the past. Details in the commit message.
+
+| Item | Observed result |
+| --- | --- |
+| Code | `legDepartingOn(legs, date)` in `convex/flightNormalize.ts`, used by `src/app/api/flight-status+api.ts` and `convex/flightData.ts`; `lookupDayFor` anchors on `ticketedDeparture ?? scheduledDeparture` (client — ships with the next release); `devTools.purgeFlightFacts`. Jest 883 tests / 77 suites, tsc and eslint passed |
+| Backend | `release:deploy-backend` deployed production `limitless-oyster-269` and development; both inventories 60 client functions |
+| Hosting | Deployment `8xwenhro7u` promoted; `https://flyright.expo.app` serves `entry-916e48485462cff29fbafffab104a2e1.js` = local export. Live check: `/api/flight-status?flight=QR516&date=2026-09-19` now returns `2026-09-19T16:40Z` (was `2026-09-18T16:40Z`). Pre-existing `.env.production.local` restored from a backup |
+| Data repair | Scan of all 112 production journeys: only Shanavas's rows carry the pattern (`QR720-2026-08-01` and `QR516-2026-08-02` are past and were left alone). `QR516-2026-09-19` patched back to `2026-09-19T16:40Z`/`21:15Z` (`headsUpSentAt` kept — the circle was already told). Seven mislabelled `flightFacts` purged (QR516 ×4, QR720, OB0688, AY2). Live session `jd7f19hnrhhna5wxt5t6hwjmsn8ennqd` (created by the premature heads-up, stage "departed" from the Sep 17 flight) **still needs its schedule and stage reset** — the `devTools:patchLiveSession --prod` call was denied by the permission classifier and handed to the user |
+| Follow-up | Profile buckets legs per-leg by UTC (`convex/circle.ts:528-553`) while My travels chains a connection until its last leg departs (`itineraryShared.itineraryPending`); the two rules disagree for any connection whose first leg has flown |
+
 ## 2026-09-18 — 1.0.37 (Travel stats, Add Flight steps, aircraft, Caribbean airlines) submitted for App Review and live on Play production
 
 Release commit `a063fc2` (bump) on top of `65617b8`, `480a21f` (Travel stats redesign, aircraft columns + migration 0013), `a7ad4c5` (Add Flight as pushed steps, airline sheet) and `8957967` (ten Caribbean airlines); store assets and reviewer notes in `ba43d84`. Version `1.0.37`, iOS build `54`, Android versionCode `51`. The user asked for the full release while asleep and **explicitly skipped the physical-device checks**; simulator/emulator coverage below is what was run.

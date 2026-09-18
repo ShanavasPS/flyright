@@ -82,6 +82,30 @@ describe('GET /api/flight-status', () => {
     });
   });
 
+  it('serves the leg departing on the date, not the one that lands on it', async () => {
+    // QR516 leaves Doha 19:40 and lands in Kochi 02:45 the next day, so the
+    // provider's answer for the 19th opens with the 18th's departure.
+    const overnight = (day: number) => ({
+      ...numberLeg,
+      number: 'QR 516',
+      status: 'Expected',
+      departure: {
+        airport: { iata: 'DOH', countryCode: 'QA' },
+        scheduledTime: { utc: `2026-09-${day} 16:40Z`, local: `2026-09-${day} 19:40+03:00` },
+      },
+      arrival: {
+        airport: { iata: 'COK', countryCode: 'IN' },
+        scheduledTime: { utc: `2026-09-${day} 21:15Z`, local: `2026-09-${day + 1} 02:45+05:30` },
+      },
+    });
+    upstream.mockResolvedValueOnce(jsonResponse([overnight(18), overnight(19)]));
+
+    const body = await (await GET(request('flight=QR516&date=2026-09-19'))).json();
+
+    expect(body.scheduledDeparture).toBe('2026-09-19T16:40Z');
+    expect(body.scheduledArrival).toBe('2026-09-19T21:15Z');
+  });
+
   it('skips the rotation lookup without the inbound flag', async () => {
     upstream.mockResolvedValueOnce(jsonResponse([numberLeg]));
 

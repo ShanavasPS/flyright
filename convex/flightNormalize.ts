@@ -159,6 +159,33 @@ export function normalizeLeg(
   };
 }
 
+/**
+ * The leg that actually departs on the day asked about.
+ *
+ * `/flights/number/{flight}/{date}` defaults to `dateLocalRole=Both`: every
+ * leg that departs OR arrives on that local date comes back, in departure
+ * order. For an overnight flight — Doha 19:40, Kochi 02:45 — a question about
+ * day D is therefore answered with two legs, and the FIRST is yesterday's,
+ * which merely lands on D. Taking `legs[0]` adopted that leg's times as a
+ * "schedule change", and because the next lookup asked about the new day the
+ * trip walked back 24 h per lookup until it was history (QR516, Sep 2026).
+ *
+ * Judged on the origin's local date, which is what the provider indexes by;
+ * the UTC stamp stands in when a record has no local one. Falls back to the
+ * first leg when none departs on the date — the provider's whole answer then
+ * lands on a neighbouring day (a date typed from the arrival side of the
+ * ticket), and a neighbouring day's flight beats "not found".
+ */
+export function legDepartingOn(legs: unknown, date: string): any | null {
+  if (!Array.isArray(legs) || legs.length === 0) return null;
+  const departsOn = (leg: any): boolean => {
+    const time = leg?.departure?.scheduledTime;
+    const stamp: string | undefined = time?.local ?? time?.utc;
+    return typeof stamp === 'string' && stamp.slice(0, 10) === date;
+  };
+  return legs.find(departsOn) ?? legs[0];
+}
+
 /** The subset the live-session poll chain writes onto its session row. */
 export interface FlightFactsPatch {
   flightStatus: string | null;

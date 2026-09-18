@@ -1,4 +1,4 @@
-import { normalizeLeg } from '../../convex/flightNormalize';
+import { legDepartingOn, normalizeLeg } from '../../convex/flightNormalize';
 
 // Three months after the flight: the day the receipt was imported.
 const NOW = Date.parse('2026-09-06T18:00:00Z');
@@ -64,5 +64,38 @@ describe('normalizeLeg — a flight the provider never landed', () => {
     );
     expect(facts.landed).toBe(true);
     expect(facts.delayMinutes).toBe(25);
+  });
+});
+
+describe('legDepartingOn — the provider answers a date with everything that touches it', () => {
+  const doha = (day: string, hour = '19:40') => ({
+    number: 'QR 516',
+    departure: {
+      airport: { iata: 'DOH' },
+      scheduledTime: { utc: `${day} ${hour}Z`, local: `${day} ${hour}+03:00` },
+    },
+  });
+
+  it('picks the leg that departs on the day, not yesterday’s that lands on it', () => {
+    const legs = [doha('2026-09-18'), doha('2026-09-19')];
+    expect(legDepartingOn(legs, '2026-09-19')).toBe(legs[1]);
+  });
+
+  it('judges by the local stamp when the UTC day differs', () => {
+    // 00:30 local in Doha is still the previous day in UTC.
+    const early = {
+      departure: { scheduledTime: { utc: '2026-09-18 21:30Z', local: '2026-09-19 00:30+03:00' } },
+    };
+    expect(legDepartingOn([doha('2026-09-18'), early], '2026-09-19')).toBe(early);
+  });
+
+  it('falls back to the first leg when none departs on the day', () => {
+    const legs = [doha('2026-09-18')];
+    expect(legDepartingOn(legs, '2026-09-19')).toBe(legs[0]);
+  });
+
+  it('is null for an empty or malformed answer', () => {
+    expect(legDepartingOn([], '2026-09-19')).toBeNull();
+    expect(legDepartingOn(null, '2026-09-19')).toBeNull();
   });
 });

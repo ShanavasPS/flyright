@@ -98,6 +98,26 @@ export const patchJourney = internalMutation({
   },
 });
 
+/** Drop cached provider answers by key — `npx convex run devTools:purgeFlightFacts
+ * '{"keys":["QR516:2026-09-19","QR516:2026-09-19:inb"]}'`. For an answer that
+ * was normalized wrongly and would otherwise be served until it expires. */
+export const purgeFlightFacts = internalMutation({
+  args: { keys: v.array(v.string()) },
+  handler: async (ctx, { keys }) => {
+    const purged: string[] = [];
+    for (const key of keys) {
+      const row = await ctx.db
+        .query('flightFacts')
+        .withIndex('by_key', (q) => q.eq('key', key))
+        .unique();
+      if (!row) continue;
+      await ctx.db.delete(row._id);
+      purged.push(key);
+    }
+    return { purged };
+  },
+});
+
 /** Arm (or re-arm) the heads-up for a journey — opens its live session at
  * once when departure is within a day. Dev only. */
 export const armJourney = internalMutation({
