@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.38',
+    date: '2026-09-18',
+    notes: [
+      'The globe shows day and night as they are right now — a sun button on the World tab switches it — and a trip’s own map puts the sun where it will be at take-off or landing.',
+      'During a flight your plane moves along its route: from its last reported position when there is one, by the timetable when there isn’t. A radar beacon marks the trip of the day, and the World tab centres on it.',
+      'Flown routes no longer carry a plane, so the ones still to fly stand out; the trip page shows how far along a flight is, with “In the air” while it is.',
+      'Share your world as a poster: story or square, dark or light, with a glow where you fly most and your hours in the air.',
+      'A person’s page shows their travel on the same globe, and a trip under way is no longer followed by an empty “Upcoming”.',
+      'Overnight flights are looked up on the right day, and a flight the airline moves takes its live card along with it.',
+    ],
+  },
+  {
     version: '1.0.37',
     date: '2026-09-18',
     notes: [
