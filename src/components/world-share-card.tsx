@@ -42,7 +42,10 @@ export const WorldShareCard = forwardRef<
       ref={ref}
       collapsable={false}
       style={[styles.card, { width: SHARE_CARD.width, height, backgroundColor: palette.bg }]}>
-      <View style={[styles.band, { height: band }]}>
+      {/* The square has no room to stack headline above map, so its band
+          starts lower and the top scrim holds longer: the title sits on
+          solid card, not on the glow. */}
+      <View style={[styles.band, { top: story ? 0 : 20, height: band }]}>
         <ShareAtlas model={model} theme={theme} heatUri={heatUri} />
         <View style={[StyleSheet.absoluteFill, { experimental_backgroundImage: scrim(palette.bg, story) }]} />
       </View>
@@ -143,7 +146,7 @@ function scrim(bg: string, story: boolean): string {
   const stop = (alpha: number) => `${bg}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`;
   return story
     ? `linear-gradient(180deg, ${stop(0.9)} 0%, ${stop(0.3)} 24%, ${stop(0)} 40%, ${stop(0)} 78%, ${stop(1)} 100%)`
-    : `linear-gradient(180deg, ${stop(0.9)} 0%, ${stop(0)} 40%, ${stop(0)} 62%, ${stop(1)} 82%)`;
+    : `linear-gradient(180deg, ${stop(1)} 0%, ${stop(0.88)} 20%, ${stop(0)} 48%, ${stop(0)} 62%, ${stop(1)} 82%)`;
 }
 
 /** The offline SVG atlas in the poster's colours, fitted to the model's
