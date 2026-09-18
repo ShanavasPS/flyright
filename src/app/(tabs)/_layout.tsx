@@ -1,6 +1,6 @@
-import { usePathname } from 'expo-router';
+import { Slot, usePathname } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 
 import { useAttention } from '@/components/attention-provider';
 import { Colors } from '@/constants/theme';
@@ -38,6 +38,12 @@ export default function TabsLayout() {
   // request, an ask allowed. Clears when the side they're on is opened —
   // the segment inside keeps counting what still needs an answer.
   const { people } = useAttention();
+
+  // The website's front page renders at "/" on web (see (journeys)/index)
+  // with its own header. The web tab view has no `hidden` and force-mounts
+  // every tab's content, so the site's root skips the tabs altogether and
+  // renders just the matched route.
+  if (Platform.OS === 'web' && pathname === '/') return <Slot />;
 
   return (
     <NativeTabs

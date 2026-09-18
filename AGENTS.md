@@ -77,6 +77,15 @@ deleted. Skia is a native dependency: rebuild the dev clients after pulling
 a change to it.
 
 <!-- stripe-projects-cli managed:agents-md:start -->
+# The website (getflyright.com)
+
+The web root is a real front page (`src/screens/landing.web.tsx`, wrapped in
+`SiteChrome`), light by default with a theme toggle in the header, Inter and
+Open Graph metadata from `src/app/+html.tsx`. Read
+[docs/website.md](docs/website.md) before changing any web-only screen; it
+holds the page map, the screenshot recipe, the react-native-web layout gotchas
+and the verification/deploy steps.
+
 # Share poster heat layer (TypeGPU)
 
 The World share poster draws a GPU route-density glow under its atlas via

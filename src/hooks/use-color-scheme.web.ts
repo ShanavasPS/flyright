@@ -1,21 +1,11 @@
-import { useEffect, useState } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import { useSyncExternalStore } from 'react';
 
-/**
- * To support static rendering, this value needs to be re-calculated on the client side for web
- */
-export function useColorScheme() {
-  const [hasHydrated, setHasHydrated] = useState(false);
+import { resolvedScheme, subscribeTheme } from '@/services/theme';
 
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
-
-  const colorScheme = useRNColorScheme();
-
-  if (hasHydrated) {
-    return colorScheme;
-  }
-
-  return 'light';
+/** The web colour scheme: the stored preference (light unless the visitor
+ * chose otherwise — see services/theme.web), resolved against the OS when it
+ * says 'system'. The server snapshot is light, so static markup and the first
+ * client render agree; a stored dark choice applies right after hydration. */
+export function useColorScheme(): 'light' | 'dark' {
+  return useSyncExternalStore(subscribeTheme, resolvedScheme, () => 'light');
 }

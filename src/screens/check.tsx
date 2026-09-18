@@ -1,6 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import Head from 'expo-router/head';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -59,13 +60,20 @@ function toJourney(flight: FlightStatus): Journey {
 export function CheckFlight() {
   const theme = useTheme();
   const { userId, isLoaded: authLoaded } = useAuth();
+  // The front page's form hands its flight and date over in the URL, so the
+  // visitor lands on a lookup already running; `demo` opens the example.
+  const params = useLocalSearchParams<{ flight?: string; date?: string; demo?: string }>();
   const [today] = useState(() => new Date());
-  const [flightInput, setFlightInput] = useState('');
-  const [dateInput, setDateInput] = useState('');
+  const [flightInput, setFlightInput] = useState(() => params.flight ?? '');
+  const [dateInput, setDateInput] = useState(() => params.date ?? '');
   // The submitted pair drives the lookup; edits after submit don't refetch
   // until the button is pressed again.
-  const [checked, setChecked] = useState<{ flight: string; date: string } | null>(null);
-  const [demo, setDemo] = useState(false);
+  const [checked, setChecked] = useState<{ flight: string; date: string } | null>(() => {
+    const flight = normalizeFlightNumber(params.flight ?? '');
+    const day = params.date?.trim();
+    return flight && day && DATE_PATTERN.test(day) ? { flight, date: day } : null;
+  });
+  const [demo, setDemo] = useState(() => params.demo === '1');
 
   const flightNumber = normalizeFlightNumber(flightInput);
   const date = DATE_PATTERN.test(dateInput.trim()) ? dateInput.trim() : null;
@@ -91,6 +99,13 @@ export function CheckFlight() {
 
   return (
     <SiteChrome>
+      <Head>
+        <title>Check your flight — FlyRight</title>
+        <meta
+          name="description"
+          content="Flight delayed or cancelled? Airlines owe up to €600 per passenger under EU261. Check your flight in ten seconds — free, no sign-up."
+        />
+      </Head>
       <View style={styles.content}>
         <View style={styles.hero}>
           <ThemedText type="title" themeColor="heading">

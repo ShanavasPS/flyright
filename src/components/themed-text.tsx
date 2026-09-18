@@ -24,6 +24,9 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
     <Text
       style={[
         { color: theme[themeColor ?? 'text'] },
+        // Inter on the web (loaded in app/+html.tsx); native keeps the
+        // platform face the rest of the app is set in.
+        Platform.OS === 'web' && { fontFamily: Fonts.sans },
         type === 'default' && styles.default,
         type === 'display' && styles.display,
         type === 'title' && styles.title,

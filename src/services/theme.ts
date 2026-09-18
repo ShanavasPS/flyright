@@ -16,6 +16,18 @@ export function setThemePreference(preference: ThemePreference) {
   Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
 }
 
+/** The scheme in force right now — Appearance already reflects the override. */
+export function resolvedScheme(): 'light' | 'dark' {
+  return Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
+}
+
+/** Re-runs `listener` on any scheme change. The web twin drives its own
+ * store; native leans on Appearance. */
+export function subscribeTheme(listener: () => void): () => void {
+  const subscription = Appearance.addChangeListener(listener);
+  return () => subscription.remove();
+}
+
 /** Re-apply the stored override. Must run at module scope in the root layout
  * so the first frame already has the chosen scheme — applying after mount
  * flashes the system theme on launch. */
