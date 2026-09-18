@@ -43,3 +43,16 @@ appId: com.shanavasshaji.flyright
     notVisible: "Recenter the globe on your travels"
     timeout: 10000
 - takeScreenshot: world-globe-refit
+# Day and night: the sun button in the header switches between the sun's
+# real lighting (on, the default) and the fixed studio light. Off, then
+# back on, so the remembered preference is left as it was found.
+- tapOn: "Hide day and night"
+- extendedWaitUntil:
+    visible: "Show day and night"
+    timeout: 5000
+- takeScreenshot: world-globe-studio-light
+- tapOn: "Show day and night"
+- extendedWaitUntil:
+    visible: "Hide day and night"
+    timeout: 5000
+- takeScreenshot: world-globe-daylight

@@ -76,6 +76,15 @@ react-native-maps and the Android Google Maps key are gone; the EAS
 deleted. Skia is a native dependency: rebuild the dev clients after pulling
 a change to it.
 
+The globe is lit by the real sun by default (`src/services/sun.ts`, the
+subsolar point; the shader mixes it with the old studio light by the
+`daylight` uniform). The World tab header's sun button switches it and the
+choice is remembered (`src/services/globe-daylight.ts`); the trip inset places
+the sun at take-off / landing / now and says so in its caption. Planes are
+drawn only on upcoming routes and a flight in the air (`pastPlanes` restores
+them for the trip inset). The flight whose travel day is on the home screen
+(`useHeroTrip`) gets radar rings on its origin (`beacon` prop).
+
 <!-- stripe-projects-cli managed:agents-md:start -->
 # The website (getflyright.com)
 

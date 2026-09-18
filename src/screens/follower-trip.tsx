@@ -101,6 +101,7 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
             number: trip.number,
             carrier: trip.carrier,
             scheduledDeparture: trip.scheduledDeparture,
+            scheduledArrival: trip.scheduledArrival,
           }}
         />
 

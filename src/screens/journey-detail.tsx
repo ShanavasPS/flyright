@@ -373,6 +373,7 @@ export function JourneyDetail({
     number: journey.number,
     carrier: journey.carrier,
     scheduledDeparture: journey.scheduledDeparture,
+    scheduledArrival: journey.scheduledArrival,
   };
 
   return (

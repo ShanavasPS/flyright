@@ -8,8 +8,34 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { airportZone } from '@/services/airports';
+import { flightInstant } from '@/services/dates';
 import { buildWorldRoutes, pathCaption, type RoutePath, type RouteSource } from '@/services/geo';
+import { useGlobeDaylight } from '@/services/globe-daylight';
 import { useGlobeTextures } from '@/services/globe-textures';
+
+/** The journey fields the inset needs: the route, plus the landing time for
+ * placing the sun once the flight is over. */
+export type RouteMapSource = RouteSource & { scheduledArrival?: string };
+
+/** When the inset's sun is placed: at take-off before the flight leaves,
+ * at landing once it is over, live in between. `at` null means now. */
+export function sunMoment(
+  journey: RouteMapSource,
+  now: Date,
+): { at: number | null; label: 'take-off' | 'landing' | 'now' } {
+  const departure = flightInstant(journey.scheduledDeparture, airportZone(journey.fromCode));
+  const arrival = journey.scheduledArrival
+    ? flightInstant(journey.scheduledArrival, airportZone(journey.toCode))
+    : NaN;
+  const t = now.getTime();
+  if (!Number.isNaN(departure) && t < departure) return { at: departure, label: 'take-off' };
+  if (!Number.isNaN(arrival) && t > arrival) return { at: arrival, label: 'landing' };
+  // Past the departure with no landing time to compare against: take-off
+  // is the one moment this trip can vouch for.
+  if (Number.isNaN(arrival) && !Number.isNaN(departure)) return { at: departure, label: 'take-off' };
+  return { at: null, label: 'now' };
+}
 
 /** Inset height: tall enough to read a long-haul arc, short enough that the
  * route hero and the verdict still land above the fold on a small phone. */
@@ -37,7 +63,7 @@ export function RouteMap({
   path,
   onPress,
 }: {
-  journey: RouteSource;
+  journey: RouteMapSource;
   path?: RoutePath | null;
   onPress?: () => void;
 }) {
@@ -45,12 +71,14 @@ export function RouteMap({
   const dark = useColorScheme() === 'dark';
   const textures = useGlobeTextures();
   const palette = globePalette(dark);
+  const daylight = useGlobeDaylight();
   // Frozen per mount, same as the World tab — the flown/upcoming cutoff
   // doesn't need to tick.
   const [now] = useState(() => new Date());
   const paths = useMemo(() => (path ? { [journey.id]: path } : undefined), [journey.id, path]);
   const data = useMemo(() => buildWorldRoutes([journey], now, paths), [journey, now, paths]);
   const route = data.routes[0];
+  const sun = useMemo(() => sunMoment(journey, now), [journey, now]);
   // The globe is sized to the card as it came out, so it is measured first;
   // the sea-coloured background covers the frame until the width lands.
   const [width, setWidth] = useState(0);
@@ -90,9 +118,13 @@ export function RouteMap({
           labels="always"
           animate={false}
           fitPad={0.7}
+          daylight={daylight}
+          sunAt={sun.at}
+          // This globe is about one trip, so its aircraft stays even once flown.
+          pastPlanes
         />
       )}
-      <PathCaption path={route.path} />
+      <PathCaption path={route.path} daylight={daylight ? sun.label : null} />
       {/* The pill is a promise to open somewhere. Without a destination it
           would be a button that lies, so it goes rather than sits there
           inert. */}

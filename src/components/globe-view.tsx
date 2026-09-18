@@ -3,6 +3,7 @@
    values read them. The compiler lint reads those hooks as effects. */
 import {
   Canvas,
+  Circle,
   DashPathEffect,
   Fill,
   FilterMode,
@@ -17,7 +18,7 @@ import {
   useClock,
   type SkFont,
 } from '@shopify/react-native-skia';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -26,6 +27,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
+  useReducedMotion,
   useSharedValue,
   withDecay,
   withTiming,
@@ -54,6 +56,7 @@ import {
   type GlobeCamera,
 } from '@/services/globe';
 import { BASE_SIZE, TILE, type GlobeTextures } from '@/services/globe-textures';
+import { sunVector } from '@/services/sun';
 
 /** How close, in canvas points, a tap must land to a route to select it. */
 const ROUTE_TAP_TOLERANCE = 22;
@@ -77,6 +80,14 @@ function cometPeriod(samples: number): number {
 const PULSE_PERIOD_MS = 1400;
 /** Comet alpha is drawn in this many steps, each its own stroke. */
 const COMET_STEPS = 6;
+/** The beacon's rings: one ring's life, and how far it spreads, in points. */
+const BEACON_PERIOD_MS = 2000;
+const BEACON_RINGS = 2;
+const BEACON_REACH = 16;
+/** The sun moves a quarter of a degree a minute — under a pixel here. */
+const SUN_TICK_MS = 60_000;
+/** Flipping the switch fades between the two lightings. */
+const DAYLIGHT_FADE_MS = 500;
 
 /** Material "flight" glyph, nose up, in a 24×24 box — the same one the
  * map markers drew. */
@@ -92,16 +103,20 @@ export interface GlobeColors {
   tint: string;
   background: string;
   label: string;
+  /** What the night side sinks towards when the globe is lit by the sun. */
+  night: string;
 }
 
 /** The globe's own sea, land, border and label colours. The map's near-
  * white land on a pale sea blurs together once shaded on a sphere: the
  * globe wants blue oceans and pale continents, the way the earth reads
  * from orbit — deep navy water in the dark scheme. */
-export function globePalette(dark: boolean): Pick<GlobeColors, 'sea' | 'land' | 'border' | 'label'> {
+export function globePalette(dark: boolean): Pick<GlobeColors, 'sea' | 'land' | 'border' | 'label' | 'night'> {
   return dark
-    ? { sea: '#0B1A38', land: '#33486E', border: '#5A72A0', label: '#F2F6FB' }
-    : { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B' };
+    ? { sea: '#0B1A38', land: '#33486E', border: '#5A72A0', label: '#F2F6FB', night: '#040A1A' }
+    : // A dusk blue rather than black: the pale land has to stay legible
+      // where it is night.
+      { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B', night: '#22355E' };
 }
 
 interface PackedRoute {
@@ -114,7 +129,20 @@ interface PackedRoute {
   flying: Float32Array;
   /** Still to fly, for an aircraft mid-track — drawn dashed. */
   remaining: Float32Array[];
-  plane: { anchor: [number, number, number]; aim: [number, number, number]; upcoming: boolean };
+  plane: {
+    anchor: [number, number, number];
+    aim: [number, number, number];
+    upcoming: boolean;
+    /** In the air right now, at the end of a track still being flown. */
+    live: boolean;
+  };
+}
+
+/** A coordinate the globe marks with a radar beacon — the next flight's
+ * origin while its travel day is on the home screen. */
+export interface GlobeBeacon {
+  latitude: number;
+  longitude: number;
 }
 
 /**
@@ -129,6 +157,17 @@ interface PackedRoute {
  * the globe costs one fill however much land is in view. Routes, planes,
  * comets and airports are projected with the same maths on the UI thread,
  * so drags, flicks and pinches never wait for JavaScript.
+ *
+ * Lighting is one of two: a fixed studio light from the upper left, or —
+ * `daylight` — the sun where it actually is at `sunAt` (now, ticking, when
+ * not given), so the day side, the night side and the twilight band between
+ * them are the earth's own for that moment (see services/sun).
+ *
+ * Planes are drawn only where there is still something to fly: upcoming
+ * routes (pulsing by the origin) and a flight in the air (at the end of its
+ * track). Flown routes keep their line and airports but no aircraft, so the
+ * eye goes to what is next; `pastPlanes` restores them for a picture of one
+ * past trip. A `beacon` marks a coordinate with spreading radar rings.
  *
  * The camera is three shared values: `lambda`/`phi` are the coordinate at
  * the centre of the disc and `scale` its size relative to the fitted
@@ -151,6 +190,10 @@ export function GlobeView({
   labels = 'auto',
   animate = true,
   fitPad,
+  daylight = false,
+  sunAt = null,
+  beacon = null,
+  pastPlanes = false,
   onSelect,
   onMoved,
   testID,
@@ -176,6 +219,15 @@ export function GlobeView({
   animate?: boolean;
   /** Air around the fit, 0–1 of the strip's half-size. */
   fitPad?: number;
+  /** Light the globe by the sun (day and night) rather than the studio light. */
+  daylight?: boolean;
+  /** The instant the sun is placed for, ms since epoch; null means now,
+   * kept current while the globe is up. */
+  sunAt?: number | null;
+  /** A coordinate to mark with radar rings, or null for none. */
+  beacon?: GlobeBeacon | null;
+  /** Draw a plane on flown routes too (the trip page's inset). */
+  pastPlanes?: boolean;
   onSelect?: (key: string | null) => void;
   /** The traveller took the camera somewhere: the fit no longer holds. */
   onMoved?: () => void;
@@ -205,6 +257,7 @@ export function GlobeView({
             anchor: toVector(plane.coordinate.latitude, plane.coordinate.longitude),
             aim: toVector(aim.latitude, aim.longitude),
             upcoming: plane.upcoming,
+            live: route.path?.kind === 'track' && !route.path.complete,
           },
         };
       }),
@@ -265,6 +318,28 @@ export function GlobeView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once the texture is in
   }, [textures.base]);
 
+  // The sun: at the given instant, or now — re-read every minute while the
+  // globe is lit by it, since that is the only time it shows.
+  const [sunNow, setSunNow] = useState(() => Date.now());
+  const ticking = daylight && sunAt == null;
+  useEffect(() => {
+    if (!ticking) return;
+    const update = () => setSunNow(Date.now());
+    // Catch up at once (the switch may be flipped hours after mount), then tick.
+    const first = setTimeout(update, 0);
+    const id = setInterval(update, SUN_TICK_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [ticking]);
+  const sunDir = useMemo(() => sunVector(sunAt ?? sunNow), [sunAt, sunNow]);
+  const daylightMix = useSharedValue(daylight ? 1 : 0);
+  useEffect(() => {
+    daylightMix.value = withTiming(daylight ? 1 : 0, { duration: DAYLIGHT_FADE_MS });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the shared value is stable
+  }, [daylight]);
+
   const detail = textures.detail;
   const borders = textures.borders;
   const uniforms = useDerivedValue(() => ({
@@ -280,7 +355,10 @@ export function GlobeView({
     landColor: rgb(colors.land),
     borderColor: rgb(colors.border),
     glowColor: rgb(colors.tint),
+    nightColor: rgb(colors.night),
     lightDir: LIGHT,
+    sunDir,
+    daylight: daylightMix.value,
   }));
 
   // Route paths, built together so the projection runs once per frame.
@@ -439,7 +517,13 @@ export function GlobeView({
 
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value }));
   const upcomingRoutes = packed.filter((route) => route.plane.upcoming);
-  const stillRoutes = packed.filter((route) => !route.plane.upcoming);
+  // Aircraft on routes that are not waiting to leave: the one in the air,
+  // and — only when asked — a plane mid-arc on a flown route.
+  const stillRoutes = packed.filter((route) => !route.plane.upcoming && (pastPlanes || route.plane.live));
+  const beaconVector = useMemo(
+    () => (beacon ? toVector(beacon.latitude, beacon.longitude) : null),
+    [beacon],
+  );
 
   const canvas = (
     <Animated.View
@@ -474,6 +558,7 @@ export function GlobeView({
         )}
         <Path path={dotsPath} color={colors.background} style="stroke" strokeWidth={2} />
         <Path path={dotsPath} color={colors.tint} />
+        {beaconVector && <Beacon v={beaconVector} camera={camera} color={colors.tint} animate={animate} />}
         {stillRoutes.map((route) => (
           <PlaneGlyph key={route.key} route={route} camera={camera} colors={colors} clock={null} />
         ))}
@@ -566,6 +651,69 @@ function PulsingPlanes({
   return routes.map((route) => (
     <PlaneGlyph key={route.key} route={route} camera={camera} colors={colors} clock={animate ? clock : null} />
   ));
+}
+
+/** Radar rings spreading from a point: each ring grows from the airport's
+ * dot out to BEACON_REACH while fading, the rings a fraction of a period
+ * apart so one is always on its way. Still — a single soft ring — when the
+ * screen is not animating or the traveller prefers reduced motion. */
+function Beacon({
+  v,
+  camera,
+  color,
+  animate,
+}: {
+  v: [number, number, number];
+  camera: Camera;
+  color: string;
+  animate: boolean;
+}) {
+  const { lambda, phi, scale, cx, cy, fitR } = camera;
+  const reduceMotion = useReducedMotion();
+  const clock = useClock();
+  const moving = animate && !reduceMotion;
+  const place = useDerivedValue(() => {
+    const rot = rotation({ lambda: lambda.value, phi: phi.value });
+    const r = fitR * scale.value;
+    const [vx, vy, vz] = toView(v[0], v[1], v[2], rot);
+    return { x: cx + r * vx, y: cy - r * vy, visible: vz > 0.02 };
+  });
+  const x = useDerivedValue(() => place.value.x);
+  const y = useDerivedValue(() => place.value.y);
+  const rings = [];
+  for (let i = 0; i < BEACON_RINGS; i += 1) rings.push(i);
+  return rings.map((i) => (
+    <BeaconRing key={i} index={i} x={x} y={y} place={place} clock={moving ? clock : null} color={color} />
+  ));
+}
+
+function BeaconRing({
+  index,
+  x,
+  y,
+  place,
+  clock,
+  color,
+}: {
+  index: number;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
+  place: SharedValue<{ x: number; y: number; visible: boolean }>;
+  clock: SharedValue<number> | null;
+  color: string;
+}) {
+  // A ring's age, 0–1: staggered by its index, or held mid-life when still.
+  const age = useDerivedValue(() => {
+    if (!clock) return index === 0 ? 0.45 : 1;
+    return ((clock.value + (index * BEACON_PERIOD_MS) / BEACON_RINGS) % BEACON_PERIOD_MS) / BEACON_PERIOD_MS;
+  });
+  const r = useDerivedValue(() => 3 + age.value * BEACON_REACH);
+  const opacity = useDerivedValue(() => {
+    if (!place.value.visible) return 0;
+    const left = 1 - age.value;
+    return Math.round(left * left * 90) / 100;
+  });
+  return <Circle cx={x} cy={y} r={r} color={color} style="stroke" strokeWidth={1.5} opacity={opacity} />;
 }
 
 /** The bright light running along each upcoming route toward its
@@ -733,10 +881,19 @@ uniform float3 seaColor;
 uniform float3 landColor;
 uniform float3 borderColor;
 uniform float3 glowColor;
+uniform float3 nightColor;
 uniform float3 lightDir;
+uniform float3 sunDir;
+uniform float daylight;
 
 const float PI = 3.14159265;
 const float GLOW = 0.11;
+// Twilight: full night from the sun 6° below the horizon (civil twilight,
+// cos ≈ -0.10) to full day a little past sunrise — a band of about nine
+// degrees, soft rather than a hard line.
+const float NIGHT_EDGE = -0.10;
+const float DAY_EDGE = 0.06;
+const float3 DUSK = float3(0.95, 0.55, 0.25);
 
 // Land at (u, v) in 0–1: the 4×2 detail tiles when zoomed in, else the base.
 float landAt(float2 uv) {
@@ -792,9 +949,21 @@ half4 main(float2 p) {
   float m = landAt(uv);
   float3 col = mix(seaColor, landColor, m);
   if (borderAlpha > 0.0) col = mix(col, borderColor, borderAt(uv) * borderAlpha * m);
-  // Gentle lighting plus a rim of atmosphere on the limb.
+  // Studio light: gentle shading from a fixed lamp.
   float diff = max(dot(float3(vx, vy, vz), normalize(lightDir)), 0.0);
-  col *= 0.68 + 0.32 * diff;
+  float3 studio = col * (0.68 + 0.32 * diff);
+  // Sunlight: the surface normal against the sun. Day keeps the colours,
+  // night sinks toward nightColor but stays readable, and the terminator
+  // carries a faint warm dusk, stronger over land.
+  float sun = dot(float3(gx, gy, gz), sunDir);
+  float day = smoothstep(NIGHT_EDGE, DAY_EDGE, sun);
+  float3 dayCol = col * (0.80 + 0.20 * max(sun, 0.0));
+  float3 nightCol = mix(col, nightColor, 0.62) * 0.55;
+  float dusk = sun / 0.09;
+  float band = exp(-dusk * dusk);
+  float3 sunlit = mix(nightCol, dayCol, day) + DUSK * band * 0.07 * (0.4 + 0.6 * m);
+  col = mix(studio, sunlit, daylight);
+  // A rim of atmosphere on the limb.
   float rim = pow(1.0 - vz, 3.0);
   col = col + glowColor * rim * 0.5;
   // Anti-aliased edge: the last ~1.5 points fade out.

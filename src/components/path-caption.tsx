@@ -8,13 +8,21 @@ import { pathCaption, type RoutePathKind } from '@/services/geo';
 /** Which line the inset map is drawing — "Flown path", "Filed route", or
  * "Overview" for the great circle. The great circle is the honest default
  * and looks exactly like a flight path, so the caption is always there;
- * quiet, in the corner the World pill leaves free. */
-export function PathCaption({ path }: { path: { kind: RoutePathKind; complete: boolean } | null | undefined }) {
+ * quiet, in the corner the World pill leaves free. With the globe lit by
+ * the sun, it also says which moment the light is for. */
+export function PathCaption({
+  path,
+  daylight = null,
+}: {
+  path: { kind: RoutePathKind; complete: boolean } | null | undefined;
+  daylight?: 'take-off' | 'landing' | 'now' | null;
+}) {
   const theme = useTheme();
+  const sun = daylight === 'now' ? 'Daylight now' : daylight ? `Daylight at ${daylight}` : null;
   return (
     <View style={[styles.pill, { backgroundColor: theme.backgroundElement }]} pointerEvents="none">
       <ThemedText type="small" themeColor="textSecondary" style={styles.text}>
-        {pathCaption(path)}
+        {sun ? `${pathCaption(path)} · ${sun}` : pathCaption(path)}
       </ThemedText>
     </View>
   );

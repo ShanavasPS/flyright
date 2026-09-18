@@ -10,12 +10,16 @@ import { DataErrorCard } from '@/components/data-state';
 import { GlobeView, globePalette } from '@/components/globe-view';
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { ThemedText } from '@/components/themed-text';
+import { useHeroTrip } from '@/components/travel-day-banner';
 import { EmptyPeriodCard, PeriodButton, PeriodCard } from '@/components/world-period-card';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
-import { airportZone } from '@/services/airports';
+import { airportZone, getAirport } from '@/services/airports';
+import { trackEvent } from '@/services/analytics';
 import { formatDayLabel, formatDayLabelWithYear } from '@/services/dates';
+import { setGlobeDaylight, useGlobeDaylight } from '@/services/globe-daylight';
 import {
   buildWorldRoutes,
   haversineKm,
@@ -219,6 +223,18 @@ export function WorldCanvas({
   );
   const selected = planes.find(({ route }) => route.key === selectedKey) ?? null;
 
+  const daylight = useGlobeDaylight();
+  // The flight whose travel day is on the home screen (T−24h through
+  // landing) gets a beacon on its origin, so the globe points at what is
+  // next the same way the hero card does — while that trip is on the globe.
+  const heroNow = useNow();
+  const hero = useHeroTrip(rows, heroNow);
+  const beacon = useMemo(() => {
+    if (!hero || !visible.some((row) => row.id === hero.journey.id)) return null;
+    const origin = getAirport(hero.journey.fromCode);
+    return origin ? { latitude: origin.lat, longitude: origin.lon } : null;
+  }, [hero, visible]);
+
   /** What the poster shows follows what the globe shows: the tapped route's
    * legs, the handed-off trip, else the period's rows. */
   const shareVisible = () => {
@@ -253,6 +269,8 @@ export function WorldCanvas({
           textures={textures}
           colors={{ ...globePalette(dark), tint: theme.tint, background: theme.background }}
           holdFit={moved}
+          daylight={daylight}
+          beacon={beacon}
           // Comets and pulses only while the tab is on screen in a
           // foregrounded app — animation for nobody would burn battery.
           animate={focused && appActive}
@@ -308,6 +326,7 @@ export function WorldCanvas({
                   }}
                 />
               )}
+              {!empty && <DaylightButton on={daylight} />}
               {shareable && loaded && visible.length > 0 && <ShareButton onPress={shareVisible} />}
             </View>
           </View>
@@ -554,6 +573,36 @@ function AllTravelsButton({ onPress }: { onPress: () => void }) {
       <ThemedText type="smallBold" style={{ color: theme.tint }}>
         All travels
       </ThemedText>
+    </Pressable>
+  );
+}
+
+/** Day and night on the globe, on or off — an icon that is lit when the
+ * globe is. The same round button as Share, no label: the globe itself
+ * shows what it does. Remembered across sessions. */
+function DaylightButton({ on }: { on: boolean }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={on ? 'Hide day and night' : 'Show day and night'}
+      testID="world-daylight-toggle"
+      onPress={() => {
+        setGlobeDaylight(!on);
+        trackEvent('world_daylight', { on: !on });
+      }}
+      style={[styles.recenter, { backgroundColor: theme.backgroundElement }]}>
+      <SymbolView
+        name={
+          on
+            ? { ios: 'sun.max.fill', android: 'light_mode', web: 'light_mode' }
+            : { ios: 'sun.max', android: 'light_mode', web: 'light_mode' }
+        }
+        size={18}
+        weight="semibold"
+        tintColor={on ? theme.tint : theme.textSecondary}
+      />
     </Pressable>
   );
 }
