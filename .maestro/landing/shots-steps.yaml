@@ -1,0 +1,23 @@
+# Landing capture: the travel-day checklist on the trip page, from the
+# "FlyRight Shots" simulator (Release build, seeded with --travel-day and
+# the demo flight moved into the air — see scripts/capture-landing-shots.mjs).
+# The Maestro MCP pins itself to the first simulator it saw, so run this
+# with the CLI: maestro --device <shots-udid> test -e TAG=light .maestro/landing/shots-steps.yaml
+# Set the appearance first (xcrun simctl ui <udid> appearance light|dark).
+appId: com.shanavasshaji.flyright
+---
+# Cold start: a trip page left scrolled from an earlier run would hide the header.
+- launchApp:
+    stopApp: true
+- openLink: "flyright:///journey/demo-upcoming"
+- extendedWaitUntil:
+    visible: "In the air"
+    timeout: 20000
+# Rows read as "label\ntime" to accessibility, so the match must span lines.
+- scrollUntilVisible:
+    element:
+      text: "(?s).*Bags dropped.*"
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- takeScreenshot: steps-${TAG}

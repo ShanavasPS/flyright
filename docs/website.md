@@ -9,7 +9,7 @@ rendered on the web and is not linked from the site.
 
 | Route | File | Purpose |
 | --- | --- | --- |
-| `/` | `src/screens/landing.web.tsx` via `src/app/(tabs)/(journeys)/index.tsx` (web branch) | Front page: hero, six image + text feature rows (each claim beside the screen that makes it — no icon tiles), the EU261 band with a mini checker, Pro. |
+| `/` | `src/screens/landing.web.tsx` via `src/app/(tabs)/(journeys)/index.tsx` (web branch) | Front page: hero, nine image + text feature rows (each claim beside the screen that makes it — no icon tiles), the EU261 band with a mini checker, Pro. |
 | `/check` | `src/screens/check.tsx` | The flight checker. Takes `?flight=AY1331&date=YYYY-MM-DD` (runs the lookup on arrival) and `?demo=1` (the example verdict); the front page's band hands off with those. |
 | `/go-pro`, `/welcome`, `/sign-in` | `src/screens/go-pro.web.tsx`, `welcome.tsx`, `sign-in.web.tsx` | Checkout funnel (RevenueCat Web Billing + Clerk). |
 | `/privacy`, `/terms`, `/support` | `src/screens/legal/*` | Plain pages, no SiteChrome. |
@@ -53,6 +53,19 @@ carry the app's tab bar and mount World/People/Claims behind it.
   status bar and shoots both screens in both appearances from the installed build —
   which must be a Release build of the current code (`npx expo run:ios
   --configuration Release --no-bundler --device <udid>`).
+  `steps.png` (the travel-day checklist) and `share.png` (the World poster, heat on,
+  Story) come from the same simulator and state through the Maestro **CLI** —
+  `maestro --device <udid> test -e TAG=light .maestro/landing/shots-steps.yaml` and
+  `… -e POSTER=Light -e TAG=light .maestro/landing/shots-share.yaml`, then dark with
+  `xcrun simctl ui <udid> appearance dark` and `TAG=dark` / `POSTER=Dark`. The Maestro
+  MCP cannot be used for these: it stays pinned to the first simulator it drove.
+  `updates.png` (the trip page's "Your updates" card with a posted photo) needs a
+  signed-in account, so like People it is the **dev** client as Eve: post from
+  `flyright:///trip-update?journeyId=demo-upcoming` (the aircraft-window photo added
+  with `xcrun simctl addmedia`), then frame the card. The server checks the update
+  window against its own copy of the trip, so a locally edited departure must be
+  pushed first — bump the row's `updated_at` and relaunch, or the post is refused as
+  "This trip is over".
 - The People capture is the **dev** deployment with synthetic people, never production
   accounts: `devTools:seedDemoCircle` (internal; `npx convex run devTools:seedDemoCircle
   '<json>'` against dev) upserts profile rows (name + Unsplash portrait — `images.unsplash.com`

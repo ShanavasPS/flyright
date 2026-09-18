@@ -1,0 +1,23 @@
+# Landing capture: the World share poster with the heat layer on, in the
+# poster theme named by POSTER ("Light" | "Dark"). Same simulator and
+# invocation as shots-steps.yaml.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- openLink: "flyright:///world"
+- extendedWaitUntil:
+    visible: "Everywhere you.ve been"
+    timeout: 20000
+- tapOn: "Share your world"
+- extendedWaitUntil:
+    visible: "Story"
+    timeout: 20000
+- tapOn: ${POSTER}
+# Let the heat layer render.
+- extendedWaitUntil:
+    visible: "zzz-never-there-zzz"
+    timeout: 5000
+    optional: true
+- takeScreenshot: share-${TAG}
+- tapOn: "Close"

@@ -53,7 +53,7 @@ const NIGHT = {
 };
 
 /** The app in the page's own theme: a dark page shows the dark app. Both
- * sets are the same seven screens from the same seeded release build. */
+ * sets are the same screens from the same seeded builds (docs/website.md). */
 const SHOTS = {
   light: {
     journeys: require('@/assets/images/landing/journeys.png'),
@@ -64,6 +64,9 @@ const SHOTS = {
     verdict: require('@/assets/images/landing/verdict.png'),
     people: require('@/assets/images/landing/people.png'),
     claims: require('@/assets/images/landing/claims.png'),
+    steps: require('@/assets/images/landing/steps.png'),
+    updates: require('@/assets/images/landing/updates.png'),
+    share: require('@/assets/images/landing/share.png'),
   },
   dark: {
     journeys: require('@/assets/images/landing/dark/journeys.png'),
@@ -74,6 +77,9 @@ const SHOTS = {
     verdict: require('@/assets/images/landing/dark/verdict.png'),
     people: require('@/assets/images/landing/dark/people.png'),
     claims: require('@/assets/images/landing/dark/claims.png'),
+    steps: require('@/assets/images/landing/dark/steps.png'),
+    updates: require('@/assets/images/landing/dark/updates.png'),
+    share: require('@/assets/images/landing/dark/share.png'),
   },
 };
 type ShotName = keyof typeof SHOTS.light;
@@ -89,7 +95,21 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
     shot: 'travelDay',
     eyebrow: 'TRAVEL DAY',
     title: 'Travel day, live',
-    body: 'Gate, delay and boarding on your lock screen — every step from the airport to the seat, ticked off as you go.',
+    body: 'Gate, delay and boarding on your lock screen — and the plane where it is on the map, from take-off to touchdown.',
+  },
+  {
+    shot: 'steps',
+    // The checklist sits under the boarding pass: show the lower half.
+    focus: 'bottom',
+    eyebrow: 'STEP BY STEP',
+    title: 'Every step of the day, ticked off',
+    body: 'At the airport, checked in, bags dropped, through security — one tap each, timed as you go. The people following you watch the same list move.',
+  },
+  {
+    shot: 'updates',
+    eyebrow: 'TRIP UPDATES',
+    title: 'A photo from the window, for the people who care',
+    body: 'Post a line or a photo from inside the trip. It goes to your circle, not the whole internet — and it stays in your journal.',
   },
   {
     shot: 'people',
@@ -107,7 +127,13 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
     shot: 'world',
     eyebrow: 'WORLD',
     title: 'Your world, on a globe',
-    body: 'Every route you have flown, on the earth itself — and a poster of it to share.',
+    body: 'Every route you have flown, on the earth itself — lit by the sun where it actually is right now.',
+  },
+  {
+    shot: 'share',
+    eyebrow: 'SHARE YOUR WORLD',
+    title: 'Your year in the air, as a poster',
+    body: 'Story or square, dark or light, with the routes you flew glowing on the map — ready for wherever you post.',
   },
   {
     shot: 'verdict',
