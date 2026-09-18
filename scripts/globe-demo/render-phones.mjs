@@ -1,12 +1,13 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import sharp from 'sharp';
+import QRCode from 'qrcode';
 
 // Two iPhone screen recordings side by side, 1080 × 1350: the dark-mode take
 // on the left, the light-mode take on the right, both playing continuously
-// at 1× from their own in-point for the same duration. Captions change at
-// the times in edit-phones.json; the footage never cuts. Recordings are the
+// at 1× from their own in-point for the same duration. No captions — the
+// bottom band carries the download QR and store badges; the footage never cuts. Recordings are the
 // phone's own Control Center screen recordings (1180 × 2556, 60 fps).
 const out = resolve('demo/out/globe');
 const work = `${out}/work-phones`;
@@ -20,6 +21,9 @@ const icon = await sharp('assets/images/icon.png').resize(64, 64).png().toBuffer
 const appStore = await sharp(new URL('../sharing-demo/assets/app-store.svg', import.meta.url).pathname, { density: 288 }).resize({ height: 44 }).png().toBuffer();
 const googlePlay = await sharp(new URL('../sharing-demo/assets/google-play.png', import.meta.url).pathname).trim().resize({ height: 44 }).png().toBuffer();
 const googlePlayMeta = await sharp(googlePlay).metadata();
+// Bottom band: the download QR on the left, badges on the right — no captions.
+const qr = await QRCode.toBuffer('https://flyright.godetour.link/0tItTZgtyO', { errorCorrectionLevel: 'M', margin: 3, scale: 4 });
+const qrMeta = await sharp(qr).metadata();
 
 const mask = `<svg xmlns="http://www.w3.org/2000/svg" width="${phone.width}" height="${phone.height}"><rect width="100%" height="100%" fill="black"/><rect width="100%" height="100%" rx="${phone.radius}" fill="white"/></svg>`;
 await sharp(Buffer.from(mask)).removeAlpha().png().toFile(`${work}/mask.png`);
@@ -49,6 +53,9 @@ const background = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height=
       <rect x="${s.x - 9}" y="${phone.y - 9}" width="${phone.width + 18}" height="${phone.height + 18}" rx="${phone.radius + 9}" fill="url(#edge)"/>
       <rect x="${s.x - 4}" y="${phone.y - 4}" width="${phone.width + 8}" height="${phone.height + 8}" rx="${phone.radius + 4}" fill="#030508"/>
       <rect x="${s.x - 12}" y="${phone.y + 150}" width="4" height="52" rx="2" fill="#485A70"/><rect x="${s.x - 12}" y="${phone.y + 218}" width="4" height="52" rx="2" fill="#485A70"/><rect x="${s.x + phone.width + 8}" y="${phone.y + 180}" width="4" height="80" rx="2" fill="#485A70"/>`).join('')}
+    <image href="data:image/png;base64,${qr.toString('base64')}" x="52" y="${1332 - qrMeta.height}" width="${qrMeta.width}" height="${qrMeta.height}"/>
+    <text x="${52 + qrMeta.width + 20}" y="1268" font-size="26" font-weight="600">Scan to get FlyRight</text>
+    <text x="${52 + qrMeta.width + 20}" y="1302" font-size="20" fill="#BAC9DD">Free on the App Store and Google Play</text>
     <text x="1028" y="1240" text-anchor="end" font-size="20" font-weight="600">getflyright.com</text>
     <image href="data:image/png;base64,${appStore.toString('base64')}" x="${1028 - 132}" y="1262" width="132" height="44"/>
     <image href="data:image/png;base64,${googlePlay.toString('base64')}" x="${1028 - 132 - 16 - googlePlayMeta.width}" y="1262" width="${googlePlayMeta.width}" height="44"/>
@@ -56,31 +63,9 @@ const background = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height=
 </svg>`;
 await sharp(Buffer.from(background)).png().toFile(`${work}/bg.png`);
 
-const captions = [];
-let from = 0;
-const timestamp = seconds => new Date(seconds * 1000).toISOString().slice(11, 23).replace('.', ',');
-for (const [i, c] of edit.captions.entries()) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350">
-    <g font-family="Helvetica Neue,Helvetica,Arial,sans-serif" fill="#F1F6FF">
-      <text x="52" y="1240" font-size="18" fill="#70B8FF" letter-spacing="3">${String(i + 1).padStart(2, '0')} / ${String(edit.captions.length).padStart(2, '0')}</text>
-      <text x="52" y="1281" font-size="36" font-weight="650">${esc(c.title)}</text>
-      <text x="52" y="1318" font-size="23" fill="#BAC9DD">${esc(c.body)}</text>
-    </g></svg>`;
-  await sharp(Buffer.from(svg)).png().toFile(`${work}/cap-${i}.png`);
-  captions.push({ file: `${work}/cap-${i}.png`, from, until: c.until, srt: `${i + 1}\n${timestamp(from)} --> ${timestamp(c.until)}\n${c.title}\n${c.body}\n` });
-  from = c.until;
-}
-
-// Compose: background, both masked phone clips, then each caption for its
-// interval (enable= on the overlay).
+// Compose: background, then both masked phone clips.
 const inputs = ['-loop', '1', '-framerate', '30', '-i', `${work}/bg.png`, '-i', `${work}/left.mp4`, '-i', `${work}/right.mp4`, '-loop', '1', '-framerate', '30', '-i', `${work}/mask.png`];
-for (const c of captions) inputs.push('-loop', '1', '-framerate', '30', '-i', c.file);
-let filter = `[3:v]format=gray,split[m1][m2];[1:v]format=rgba[l];[l][m1]alphamerge[L];[2:v]format=rgba[r];[r][m2]alphamerge[R];[0:v][L]overlay=${sides.left.x}:${phone.y}:shortest=1[a];[a][R]overlay=${sides.right.x}:${phone.y}[b0]`;
-captions.forEach((c, i) => {
-  filter += `;[b${i}][${4 + i}:v]overlay=0:0:enable='between(t,${c.from},${c.until})'[b${i + 1}]`;
-});
-filter += `;[b${captions.length}]format=yuv420p[o]`;
+const filter = `[3:v]format=gray,split[m1][m2];[1:v]format=rgba[l];[l][m1]alphamerge[L];[2:v]format=rgba[r];[r][m2]alphamerge[R];[0:v][L]overlay=${sides.left.x}:${phone.y}:shortest=1[a];[a][R]overlay=${sides.right.x}:${phone.y},format=yuv420p[o]`;
 ff([...inputs, '-filter_complex', filter, '-map', '[o]', '-t', String(edit.duration), '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-movflags', '+faststart', `${out}/flyright-globe-phones.mp4`]);
-await writeFile(`${out}/flyright-globe-phones.srt`, captions.map(c => c.srt).join('\n'));
 ff(['-ss', '13.5', '-i', `${out}/flyright-globe-phones.mp4`, '-frames:v', '1', `${out}/flyright-globe-phones-cover.png`]);
 console.log(`Exported ${edit.duration}s to ${out}/flyright-globe-phones.mp4`);

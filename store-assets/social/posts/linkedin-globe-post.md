@@ -1,6 +1,6 @@
 # LinkedIn post — the World tab globe (react-native-skia)
 
-Video (the one to post): `demo/out/globe/flyright-globe-phones.mp4` — 26 s, 1080 × 1350, two real iPhone 15 Pro screen recordings side by side (dark on the left, light on the right, both hand-driven by Shanavas on 2026-09-18, signed in as the demo account), captions burned in, works muted. Cover: `flyright-globe-phones-cover.png`; captions in `flyright-globe-phones.srt`. The simulator cut `flyright-globe.mp4` (34 s, one phone, scripted) is the alternative. Recipe in `scripts/globe-demo/README.md`.
+Video (the one to post): `demo/out/globe/flyright-globe-phones.mp4` — 26 s, 1080 × 1350, two real iPhone 15 Pro screen recordings side by side (dark on the left, light on the right, both hand-driven by Shanavas on 2026-09-18, signed in as the demo account), no captions (the bottom band is the download QR and store badges), works muted. Cover: `flyright-globe-phones-cover.png`. The simulator cut `flyright-globe.mp4` (34 s, one phone, scripted) is the alternative. Recipe in `scripts/globe-demo/README.md`.
 
 ---
 

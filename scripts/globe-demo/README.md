@@ -71,7 +71,7 @@ inset → World focused → pinch out, spin, tilt → All travels → play →
 Recenter. `render-phones.mjs` + `edit-phones.json` trim them to the same
 26.4 s (dark from 0.6 s, light from 0.0 s, so both tap the trip about a
 second in; both end on the settled globe before Control Center appears),
-play both at 1× side by side and overlay timed captions. Sources are copied
+play both at 1× side by side; the bottom band is the QR and store badges (the captions were dropped at the user's request). Sources are copied
 to `demo/out/globe/phone/a.mp4` (dark) and `b.mp4` (light). The red
 recording dot in both status bars is the phone's own; it stays.
 
