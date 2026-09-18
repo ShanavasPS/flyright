@@ -4,17 +4,15 @@ Video (the one to post): `demo/out/globe/flyright-globe-phones.mp4` — 26 s, 10
 
 ---
 
-Zoom out on your travels in any map app and it stops you at about a hemisphere. That is not a bug anyone can fix for you: MapKit and Google Maps both have a floor on how far out a map can go, and the react-native-maps issue asking to lift it is closed as "not planned".
+react-native-skia by Shopify, Reanimated and Gesture Handler by Software Mansion, all inside an Expo app: that is the whole stack behind FlyRight's new World tab. The map is gone, and the globe is the map.
 
-We wanted the whole planet with your routes on it. So in FlyRight the map is gone, and the globe is the map.
+Why replace a map at all? Zoom out on your travels in any map app and it stops you at about a hemisphere. That is not a bug anyone can fix for you: MapKit and Google Maps both have a floor on how far out a map can go, and the react-native-maps issue asking to lift it is closed as "not planned". We wanted the whole planet with your routes on it.
 
-Tap World and every flight you've saved is on one sphere, the comets are the flights still ahead of you. Flick it and it keeps turning. Double-tap and the coastlines sharpen and borders fade in. Tap a route and its flights dock below; open one and the trip page draws the same globe as its map.
-
-It runs on react-native-skia by Shopify, inside an Expo app.
+Tap a trip and it opens on its own route, drawn on the globe. Tap the inset and World frames that flight; pinch out and the whole planet is there, flick it and it keeps turning. All travels puts every trip back on the sphere, and it looks the same in dark mode as in light, because the shader paints whatever colours the theme hands it.
 
 For fellow developers, the shape of it:
 
-The earth is one runtime shader. For every pixel: view ray → does it hit the sphere → rotate into the globe's frame → latitude and longitude → sample a land mask → the theme's sea and land colours, a little lighting, a glow at the limb. Routes, airports and comets are Skia paths built in Reanimated worklets, so pan, pinch and tap never touch the JavaScript thread. The textures come from Natural Earth through a small sharp script: a 50 m base that is always loaded, 10 m coastlines as eight 2048² tiles and country borders as two more, all alpha-only, decoded once and faded in as you zoom.
+The earth is one Skia runtime shader. For every pixel: view ray → does it hit the sphere → rotate into the globe's frame → latitude and longitude → sample a land mask → the theme's sea and land colours, a little lighting, a glow at the limb. Routes, airports and the planes on them are Skia paths built in Reanimated worklets, and the gestures are Gesture Handler's, so pan, pinch and tap never touch the JavaScript thread. The textures come from Natural Earth through a small sharp script: a 50 m base that is always loaded, 10 m coastlines as eight 2048² tiles and country borders as two more, all alpha-only, decoded once and faded in as you zoom.
 
 Three decisions I'd make again:
 
@@ -24,6 +22,6 @@ Masks instead of imagery. An alpha-only tile is 4 MB and takes whatever colours 
 
 Mipmaps off. Derivative-based level of detail drew a dotted seam down the antimeridian where the texture wraps. Sampling the one level and letting the tiles carry the detail fixed it. (Related lesson from the texture script: unwrap the polygon rings past ±180° and stamp the drawing three times, or Antarctica breaks and a band appears across Siberia.)
 
-Built with Expo and React Native; Reanimated and Gesture Handler by Software Mansion do the gestures. Another little look inside FlyRight.
+Another little look inside FlyRight, built with Expo and React Native.
 
-#FlyRight #Expo #ReactNative #Skia #Shopify #SoftwareMansion #BuildInPublic #Shipaton
+#FlyRight #Expo #ReactNative #Skia #Shopify #SoftwareMansion #Reanimated #BuildInPublic #Shipaton
