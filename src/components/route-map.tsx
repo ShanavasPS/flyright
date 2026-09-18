@@ -107,14 +107,16 @@ export function RouteMap({
     return { key: route.key, ...planeNow(route, forward, progress, live.facts.position, live.now) };
   }, [live, route]);
   // The radar rings the World tab gives the trip of the day: on the origin
-  // through the travel day, on the aircraft once it is in the air.
+  // through the travel day, on the aircraft once it is in the air, on the
+  // destination once landed — while the travel window is open.
   const beacon = useMemo(() => {
     if (!live) return null;
     if (livePlane) return livePlane.coordinate;
     const { phase } = travelWindow(live.journey, live.state, new Date(live.now));
     if (phase !== 'reminder' && phase !== 'live') return null;
-    const origin = getAirport(live.journey.fromCode);
-    return origin ? { latitude: origin.lat, longitude: origin.lon } : null;
+    const landed = flightProgress(live.journey, live.state, live.facts, new Date(live.now)) >= 1;
+    const airport = getAirport(landed ? live.journey.toCode : live.journey.fromCode);
+    return airport ? { latitude: airport.lat, longitude: airport.lon } : null;
   }, [live, livePlane]);
   // The globe is sized to the card as it came out, so it is measured first;
   // the sea-coloured background covers the frame until the width lands.

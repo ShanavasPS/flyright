@@ -12,7 +12,8 @@ import { useGlobeTextures } from '@/services/globe-textures';
 /** The trip a person is on, as a follower is told it: which leg and how far
  * along the timetable says it is (services/public-session sessionProgress).
  * Before departure the beacon sits on the origin; in the air the plane is
- * drawn where it is and the beacon rides on it. */
+ * drawn where it is and the beacon rides on it; landed, it marks the
+ * destination. */
 export interface TravelGlobeLive {
   journeyId: string;
   /** 0 before take-off, 1 after landing, in between by the timetable. */
@@ -58,11 +59,15 @@ export function TravelGlobe({
     const forward = leg ? leg.from.iata === liveRoute.from.iata : true;
     return { key: liveRoute.key, ...planeNow(liveRoute, forward, live.progress, null, live.now) };
   }, [live, liveRoute]);
+  // Origin while they are still to leave, the aircraft in the air, the
+  // destination once landed — for as long as the follower is shown the trip.
   const beacon = useMemo(() => {
-    if (!live || !liveRoute || live.progress >= 1) return null;
+    if (!live || !liveRoute) return null;
     if (livePlane) return livePlane.coordinate;
     const leg = liveRoute.legs.find((candidate) => candidate.id === live.journeyId);
-    return leg ? { latitude: leg.from.lat, longitude: leg.from.lon } : null;
+    if (!leg) return null;
+    const airport = live.progress >= 1 ? leg.to : leg.from;
+    return { latitude: airport.lat, longitude: airport.lon };
   }, [live, liveRoute, livePlane]);
 
   if (!data.routes.length) return null;

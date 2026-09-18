@@ -20,12 +20,15 @@ export interface LivePlane extends PlanePlacement {
 }
 
 /**
- * Where to draw the aircraft of `journey` while it is in the air — null
- * before departure and after landing. The place comes from the flight's
- * cached facts (a reported position when there is a fresh one, the
- * timetable otherwise; see services/flight-position) and moves with `now`.
- * With `refresh`, a tracked flight's facts are re-fetched every few minutes
- * while the screen is up, so a reported position keeps arriving.
+ * Where to draw the aircraft of `journey` while it is in the air — `plane`
+ * is null before departure and after landing — and how far along the
+ * flight is by the timetable (`progress`, 0 on the ground before, 1 once
+ * landed), so a caller can mark the origin or the destination instead. The
+ * place comes from the flight's cached facts (a reported position when
+ * there is a fresh one, the timetable otherwise; see
+ * services/flight-position) and moves with `now`. With `refresh`, a tracked
+ * flight's facts are re-fetched every few minutes while the screen is up,
+ * so a reported position keeps arriving.
  */
 export function useLivePlane(
   journey: TravelJourney | null,
@@ -33,7 +36,7 @@ export function useLivePlane(
   route: GeoRoute | null,
   now: Date,
   refresh: boolean,
-): LivePlane | null {
+): { plane: LivePlane | null; progress: number } {
   const [, setRefreshed] = useState(0);
   const facts = journey ? getFlightFacts(journey.id) : null;
   const progress = journey && facts ? flightProgress(journey, state, facts, now) : 0;
@@ -65,8 +68,11 @@ export function useLivePlane(
     };
   }, [tracked, refresh, journeyId, number, lookupDay]);
 
-  if (!airborne || !journey || !route || !facts) return null;
+  if (!airborne || !journey || !route || !facts) return { plane: null, progress };
   const leg = route.legs.find((candidate) => candidate.id === journey.id);
   const forward = leg ? leg.from.iata === route.from.iata : true;
-  return { key: route.key, progress, ...planeNow(route, forward, progress, facts.position, now.getTime()) };
+  return {
+    plane: { key: route.key, progress, ...planeNow(route, forward, progress, facts.position, now.getTime()) },
+    progress,
+  };
 }

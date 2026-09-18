@@ -237,19 +237,22 @@ export function WorldCanvas({
     () => (hero ? (data.routes.find((route) => route.legs.some((leg) => leg.id === hero.journey.id)) ?? null) : null),
     [data, hero],
   );
-  const livePlane = useLivePlane(
+  const { plane: livePlane, progress: heroProgress } = useLivePlane(
     hero?.journey ?? null,
     hero?.state ?? EMPTY_TRAVEL_DAY,
     heroRoute,
     heroNow,
     focused && appActive,
   );
+  // One story for the rings: the origin while they are still to leave, the
+  // aircraft in the air, the destination once landed (until the travel day
+  // closes and the hero goes).
   const beacon = useMemo(() => {
     if (!hero || !heroRoute) return null;
     if (livePlane) return livePlane.coordinate;
-    const origin = getAirport(hero.journey.fromCode);
-    return origin ? { latitude: origin.lat, longitude: origin.lon } : null;
-  }, [hero, heroRoute, livePlane]);
+    const airport = getAirport(heroProgress >= 1 ? hero.journey.toCode : hero.journey.fromCode);
+    return airport ? { latitude: airport.lat, longitude: airport.lon } : null;
+  }, [hero, heroRoute, livePlane, heroProgress]);
 
   /** What the poster shows follows what the globe shows: the tapped route's
    * legs, the handed-off trip, else the period's rows. */
