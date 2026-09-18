@@ -242,6 +242,48 @@ export async function createSession(
   return session;
 }
 
+/** The journey's times moved after its session opened: carry them onto every
+ * active session for the key. The session's schedule is a snapshot taken at
+ * creation, and the poll chain asks the provider about the day it names
+ * (liveInternal.poll → flightDay), so a re-timed flight would otherwise keep
+ * its followers on yesterday's leg — the session QR516's premature heads-up
+ * opened kept polling the 18th after the journey had been put back on the
+ * 19th. Expiry only ever extends: a session cut short would drop its
+ * followers mid-trip. The pending poll is re-armed from the new times. */
+export async function retimeSessions(ctx: MutationCtx, journey: Doc<'journeys'>) {
+  const sessions = await ctx.db
+    .query('liveSessions')
+    .withIndex('by_user_key', (q) => q.eq('userId', journey.userId).eq('naturalKey', journey.naturalKey))
+    .collect();
+  const now = Date.now();
+  for (const session of sessions) {
+    if (session.status !== 'active') continue;
+    if (
+      session.scheduledDeparture === journey.scheduledDeparture &&
+      session.scheduledArrival === journey.scheduledArrival
+    ) {
+      continue;
+    }
+    const expiresAt = Math.max(
+      Date.parse(session.expiresAt) || 0,
+      sessionExpiryFor(journey.scheduledArrival, now, journey.toCode),
+    );
+    await ctx.db.patch(session._id, {
+      scheduledDeparture: journey.scheduledDeparture,
+      scheduledArrival: journey.scheduledArrival,
+      expiresAt: new Date(expiresAt).toISOString(),
+      updatedAt: new Date(now).toISOString(),
+    });
+    const fresh = (await ctx.db.get(session._id))!;
+    if (journey.source === 'lookup' && journey.number) await schedulePoll(ctx, fresh);
+    // Follower surfaces and the lock-screen widget print the schedule.
+    await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId: session._id });
+    if (fresh.activityId) {
+      await ctx.scheduler.runAfter(0, internal.liveInternal.updateActivity, { sessionId: session._id });
+    }
+  }
+}
+
 /** Owner-scoped journey lookup by natural key; null for missing/deleted. */
 export async function journeyForKey(ctx: MutationCtx | QueryCtx, userId: string, naturalKey: string) {
   const journey = await ctx.db

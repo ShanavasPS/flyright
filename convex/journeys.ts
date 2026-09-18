@@ -5,7 +5,12 @@ import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
 import { audienceOf, audienceRank } from './audience';
-import { armHeadsUp, hideSessionsFromCircle, materializeCircleFollows } from './liveHelpers';
+import {
+  armHeadsUp,
+  hideSessionsFromCircle,
+  materializeCircleFollows,
+  retimeSessions,
+} from './liveHelpers';
 
 /** Row shape the client pushes — deliberately has NO userId field: the server
  * stamps identity.subject, so a client can never write another user's rows. */
@@ -95,6 +100,16 @@ export const push = mutation({
           row.scheduledDeparture !== existing.scheduledDeparture ||
           !!row.deletedAt !== !!existing.deletedAt ||
           wasRank !== nowRank;
+        // A moved flight with a session already open (the heads-up went out,
+        // or the traveler started their travel day) takes the session along:
+        // its poll chain asks about the day the session names.
+        const retimed =
+          row.scheduledDeparture !== existing.scheduledDeparture ||
+          row.scheduledArrival !== existing.scheduledArrival;
+        if (retimed && !row.deletedAt) {
+          const fresh = await ctx.db.get(existing._id);
+          if (fresh) await retimeSessions(ctx, fresh);
+        }
         if (nowRank > wasRank) {
           // Narrowed: whoever the trip no longer admits stops following its
           // live session — the rest of the circle, link-holders, everyone
