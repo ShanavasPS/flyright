@@ -21,6 +21,7 @@ export function Reveal({
   delay = 0,
   distance = 28,
   duration = 720,
+  eager = false,
   ...rest
 }: ViewProps & {
   /** Where the block settles in from. */
@@ -28,6 +29,10 @@ export function Reveal({
   delay?: number;
   distance?: number;
   duration?: number;
+  /** Play on mount rather than on scrolling into view — for a block that
+   * straddles the fold, whose top sliver must show without being scrolled
+   * to (the hero's phones on a small phone). */
+  eager?: boolean;
 }) {
   const [progress] = useState(() => new Animated.Value(0));
   const ref = useRef<View>(null);
@@ -37,6 +42,17 @@ export function Reveal({
     if (reducedMotion() || !node || typeof IntersectionObserver === 'undefined') {
       progress.setValue(1);
       return;
+    }
+    if (eager) {
+      const animation = Animated.timing(progress, {
+        toValue: 1,
+        duration,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      });
+      animation.start();
+      return () => animation.stop();
     }
     const observer = new IntersectionObserver(
       (entries) => {

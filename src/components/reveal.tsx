@@ -5,7 +5,13 @@ import { View, type ViewProps } from 'react-native';
 export function Reveal({
   children,
   style,
-}: ViewProps & { from?: 'up' | 'left' | 'right'; delay?: number; distance?: number; duration?: number }) {
+}: ViewProps & {
+  from?: 'up' | 'left' | 'right';
+  delay?: number;
+  distance?: number;
+  duration?: number;
+  eager?: boolean;
+}) {
   return <View style={style}>{children}</View>;
 }
 

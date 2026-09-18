@@ -158,8 +158,12 @@ function Hero({ compact }: { compact: boolean }) {
   const scheme = useColorScheme();
   const shots = useShots();
   return (
-    <Section style={{ paddingTop: compact ? Spacing.five : 72, paddingBottom: compact ? Spacing.four : 40 }}>
-      <View style={[styles.two, compact && styles.stack]}>
+    <Section style={{ paddingTop: compact ? Spacing.four : 72, paddingBottom: compact ? Spacing.four : 40 }}>
+      {/* Stacked, the phones must break the first screen on a small phone:
+          a cut-off phone top is what says there is more below. Tighter
+          rhythm than the other stacked sections, and the art plays at once
+          rather than waiting to be scrolled into view. */}
+      <View style={[styles.two, compact && styles.stack, compact && styles.heroStack]}>
         {/* The words arrive one line after another; the phones settle in a
           beat later and then drift, slowly and out of step with each other. */}
         <View style={[styles.copy, compact && styles.stackChild]}>
@@ -178,7 +182,7 @@ function Hero({ compact }: { compact: boolean }) {
             </ThemedText>
           </Reveal>
           <Reveal delay={180}>
-            <ThemedText themeColor="textSecondary" style={styles.lede}>
+            <ThemedText themeColor="textSecondary" style={[styles.lede, compact && styles.ledeCompact]}>
               Gates, delays and boarding, as they happen. Shared with the people waiting for you.
               And what you’re owed when the flight goes wrong.
             </ThemedText>
@@ -199,6 +203,7 @@ function Hero({ compact }: { compact: boolean }) {
           delay={200}
           distance={44}
           duration={1000}
+          eager={compact}
           style={[styles.art, compact && styles.artCompact, compact && styles.stackChild]}>
           <Float period={6800} style={[styles.phoneBackPos, compact && styles.phoneBackCompact]}>
             {/* My travels on the day of a flight: the live card's running
@@ -507,6 +512,9 @@ const styles = StyleSheet.create({
     flexBasis: 'auto',
     maxWidth: '100%',
   },
+  heroStack: {
+    gap: Spacing.three,
+  },
   copy: {
     flexGrow: 1,
     flexShrink: 1,
@@ -533,6 +541,10 @@ const styles = StyleSheet.create({
     fontSize: 19,
     lineHeight: 29,
   },
+  ledeCompact: {
+    fontSize: 17,
+    lineHeight: 26,
+  },
   ctas: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,7 +559,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   artCompact: {
-    height: 470,
+    height: 440,
     width: '100%',
   },
   // Position on the Float wrapper (it owns the drifting translate), the tilt
@@ -562,7 +574,7 @@ const styles = StyleSheet.create({
   },
   phoneBackCompact: {
     left: '6%',
-    top: 40,
+    top: 28,
   },
   phoneFrontPos: {
     position: 'absolute',
