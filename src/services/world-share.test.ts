@@ -35,10 +35,11 @@ describe('shareCopy', () => {
     expect(copy.eyebrow).toBe('WHERE SAM FLEW');
     expect(copy.title).toBe('2025');
     expect(copy.single).toBe(false);
-    expect(copy.stats.map((s) => s.label)).toEqual(['flights', 'airports', 'countries', 'km']);
-    expect(copy.stats[3].value).toBe('17.1k');
+    expect(copy.stats.map((s) => s.label)).toEqual(['flights', 'airports', 'countries', 'in the air']);
+    // 4h45 + 3h + 3h, to the hour — a quarter tile has no room for minutes.
+    expect(copy.stats[3].value).toBe('11h');
     expect(copy.details.map((d) => d.label)).toEqual(['Most visited', 'Longest flight', 'Most flown']);
-    expect(copy.details[1].value).toBe('DXB → LAX · 13,400 km');
+    expect(copy.details[1].value).toBe('DXB → LAX · 4h 45m');
     expect(copy.details[2].value).toBe('Finnair');
   });
 

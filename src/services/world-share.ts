@@ -10,7 +10,8 @@ import {
   type WorldMapData,
 } from '@/services/geo';
 import type { JourneyRow } from '@/services/journeys';
-import { cityOf, formatKm, travelRecap, type TravelRecap } from '@/services/timeline';
+import { cityOf, travelRecap, type TravelRecap } from '@/services/timeline';
+import { rowMinutes } from '@/services/travel-recap';
 import { journeyDay, periodLabel, yearsWithFlights, type WorldPeriod } from '@/services/world-period';
 
 /** What the World tab hands the share screen: the rows on the map right now
@@ -158,12 +159,12 @@ export interface ShareCopy {
   single: boolean;
 }
 
-/** Distance for a quarter-width tile: "1,830", "22.3k", "102k". The stats
- * card's `formatKm` keeps five digits, which overflow at poster size. */
-function compactKm(km: number): string {
-  if (km >= 100_000) return formatKm(km);
-  if (km >= 10_000) return `${(km / 1000).toFixed(1).replace(/\.0$/, '')}k`;
-  return km.toLocaleString();
+/** Time aloft for a quarter-width tile: "45m", "11h", "312h". Minutes only
+ * matter under an hour; "69h 6m" is six characters and clips at poster
+ * size. The single-flight card keeps the exact HOURS_LABEL. */
+function compactHours(hours: number): string {
+  if (hours < 1) return `${Math.round(hours * 60)}m`;
+  return `${Math.round(hours).toLocaleString()}h`;
 }
 
 const HOURS_LABEL = (hours: number) => {
@@ -227,16 +228,22 @@ export function shareCopy(share: WorldShare, name: string | null, now: Date): Sh
     { value: recap.trips.toLocaleString(), label: recap.trips === 1 ? 'flight' : 'flights' },
     { value: recap.airports.toLocaleString(), label: recap.airports === 1 ? 'airport' : 'airports' },
     { value: recap.countries.toLocaleString(), label: recap.countries === 1 ? 'country' : 'countries' },
-    { value: compactKm(recap.totalKm), label: 'km' },
+    // Time, not distance: "38h in the air" is the number people repeat.
+    { value: compactHours(recap.hoursAloft), label: recap.hoursEstimated ? '≈ in the air' : 'in the air' },
   ];
 
   const details: ShareDetail[] = [];
   if (rows.length > 1) {
     if (recap.topDestination) details.push({ label: 'Most visited', value: recap.topDestination.city });
     if (recap.longest) {
+      // Still the longest by distance — the record — told in hours; a row
+      // without a usable arrival falls back to its distance.
+      const minutes = rowMinutes(recap.longest);
       details.push({
         label: 'Longest flight',
-        value: `${recap.longest.fromCode} → ${recap.longest.toCode} · ${recap.longest.distanceKm.toLocaleString()} km`,
+        value: `${recap.longest.fromCode} → ${recap.longest.toCode} · ${
+          minutes ? HOURS_LABEL(minutes / 60) : `${recap.longest.distanceKm.toLocaleString()} km`
+        }`,
       });
     }
     if (recap.topAirline && recap.airlines > 0) {

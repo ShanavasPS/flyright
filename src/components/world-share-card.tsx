@@ -50,7 +50,7 @@ export const WorldShareCard = forwardRef<
         <View style={[StyleSheet.absoluteFill, { experimental_backgroundImage: scrim(palette.bg, story) }]} />
       </View>
 
-      <View style={[styles.block, { top: 0, padding: pad }]}>
+      <View style={[styles.block, { top: 0, padding: pad, paddingTop: story ? pad : 28 }]}>
         <View style={[styles.brandRow, !story && styles.brandRowTight]}>
           <Text style={[styles.brand, { color: palette.green }]}>FLYRIGHT</Text>
           {!story && (
@@ -64,7 +64,7 @@ export const WorldShareCard = forwardRef<
           style={[
             styles.title,
             text,
-            story ? { fontSize: copy.single ? 40 : 36, lineHeight: 44 } : { fontSize: 26, lineHeight: 32 },
+            story ? { fontSize: copy.single ? 40 : 36, lineHeight: 44 } : { fontSize: 22, lineHeight: 28 },
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -87,7 +87,11 @@ export const WorldShareCard = forwardRef<
         <View style={styles.stats}>
           {copy.stats.map((stat) => (
             <View key={stat.label} style={[styles.stat, tile, !story && styles.statTight]}>
-              <Text style={[styles.statValue, text, { fontSize: story ? 24 : 20 }]} numberOfLines={1}>
+              <Text
+                style={[styles.statValue, text, { fontSize: story ? 24 : 20 }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}>
                 {stat.value}
               </Text>
               <Text style={[styles.statLabel, muted]} numberOfLines={1}>
