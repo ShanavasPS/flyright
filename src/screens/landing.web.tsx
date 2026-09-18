@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, TextInput, View, useWindowDimensions, type ViewS
 
 import { ExternalLink } from '@/components/external-link';
 import { PrimaryButton } from '@/components/primary-button';
+import { PhoneVideo } from '@/components/phone-video';
 import { Float, Reveal } from '@/components/reveal';
 import { SiteChrome, StoreBadges } from '@/components/site-chrome';
 import { ThemedText } from '@/components/themed-text';
@@ -154,6 +155,7 @@ function Section({ children, style, background }: { children: ReactNode; style?:
 
 function Hero({ compact }: { compact: boolean }) {
   const theme = useTheme();
+  const scheme = useColorScheme();
   const shots = useShots();
   return (
     <Section style={{ paddingTop: compact ? Spacing.five : 72, paddingBottom: compact ? Spacing.four : 40 }}>
@@ -202,7 +204,13 @@ function Hero({ compact }: { compact: boolean }) {
             <Phone source={shots.travelDay} width={compact ? 200 : 270} style={styles.phoneBackTilt} />
           </Float>
           <Float delay={1100} style={[styles.phoneFrontPos, compact && styles.phoneFrontCompact]}>
-            <Phone source={shots.world} width={compact ? 200 : 270} />
+            {/* The globe turns: a loop cut from a real session on the phone,
+              in the page's theme, over the still it would otherwise be. */}
+            <Phone
+              source={shots.world}
+              width={compact ? 200 : 270}
+              video={scheme === 'dark' ? '/video/world-dark.mp4' : '/video/world-light.mp4'}
+            />
           </Float>
         </Reveal>
       </View>
@@ -448,10 +456,15 @@ function Pro({ compact }: { compact: boolean }) {
 
 /** A phone bezel around a capture. Width in points; the bezel keeps the
  * capture's 1206 × 2622 shape. */
-function Phone({ source, width, style }: { source: number; width: number; style?: object }) {
+function Phone({ source, width, style, video }: { source: number; width: number; style?: object; video?: string }) {
+  const screen = [styles.phoneScreen, { borderRadius: width * 0.13 }];
   return (
     <View style={[styles.phone, { width, height: (width * 2622) / 1206, borderRadius: width * 0.16 }, style]}>
-      <Image source={source} style={[styles.phoneScreen, { borderRadius: width * 0.13 }]} contentFit="cover" />
+      {video ? (
+        <PhoneVideo still={source} video={video} style={screen} />
+      ) : (
+        <Image source={source} style={screen} contentFit="cover" />
+      )}
     </View>
   );
 }

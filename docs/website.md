@@ -63,6 +63,20 @@ list them, and native must never receive them (`PrimaryButton` gates on `Platfor
 The header takes a shadow once the page has scrolled (`SiteChrome` `onScroll`). Pressables
 with a hover *function* style must not be children of `Link asChild` — use `useRouter`.
 
+## Video in the phones
+
+`src/components/phone-video.web.tsx` lays a muted, looping `<video>` (raw element via
+`unstable_createElement`, typed in `src/types/react-native-web.d.ts`) over the still, attached
+only once the frame nears the viewport, never under reduced motion; the still stays if
+autoplay is refused. The hero's World phone plays `public/video/world-{light,dark}.mp4`
+(~10 s, 560 px wide, H.264 CRF 27, ≈0.6–1.1 MB): cut from the user's own iPhone screen
+recordings of the World tab (2026-09-18, 8:36 dark / 8:37 light), sped up 1.25×, the
+recording's status bar replaced by the 9:41 strip from the matching still, and the tail
+dissolved into the head (`xfade` 0.6 s, then trim the first 0.6 s) so the loop is seamless.
+Recipe in the 2026-09-18 session's scratchpad `globe-video/`; reproduce with ffmpeg:
+`-ss/-to` cut → `setpts=PTS/1.25,fps=30` → `overlay` strip → `scale=560:-2` → xfade with
+its own first 0.6 s at `offset=duration-0.6` → `trim=start=0.6`.
+
 ## Layout gotchas (react-native-web)
 
 - A child of `Link asChild` must get a flattened style object, never an array
