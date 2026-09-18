@@ -50,7 +50,7 @@ export const WorldShareCard = forwardRef<
         <View style={[StyleSheet.absoluteFill, { experimental_backgroundImage: scrim(palette.bg, story) }]} />
       </View>
 
-      <View style={[styles.block, { top: 0, padding: pad, paddingTop: story ? pad : 28 }]}>
+      <View style={[styles.block, { top: 0, padding: pad, paddingTop: story ? pad : 18 }]}>
         <View style={[styles.brandRow, !story && styles.brandRowTight]}>
           <Text style={[styles.brand, { color: palette.green }]}>FLYRIGHT</Text>
           {!story && (
@@ -81,7 +81,7 @@ export const WorldShareCard = forwardRef<
       <View
         style={[
           styles.block,
-          story ? { top: band - 28 } : { bottom: copy.details.length > 0 ? 62 : 36 },
+          story ? { top: band - 28 } : { bottom: copy.details.length > 0 ? 80 : 36 },
           { paddingHorizontal: pad },
         ]}>
         <View style={styles.stats}>
@@ -120,10 +120,11 @@ export const WorldShareCard = forwardRef<
         )}
       </View>
 
-      <View style={[styles.footer, { bottom: story ? 24 : 14, left: pad, right: pad }]}>
+      <View style={[styles.footer, !story && styles.footerStacked, { bottom: story ? 24 : 14, left: pad, right: pad }]}>
         {!story && copy.details.length > 0 ? (
-          // One record per line, never on the footer's row: "Longest flight ·
-          // DXB → LAX · 13,400 km" is too long to share it with the brand.
+          // One record per line at full width, the brand on its own line under
+          // them: "Longest flight · DXB → LAX · 16 hrs 18 min" clipped when it
+          // shared the row with getflyright.com.
           <View style={styles.detailsLines}>
             {copy.details.slice(0, 2).map((d) => (
               <Text key={d.label} style={[styles.detailsLine, muted]} numberOfLines={1}>
@@ -134,7 +135,7 @@ export const WorldShareCard = forwardRef<
         ) : (
           <View />
         )}
-        <View style={styles.footerBrand}>
+        <View style={[styles.footerBrand, !story && styles.footerBrandStacked]}>
           <View style={[styles.footerDot, { backgroundColor: palette.green }]} />
           <Text style={[styles.footerText, muted]}>getflyright.com</Text>
         </View>
@@ -357,10 +358,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  footerStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 6,
+  },
   footerBrand: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  footerBrandStacked: {
+    alignSelf: 'flex-end',
   },
   footerDot: {
     width: 6,
