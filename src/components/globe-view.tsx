@@ -202,6 +202,7 @@ export function GlobeView({
   daylight = false,
   sunAt = null,
   beacon = null,
+  beaconAnimate = animate,
   livePlane = null,
   pastPlanes = false,
   onSelect,
@@ -236,6 +237,9 @@ export function GlobeView({
   sunAt?: number | null;
   /** A coordinate to mark with radar rings, or null for none. */
   beacon?: GlobeBeacon | null;
+  /** Whether the rings spread — by default with everything else; the
+   * still inset keeps them moving on their own. */
+  beaconAnimate?: boolean;
   /** A flight in the air, drawn where it is instead of its route's plane. */
   livePlane?: GlobeLivePlane | null;
   /** Draw a plane on flown routes too (the trip page's inset). */
@@ -586,7 +590,7 @@ export function GlobeView({
         )}
         <Path path={dotsPath} color={colors.background} style="stroke" strokeWidth={2} />
         <Path path={dotsPath} color={colors.tint} />
-        {beaconVector && <Beacon v={beaconVector} camera={camera} color={colors.tint} animate={animate} />}
+        {beaconVector && <Beacon v={beaconVector} camera={camera} color={colors.tint} animate={beaconAnimate} />}
         {stillRoutes.map((route) => (
           <PlaneGlyph key={route.key} route={route} camera={camera} colors={colors} clock={null} />
         ))}

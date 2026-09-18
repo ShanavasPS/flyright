@@ -8,13 +8,19 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { airportZone } from '@/services/airports';
+import { airportZone, getAirport } from '@/services/airports';
 import { flightInstant } from '@/services/dates';
 import { planeNow } from '@/services/flight-position';
 import { buildWorldRoutes, pathCaption, type RoutePath, type RouteSource } from '@/services/geo';
 import { useGlobeDaylight } from '@/services/globe-daylight';
 import { useGlobeTextures } from '@/services/globe-textures';
-import { flightProgress, type FlightFacts, type TravelDayState, type TravelJourney } from '@/services/travel-day';
+import {
+  flightProgress,
+  travelWindow,
+  type FlightFacts,
+  type TravelDayState,
+  type TravelJourney,
+} from '@/services/travel-day';
 
 /** What the inset needs to draw the aircraft where it is during the flight:
  * the trip's travel-day state and cached facts, read against `now`. */
@@ -100,6 +106,16 @@ export function RouteMap({
     const forward = leg ? leg.from.iata === route.from.iata : true;
     return { key: route.key, ...planeNow(route, forward, progress, live.facts.position, live.now) };
   }, [live, route]);
+  // The radar rings the World tab gives the trip of the day: on the origin
+  // through the travel day, on the aircraft once it is in the air.
+  const beacon = useMemo(() => {
+    if (!live) return null;
+    if (livePlane) return livePlane.coordinate;
+    const { phase } = travelWindow(live.journey, live.state, new Date(live.now));
+    if (phase !== 'reminder' && phase !== 'live') return null;
+    const origin = getAirport(live.journey.fromCode);
+    return origin ? { latitude: origin.lat, longitude: origin.lon } : null;
+  }, [live, livePlane]);
   // The globe is sized to the card as it came out, so it is measured first;
   // the sea-coloured background covers the frame until the width lands.
   const [width, setWidth] = useState(0);
@@ -142,6 +158,9 @@ export function RouteMap({
           daylight={daylight}
           sunAt={sunAt}
           livePlane={livePlane}
+          beacon={beacon}
+          // The picture stays still (no comets, no pulse); only the rings move.
+          beaconAnimate
           // This globe is about one trip, so its aircraft stays even once flown.
           pastPlanes
         />
