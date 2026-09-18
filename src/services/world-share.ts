@@ -159,12 +159,14 @@ export interface ShareCopy {
   single: boolean;
 }
 
-/** Time aloft for a quarter-width tile: "45 min", "11 hrs", "312 hrs". Minutes
- * only matter under an hour; "69 hrs 6 min" clips at poster size. The
- * single-flight card keeps the exact HOURS_LABEL. */
-function compactHours(hours: number): string {
-  if (hours < 1) return `${Math.round(hours * 60)} min`;
-  return `${Math.round(hours).toLocaleString()} hrs`;
+/** Time aloft for a quarter-width tile: the number alone, the unit as the
+ * tile's label — "46 / hours", "45 / minutes" under an hour. Whole hours:
+ * "69 hrs 6 min" clips at poster size. The single-flight card keeps the
+ * exact HOURS_LABEL. */
+function compactHours(hours: number, estimated: boolean): { value: string; label: string } {
+  const about = estimated ? '≈ ' : '';
+  if (hours < 1) return { value: `${Math.round(hours * 60)}`, label: `${about}minutes` };
+  return { value: Math.round(hours).toLocaleString(), label: `${about}hours` };
 }
 
 const HOURS_LABEL = (hours: number) => {
@@ -229,7 +231,7 @@ export function shareCopy(share: WorldShare, name: string | null, now: Date): Sh
     { value: recap.airports.toLocaleString(), label: recap.airports === 1 ? 'airport' : 'airports' },
     { value: recap.countries.toLocaleString(), label: recap.countries === 1 ? 'country' : 'countries' },
     // Time, not distance: "38h in the air" is the number people repeat.
-    { value: compactHours(recap.hoursAloft), label: recap.hoursEstimated ? '≈ in the air' : 'in the air' },
+    compactHours(recap.hoursAloft, recap.hoursEstimated),
   ];
 
   const details: ShareDetail[] = [];
