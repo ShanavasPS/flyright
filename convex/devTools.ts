@@ -152,6 +152,10 @@ export const seedDemoCircle = internalMutation({
     people: v.array(
       v.object({
         userId: v.string(),
+        /** Writes the profile row too — for a synthetic person with no Clerk
+         * account behind them (dev deployments). */
+        name: v.optional(v.string()),
+        imageUrl: v.optional(v.string()),
         relation: v.union(v.literal('follow'), v.literal('follower'), v.literal('mutual'), v.literal('request')),
         close: v.optional(v.boolean()),
         trip: v.optional(
@@ -194,6 +198,16 @@ export const seedDemoCircle = internalMutation({
     };
 
     for (const person of people) {
+      if (person.name) {
+        const profile = await ctx.db
+          .query('profiles')
+          .withIndex('by_user', (q) => q.eq('userId', person.userId))
+          .unique();
+        const fields = { name: person.name, imageUrl: person.imageUrl ?? null, updatedAt: now };
+        if (profile) await ctx.db.patch(profile._id, fields);
+        else await ctx.db.insert('profiles', { userId: person.userId, ...fields });
+        out.push(`profile ${person.userId} ${person.name}`);
+      }
       if (person.relation === 'follow' || person.relation === 'mutual') await link(person.userId, demoUserId, person.close);
       if (person.relation === 'follower' || person.relation === 'mutual') await link(demoUserId, person.userId, person.close);
       if (person.relation === 'request') {

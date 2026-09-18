@@ -46,6 +46,18 @@ carry the app's tab bar and mount World/People/Claims behind it.
   `xcrun simctl io <udid> screenshot`. Downsize with sharp (`resize({ width: 640 })`,
   `png({ palette: true })`). Reshoot after visible UI changes; the store panels in
   `store-assets/raw` are a separate set.
+- The People capture is the **dev** deployment with synthetic people, never production
+  accounts: `devTools:seedDemoCircle` (internal; `npx convex run devTools:seedDemoCircle
+  '<json>'` against dev) upserts profile rows (name + Unsplash portrait — `images.unsplash.com`
+  is on the avatar allow-list in `convex/profileShared.ts` for exactly this), circle rows,
+  journeys and live sessions at a stage. The 2026-09-18 set, around Eve
+  (`eve+clerk_test@example.com`, OTP 424242, dev client on the iPhone 17 Pro sim): Noah Berg
+  in the air (`departed`, −1.4 h), Clara Nyström landed (`landed`, belt 7, close circle,
+  mutual), Sofia Marin departing in 2 days, Dee Okafor in 9 days, Leo Andersson as a
+  follower ("Follow back"). Args saved in that session's scratchpad `seed-args.json`.
+  Finding the viewer's Clerk id: the client only writes its `profiles` row when the Clerk
+  user has a first name; `peopleSeen` (newest row) is the fallback. Dismiss the dev
+  client's "Open debugger to view warnings" toast (tap ≈92 %, 93 %) before capturing.
 - `public/og-image.png` (1200×630) and `public/apple-touch-icon.png`: `node
   scripts/generate-og-image.mjs`.
 - Store badges: `assets/images/badge-app-store.png`, `badge-google-play.png`.
@@ -68,14 +80,26 @@ with a hover *function* style must not be children of `Link asChild` — use `us
 `src/components/phone-video.web.tsx` lays a muted, looping `<video>` (raw element via
 `unstable_createElement`, typed in `src/types/react-native-web.d.ts`) over the still, attached
 only once the frame nears the viewport, never under reduced motion; the still stays if
-autoplay is refused. The hero's World phone plays `public/video/world-{light,dark}.mp4`
-(~10 s, 560 px wide, H.264 CRF 27, ≈0.6–1.1 MB): cut from the user's own iPhone screen
-recordings of the World tab (2026-09-18, 8:36 dark / 8:37 light), sped up 1.25×, the
-recording's status bar replaced by the 9:41 strip from the matching still, and the tail
-dissolved into the head (`xfade` 0.6 s, then trim the first 0.6 s) so the loop is seamless.
-Recipe in the 2026-09-18 session's scratchpad `globe-video/`; reproduce with ffmpeg:
-`-ss/-to` cut → `setpts=PTS/1.25,fps=30` → `overlay` strip → `scale=560:-2` → xfade with
-its own first 0.6 s at `offset=duration-0.6` → `trim=start=0.6`.
+autoplay is refused. Both hero phones play loops from `public/video/` (560 px wide, H.264
+CRF 27), one per theme:
+
+- `world-{light,dark}.mp4` (~20–23 s, 0.8–1.5 MB): the globe spun, zoomed and recentred, cut
+  from the user's own iPhone screen recordings of the World tab (2026-09-18, 8:36 dark /
+  8:37 light), slowed to 0.625× real time (the 1.25× first cut "looked too fast"), the
+  recording's status bar replaced by the 9:41 strip from the matching still.
+- `journeys-{light,dark}.mp4` (~10 s, 0.12 MB): My travels with the live card's running
+  border, `xcrun simctl io <udid> recordVideo` on the seeded Shots simulator.
+
+Every loop's tail is dissolved into its head (`xfade` 0.6 s against the clip's own first
+0.6 s at `offset = duration − 0.6`, then `trim=start=0.6`) so it restarts without a jump.
+Recipe: 2026-09-18 scratchpad `globe-video/` (`stitch.mjs` does the dissolve; do the
+arithmetic in node — `bc` is not on this Mac). Pipeline per clip: `-ss/-to` cut →
+`setpts=PTS/<speed>,fps=30` → `overlay` status strip → `scale=560:-2` → stitch.
+
+Values only the browser knows (viewport width, locale, user agent) go through
+`hooks/use-client-value.web.ts` (`useSyncExternalStore` with a server snapshot); reading
+them directly in render made the server and client disagree and React threw hydration
+error #418 on desktop.
 
 ## Layout gotchas (react-native-web)
 
