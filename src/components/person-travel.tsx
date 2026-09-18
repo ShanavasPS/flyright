@@ -148,6 +148,9 @@ export function PersonTravel({
   // The blue belongs to what the follower should look at now: the live leg
   // until it lands, then the leg that leaves next.
   const landed = !!p.live && tripDone(p.live.session, now);
+  // Still on their way: the live leg in progress, or more legs of the same
+  // journey ahead after it landed.
+  const travelling = !!p.live && (!landed || onwardAhead.length > 0);
   // Legs of the same journey already flown before the live one — the block
   // reads top to bottom as the trip happened: landed, landed, live, next.
   const priorLegs: PersonTrip[] = [];
@@ -289,13 +292,21 @@ export function PersonTravel({
         <UpdatesCard eyebrow={`From ${name}`} updates={p.updates} now={now} onReact={onReact} onReport={onReport} />
       )}
 
-      <Section label="Upcoming" />
-      {upcoming.length ? (
-        upcoming.map(trip)
-      ) : (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-          Nothing booked yet. You&apos;ll hear when {name} adds a trip.
-        </ThemedText>
+      {/* The trip under way IS their upcoming trip until it lands: with
+          nothing booked beyond it, an "Upcoming — nothing booked yet" under
+          the live card would read as if that trip did not count. The empty
+          section only appears once they are on the ground with nothing ahead. */}
+      {(upcoming.length > 0 || !travelling) && (
+        <>
+          <Section label="Upcoming" />
+          {upcoming.length ? (
+            upcoming.map(trip)
+          ) : (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+              Nothing booked yet. You&apos;ll hear when {name} adds a trip.
+            </ThemedText>
+          )}
+        </>
       )}
       {afterUpcoming}
 
