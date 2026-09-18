@@ -1,0 +1,86 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import sharp from 'sharp';
+
+// Two iPhone screen recordings side by side, 1080 × 1350: the dark-mode take
+// on the left, the light-mode take on the right, both playing continuously
+// at 1× from their own in-point for the same duration. Captions change at
+// the times in edit-phones.json; the footage never cuts. Recordings are the
+// phone's own Control Center screen recordings (1180 × 2556, 60 fps).
+const out = resolve('demo/out/globe');
+const work = `${out}/work-phones`;
+await mkdir(work, { recursive: true });
+const edit = JSON.parse(await readFile(new URL('./edit-phones.json', import.meta.url), 'utf8'));
+const phone = { width: 410, height: 888, radius: 50, y: 290 };
+const sides = { left: { x: 62, ...edit.left }, right: { x: 608, ...edit.right } };
+const esc = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+const ff = args => execFileSync('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit' });
+const icon = await sharp('assets/images/icon.png').resize(64, 64).png().toBuffer();
+const appStore = await sharp(new URL('../sharing-demo/assets/app-store.svg', import.meta.url).pathname, { density: 288 }).resize({ height: 44 }).png().toBuffer();
+const googlePlay = await sharp(new URL('../sharing-demo/assets/google-play.png', import.meta.url).pathname).trim().resize({ height: 44 }).png().toBuffer();
+const googlePlayMeta = await sharp(googlePlay).metadata();
+
+const mask = `<svg xmlns="http://www.w3.org/2000/svg" width="${phone.width}" height="${phone.height}"><rect width="100%" height="100%" fill="black"/><rect width="100%" height="100%" rx="${phone.radius}" fill="white"/></svg>`;
+await sharp(Buffer.from(mask)).removeAlpha().png().toFile(`${work}/mask.png`);
+
+// One trimmed, resized, 30 fps clip per side — the whole take in one piece.
+for (const [side, s] of Object.entries(sides)) {
+  ff(['-ss', String(s.start), '-t', String(edit.duration), '-i', `${out}/${s.clip}`,
+    '-vf', `fps=30,scale=${phone.width}:${phone.height}:flags=lanczos,setsar=1,format=yuv420p`,
+    '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', `${work}/${side}.mp4`]);
+}
+
+// Static background: header, phone bezels, credits. Captions are separate
+// PNGs overlaid for their interval.
+const background = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350">
+  <defs><linearGradient id="bg" x1="0" x2="1" y1="1" y2="0"><stop stop-color="#050D1C"/><stop offset="1" stop-color="#142C4C"/></linearGradient><linearGradient id="edge"><stop stop-color="#657589"/><stop offset=".3" stop-color="#202C3B"/><stop offset="1" stop-color="#536477"/></linearGradient></defs>
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+  <circle cx="540" cy="740" r="640" fill="none" stroke="#71B7FB" stroke-opacity=".06" stroke-width="2" stroke-dasharray="4 13"/>
+  <image href="data:image/png;base64,${icon.toString('base64')}" x="52" y="44" width="64" height="64"/>
+  <g font-family="Helvetica Neue,Helvetica,Arial,sans-serif" fill="#F1F6FF">
+    <text x="132" y="87" font-size="35" font-weight="700">FlyRight</text>
+    <text x="1028" y="82" text-anchor="end" fill="#A6C3E3" font-size="17" letter-spacing="2">INSIDE THE APP · iPHONE 15 PRO</text>
+    <text x="52" y="178" font-size="40" font-weight="700" letter-spacing="-1.2">The map is a globe now. One shader, no map SDK.</text>
+    <text x="52" y="216" font-size="22" fill="#A9BBD2">react-native-skia by Shopify · Reanimated + Gesture Handler by Software Mansion</text>
+    ${Object.values(sides).map(s => `
+      <circle cx="${s.x + 10}" cy="${phone.y - 24}" r="6" fill="#4ADE80"/>
+      <text x="${s.x + 26}" y="${phone.y - 17}" font-size="17" font-weight="600" letter-spacing="2">${esc(s.label)}</text>
+      <rect x="${s.x - 9}" y="${phone.y - 9}" width="${phone.width + 18}" height="${phone.height + 18}" rx="${phone.radius + 9}" fill="url(#edge)"/>
+      <rect x="${s.x - 4}" y="${phone.y - 4}" width="${phone.width + 8}" height="${phone.height + 8}" rx="${phone.radius + 4}" fill="#030508"/>
+      <rect x="${s.x - 12}" y="${phone.y + 150}" width="4" height="52" rx="2" fill="#485A70"/><rect x="${s.x - 12}" y="${phone.y + 218}" width="4" height="52" rx="2" fill="#485A70"/><rect x="${s.x + phone.width + 8}" y="${phone.y + 180}" width="4" height="80" rx="2" fill="#485A70"/>`).join('')}
+    <text x="1028" y="1240" text-anchor="end" font-size="20" font-weight="600">getflyright.com</text>
+    <image href="data:image/png;base64,${appStore.toString('base64')}" x="${1028 - 132}" y="1262" width="132" height="44"/>
+    <image href="data:image/png;base64,${googlePlay.toString('base64')}" x="${1028 - 132 - 16 - googlePlayMeta.width}" y="1262" width="${googlePlayMeta.width}" height="44"/>
+  </g>
+</svg>`;
+await sharp(Buffer.from(background)).png().toFile(`${work}/bg.png`);
+
+const captions = [];
+let from = 0;
+const timestamp = seconds => new Date(seconds * 1000).toISOString().slice(11, 23).replace('.', ',');
+for (const [i, c] of edit.captions.entries()) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350">
+    <g font-family="Helvetica Neue,Helvetica,Arial,sans-serif" fill="#F1F6FF">
+      <text x="52" y="1240" font-size="18" fill="#70B8FF" letter-spacing="3">${String(i + 1).padStart(2, '0')} / ${String(edit.captions.length).padStart(2, '0')}</text>
+      <text x="52" y="1281" font-size="36" font-weight="650">${esc(c.title)}</text>
+      <text x="52" y="1318" font-size="23" fill="#BAC9DD">${esc(c.body)}</text>
+    </g></svg>`;
+  await sharp(Buffer.from(svg)).png().toFile(`${work}/cap-${i}.png`);
+  captions.push({ file: `${work}/cap-${i}.png`, from, until: c.until, srt: `${i + 1}\n${timestamp(from)} --> ${timestamp(c.until)}\n${c.title}\n${c.body}\n` });
+  from = c.until;
+}
+
+// Compose: background, both masked phone clips, then each caption for its
+// interval (enable= on the overlay).
+const inputs = ['-loop', '1', '-framerate', '30', '-i', `${work}/bg.png`, '-i', `${work}/left.mp4`, '-i', `${work}/right.mp4`, '-loop', '1', '-framerate', '30', '-i', `${work}/mask.png`];
+for (const c of captions) inputs.push('-loop', '1', '-framerate', '30', '-i', c.file);
+let filter = `[3:v]format=gray,split[m1][m2];[1:v]format=rgba[l];[l][m1]alphamerge[L];[2:v]format=rgba[r];[r][m2]alphamerge[R];[0:v][L]overlay=${sides.left.x}:${phone.y}:shortest=1[a];[a][R]overlay=${sides.right.x}:${phone.y}[b0]`;
+captions.forEach((c, i) => {
+  filter += `;[b${i}][${4 + i}:v]overlay=0:0:enable='between(t,${c.from},${c.until})'[b${i + 1}]`;
+});
+filter += `;[b${captions.length}]format=yuv420p[o]`;
+ff([...inputs, '-filter_complex', filter, '-map', '[o]', '-t', String(edit.duration), '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-movflags', '+faststart', `${out}/flyright-globe-phones.mp4`]);
+await writeFile(`${out}/flyright-globe-phones.srt`, captions.map(c => c.srt).join('\n'));
+ff(['-ss', '13.5', '-i', `${out}/flyright-globe-phones.mp4`, '-frames:v', '1', `${out}/flyright-globe-phones-cover.png`]);
+console.log(`Exported ${edit.duration}s to ${out}/flyright-globe-phones.mp4`);

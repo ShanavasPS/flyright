@@ -167,4 +167,80 @@ final class FlyRightAssistantUITests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Globe demo capture (scripts/globe-demo)
+
+    /// Drives the World tab globe like a person would, for the LinkedIn demo
+    /// recorded with `simctl io recordVideo`: My travels → the upcoming trip
+    /// → its inset → World focused on that route → zoom out, spin, zoom in →
+    /// All travels → play → light mode → play. Real pinches and flicks, which
+    /// Maestro cannot synthesize; short pauses so the screen never sits still.
+    /// Needs the seeded demo journal (scripts/seed-demo-data.mjs) and a dark
+    /// simulator to start from. Changes no data.
+    func testCaptureGlobeDemo() throws {
+        let pause = { (s: Double) in Thread.sleep(forTimeInterval: s) }
+        func point(_ e: XCUIElement, _ x: Double, _ y: Double) -> XCUICoordinate {
+            e.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y))
+        }
+        func drag(_ e: XCUIElement, from a: (Double, Double), to b: (Double, Double), velocity: Double) {
+            point(e, a.0, a.1).press(forDuration: 0.03, thenDragTo: point(e, b.0, b.1),
+                                     withVelocity: XCUIGestureVelocity(rawValue: velocity), thenHoldForDuration: 0)
+        }
+        XCUIDevice.shared.appearance = .dark
+        app.launch()
+        XCTAssertTrue(app.tabBars.buttons["My travels"].waitForExistence(timeout: 60))
+        pause(1.0)
+        let hero = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "AY1331")).firstMatch
+        XCTAssertTrue(hero.waitForExistence(timeout: 10))
+        hero.tap()
+        let inset = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Open in World")).firstMatch
+        XCTAssertTrue(inset.waitForExistence(timeout: 15))
+        pause(1.0)
+        inset.tap()
+        // The globe's identifier is only reliable for the wait; gestures go by
+        // screen position (the globe fills the middle of the World tab).
+        XCTAssertTrue(element("world-globe").waitForExistence(timeout: 15))
+        let screen = app
+        pause(1.3)
+        // Focused on one route: zoom out to the planet, spin, tilt, back in.
+        screen.pinch(withScale: 0.3, velocity: -1.6)
+        pause(0.5)
+        screen.pinch(withScale: 0.4, velocity: -1.4)
+        pause(0.4)
+        drag(screen, from: (0.8, 0.48), to: (0.2, 0.48), velocity: 1800)
+        pause(1.4)
+        drag(screen, from: (0.5, 0.35), to: (0.5, 0.6), velocity: 700)
+        pause(0.6)
+        screen.pinch(withScale: 2.4, velocity: 2.0)
+        pause(0.5)
+        drag(screen, from: (0.38, 0.58), to: (0.6, 0.42), velocity: 600)
+        pause(0.6)
+        // Every trip.
+        let all = app.buttons["Show all travels"].firstMatch
+        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        all.tap()
+        pause(1.5)
+        drag(screen, from: (0.2, 0.48), to: (0.8, 0.48), velocity: 2000)
+        pause(1.6)
+        point(screen, 0.5, 0.5).doubleTap()
+        pause(0.8)
+        drag(screen, from: (0.6, 0.55), to: (0.42, 0.42), velocity: 650)
+        pause(0.6)
+        screen.pinch(withScale: 0.4, velocity: -1.5)
+        pause(0.5)
+        let recenter = app.buttons["Recenter the globe on your travels"].firstMatch
+        if recenter.waitForExistence(timeout: 3) { recenter.tap() }
+        pause(1.4)
+        // Light mode, live.
+        XCUIDevice.shared.appearance = .light
+        pause(0.9)
+        drag(screen, from: (0.78, 0.45), to: (0.22, 0.52), velocity: 1600)
+        pause(1.4)
+        point(screen, 0.5, 0.5).doubleTap()
+        pause(0.8)
+        drag(screen, from: (0.42, 0.5), to: (0.56, 0.45), velocity: 500)
+        pause(0.6)
+        if recenter.waitForExistence(timeout: 3) { recenter.tap() }
+        pause(1.8)
+    }
 }

@@ -1,0 +1,12 @@
+{
+  "left": { "clip": "phone/a.mp4", "start": 0.6, "label": "DARK MODE" },
+  "right": { "clip": "phone/b.mp4", "start": 0.0, "label": "LIGHT MODE" },
+  "duration": 26.4,
+  "captions": [
+    { "until": 2.4, "title": "Tap a trip.", "body": "Every trip opens on its own route, drawn on the globe." },
+    { "until": 4.8, "title": "Tap the inset.", "body": "World opens focused on that flight." },
+    { "until": 12.2, "title": "Pinch out. Flick. Tilt.", "body": "Real thumbs on a real iPhone — gestures run on the UI thread." },
+    { "until": 19.0, "title": "All travels.", "body": "Nine trips fit into view; the arcs are great circles." },
+    { "until": 26.4, "title": "Zoom into Europe, then Recenter.", "body": "Dark or light — one shader, painted in the theme's colours." }
+  ]
+}

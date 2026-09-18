@@ -60,3 +60,24 @@ to aim the taps. Cut points were read off 1–2 fps contact sheets
   the arrival animation.
 - ffmpeg here has no `drawtext`; contact sheets are read by grid position
   (12 per row at 1 fps → column + 12 × row seconds).
+
+## The phone cut (the one to post) — 2026-09-18
+
+Two Control Center screen recordings from Shanavas's iPhone 15 Pro (1.0.36
+(53), signed in as the demo account Daniel Reyes via
+`testSwitchAccount` in tests/physical-ios), one in dark mode and one in
+light, each following the same script by hand: My travels → HEL → LHR →
+inset → World focused → pinch out, spin, tilt → All travels → play →
+Recenter. `render-phones.mjs` + `edit-phones.json` trim them to the same
+26.4 s (dark from 0.6 s, light from 0.0 s, so both tap the trip about a
+second in; both end on the settled globe before Control Center appears),
+play both at 1× side by side and overlay timed captions. Sources are copied
+to `demo/out/globe/phone/a.mp4` (dark) and `b.mp4` (light). The red
+recording dot in both status bars is the phone's own; it stays.
+
+Learned on the way: XCUITest's zoom-out `pinch` always starts its two
+fingers at the far corners of the element (on the whole app that is the tab
+bar), so it cannot pinch the globe out on a simulator; zoom-in pinches and
+drags land where asked. A host-side Option-drag on Simulator.app via CGEvent
+would work (this shell is Accessibility-trusted; the device screen sits in
+the window's `iOSContentGroup`), but the real phone made it unnecessary.
