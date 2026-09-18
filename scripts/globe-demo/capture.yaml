@@ -1,0 +1,90 @@
+# One continuous take for the globe demo, recorded with
+# `xcrun simctl io <udid> recordVideo`. Cold start → World tab (the globe
+# arrives and the comets run on the upcoming flight) → a flick with inertia →
+# Recenter → two double taps into Europe (detail coastlines and borders fade
+# in) → a slow pan → Recenter → tap a route → its card → the trip page with
+# the inset globe. Pauses are optional waits that never match; their timeout
+# is the hold. Seed first: node scripts/seed-demo-data.mjs --ios --sim <udid>
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 1500
+    optional: true
+- tapOn: "World"
+- extendedWaitUntil:
+    visible:
+      id: "world-globe"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 4500
+    optional: true
+# Flick: the globe keeps turning after the finger lifts.
+- swipe:
+    start: "78%,50%"
+    end: "22%,50%"
+    duration: 220
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 3500
+    optional: true
+- tapOn: "Recenter the globe on your travels"
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 2500
+    optional: true
+# Double taps zoom about the tapped point: the western Mediterranean, clear of
+# every arc (a tap on a route would also dock its card).
+- doubleTapOn:
+    point: "40%,60%"
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 1200
+    optional: true
+- doubleTapOn:
+    point: "40%,60%"
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 3000
+    optional: true
+- swipe:
+    start: "45%,58%"
+    end: "58%,42%"
+    duration: 1400
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 2500
+    optional: true
+- tapOn: "Recenter the globe on your travels"
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 2500
+    optional: true
+# A route: the nearest arc to the tap is selected and its card slides in.
+- tapOn:
+    point: "32%,46%"
+- extendedWaitUntil:
+    visible: "Close"
+    timeout: 5000
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 2500
+    optional: true
+# The leg row is one merged element ("AY5 · Finnair / Flown · …") — tap it by position.
+- tapOn:
+    point: "50%,83%"
+- extendedWaitUntil:
+    visible: "Everywhere you.ve been"
+    timeout: 8000
+    optional: true
+- extendedWaitUntil:
+    visible: "hold-never-matches"
+    timeout: 4500
+    optional: true
+- takeScreenshot: ${OUT}/capture-end

@@ -1,0 +1,19 @@
+# Scouting run for the globe demo: cold start → World tab → screenshots of the
+# fit view, so the capture flow can aim its double taps and route tap.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "My travels"
+    timeout: 60000
+- tapOn: "World"
+- extendedWaitUntil:
+    visible:
+      id: "world-globe"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: "never-matches-pause"
+    timeout: 4000
+    optional: true
+- takeScreenshot: ${OUT}/explore-fit
