@@ -13,7 +13,9 @@ const out = resolve('demo/out/globe');
 const work = `${out}/work-phones`;
 await mkdir(work, { recursive: true });
 const edit = JSON.parse(await readFile(new URL('./edit-phones.json', import.meta.url), 'utf8'));
-const phone = { width: 410, height: 888, radius: 50, y: 290 };
+// No mode labels above the phones — the footage says it — so they sit higher
+// and the QR below has room.
+const phone = { width: 410, height: 888, radius: 50, y: 252 };
 const sides = { left: { x: 62, ...edit.left }, right: { x: 608, ...edit.right } };
 const esc = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const ff = args => execFileSync('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit' });
@@ -48,8 +50,6 @@ const background = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height=
     <text x="52" y="178" font-size="40" font-weight="700" letter-spacing="-1.2">The map is a globe now. One shader, no map SDK.</text>
     <text x="52" y="216" font-size="22" fill="#A9BBD2">react-native-skia by Shopify · Reanimated + Gesture Handler by Software Mansion</text>
     ${Object.values(sides).map(s => `
-      <circle cx="${s.x + 10}" cy="${phone.y - 24}" r="6" fill="#4ADE80"/>
-      <text x="${s.x + 26}" y="${phone.y - 17}" font-size="17" font-weight="600" letter-spacing="2">${esc(s.label)}</text>
       <rect x="${s.x - 9}" y="${phone.y - 9}" width="${phone.width + 18}" height="${phone.height + 18}" rx="${phone.radius + 9}" fill="url(#edge)"/>
       <rect x="${s.x - 4}" y="${phone.y - 4}" width="${phone.width + 8}" height="${phone.height + 8}" rx="${phone.radius + 4}" fill="#030508"/>
       <rect x="${s.x - 12}" y="${phone.y + 150}" width="4" height="52" rx="2" fill="#485A70"/><rect x="${s.x - 12}" y="${phone.y + 218}" width="4" height="52" rx="2" fill="#485A70"/><rect x="${s.x + phone.width + 8}" y="${phone.y + 180}" width="4" height="80" rx="2" fill="#485A70"/>`).join('')}
