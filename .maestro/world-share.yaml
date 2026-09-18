@@ -1,8 +1,10 @@
 # World share poster: the share button in the World header opens a dark
 # full-screen preview of the card for whatever the map is showing, with a
-# Story/Square toggle and "Share image" (react-native-view-shot capture →
-# expo-sharing). Needs a journal with at least one flight, so this flow does
-# NOT clearState — seed first (see world-map.yaml / scripts/seed-demo-data.mjs).
+# Story/Square toggle, a Dark/Light poster switch, a Heat switch (only on a
+# phone with WebGPU — the emulator's software adapter counts) and "Share
+# image" (react-native-view-shot capture → expo-sharing). Needs a journal with
+# at least one flight, so this flow does NOT clearState — seed first (see
+# world-map.yaml / scripts/seed-demo-data.mjs).
 #
 # Run: maestro --device <device> test .maestro/world-share.yaml
 #
@@ -34,6 +36,20 @@ appId: com.shanavasshaji.flyright
 - tapOn: "Square"
 - assertVisible: "FLYRIGHT"
 - tapOn: "Story"
+# Poster theme and heat. The heat PNG is drawn on the GPU after the inputs
+# settle and the share button waits for it, so the flow waits too.
+- tapOn: "Light"
+- assertVisible: "FLYRIGHT"
+- tapOn: "Dark"
+- tapOn:
+    id: "share-heat"
+    optional: true
+- tapOn:
+    id: "share-heat"
+    optional: true
+- extendedWaitUntil:
+    visible: "Share image"
+    timeout: 10000
 - tapOn: "Share image"
 # The system share sheet. iOS 26's sheet has no labelled close control, so
 # a tap on the dimmed area above it is what dismisses it.

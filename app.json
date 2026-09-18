@@ -252,7 +252,8 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "minSdkVersion": 26
           }
         }
       ],
@@ -276,6 +277,7 @@
           }
         }
       ],
+      "react-native-webgpu",
       "./plugins/with-pods-uuid-fix.js",
       "./plugins/with-android-theme.js",
       "./plugins/with-android-no-backup.js",

@@ -77,6 +77,16 @@ deleted. Skia is a native dependency: rebuild the dev clients after pulling
 a change to it.
 
 <!-- stripe-projects-cli managed:agents-md:start -->
+# Share poster heat layer (TypeGPU)
+
+The World share poster draws a GPU route-density glow under its atlas via
+`react-native-webgpu` + `typegpu` (`src/services/route-heat.ts`; shader
+functions are `'use gpu'` TypeScript compiled by `unplugin-typegpu/babel`).
+Read [docs/share-poster-heat.md](docs/share-poster-heat.md) before touching
+it. This is the app's only WebGPU use — the globe stays on Skia. Both are
+native dependencies; react-native-webgpu needs Android minSdk 26 (set through
+expo-build-properties in app.json). Rebuild the dev clients after pulling.
+
 ## Stripe Projects CLI
 
 This repository is initialized for the Stripe project "flyRight".

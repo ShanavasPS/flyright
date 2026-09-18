@@ -1,187 +1,229 @@
-import { forwardRef, useMemo } from 'react';
+import { Image } from 'expo-image';
+import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { WORLD, buildWorldMap, fitViewBox } from '@/services/geo';
-import type { JourneyRow } from '@/services/journeys';
-import type { ShareCopy, ShareFormat } from '@/services/world-share';
+import { WORLD } from '@/services/geo';
+import {
+  POSTER,
+  SHARE_CARD,
+  type PosterTheme,
+  type ShareCopy,
+  type ShareFormat,
+  type ShareMapModel,
+} from '@/services/world-share';
 
-/** Design size of the card in logical points. It is captured at three times
- * this (1080 px wide), the size Instagram and Facebook want. */
-export const CARD_WIDTH = 360;
-export const CARD_HEIGHT: Record<ShareFormat, number> = { story: 640, square: 360 };
-
-/** The card never follows the phone's theme: it is the brand's night flight
- * wherever it lands, so a feed of shared cards reads as one product. */
-const BRAND = {
-  bg: '#070F20',
-  surface: '#101D34',
-  land: '#1B2C4A',
-  tint: '#4E9BF5',
-  green: '#2FD68C',
-  text: '#F2F6FB',
-  muted: '#8FA2BB',
-};
-
-/** The shareable poster: headline, the offline atlas fitted to the routes,
- * the numbers, the records, the brand. Plain `Text`, fixed colours — see
- * BRAND. Pass the ref on to `captureRef`. */
+/** The shareable poster: the atlas across the top, edge to edge and fading
+ * into the card, with the headline on it; the numbers, the records and the
+ * brand below. Plain `Text`, the poster theme's fixed colours (see POSTER) —
+ * never the phone's. `heatUri` is the GPU-drawn route-density glow for this
+ * exact map (services/route-heat), laid under the routes; null draws the
+ * plain atlas. Pass the ref on to `captureRef`. */
 export const WorldShareCard = forwardRef<
   View,
-  { rows: JourneyRow[]; copy: ShareCopy; format: ShareFormat; now: Date }
->(function WorldShareCard({ rows, copy, format, now }, ref) {
+  {
+    model: ShareMapModel;
+    copy: ShareCopy;
+    format: ShareFormat;
+    theme: PosterTheme;
+    heatUri: string | null;
+  }
+>(function WorldShareCard({ model, copy, format, theme, heatUri }, ref) {
   const story = format === 'story';
-  const height = CARD_HEIGHT[format];
+  const palette = POSTER[theme];
+  const height = SHARE_CARD.height[format];
+  const band = SHARE_CARD.band[format];
   const pad = story ? 24 : 20;
-  const mapHeight = story ? (copy.single ? 250 : 220) : 128;
+  const tile = { backgroundColor: theme === 'dark' ? `${palette.surface}99` : palette.surface, borderColor: palette.border };
+  const text = { color: palette.text };
+  const muted = { color: palette.muted };
   return (
     <View
       ref={ref}
       collapsable={false}
-      style={[styles.card, { width: CARD_WIDTH, height, padding: pad }]}>
-      <View style={[styles.brandRow, !story && styles.brandRowTight]}>
-        <Text style={styles.brand}>FLYRIGHT</Text>
-        {!story && <Text style={styles.eyebrowInline}>{copy.eyebrow}</Text>}
+      style={[styles.card, { width: SHARE_CARD.width, height, backgroundColor: palette.bg }]}>
+      <View style={[styles.band, { height: band }]}>
+        <ShareAtlas model={model} theme={theme} heatUri={heatUri} />
+        <View style={[StyleSheet.absoluteFill, { experimental_backgroundImage: scrim(palette.bg, story) }]} />
       </View>
 
-      {story && <Text style={styles.eyebrow}>{copy.eyebrow}</Text>}
-      <Text
-        style={[
-          styles.title,
-          story ? { fontSize: copy.single ? 40 : 36, lineHeight: 44 } : { fontSize: 26, lineHeight: 32 },
-        ]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.6}>
-        {copy.title}
-      </Text>
-      {copy.subtitle && (
-        <Text style={styles.subtitle} numberOfLines={story ? 2 : 1}>
-          {copy.subtitle}
+      <View style={[styles.block, { top: 0, padding: pad }]}>
+        <View style={[styles.brandRow, !story && styles.brandRowTight]}>
+          <Text style={[styles.brand, { color: palette.green }]}>FLYRIGHT</Text>
+          {!story && (
+            <Text style={[styles.eyebrowInline, muted]} numberOfLines={1}>
+              {copy.eyebrow}
+            </Text>
+          )}
+        </View>
+        {story && <Text style={[styles.eyebrow, muted]}>{copy.eyebrow}</Text>}
+        <Text
+          style={[
+            styles.title,
+            text,
+            story ? { fontSize: copy.single ? 40 : 36, lineHeight: 44 } : { fontSize: 26, lineHeight: 32 },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}>
+          {copy.title}
         </Text>
-      )}
-
-      <View style={[styles.map, { height: mapHeight, marginVertical: story ? 16 : 12 }]}>
-        <ShareAtlas
-          rows={rows}
-          now={now}
-          width={CARD_WIDTH - pad * 2}
-          height={mapHeight}
-          pad={copy.single ? 0.7 : 0.3}
-        />
+        {copy.subtitle && (
+          <Text style={[styles.subtitle, muted]} numberOfLines={story ? 2 : 1}>
+            {copy.subtitle}
+          </Text>
+        )}
       </View>
 
-      <View style={styles.stats}>
-        {copy.stats.map((stat) => (
-          <View key={stat.label} style={[styles.stat, !story && styles.statTight]}>
-            <Text style={[styles.statValue, { fontSize: story ? 24 : 20 }]} numberOfLines={1}>
-              {stat.value}
-            </Text>
-            <Text style={styles.statLabel} numberOfLines={1}>
-              {stat.label}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {story && copy.details.length > 0 && (
-        <View style={styles.details}>
-          {copy.details.map((detail, i) => (
-            <View key={detail.label} style={[styles.detail, i > 0 && styles.detailDivider]}>
-              <Text style={styles.detailLabel}>{detail.label.toUpperCase()}</Text>
-              <Text style={styles.detailValue} numberOfLines={1}>
-                {detail.value}
+      <View
+        style={[
+          styles.block,
+          story ? { top: band - 28 } : { bottom: copy.details.length > 0 ? 62 : 36 },
+          { paddingHorizontal: pad },
+        ]}>
+        <View style={styles.stats}>
+          {copy.stats.map((stat) => (
+            <View key={stat.label} style={[styles.stat, tile, !story && styles.statTight]}>
+              <Text style={[styles.statValue, text, { fontSize: story ? 24 : 20 }]} numberOfLines={1}>
+                {stat.value}
+              </Text>
+              <Text style={[styles.statLabel, muted]} numberOfLines={1}>
+                {stat.label}
               </Text>
             </View>
           ))}
         </View>
-      )}
-      {!story && copy.details.length > 0 && (
-        <Text style={styles.detailsLine} numberOfLines={1}>
-          {copy.details
-            .slice(0, 2)
-            .map((d) => `${d.label} · ${d.value}`)
-            .join('   ')}
-        </Text>
-      )}
+        {story && copy.details.length > 0 && (
+          <View style={[styles.details, tile]}>
+            {copy.details.map((detail, i) => (
+              <View
+                key={detail.label}
+                style={[styles.detail, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.divider }]}>
+                <Text style={[styles.detailLabel, muted]}>{detail.label.toUpperCase()}</Text>
+                <Text
+                  style={[styles.detailValue, text]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
+                  {detail.value}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
-      <View style={styles.spacer} />
-      <View style={styles.footer}>
-        <View style={styles.footerDot} />
-        <Text style={styles.footerText}>getflyright.com</Text>
+      <View style={[styles.footer, { bottom: story ? 24 : 14, left: pad, right: pad }]}>
+        {!story && copy.details.length > 0 ? (
+          // One record per line, never on the footer's row: "Longest flight ·
+          // DXB → LAX · 13,400 km" is too long to share it with the brand.
+          <View style={styles.detailsLines}>
+            {copy.details.slice(0, 2).map((d) => (
+              <Text key={d.label} style={[styles.detailsLine, muted]} numberOfLines={1}>
+                {d.label} · <Text style={[styles.detailsLineValue, text]}>{d.value}</Text>
+              </Text>
+            ))}
+          </View>
+        ) : (
+          <View />
+        )}
+        <View style={styles.footerBrand}>
+          <View style={[styles.footerDot, { backgroundColor: palette.green }]} />
+          <Text style={[styles.footerText, muted]}>getflyright.com</Text>
+        </View>
       </View>
     </View>
   );
 });
 
-/** The offline SVG atlas in brand colours, fitted to the rows. */
-function ShareAtlas({
-  rows,
-  now,
-  width,
-  height,
-  pad,
-}: {
-  rows: JourneyRow[];
-  now: Date;
-  width: number;
-  height: number;
-  pad: number;
-}) {
-  const data = useMemo(() => buildWorldMap(rows, now), [rows, now]);
-  // Zoom floor: the 1:110m coastline turns to blocks past about a ninth of
-  // the world across, and a short hop is still a clear line at that scale.
-  const box = useMemo(
-    () => fitViewBox(data.fitPoints, width / height, pad, WORLD.width / 9),
-    [data, width, height, pad],
-  );
+/** The band's fade: solid card colour behind the headline, clear over the
+ * middle, solid again where the numbers start. Hex-8 stops — RN's gradient
+ * parser takes those; rgba() strings it does not. */
+function scrim(bg: string, story: boolean): string {
+  const stop = (alpha: number) => `${bg}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`;
+  return story
+    ? `linear-gradient(180deg, ${stop(0.9)} 0%, ${stop(0.3)} 24%, ${stop(0)} 40%, ${stop(0)} 78%, ${stop(1)} 100%)`
+    : `linear-gradient(180deg, ${stop(0.9)} 0%, ${stop(0)} 40%, ${stop(0)} 62%, ${stop(1)} 82%)`;
+}
+
+/** The offline SVG atlas in the poster's colours, fitted to the model's
+ * box: land first, the heat over it (so the coast shows through the glow),
+ * the lines and dots on top. */
+function ShareAtlas({ model, theme, heatUri }: { model: ShareMapModel; theme: PosterTheme; heatUri: string | null }) {
+  const palette = POSTER[theme];
+  const { map, box, width, height } = model;
+  const viewBox = `${box.x} ${box.y} ${box.width} ${box.height}`;
   const u = box.width / width; // map units per point
   return (
-    <Svg width={width} height={height} viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}>
-      <Path d={WORLD.land} fill={BRAND.land} fillRule="evenodd" />
-      {data.routes.map((route) =>
-        route.paths.map((d, i) => (
-          <Path
-            key={`${route.key}-${i}`}
-            d={d}
-            fill="none"
-            stroke={BRAND.tint}
-            strokeWidth={(1.8 + Math.min(route.count - 1, 4) * 0.3) * u}
-            strokeLinecap="round"
-            strokeOpacity={route.upcomingOnly ? 0.7 : 1}
-            strokeDasharray={route.upcomingOnly ? `${4.5 * u},${3.5 * u}` : undefined}
-          />
-        )),
+    <>
+      <Svg width={width} height={height} viewBox={viewBox} style={StyleSheet.absoluteFill}>
+        <Path d={WORLD.land} fill={palette.land} fillRule="evenodd" />
+      </Svg>
+      {heatUri && (
+        <Image
+          source={{ uri: heatUri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="fill"
+          cachePolicy="none"
+          accessibilityIgnoresInvertColors
+        />
       )}
-      {data.airports.map((airport) => (
-        <Circle
-          key={`halo-${airport.iata}`}
-          cx={airport.x}
-          cy={airport.y}
-          r={(4 + Math.min(airport.count, 6) * 0.4) * u}
-          fill={BRAND.tint}
-          opacity={0.25}
-        />
-      ))}
-      {data.airports.map((airport) => (
-        <Circle
-          key={`dot-${airport.iata}`}
-          cx={airport.x}
-          cy={airport.y}
-          r={2 * u}
-          fill="#FFFFFF"
-          stroke={BRAND.tint}
-          strokeWidth={1.2 * u}
-        />
-      ))}
-    </Svg>
+      <Svg width={width} height={height} viewBox={viewBox} style={StyleSheet.absoluteFill}>
+        {map.routes.map((route) =>
+          route.paths.map((d, i) => (
+            <Path
+              key={`${route.key}-${i}`}
+              d={d}
+              fill="none"
+              stroke={palette.tint}
+              strokeWidth={(1.4 + Math.min(route.count - 1, 4) * 0.3) * u}
+              strokeLinecap="round"
+              strokeOpacity={route.upcomingOnly ? 0.7 : 0.95}
+              strokeDasharray={route.upcomingOnly ? `${4.5 * u},${3.5 * u}` : undefined}
+            />
+          )),
+        )}
+        {map.airports.map((airport) => (
+          <Circle
+            key={`halo-${airport.iata}`}
+            cx={airport.x}
+            cy={airport.y}
+            r={(4 + Math.min(airport.count, 6) * 0.4) * u}
+            fill={palette.tint}
+            opacity={0.25}
+          />
+        ))}
+        {map.airports.map((airport) => (
+          <Circle
+            key={`dot-${airport.iata}`}
+            cx={airport.x}
+            cy={airport.y}
+            r={2 * u}
+            fill={palette.dot}
+            stroke={palette.tint}
+            strokeWidth={1.2 * u}
+          />
+        ))}
+      </Svg>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: BRAND.bg,
     overflow: 'hidden',
+  },
+  band: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: 'hidden',
+  },
+  block: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
   brandRow: {
     flexDirection: 'row',
@@ -193,20 +235,17 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   brand: {
-    color: BRAND.green,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 2.4,
   },
   eyebrow: {
-    color: BRAND.muted,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.6,
     marginBottom: 6,
   },
   eyebrowInline: {
-    color: BRAND.muted,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.4,
@@ -214,22 +253,13 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   title: {
-    color: BRAND.text,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   subtitle: {
-    color: BRAND.muted,
     fontSize: 13,
     lineHeight: 18,
     marginTop: 4,
-  },
-  map: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: BRAND.bg,
-    borderWidth: 1,
-    borderColor: BRAND.surface,
   },
   stats: {
     flexDirection: 'row',
@@ -240,25 +270,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderRadius: 14,
-    backgroundColor: BRAND.surface,
+    borderWidth: 1,
   },
   statTight: {
     paddingVertical: 7,
   },
   statValue: {
-    color: BRAND.text,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
   statLabel: {
-    color: BRAND.muted,
     fontSize: 11,
     marginTop: 2,
   },
   details: {
     marginTop: 12,
     borderRadius: 14,
-    backgroundColor: BRAND.surface,
+    borderWidth: 1,
     paddingHorizontal: 14,
   },
   detail: {
@@ -268,45 +296,46 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
   },
-  detailDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: BRAND.land,
-  },
   detailLabel: {
-    color: BRAND.muted,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.2,
   },
   detailValue: {
-    color: BRAND.text,
     fontSize: 14,
     fontWeight: '600',
     flexShrink: 1,
     textAlign: 'right',
   },
-  detailsLine: {
-    color: BRAND.muted,
-    fontSize: 11,
-    marginTop: 10,
+  detailsLines: {
+    flexShrink: 1,
+    gap: 2,
   },
-  spacer: {
-    flex: 1,
+  detailsLine: {
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  detailsLineValue: {
+    fontWeight: '600',
   },
   footer: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  footerBrand: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
     gap: 6,
   },
   footerDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: BRAND.green,
   },
   footerText: {
-    color: BRAND.muted,
     fontSize: 11,
     fontWeight: '600',
   },

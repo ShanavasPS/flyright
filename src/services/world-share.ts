@@ -1,5 +1,14 @@
 import { useSyncExternalStore } from 'react';
 
+import {
+  WORLD,
+  buildWorldMap,
+  buildWorldRoutes,
+  fitViewBox,
+  type GeoRoute,
+  type ViewBox,
+  type WorldMapData,
+} from '@/services/geo';
 import type { JourneyRow } from '@/services/journeys';
 import { cityOf, formatKm, travelRecap, type TravelRecap } from '@/services/timeline';
 import { journeyDay, periodLabel, yearsWithFlights, type WorldPeriod } from '@/services/world-period';
@@ -36,6 +45,97 @@ export function useWorldShare(): WorldShare | null {
 }
 
 export type ShareFormat = 'story' | 'square';
+
+/** The poster's own theme — chosen on the share screen, never the phone's:
+ * a feed of shared cards should read as one product, and a traveller picks
+ * the one that suits where it is going. */
+export type PosterTheme = 'dark' | 'light';
+
+export interface PosterPalette {
+  bg: string;
+  surface: string;
+  land: string;
+  tint: string;
+  green: string;
+  text: string;
+  muted: string;
+  /** The airport dot's fill. */
+  dot: string;
+  divider: string;
+  border: string;
+}
+
+export const POSTER: Record<PosterTheme, PosterPalette> = {
+  // The brand's night flight — the original card.
+  dark: {
+    bg: '#070F20',
+    surface: '#101D34',
+    land: '#1B2C4A',
+    tint: '#4E9BF5',
+    green: '#2FD68C',
+    text: '#F2F6FB',
+    muted: '#8FA2BB',
+    dot: '#FFFFFF',
+    divider: '#1B2C4A',
+    border: '#8FA2BB2E',
+  },
+  // Paper: pale land, cobalt lines, navy type.
+  light: {
+    bg: '#F6F8FC',
+    surface: '#FFFFFF',
+    land: '#D5DFEE',
+    tint: '#1E6BE0',
+    green: '#13A86A',
+    text: '#13294B',
+    muted: '#5B6B82',
+    dot: '#FFFFFF',
+    divider: '#E6EBF3',
+    border: '#E1E7F0',
+  },
+};
+
+/** Design size of the card in logical points, and the height of the map
+ * band across its top. Captured at three times this (1080 px wide), the size
+ * Instagram and Facebook want. The band bleeds edge to edge and fades into
+ * the card below it; the words sit on top of it. */
+export const SHARE_CARD = {
+  width: 360,
+  height: { story: 640, square: 360 } as Record<ShareFormat, number>,
+  band: { story: 400, square: 250 } as Record<ShareFormat, number>,
+};
+
+/** Slack around the routes, as a fraction of their span. One flight on its
+ * own gets more so its arc sits in the band rather than filling it. */
+export function shareMapPad(format: ShareFormat, single: boolean): number {
+  if (single) return 0.5;
+  return format === 'story' ? 0.22 : 0.2;
+}
+
+/** The map the card draws and the heat layer is computed for — built once so
+ * both see the same routes in the same viewBox, else the glow slides off the
+ * lines. Zoom floor: the 1:110m coastline turns to blocks past about a ninth
+ * of the world across, and a short hop is still a clear line at that scale. */
+export interface ShareMapModel {
+  map: WorldMapData;
+  routes: GeoRoute[];
+  box: ViewBox;
+  width: number;
+  height: number;
+}
+
+export function shareMapModel(
+  rows: JourneyRow[],
+  now: Date,
+  format: ShareFormat,
+  single: boolean,
+): ShareMapModel {
+  const width = SHARE_CARD.width;
+  const height = SHARE_CARD.band[format];
+  const map = buildWorldMap(rows, now);
+  const { routes } = buildWorldRoutes(rows, now);
+  const box = fitViewBox(map.fitPoints, width / height, shareMapPad(format, single), WORLD.width / 9);
+  return { map, routes, box, width, height };
+}
 
 export interface ShareDetail {
   label: string;
