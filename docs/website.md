@@ -46,6 +46,13 @@ carry the app's tab bar and mount World/People/Claims behind it.
   `xcrun simctl io <udid> screenshot`. Downsize with sharp (`resize({ width: 640 })`,
   `png({ palette: true })`). Reshoot after visible UI changes; the store panels in
   `store-assets/raw` are a separate set.
+  `travel-day.png` and `world.png` show the demo flight **in the air** (the plane
+  mid-arc by dead reckoning, the radar beacon on it, "In the air", the progress
+  contrail, the sun's terminator): `node scripts/capture-landing-shots.mjs <udid>`
+  seeds, moves `demo-upcoming` to departed 1 h ago / landing in 2 h 12 m, sets the
+  status bar and shoots both screens in both appearances from the installed build —
+  which must be a Release build of the current code (`npx expo run:ios
+  --configuration Release --no-bundler --device <udid>`).
 - The People capture is the **dev** deployment with synthetic people, never production
   accounts: `devTools:seedDemoCircle` (internal; `npx convex run devTools:seedDemoCircle
   '<json>'` against dev) upserts profile rows (name + Unsplash portrait — `images.unsplash.com`
