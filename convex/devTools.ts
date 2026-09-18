@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
 
 import { internalMutation } from './_generated/server';
-import { armHeadsUp } from './liveHelpers';
+import { armHeadsUp, createSession, materializeCircleFollows } from './liveHelpers';
 
 /**
  * Dev-only knobs, callable from the CLI alone (internal functions never
@@ -127,5 +127,162 @@ export const armJourney = internalMutation({
     if (!row) throw new Error('No such journey');
     await armHeadsUp(ctx, row);
     return await ctx.db.get(id);
+  },
+});
+
+/** Stock people around a demo account, for the website's People captures —
+ * `npx convex run devTools:seedDemoCircle '{...}'`. Each person is an
+ * existing Clerk user (their profile row comes from the webhook; letter
+ * avatars are not wanted in demos, so photos are set in Clerk first). The
+ * relationship and the trip put their People row in one state each:
+ *
+ * - `follow`: the demo account follows them (they are the circle owner).
+ *   With `session`, a live session at that stage, hours from now as given;
+ *   without one, an upcoming trip for the next-trip row.
+ * - `follower`: they follow the demo account (Followers tab).
+ * - `mutual`: both.
+ * - `request`: they opened the demo account's invite link and wait
+ *   (Followers → Requests).
+ *
+ * Idempotent on the (owner, member) pairs and the journeys' natural keys.
+ * Dev and demo accounts only — never point this at a real person. */
+export const seedDemoCircle = internalMutation({
+  args: {
+    demoUserId: v.string(),
+    people: v.array(
+      v.object({
+        userId: v.string(),
+        relation: v.union(v.literal('follow'), v.literal('follower'), v.literal('mutual'), v.literal('request')),
+        close: v.optional(v.boolean()),
+        trip: v.optional(
+          v.object({
+            carrier: v.string(),
+            carrierCountry: v.string(),
+            number: v.string(),
+            fromCode: v.string(),
+            fromCountry: v.string(),
+            toCode: v.string(),
+            toCountry: v.string(),
+            distanceKm: v.number(),
+            /** Departure, in hours from now (negative = already left). */
+            departsInHours: v.number(),
+            durationHours: v.number(),
+            /** Opens a live session at this stage, stamped back from now. */
+            stage: v.optional(v.string()),
+            gate: v.optional(v.string()),
+            terminal: v.optional(v.string()),
+            delayMinutes: v.optional(v.number()),
+            baggageBelt: v.optional(v.string()),
+          }),
+        ),
+      }),
+    ),
+  },
+  handler: async (ctx, { demoUserId, people }) => {
+    const nowMs = Date.now();
+    const now = new Date(nowMs).toISOString();
+    const out: string[] = [];
+
+    const link = async (ownerId: string, memberId: string, close = false) => {
+      const existing = await ctx.db
+        .query('circle')
+        .withIndex('by_owner_member', (q) => q.eq('ownerId', ownerId).eq('memberId', memberId))
+        .unique();
+      if (existing) return;
+      await ctx.db.insert('circle', { ownerId, memberId, muted: false, close, createdAt: now });
+      out.push(`circle ${ownerId} ← ${memberId}`);
+    };
+
+    for (const person of people) {
+      if (person.relation === 'follow' || person.relation === 'mutual') await link(person.userId, demoUserId, person.close);
+      if (person.relation === 'follower' || person.relation === 'mutual') await link(demoUserId, person.userId, person.close);
+      if (person.relation === 'request') {
+        const pending = await ctx.db
+          .query('circleRequests')
+          .withIndex('by_pair', (q) => q.eq('fromUserId', person.userId).eq('toUserId', demoUserId))
+          .collect();
+        if (!pending.some((r) => r.status === 'pending')) {
+          await ctx.db.insert('circleRequests', {
+            fromUserId: person.userId,
+            toUserId: demoUserId,
+            kind: 'follow',
+            status: 'pending',
+            createdAt: now,
+            respondedAt: null,
+            viaLink: true,
+          });
+          out.push(`request ${person.userId} → ${demoUserId}`);
+        }
+      }
+
+      const trip = person.trip;
+      if (!trip) continue;
+      const dep = new Date(nowMs + trip.departsInHours * 3_600_000);
+      const arr = new Date(dep.getTime() + trip.durationHours * 3_600_000);
+      const naturalKey = `${trip.number}-${dep.toISOString().slice(0, 10)}`;
+      let journey = await ctx.db
+        .query('journeys')
+        .withIndex('by_user_key', (q) => q.eq('userId', person.userId).eq('naturalKey', naturalKey))
+        .unique();
+      if (!journey) {
+        const id = await ctx.db.insert('journeys', {
+          userId: person.userId,
+          naturalKey,
+          mode: 'flight',
+          carrier: trip.carrier,
+          carrierCountry: trip.carrierCountry,
+          number: trip.number,
+          fromCode: trip.fromCode,
+          fromCountry: trip.fromCountry,
+          toCode: trip.toCode,
+          toCountry: trip.toCountry,
+          distanceKm: trip.distanceKm,
+          scheduledDeparture: dep.toISOString(),
+          scheduledArrival: arr.toISOString(),
+          ticketPriceAmount: null,
+          ticketPriceCurrency: null,
+          source: 'lookup',
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+        journey = await ctx.db.get(id);
+        out.push(`journey ${person.userId} ${naturalKey}`);
+      }
+      if (!journey || !trip.stage) continue;
+
+      const active = await ctx.db
+        .query('liveSessions')
+        .withIndex('by_user_key', (q) => q.eq('userId', person.userId).eq('naturalKey', naturalKey))
+        .collect();
+      if (active.some((s) => s.status === 'active')) continue;
+
+      // Stamp every stage up to the given one, spread over the last hours.
+      const order = ['at_airport', 'checked_in', 'bag_dropped', 'security', 'boarded', 'departed', 'landed', 'bags_collected'];
+      const upTo = order.indexOf(trip.stage);
+      const stamps: Record<string, string> = {};
+      order.slice(0, upTo + 1).forEach((stage, i) => {
+        stamps[stage] = new Date(nowMs - (upTo + 1 - i) * 14 * 60_000).toISOString();
+      });
+      const created = await createSession(ctx, journey, { stage: trip.stage, stamps, activityId: null });
+      const sessionId = created._id;
+      const departed = upTo >= order.indexOf('departed');
+      const landed = upTo >= order.indexOf('landed');
+      await ctx.db.patch(sessionId, {
+        gate: trip.gate ?? null,
+        terminal: trip.terminal ?? null,
+        delayMinutes: trip.delayMinutes ?? null,
+        baggageBelt: trip.baggageBelt ?? null,
+        flightStatus: landed ? 'landed' : departed ? 'active' : 'scheduled',
+        actualDeparture: departed ? stamps.departed ?? null : null,
+        actualArrival: landed ? stamps.landed ?? null : null,
+        estimatedArrival: trip.delayMinutes && !landed ? new Date(arr.getTime() + trip.delayMinutes * 60_000).toISOString() : null,
+        lastCheckedAt: now,
+      });
+      const session = await ctx.db.get(sessionId);
+      if (session) await materializeCircleFollows(ctx, session);
+      out.push(`session ${person.userId} ${naturalKey} @ ${trip.stage}`);
+    }
+    return out;
   },
 });

@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View, type ViewStyle } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import { PrimaryButton } from '@/components/primary-button';
@@ -12,6 +12,7 @@ import { SiteChrome, StoreBadges } from '@/components/site-chrome';
 import { ThemedText } from '@/components/themed-text';
 import { STORE_URLS } from '@/constants/store-links';
 import { Spacing } from '@/constants/theme';
+import { useBelowWidth, useClientLocale } from '@/hooks/use-client-value';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, localDateString } from '@/services/dates';
@@ -125,8 +126,7 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
 ];
 
 export function Landing() {
-  const { width } = useWindowDimensions();
-  const compact = width < COMPACT;
+  const compact = useBelowWidth(COMPACT);
   return (
     <SiteChrome bare>
       <Head>
@@ -201,7 +201,14 @@ function Hero({ compact }: { compact: boolean }) {
           duration={1000}
           style={[styles.art, compact && styles.artCompact, compact && styles.stackChild]}>
           <Float period={6800} style={[styles.phoneBackPos, compact && styles.phoneBackCompact]}>
-            <Phone source={shots.travelDay} width={compact ? 200 : 270} style={styles.phoneBackTilt} />
+            {/* My travels on the day of a flight: the live card's running
+              border, recorded from the release build in the page's theme. */}
+            <Phone
+              source={shots.journeys}
+              width={compact ? 200 : 270}
+              style={styles.phoneBackTilt}
+              video={scheme === 'dark' ? '/video/journeys-dark.mp4' : '/video/journeys-light.mp4'}
+            />
           </Float>
           <Float delay={1100} style={[styles.phoneFrontPos, compact && styles.phoneFrontCompact]}>
             {/* The globe turns: a loop cut from a real session on the phone,
@@ -381,7 +388,7 @@ function ClaimsBand({ compact }: { compact: boolean }) {
 function Pro({ compact }: { compact: boolean }) {
   const theme = useTheme();
   const router = useRouter();
-  const price = proPriceFrom(typeof navigator === 'undefined' ? undefined : navigator.language);
+  const price = proPriceFrom(useClientLocale());
   return (
     <Section style={{ paddingBottom: 72 }}>
       <Reveal

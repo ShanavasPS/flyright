@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { Link, usePathname } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
@@ -12,6 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { SUPPORT_EMAIL } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useBelowWidth, useClientUserAgent } from '@/hooks/use-client-value';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { setThemePreference } from '@/services/theme';
@@ -59,8 +60,8 @@ const TRANSITION = {
 function SiteHeader({ scrolled }: { scrolled: boolean }) {
   const theme = useTheme();
   const pathname = usePathname();
-  const { width } = useWindowDimensions();
-  const compact = width < 720;
+  const compact = useBelowWidth(720);
+  const userAgent = useClientUserAgent();
   const { isLoaded, isSignedIn } = useUser();
 
   return (
@@ -127,7 +128,7 @@ function SiteHeader({ scrolled }: { scrolled: boolean }) {
               )
             ))}
           {/* Flattened: a child of Link asChild may not receive a style array. */}
-          <ExternalLink href={storeForVisitor()} asChild>
+          <ExternalLink href={storeForVisitor(userAgent)} asChild>
             <Pressable accessibilityRole="link" style={StyleSheet.flatten([styles.getApp, { backgroundColor: theme.tint }])}>
               <ThemedText type="smallBold" style={styles.getAppLabel}>
                 Get the app
@@ -172,8 +173,7 @@ function ThemeToggle() {
 
 /** The store the visitor's device can install from; the App Store when it
  * cannot be told (a desktop), since that page also lists the Play link. */
-function storeForVisitor(): (typeof STORE_URLS)[keyof typeof STORE_URLS] {
-  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+function storeForVisitor(ua: string): (typeof STORE_URLS)[keyof typeof STORE_URLS] {
   return /Android/i.test(ua) ? STORE_URLS.android : STORE_URLS.ios;
 }
 
@@ -193,8 +193,7 @@ export function StoreBadges() {
 
 function SiteFooter() {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const compact = width < 720;
+  const compact = useBelowWidth(720);
 
   return (
     <ThemedView type="backgroundElement" style={[styles.bar, styles.footer, { borderTopColor: theme.hairline }]}>
