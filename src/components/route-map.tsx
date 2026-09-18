@@ -30,22 +30,19 @@ export interface RouteMapLive {
 export type RouteMapSource = RouteSource & { scheduledArrival?: string };
 
 /** When the inset's sun is placed: at take-off before the flight leaves,
- * at landing once it is over, live in between. `at` null means now. */
-export function sunMoment(
-  journey: RouteMapSource,
-  now: Date,
-): { at: number | null; label: 'take-off' | 'landing' | 'now' } {
+ * at landing once it is over, live (null) in between. */
+export function sunMoment(journey: RouteMapSource, now: Date): number | null {
   const departure = flightInstant(journey.scheduledDeparture, airportZone(journey.fromCode));
   const arrival = journey.scheduledArrival
     ? flightInstant(journey.scheduledArrival, airportZone(journey.toCode))
     : NaN;
   const t = now.getTime();
-  if (!Number.isNaN(departure) && t < departure) return { at: departure, label: 'take-off' };
-  if (!Number.isNaN(arrival) && t > arrival) return { at: arrival, label: 'landing' };
+  if (!Number.isNaN(departure) && t < departure) return departure;
+  if (!Number.isNaN(arrival) && t > arrival) return arrival;
   // Past the departure with no landing time to compare against: take-off
   // is the one moment this trip can vouch for.
-  if (Number.isNaN(arrival) && !Number.isNaN(departure)) return { at: departure, label: 'take-off' };
-  return { at: null, label: 'now' };
+  if (Number.isNaN(arrival) && !Number.isNaN(departure)) return departure;
+  return null;
 }
 
 /** Inset height: tall enough to read a long-haul arc, short enough that the
@@ -92,7 +89,7 @@ export function RouteMap({
   const paths = useMemo(() => (path ? { [journey.id]: path } : undefined), [journey.id, path]);
   const data = useMemo(() => buildWorldRoutes([journey], now, paths), [journey, now, paths]);
   const route = data.routes[0];
-  const sun = useMemo(() => sunMoment(journey, now), [journey, now]);
+  const sunAt = useMemo(() => sunMoment(journey, now), [journey, now]);
   // In the air: the plane where the flight is, from its last reported
   // position or the timetable, instead of parked by the origin.
   const livePlane = useMemo(() => {
@@ -143,13 +140,13 @@ export function RouteMap({
           animate={false}
           fitPad={0.7}
           daylight={daylight}
-          sunAt={sun.at}
+          sunAt={sunAt}
           livePlane={livePlane}
           // This globe is about one trip, so its aircraft stays even once flown.
           pastPlanes
         />
       )}
-      <PathCaption path={route.path} daylight={daylight ? sun.label : null} plane={livePlane?.source ?? null} />
+      <PathCaption path={route.path} />
       {/* The pill is a promise to open somewhere. Without a destination it
           would be a button that lies, so it goes rather than sits there
           inert. */}

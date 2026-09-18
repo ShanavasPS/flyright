@@ -80,7 +80,9 @@ The globe is lit by the real sun by default (`src/services/sun.ts`, the
 subsolar point; the shader mixes it with the old studio light by the
 `daylight` uniform). The World tab header's sun button switches it and the
 choice is remembered (`src/services/globe-daylight.ts`); the trip inset places
-the sun at take-off / landing / now and says so in its caption. Planes are
+the sun at take-off / landing / now. The inset's caption stays the one word
+it was ("Overview" / "Flown path") — the user does not want sun or plane
+notes added to it. Planes are
 drawn only on upcoming routes and a flight in the air (`pastPlanes` restores
 them for the trip inset). The flight whose travel day is on the home screen
 (`useHeroTrip`) gets radar rings on its origin (`beacon` prop), and once it
@@ -88,8 +90,7 @@ has left, its plane moves: `hooks/use-live-plane` + `services/flight-position`
 place it from the provider's last reported position (AeroDataBox
 `withLocation=true`, normalised as `position` on the flight status — null
 over oceans and on the ground) carried forward along its track, else from the
-timetable (`flightProgress`). The inset caption says which ("Plane as
-reported" / "Plane estimated"). The server side of this (`providerFetch`,
+timetable (`flightProgress`). The server side of this (`providerFetch`,
 `flightNormalize`) reaches production with the next backend + hosting deploy.
 
 <!-- stripe-projects-cli managed:agents-md:start -->
