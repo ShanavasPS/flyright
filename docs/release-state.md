@@ -2,6 +2,15 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-18 (evening) — Website: phone fold fix + captures with the flight in the air (hosting only, no store release)
+
+| Item | Observed result |
+| --- | --- |
+| Code | `55fe709` (hero phones break the first screen on small phones: `Reveal eager`, tighter stacked rhythm) and `a61ee7d` (`travel-day.png` / `world.png` light+dark reshot from a fresh Release build on the Shots simulator with the demo flight airborne; `scripts/capture-landing-shots.mjs`). Hosting also carries today's `/api/flight-status` change (`withLocation=true`, `position` on the record) ahead of the client that reads it — additive, older binaries ignore the field. tsc/eslint clean |
+| Hosting | Deployment `3al9b4pwb9` promoted; both `https://flyright.expo.app` and `https://getflyright.com` serve `entry-23f4298073126535015e6288ec11fec8.js` = local export; bundle has the production Convex URL (`limitless-oyster-269`) and the `pk_live` key, no development URL (`happy-otter-123` in the bundle is Convex's example hostname in an error string, not a deployment). Pre-existing `.env.production.local` restored from a backup |
+| Backend | Not deployed in this session: `convex/flightNormalize.ts` / `providerFetch.ts` changes reach the Convex poll chain with the next `release:deploy-backend` |
+| Simulators | Shots sim (E41015CC…) now holds a Release build of `a61ee7d`'s parent (build 54 label unchanged), reseeded with `demo-upcoming` in the air; dev sim CF8D70D3… has the same airborne seed |
+
 ## 2026-09-18 — Hotfix: overnight flights looked up a day early (backend + hosting only, no store release)
 
 Incident: Shanavas's `QR516-2026-09-19` (DOH→COK) received two "moved 24 h earlier" pushes and ended up 48 h early; his circle got a heads-up and a "departed" push for a flight he was not on. Cause: AeroDataBox's `/flights/number/{flight}/{date}` defaults to `dateLocalRole=Both`, so an overnight flight answers a date with two legs — yesterday's (which lands on that date) first — and both callers took `legs[0]`. `lookupDayFor` then asked about the adopted day, so each lookup walked the trip back another day until it fell into the past. Details in the commit message.
