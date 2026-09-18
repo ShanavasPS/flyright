@@ -70,7 +70,7 @@ import {
 import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
 import { shiftLabel } from '@/services/schedule-change';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
-import { DEFAULT_PLAN, travelWindow, type TravelStage } from '@/services/travel-day';
+import { DEFAULT_PLAN, flightProgress, travelWindow, type TravelStage } from '@/services/travel-day';
 import { stagePlanFor } from '@/services/travel-day-plan';
 import { tripFacts } from '@/services/trip-facts';
 import { visibilityChip, visibilityOf } from '@/services/trip-visibility';
@@ -208,6 +208,14 @@ export function JourneyDetail({
   }, [isDemo, rowId, observedFacts]);
 
   const travelState = useTravelDay(rowId ?? '');
+  // How far along the flight is while it is in the air — the same reckoning
+  // as the Live Activity's bar — for the route hero's contrail and the inset's
+  // plane. Null on the ground either side, and for the demo.
+  const liveProgress = useMemo(() => {
+    if (isDemo || !row) return null;
+    const fraction = flightProgress(row, travelState, getFlightFacts(row.id), new Date(now));
+    return fraction > 0 && fraction < 1 ? fraction : null;
+  }, [isDemo, row, travelState, now]);
   // Which stages this leg's travel day has: the whole airport walk for a
   // flight on its own, transit security and the arrival steps for a leg of
   // a longer itinerary — read off the journal, since the other legs decide.
@@ -421,6 +429,7 @@ export function JourneyDetail({
           journey={journey}
           now={now}
           schedule={schedule}
+          progress={liveProgress}
           action={
             // Embedded panes have no stack header, so share and ··· sit inline.
             embedded ? (

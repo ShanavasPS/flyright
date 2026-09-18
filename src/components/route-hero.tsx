@@ -1,4 +1,5 @@
 import { SymbolView } from 'expo-symbols';
+import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
@@ -75,10 +76,12 @@ function flightLabel(journey: HeroJourney): string {
   return `${journey.number} · ${carrier}`;
 }
 
-/** The date chip's relative reading: a countdown before departure, "Flown"
- * after. Inside two days it counts the way the cards do — "In 2h 23m", not
- * "In 2 hours" — so the trip page and the row that opened it agree. */
-function dateChipLabel(departure: string, now: Date, zone: string | null): string {
+/** The date chip's relative reading: a countdown before departure, "In the
+ * air" while the flight is under way, "Flown" after. Inside two days it
+ * counts the way the cards do — "In 2h 23m", not "In 2 hours" — so the trip
+ * page and the row that opened it agree. */
+function dateChipLabel(departure: string, now: Date, zone: string | null, airborne: boolean): string {
+  if (airborne) return 'In the air';
   const ms = flightInstant(departure, zone) - now.getTime();
   if (Number.isNaN(ms)) return '';
   if (ms < 0) return 'Flown';
@@ -98,21 +101,30 @@ function dateChipLabel(departure: string, now: Date, zone: string | null): strin
  * One design for every trip, whoever is flying it. A follower reading
  * somebody else's trip is reading the same kind of thing — a flight, on a
  * day, between two airports — and a second layout for it would only have
- * taught the same reader two ways to find the departure time. */
+ * taught the same reader two ways to find the departure time.
+ *
+ * With `progress` — the fraction of the flight elapsed, while it is in the
+ * air — the contrail becomes a progress line: the plane slides along it,
+ * the dots behind it fill in the tint, and the chip reads "In the air". */
 export function RouteHero({
   journey,
   now,
   schedule,
+  progress = null,
   action,
 }: {
   journey: HeroJourney;
   now: number;
   schedule: Schedule | null;
+  /** 0–1 while the flight is under way (see travel-day's flightProgress);
+   * null before departure and after landing. */
+  progress?: number | null;
   action?: React.ReactNode;
 }) {
   const theme = useTheme();
-  const flown = Date.parse(journey.scheduledDeparture) <= now;
-  const chip = dateChipLabel(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code));
+  const airborne = progress != null;
+  const flown = !airborne && Date.parse(journey.scheduledDeparture) <= now;
+  const chip = dateChipLabel(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code), airborne);
   const duration = durationLabel(journey);
   // The date lives in the screen header (tripDateTitle) and how far off it
   // is in the chip above; the contrail column carries only what belongs to
@@ -154,7 +166,14 @@ export function RouteHero({
         </View>
       )}
 
-      <View accessible accessibilityLabel={`${journey.from.code} to ${journey.to.code}`} style={styles.codesRow}>
+      <View
+        accessible
+        accessibilityLabel={
+          progress == null
+            ? `${journey.from.code} to ${journey.to.code}`
+            : `${journey.from.code} to ${journey.to.code}, ${Math.round(progress * 100)} percent of the way`
+        }
+        style={styles.codesRow}>
         <View style={styles.endpoint}>
           <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
             {journey.from.code}
@@ -182,16 +201,15 @@ export function RouteHero({
             numberOfLines={1}>
             {duration ?? ' '}
           </ThemedText>
-          <View style={styles.contrailLine}>
-            <ContrailDots />
-            <SymbolView
-              name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-              size={18}
-              tintColor={theme.tint}
-              style={Platform.OS === 'ios' ? undefined : styles.rotated}
-            />
-            <ContrailDots />
-          </View>
+          {progress == null ? (
+            <View style={styles.contrailLine}>
+              <ContrailDots />
+              <PlaneGlyph />
+              <ContrailDots />
+            </View>
+          ) : (
+            <ProgressContrail progress={progress} />
+          )}
           <ThemedText
             type="small"
             themeColor="textSecondary"
@@ -262,6 +280,59 @@ function ContrailDots() {
       {Array.from({ length: 4 }, (_, i) => (
         <View key={i} style={[styles.contrailDot, { backgroundColor: theme.textSecondary }]} />
       ))}
+    </View>
+  );
+}
+
+function PlaneGlyph() {
+  const theme = useTheme();
+  return (
+    <SymbolView
+      name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+      size={PLANE_SIZE}
+      tintColor={theme.tint}
+      style={Platform.OS === 'ios' ? undefined : styles.rotated}
+    />
+  );
+}
+
+const PLANE_SIZE = 18;
+/** Dots across the whole contrail when it shows progress — one more than
+ * the two resting halves carry, so the spacing stays about the same. */
+const PROGRESS_DOTS = 9;
+
+/** The contrail while the flight is in the air: the plane at `progress`
+ * of the way across, the dots it has passed in the tint, the ones ahead as
+ * they were; a dot the plane would sit on steps aside. */
+function ProgressContrail({ progress }: { progress: number }) {
+  const theme = useTheme();
+  const [width, setWidth] = useState(0);
+  const planeX = Math.min(1, Math.max(0, progress)) * (width - PLANE_SIZE);
+  const centre = planeX + PLANE_SIZE / 2;
+  const dots = [];
+  for (let i = 0; i < PROGRESS_DOTS; i += 1) {
+    const x = ((i + 0.5) * width) / PROGRESS_DOTS;
+    if (Math.abs(x - centre) < PLANE_SIZE / 2 + 3) continue;
+    const passed = x < centre;
+    dots.push(
+      <View
+        key={i}
+        style={[
+          styles.contrailDot,
+          styles.progressDot,
+          { left: x - 2, backgroundColor: passed ? theme.tint : theme.textSecondary, opacity: passed ? 1 : 0.55 },
+        ]}
+      />,
+    );
+  }
+  return (
+    <View style={styles.contrailLine} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {width > 0 && dots}
+      {width > 0 && (
+        <View style={[styles.progressPlane, { left: planeX }]}>
+          <PlaneGlyph />
+        </View>
+      )}
     </View>
   );
 }
@@ -366,6 +437,16 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     opacity: 0.55,
+  },
+  progressDot: {
+    position: 'absolute',
+    top: 7,
+  },
+  progressPlane: {
+    position: 'absolute',
+    top: 0,
+    width: PLANE_SIZE,
+    height: PLANE_SIZE,
   },
   rotated: {
     transform: [{ rotate: '90deg' }],
