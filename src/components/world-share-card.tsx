@@ -144,21 +144,24 @@ export const WorldShareCard = forwardRef<
 });
 
 /** A number with its unit the way type wants it: the digits at full size,
- * the unit smaller and a hair apart, on the same baseline — "70 h", not
- * "70h" in one run. Works for "45m" and "9h 40m" too; a bare number or a
- * word passes through. */
+ * the unit smaller and a hair apart, on the same baseline — "70 hrs" with a
+ * small "hrs". "45 min" and "9 hrs 40 min" work the same way; a bare number
+ * or a word passes through. */
 function StatValue({ value, size }: { value: string; size: number }) {
-  const parts = value.match(/\d[\d,.]*|[^\d\s,.]+|\s+/g) ?? [value];
+  const parts = value.match(/\d[\d,.]*|[^\d\s,.]+/g) ?? [value];
   return (
     <>
       {parts.map((part, i) =>
         /^[^\d\s,.]+$/.test(part) ? (
-          <Text key={i} style={{ fontSize: Math.round(size * 0.6), fontWeight: '700', letterSpacing: 0 }}>
+          <Text key={i} style={{ fontSize: Math.round(size * 0.58), fontWeight: '700', letterSpacing: 0 }}>
             {' '}
             {part}
           </Text>
         ) : (
-          <Text key={i}>{part}</Text>
+          <Text key={i}>
+            {i > 0 ? ' ' : ''}
+            {part}
+          </Text>
         ),
       )}
     </>

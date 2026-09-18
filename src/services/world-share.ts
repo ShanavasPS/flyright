@@ -159,19 +159,19 @@ export interface ShareCopy {
   single: boolean;
 }
 
-/** Time aloft for a quarter-width tile: "45m", "11h", "312h". Minutes only
- * matter under an hour; "69h 6m" is six characters and clips at poster
- * size. The single-flight card keeps the exact HOURS_LABEL. */
+/** Time aloft for a quarter-width tile: "45 min", "11 hrs", "312 hrs". Minutes
+ * only matter under an hour; "69 hrs 6 min" clips at poster size. The
+ * single-flight card keeps the exact HOURS_LABEL. */
 function compactHours(hours: number): string {
-  if (hours < 1) return `${Math.round(hours * 60)}m`;
-  return `${Math.round(hours).toLocaleString()}h`;
+  if (hours < 1) return `${Math.round(hours * 60)} min`;
+  return `${Math.round(hours).toLocaleString()} hrs`;
 }
 
 const HOURS_LABEL = (hours: number) => {
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
-  if (h === 0) return `${m}m`;
-  return m ? `${h}h ${m}m` : `${h}h`;
+  if (h === 0) return `${m} min`;
+  return m ? `${h} hrs ${m} min` : `${h} hrs`;
 };
 
 /** "AY1331 · Finnair" style naming without the logo component: the carrier
