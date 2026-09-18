@@ -1,8 +1,7 @@
 import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
-import { SymbolView } from 'expo-symbols';
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
@@ -29,46 +28,74 @@ const COMPACT = 900;
  * the share poster does. */
 const NIGHT = { bg: '#0C1B36', surface: '#16264A', text: '#F2F6FB', muted: '#8FA2BB', green: '#2FD68C', field: '#0B1730' };
 
+/** The app in the page's own theme: a dark page shows the dark app. Both
+ * sets are the same seven screens from the same seeded release build. */
 const SHOTS = {
-  journeys: require('@/assets/images/landing/journeys.png'),
-  travelDay: require('@/assets/images/landing/travel-day.png'),
-  world: require('@/assets/images/landing/world.png'),
-  stats: require('@/assets/images/landing/stats.png'),
-  addFlight: require('@/assets/images/landing/add-flight.png'),
-  verdict: require('@/assets/images/landing/verdict.png'),
-  people: require('@/assets/images/landing/people.png'),
+  light: {
+    journeys: require('@/assets/images/landing/journeys.png'),
+    travelDay: require('@/assets/images/landing/travel-day.png'),
+    world: require('@/assets/images/landing/world.png'),
+    stats: require('@/assets/images/landing/stats.png'),
+    addFlight: require('@/assets/images/landing/add-flight.png'),
+    verdict: require('@/assets/images/landing/verdict.png'),
+    people: require('@/assets/images/landing/people.png'),
+    claims: require('@/assets/images/landing/claims.png'),
+  },
+  dark: {
+    journeys: require('@/assets/images/landing/dark/journeys.png'),
+    travelDay: require('@/assets/images/landing/dark/travel-day.png'),
+    world: require('@/assets/images/landing/dark/world.png'),
+    stats: require('@/assets/images/landing/dark/stats.png'),
+    addFlight: require('@/assets/images/landing/dark/add-flight.png'),
+    verdict: require('@/assets/images/landing/dark/verdict.png'),
+    people: require('@/assets/images/landing/dark/people.png'),
+    claims: require('@/assets/images/landing/dark/claims.png'),
+  },
 };
+type ShotName = keyof typeof SHOTS.light;
 
-type Symbol = ComponentProps<typeof SymbolView>['name'];
+function useShots() {
+  return SHOTS[useColorScheme() === 'dark' ? 'dark' : 'light'];
+}
 
-const FEATURES: { symbol: Symbol; title: string; body: string }[] = [
+/** Each claim next to the screen that makes it — the product, not an icon
+ * standing in for it. Rows alternate sides; on a phone they stack. */
+const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; focus?: 'top' | 'bottom' }[] = [
   {
-    symbol: { ios: 'airplane.departure', android: 'flight_takeoff', web: 'flight_takeoff' },
+    shot: 'travelDay',
+    eyebrow: 'TRAVEL DAY',
     title: 'Travel day, live',
     body: 'Gate, delay and boarding on your lock screen — every step from the airport to the seat, ticked off as you go.',
   },
   {
-    symbol: { ios: 'person.2.fill', android: 'group', web: 'group' },
+    shot: 'people',
+    eyebrow: 'YOUR CIRCLE',
     title: 'People who fly with you',
     body: 'Your circle follows the trip live: the delay, the landing, the photo from the gate. No more “landed?” texts.',
   },
   {
-    symbol: { ios: 'book.closed.fill', android: 'menu_book', web: 'menu_book' },
+    shot: 'journeys',
+    eyebrow: 'JOURNAL',
     title: 'A journal that fills itself',
     body: 'Every flight remembered with its seat, its notes and its photos. Scan a boarding pass, or just type the number.',
   },
   {
-    symbol: { ios: 'globe.europe.africa.fill', android: 'public', web: 'public' },
+    shot: 'world',
+    eyebrow: 'WORLD',
     title: 'Your world, on a globe',
     body: 'Every route you have flown, on the earth itself — and a poster of it to share.',
   },
   {
-    symbol: { ios: 'eurosign.circle.fill', android: 'euro', web: 'euro' },
+    shot: 'verdict',
+    // The verdict sits under the route: show the lower half of the screen.
+    focus: 'bottom',
+    eyebrow: 'WHEN IT GOES WRONG',
     title: 'Know what you’re owed',
     body: 'A delay of three hours can be worth €600. FlyRight tells you the moment a flight starts owing you money.',
   },
   {
-    symbol: { ios: 'doc.text.fill', android: 'description', web: 'description' },
+    shot: 'claims',
+    eyebrow: 'FLYRIGHT PRO',
     title: 'Claim, don’t decode',
     body: 'Pro writes the airline-ready letter and tracks the six-week deadline. You keep every euro — no commission.',
   },
@@ -90,7 +117,6 @@ export function Landing() {
       <Hero compact={compact} />
       <Features compact={compact} />
       <ClaimsBand compact={compact} />
-      <Screens compact={compact} />
       <Pro compact={compact} />
     </SiteChrome>
   );
@@ -106,6 +132,7 @@ function Section({ children, style, background }: { children: ReactNode; style?:
 
 function Hero({ compact }: { compact: boolean }) {
   const theme = useTheme();
+  const shots = useShots();
   return (
     <Section style={{ paddingTop: compact ? Spacing.five : 72, paddingBottom: compact ? Spacing.four : 40 }}>
       <View style={[styles.two, compact && styles.stack]}>
@@ -135,8 +162,8 @@ function Hero({ compact }: { compact: boolean }) {
           </ThemedText>
         </View>
         <View style={[styles.art, compact && styles.artCompact, compact && styles.stackChild]}>
-          <Phone source={SHOTS.travelDay} width={compact ? 200 : 270} style={[styles.phoneBack, compact && styles.phoneBackCompact]} />
-          <Phone source={SHOTS.world} width={compact ? 200 : 270} style={[styles.phoneFront, compact && styles.phoneFrontCompact]} />
+          <Phone source={shots.travelDay} width={compact ? 200 : 270} style={[styles.phoneBack, compact && styles.phoneBackCompact]} />
+          <Phone source={shots.world} width={compact ? 200 : 270} style={[styles.phoneFront, compact && styles.phoneFrontCompact]} />
         </View>
       </View>
     </Section>
@@ -146,6 +173,9 @@ function Hero({ compact }: { compact: boolean }) {
 function Features({ compact }: { compact: boolean }) {
   const theme = useTheme();
   const scheme = useColorScheme();
+  const shots = useShots();
+  // The stage behind each phone: pale cobalt by day, the raised surface by night.
+  const stage = scheme === 'dark' ? theme.backgroundSelected : '#E8F0FC';
   return (
     <Section>
       <ThemedText role="heading" aria-level={2} themeColor="heading" style={styles.h2}>
@@ -155,24 +185,36 @@ function Features({ compact }: { compact: boolean }) {
         Flight trackers tell you your flight is late. FlyRight is with you from the taxi to the
         gate to the moment you land — and it remembers.
       </ThemedText>
-      <View style={styles.grid}>
-        {FEATURES.map((feature) => (
+      <View style={styles.features}>
+        {FEATURES.map((feature, i) => (
           <View
             key={feature.title}
-            style={[
-              styles.card,
-              { backgroundColor: theme.backgroundElement, borderColor: theme.hairline },
-              { width: compact ? '100%' : '31.5%' },
-            ]}>
-            <View style={[styles.iconTile, { backgroundColor: scheme === 'dark' ? theme.backgroundSelected : '#E8F0FC' }]}>
-              <SymbolView name={feature.symbol} size={22} weight="semibold" tintColor={theme.tint} />
+            style={[styles.feature, i % 2 === 1 && !compact && styles.featureReverse, compact && styles.stack]}>
+            <View
+              style={[
+                styles.stage,
+                compact && styles.stageCompact,
+                compact && styles.stackChild,
+                feature.focus === 'bottom' && styles.stageFromTop,
+                { backgroundColor: stage },
+              ]}>
+              <Phone
+                source={shots[feature.shot]}
+                width={compact ? 220 : 250}
+                style={feature.focus === 'bottom' ? styles.stagePhoneBottom : styles.stagePhone}
+              />
             </View>
-            <ThemedText type="smallBold" themeColor="heading" style={styles.cardTitle}>
-              {feature.title}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {feature.body}
-            </ThemedText>
+            <View style={[styles.featureCopy, compact && styles.stackChild]}>
+              <ThemedText type="smallBold" themeColor="tint" style={styles.eyebrow}>
+                {feature.eyebrow}
+              </ThemedText>
+              <ThemedText role="heading" aria-level={3} themeColor="heading" style={styles.h3}>
+                {feature.title}
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.featureBody}>
+                {feature.body}
+              </ThemedText>
+            </View>
           </View>
         ))}
       </View>
@@ -271,41 +313,6 @@ function ClaimsBand({ compact }: { compact: boolean }) {
             </ThemedText>
           </Link>
         </View>
-      </View>
-    </Section>
-  );
-}
-
-function Screens({ compact }: { compact: boolean }) {
-  const theme = useTheme();
-  const shots: [keyof typeof SHOTS, string][] = [
-    ['journeys', 'Every flight, remembered'],
-    ['travelDay', 'Your travel day, live'],
-    ['stats', 'Your travels, in numbers'],
-    ['addFlight', 'Add flights in seconds'],
-  ];
-  return (
-    <Section>
-      <ThemedText role="heading" aria-level={2} themeColor="heading" style={styles.h2}>
-        Made to be looked at
-      </ThemedText>
-      <ThemedText themeColor="textSecondary" style={styles.sub}>
-        Every screen earns its place on the day you fly.
-      </ThemedText>
-      <View style={styles.shots}>
-        {shots.map(([key, caption]) => (
-          <View
-            key={key}
-            style={[
-              styles.shot,
-              { backgroundColor: theme.backgroundElement, borderColor: theme.hairline, width: compact ? '47%' : '23.5%' },
-            ]}>
-            <Image source={SHOTS[key]} style={styles.shotImage} contentFit="cover" contentPosition="top" alt={caption} />
-            <ThemedText type="smallBold" themeColor="heading" style={styles.shotCaption}>
-              {caption}
-            </ThemedText>
-          </View>
-        ))}
       </View>
     </Section>
   );
@@ -501,29 +508,63 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     marginTop: Spacing.two,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 18,
+  features: {
+    gap: Spacing.four,
     marginTop: Spacing.five,
   },
-  card: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 22,
-    gap: 6,
-  },
-  iconTile: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  feature: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
+    gap: 48,
   },
-  cardTitle: {
+  featureReverse: {
+    flexDirection: 'row-reverse',
+  },
+  // The phone rises out of a rounded stage and is cropped by it — the top
+  // of the screen is what carries each point; the tab bar does not.
+  stage: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    height: 400,
+    borderRadius: 28,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  stageCompact: {
+    height: 340,
+    width: '100%',
+  },
+  stagePhone: {
+    marginBottom: -150,
+  },
+  // `focus: 'bottom'`: the phone hangs from the top edge instead, its upper
+  // part cropped, its lower part — and the bottom bezel — inside the stage.
+  stageFromTop: {
+    justifyContent: 'flex-start',
+  },
+  stagePhoneBottom: {
+    marginTop: -210,
+    marginBottom: 28,
+  },
+  featureCopy: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.two,
+  },
+  h3: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: 800,
+    letterSpacing: -0.6,
+  },
+  featureBody: {
     fontSize: 17,
-    lineHeight: 22,
+    lineHeight: 26,
+    maxWidth: 440,
   },
   strip: {
     flexDirection: 'row',
@@ -567,24 +608,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 12,
-  },
-  shots: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 18,
-    marginTop: Spacing.five,
-  },
-  shot: {
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  shotImage: {
-    width: '100%',
-    aspectRatio: 1206 / 2200,
-  },
-  shotCaption: {
-    padding: 14,
   },
   proBox: {
     flexDirection: 'row',

@@ -9,7 +9,7 @@ rendered on the web and is not linked from the site.
 
 | Route | File | Purpose |
 | --- | --- | --- |
-| `/` | `src/screens/landing.web.tsx` via `src/app/(tabs)/(journeys)/index.tsx` (web branch) | Front page: hero, six features, the EU261 band with a mini checker, screenshots, Pro. |
+| `/` | `src/screens/landing.web.tsx` via `src/app/(tabs)/(journeys)/index.tsx` (web branch) | Front page: hero, six image + text feature rows (each claim beside the screen that makes it — no icon tiles), the EU261 band with a mini checker, Pro. |
 | `/check` | `src/screens/check.tsx` | The flight checker. Takes `?flight=AY1331&date=YYYY-MM-DD` (runs the lookup on arrival) and `?demo=1` (the example verdict); the front page's band hands off with those. |
 | `/go-pro`, `/welcome`, `/sign-in` | `src/screens/go-pro.web.tsx`, `welcome.tsx`, `sign-in.web.tsx` | Checkout funnel (RevenueCat Web Billing + Clerk). |
 | `/privacy`, `/terms`, `/support` | `src/screens/legal/*` | Plain pages, no SiteChrome. |
@@ -38,7 +38,7 @@ carry the app's tab bar and mount World/People/Claims behind it.
 
 ## Assets
 
-- Screenshots: `assets/images/landing/*.png` (640 px wide, palette PNG) from the release
+- Screenshots: `assets/images/landing/*.png` (light) and `assets/images/landing/dark/*.png` (dark, `xcrun simctl ui <udid> appearance dark` before capturing; the page picks the set by theme), 640 px wide palette PNG, from the release
   build on the "FlyRight Shots" simulator, seeded with
   `node scripts/seed-demo-data.mjs --ios --sim <udid> --travel-day`, status bar
   `xcrun simctl status_bar <udid> override --time 9:41 …`, deep links `flyright:///`,
