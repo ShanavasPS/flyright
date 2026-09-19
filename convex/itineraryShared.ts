@@ -67,6 +67,26 @@ export function onwardFrom<T extends LegLike>(from: LegLike, legs: T[], instant:
   }
 }
 
+/** The legs that lead into `to` in the same itinerary, in flying order —
+ * the journey so far, for a follower reading a connecting leg. Walks back
+ * the way onwardFrom walks forward; a layover is always positive, so the
+ * walk can't loop. */
+export function earlierFrom<T extends LegLike>(to: LegLike, legs: T[], instant: Instant): T[] {
+  const out: T[] = [];
+  let first: LegLike = to;
+  // Latest departure first: of two legs that could feed this one, the
+  // nearer is the connection.
+  const pool = [...legs].sort(
+    (a, b) => instant(b.scheduledDeparture, b.fromCode) - instant(a.scheduledDeparture, a.fromCode),
+  );
+  for (;;) {
+    const previous = pool.find((leg) => layoverMs(leg, first, instant) !== null);
+    if (!previous) return out.reverse();
+    out.push(previous);
+    first = previous;
+  }
+}
+
 /** Whether an itinerary still has travelling left in it: its last leg has not
  * departed. A trip is filed under Flown as a whole, once — never leg by leg,
  * which put the second half of a journey under Flown while the first half

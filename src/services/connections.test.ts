@@ -1,4 +1,4 @@
-import { chainLegs, layoverLabel, layoverMs, onwardFrom } from '../../convex/itineraryShared';
+import { chainLegs, earlierFrom, layoverLabel, layoverMs, onwardFrom } from '../../convex/itineraryShared';
 
 import {
   connectionBetween,
@@ -39,6 +39,13 @@ describe('chainLegs / onwardFrom', () => {
   it('lists the legs after a given one', () => {
     expect(onwardFrom(qr517, [qr516, qr301, qr304], legInstant).map((l) => l.id)).toEqual(['b']);
     expect(onwardFrom(qr301, [qr516, qr304], legInstant)).toEqual([]);
+  });
+  it('lists the legs before a given one — the journey so far a follower reads', () => {
+    // QR516 out of Doha follows QR304 from Helsinki: the HEL photos belong
+    // to the leg on screen once QR304 has landed.
+    expect(earlierFrom(qr516, [qr517, qr301, qr304], legInstant).map((l) => l.id)).toEqual(['c']);
+    expect(earlierFrom(qr301, [qr516, qr304, qr517], legInstant).map((l) => l.id)).toEqual(['a']);
+    expect(earlierFrom(qr304, [qr516, qr301, qr517], legInstant)).toEqual([]);
   });
 });
 

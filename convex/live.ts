@@ -15,7 +15,7 @@ import {
   travelerName,
 } from './liveHelpers';
 import { personCard } from './circle';
-import { onwardLegs } from './itinerary';
+import { itineraryKeys, onwardLegs } from './itinerary';
 import {
   preferredSession,
   stageIndex,
@@ -315,7 +315,20 @@ export const byToken = query({
       ),
       viewerFollows,
       sessionId: viewerFollows && identity?.subject !== session.userId ? session._id : null,
-      updates: await updatesFor(ctx, session.userId, session.naturalKey, identity?.subject ?? null),
+      // The journey so far, not just this leg: see itinerary.itineraryKeys.
+      updates: await updatesFor(
+        ctx,
+        session.userId,
+        await itineraryKeys(
+          ctx,
+          session.userId,
+          session,
+          !!identity &&
+            (identity.subject === session.userId ||
+              (await isCloseMember(ctx, session.userId, identity.subject))),
+        ),
+        identity?.subject ?? null,
+      ),
     };
   },
 });
@@ -335,7 +348,12 @@ export const byFollow = query({
       ...toPublicSession(s, await travelerName(ctx, s.userId), await followerCount(ctx, s._id)),
       viewerFollows: true,
       sessionId: s._id,
-      updates: await updatesFor(ctx, s.userId, s.naturalKey, identity.subject),
+      updates: await updatesFor(
+        ctx,
+        s.userId,
+        await itineraryKeys(ctx, s.userId, s, await isCloseMember(ctx, s.userId, identity.subject)),
+        identity.subject,
+      ),
     };
   },
 });
@@ -426,7 +444,14 @@ export const following = query({
         journeyId: (await journeyForKey(ctx, session.userId, session.naturalKey))?._id ?? null,
         // The traveller's latest word from the trip, for the pass to show
         // beside the flight — the rest is on their page.
-        update: await latestUpdate(ctx, session.userId, session.naturalKey, identity.subject),
+        // From any leg of the journey so far — the Helsinki photo stays on
+        // the pass once the connecting flight is the one on it.
+        update: await latestUpdate(
+          ctx,
+          session.userId,
+          await itineraryKeys(ctx, session.userId, session, !!seat?.close),
+          identity.subject,
+        ),
       });
     }
     return out;

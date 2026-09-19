@@ -40,11 +40,18 @@ async function publicUpdate(ctx: QueryCtx | MutationCtx, row: Doc<'tripUpdates'>
 
 export type PublicUpdate = Awaited<ReturnType<typeof publicUpdate>>;
 
-async function rowsFor(ctx: QueryCtx | MutationCtx, ownerId: string, journeyKey: string) {
-  const rows = await ctx.db
-    .query('tripUpdates')
-    .withIndex('by_user_key', (q) => q.eq('userId', ownerId).eq('journeyKey', journeyKey))
-    .collect();
+/** The updates on one trip — or, given several keys, on the legs of one
+ * itinerary (itinerary.itineraryKeys), merged. */
+async function rowsFor(ctx: QueryCtx | MutationCtx, ownerId: string, journeyKey: string | string[]) {
+  const rows = [];
+  for (const key of Array.isArray(journeyKey) ? journeyKey : [journeyKey]) {
+    rows.push(
+      ...(await ctx.db
+        .query('tripUpdates')
+        .withIndex('by_user_key', (q) => q.eq('userId', ownerId).eq('journeyKey', key))
+        .collect()),
+    );
+  }
   // Newest first: the latest word from the traveller is the one a follower
   // opened the page for.
   rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -56,7 +63,7 @@ async function rowsFor(ctx: QueryCtx | MutationCtx, ownerId: string, journeyKey:
 export async function updatesFor(
   ctx: QueryCtx | MutationCtx,
   ownerId: string,
-  journeyKey: string,
+  journeyKey: string | string[],
   viewerId: string | null,
 ): Promise<PublicUpdate[]> {
   const rows = await rowsFor(ctx, ownerId, journeyKey);
@@ -68,7 +75,7 @@ export async function updatesFor(
 export async function latestUpdate(
   ctx: QueryCtx | MutationCtx,
   ownerId: string,
-  journeyKey: string,
+  journeyKey: string | string[],
   viewerId: string | null,
 ): Promise<{ latest: PublicUpdate; count: number } | null> {
   const rows = await rowsFor(ctx, ownerId, journeyKey);

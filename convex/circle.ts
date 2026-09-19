@@ -9,7 +9,7 @@ import { after, allowedAt, peopleSeenFor, unseenPeople } from './attentionHelper
 import { maySee } from './audience';
 import { CIRCLE_FULL, MAX_PENDING_REQUESTS, MAX_SEARCHES_PER_DAY, SEARCH_LIMIT, searchKey } from './circleShared';
 import { isPro } from './entitlements';
-import { onwardLegs } from './itinerary';
+import { itineraryKeys, onwardLegs } from './itinerary';
 import {
   armHeadsUpsForOwner,
   activeSessionForKey,
@@ -559,7 +559,11 @@ async function travelOf(
   const current =
     (session && [...upcoming, ...past].find((j) => j.naturalKey === session.naturalKey)) ??
     [...past, ...upcoming].find((j) => updateWindowOpen(j, now));
-  const updates = current ? await updatesFor(ctx, ownerId, current.naturalKey, viewerId) : [];
+  // The journey so far: a connecting leg on screen still carries the
+  // photos from the legs before it (itinerary.itineraryKeys).
+  const updates = current
+    ? await updatesFor(ctx, ownerId, await itineraryKeys(ctx, ownerId, current, seesHidden), viewerId)
+    : [];
   return {
     liveJourneyId,
     upcoming: upcoming.map(publicTrip),
@@ -606,7 +610,12 @@ async function liveCard(
     session: toPublicSession(session, name, follows.length),
     onward,
     /** The traveller's latest word from this leg, for the pass. */
-    update: await latestUpdate(ctx, session.userId, session.naturalKey, viewerId),
+    update: await latestUpdate(
+      ctx,
+      session.userId,
+      await itineraryKeys(ctx, session.userId, session, seesHidden),
+      viewerId,
+    ),
   };
 }
 
@@ -770,7 +779,12 @@ export const trip = query({
     return {
       owner: who,
       trip: publicTrip(journey),
-      updates: await updatesFor(ctx, ownerId, journey.naturalKey, me),
+      updates: await updatesFor(
+        ctx,
+        ownerId,
+        await itineraryKeys(ctx, ownerId, journey, !!membership.close),
+        me,
+      ),
       token: liveHere?.shareToken ?? null,
       sessionId: liveHere?._id ?? null,
       session: liveHere
