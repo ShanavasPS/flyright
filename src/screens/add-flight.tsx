@@ -81,7 +81,8 @@ import {
   normalizeFlightNumber,
 } from '@/services/flight-lookup';
 import { recordDelay } from '@/services/disruptions';
-import { addJourney, attachBoardingPass, updateJourney, useJourney } from '@/services/journeys';
+import { addJourney, attachBoardingPass, updateJourney, useJourney, useJourneys } from '@/services/journeys';
+import { normalizedFlight } from '@/services/imported-journeys';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import {
   LibraryPermissionError,
@@ -194,6 +195,8 @@ export function AddFlight({ step }: { step: Step }) {
   }>();
   const { row: editRow } = useJourney(editId ?? '', userId);
   const { row: passTarget, loaded: passTargetLoaded } = useJourney(prefill.journeyId ?? '', userId);
+  // For a scan from +: the trip it may already be in the journal as.
+  const { data: journal } = useJourneys(userId);
 
   const draft = useAddFlightDraft();
   const {
@@ -405,6 +408,46 @@ export function AddFlight({ step }: { step: Step }) {
       return;
     }
     const leg = pass.legs[0];
+    // A pass for a flight already in the journal — a reissued one after an
+    // upgrade, a new seat — updates that trip instead of starting a new one:
+    // same flight number, route and departure day. It used to walk into
+    // "Track this flight" as if the trip were new.
+    const scannedDay = resolveFlightDate(leg.dayOfYear, today);
+    const known = code
+      ? journal?.find(
+          (row) =>
+            row.mode === 'flight' &&
+            !row.deletedAt &&
+            row.fromCode === leg.fromCode &&
+            row.toCode === leg.toCode &&
+            !!normalizedFlight(row.number) &&
+            normalizedFlight(row.number) === normalizedFlight(leg.flight) &&
+            flightDay(row.scheduledDeparture, airportZone(row.fromCode)) === scannedDay,
+        )
+      : undefined;
+    if (known && code) {
+      setScanning(false);
+      // "002A" on the pass is seat 2A, as legFor reads it.
+      const seat = leg.seat ? leg.seat.replace(/^0+(?=\d)/, '') : null;
+      try {
+        await attachBoardingPass(known.id, code, { seat, bookingReference: leg.pnr });
+        trackEvent('boarding_pass_attached', { via: 'camera-match' });
+        router.replace({
+          pathname: ADD_FLIGHT_PATH.added,
+          params: {
+            title: 'Boarding pass updated',
+            subtitle: seat
+              ? `Seat ${seat} is saved on this trip.`
+              : 'The new pass is saved on this trip.',
+            label: [`${known.fromCode} → ${known.toCode}`, known.number].filter(Boolean).join(' · '),
+            exit: 'top',
+          },
+        });
+      } catch {
+        Alert.alert('Could not save the pass', 'Please try scanning it again.');
+      }
+      return;
+    }
     const designator = normalizeFlightNumber(leg.flight);
     setScanning(false);
     setScannedPass(code);

@@ -20,7 +20,7 @@ jest.mock('expo-router', () => ({
 jest.mock('@/services/flight-lookup', () => ({
   ...jest.requireActual('@/services/flight-lookup'), lookupFlight: jest.fn(),
 }));
-jest.mock('@/services/journeys', () => ({ useJourney: () => ({ row: null, loaded: true }), addJourney: jest.fn() }));
+jest.mock('@/services/journeys', () => ({ useJourney: () => ({ row: null, loaded: true }), useJourneys: () => ({ data: [] }), addJourney: jest.fn() }));
 jest.mock('@/services/document-imports', () => ({ registerDocument: jest.fn() }));
 jest.mock('@/services/travel-documents', () => ({ promptForTravelDocument: jest.fn() }));
 jest.mock('../../modules/flyright-document-import', () => ({ canImportDocuments: () => false }));
