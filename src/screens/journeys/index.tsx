@@ -278,8 +278,11 @@ export function Journeys() {
             ListHeaderComponent={
               <>
                 <SignedOutNoticeCard next="/" />
-                {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
+                {/* Above the traveller's own hero: one row of faces however
+                    many people are flying, so it never pushes the journal
+                    down the way a card per person did. */}
                 {!!CONVEX_URL && <FollowingSection />}
+                {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
               </>
             }
             renderSectionHeader={({ section }) => (
@@ -312,6 +315,9 @@ export function Journeys() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
             <SignedOutNoticeCard next="/" />
+            {/* Someone who only follows others has no journal yet, but
+                their people's trips still belong here. */}
+            {!!CONVEX_URL && <FollowingSection />}
             <JournalHero onAdd={() => router.push('/add')} />
           </ScrollView>
         )}
