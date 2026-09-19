@@ -8,7 +8,7 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
-import { landedOrLater, liveLead, presumedFlightStage } from '../../convex/liveShared';
+import { heldOnGround, landedOrLater, liveLead, presumedFlightStage } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
@@ -198,6 +198,10 @@ export interface FlightFacts {
   /** Last reported position while in the air (see services/flight-position);
    * optional because facts cached before it existed lack it. */
   position?: FlightPosition | null;
+  /** When this device last read the live status — a fresh read with no
+   * take-off holds the flight at the gate (heldByLiveData). Absent in facts
+   * cached before it existed, and in the trip's record. */
+  observedAt?: string | null;
 }
 
 export const EMPTY_FACTS: FlightFacts = {
@@ -583,6 +587,24 @@ function countdownLabel(departure: number, now: Date): string {
   return mins > 0 ? `in ${mins} min` : 'now';
 }
 
+/** A tracked flight this device checked within the last twenty minutes,
+ * with no take-off reported: at the gate, however late it runs. The
+ * timetable guess is only for when nobody could check (heldOnGround). */
+export function heldByLiveData(
+  j: Pick<TravelJourney, 'source'>,
+  state: TravelDayState,
+  facts: FlightFacts,
+  now: Date,
+): boolean {
+  return (
+    j.source === 'lookup' &&
+    heldOnGround(
+      { currentStage: state.stage, actualDeparture: facts.actualDeparture, lastCheckedAt: facts.observedAt ?? null },
+      now.getTime(),
+    )
+  );
+}
+
 /** How much of the flight has been flown — the plane's position on every
  * route line. Zero until the flight has departed (taps never move it),
  * then time-based between the real/estimated departure and the estimated
@@ -605,7 +627,7 @@ export function flightProgress(
   // With nothing recorded past the airport, the plane still moves by the
   // timetable once the departure is gone — a line with the plane parked at
   // the origin under "Due to land in 2h" contradicts itself.
-  const stage = presumedFlightStage(state.stage, departed, arrives, now.getTime());
+  const stage = presumedFlightStage(state.stage, departed, arrives, now.getTime(), heldByLiveData(j, state, facts, now));
   if (stageIndex(stage) < stageIndex('departed')) return 0;
   if (stage === 'landed') return 1;
   if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
@@ -648,7 +670,13 @@ export function liveContent(
   // Past the departure with nothing recorded (a manual trip's untapped
   // "Departed", or airline data that hasn't caught up): read the timetable
   // and say so, rather than hold "Departing now" through the flight.
-  const presumed = presumedFlightStage(state.stage, departureMs, arrivalMs, now.getTime());
+  const presumed = presumedFlightStage(
+    state.stage,
+    departureMs,
+    arrivalMs,
+    now.getTime(),
+    heldByLiveData(j, state, facts, now),
+  );
   // A presumption only ever stands in for a flight stage nobody recorded.
   const presumedOnly = presumed !== null && index < stageIndex('departed');
   let headline: string;

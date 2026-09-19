@@ -1,6 +1,6 @@
 import {
   LIVE_AFTER_LANDING_MS,
-  presumedFlightStage,
+  heldOnGround, presumedFlightStage,
   stillLive,
   type PublicSession,
 } from '../../convex/liveShared';
@@ -226,6 +226,7 @@ export function presumedStage(
     | 'actualDeparture'
     | 'estimatedArrival'
     | 'actualArrival'
+    | 'lastCheckedAt'
   >,
   now: Date,
 ): 'departed' | 'landed' | null {
@@ -235,6 +236,8 @@ export function presumedStage(
     flightInstant(times.departure, airportZone(s.fromCode)),
     flightInstant(times.arrival, airportZone(s.toCode)),
     now.getTime(),
+    // The server's own recent read with no take-off holds it at the gate.
+    heldOnGround(s, now.getTime()),
   );
 }
 

@@ -22,6 +22,7 @@ import { shiftLabel } from '@/services/schedule-change';
 import {
   flightProgress,
   hasLanded,
+  heldByLiveData,
   stageIndex,
   type FlightFacts,
   type TravelDayState,
@@ -88,7 +89,8 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
   const timed = hasRealTime(row);
   const departureMs = flightInstant(facts.estimatedDeparture ?? row.scheduledDeparture, departureZone);
   const arrivalMs = flightInstant(facts.estimatedArrival ?? row.scheduledArrival, arrivalZone);
-  const presumed = timed ? presumedFlightStage(state.stage, departureMs, arrivalMs, t) : null;
+  const held = heldByLiveData(row, state, facts, now);
+  const presumed = timed ? presumedFlightStage(state.stage, departureMs, arrivalMs, t, held) : null;
   const landed = hasLanded(state.stage) || presumed === 'landed';
   const airborne = !landed && (state.stage === 'departed' || presumed === 'departed');
   // Over once its travel window has closed — or, for a trip with no window
@@ -120,6 +122,9 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
     status = { text: `Delayed ${formatDelay(facts.delayMinutes!)}`, tone: 'late' };
   } else if (airborne) {
     status = { text: 'In the air', tone: 'info' };
+  } else if (held && departureMs < t - 60_000 && state.stage !== 'boarded') {
+    // Past its departure time, and the airport says it has not left.
+    status = { text: 'Not yet departed', tone: 'late' };
   } else if (state.stage === 'boarded') {
     status = { text: 'On board', tone: 'info' };
   } else if (boardingOpen) {
@@ -162,6 +167,9 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
       fraction,
       caption: total > 0 ? `${Math.round(fraction * total).toLocaleString()} of ${total.toLocaleString()} km` : '',
     };
+  } else if (held && departureMs < t) {
+    const [value, unit] = splitClock(formatTime(facts.estimatedDeparture ?? row.scheduledDeparture, departureZone));
+    clock = { kind: 'static', label: 'Due to leave at', value, unit };
   } else if (!Number.isNaN(departureMs)) {
     clock = {
       kind: 'countdown',

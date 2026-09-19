@@ -75,12 +75,35 @@ export function presumedFlightStage(
   departureMs: number,
   arrivalMs: number,
   now: number,
+  /** A recent status check reports no take-off (heldOnGround): no guess —
+   * the flight is still at the gate however late it runs. */
+  onGround = false,
 ): 'departed' | 'landed' | null {
   if (landedOrLater(stage)) return 'landed';
   if (stage === 'departed') return stage;
+  if (onGround) return null;
   if (!Number.isNaN(arrivalMs) && arrivalMs <= now - MINUTE_MS) return 'landed';
   if (!Number.isNaN(departureMs) && departureMs <= now - MINUTE_MS) return 'departed';
   return null;
+}
+
+/** How recent a status check must be for its "no take-off yet" to hold a
+ * flight at the gate rather than let the timetable move it into the air. */
+export const FRESH_STATUS_MS = 20 * MINUTE_MS;
+
+/** A tracked flight whose live status was checked within FRESH_STATUS_MS
+ * and reports no take-off: on the ground, whatever the timetable says.
+ * The timetable guess is for when nobody could check — offline, or a trip
+ * without live updates. QR516 on 2026-09-19 left 26 minutes late with its
+ * estimate still at the scheduled time, and every surface counted down to
+ * the landing while the traveller sat at the gate. */
+export function heldOnGround(
+  s: { currentStage: string | null; actualDeparture?: string | null; lastCheckedAt?: string | null },
+  now: number,
+): boolean {
+  if (s.actualDeparture || s.currentStage === 'departed' || landedOrLater(s.currentStage)) return false;
+  const checked = s.lastCheckedAt ? Date.parse(s.lastCheckedAt) : NaN;
+  return Number.isFinite(checked) && now - checked >= 0 && now - checked <= FRESH_STATUS_MS;
 }
 
 /** Of a traveller's active sessions, the one a follower should be shown:
@@ -137,7 +160,7 @@ export function stillLive(
     s.fromCode,
   );
   const arrival = flightInstant(s.actualArrival ?? s.estimatedArrival ?? s.scheduledArrival, s.toCode);
-  if (presumedFlightStage(s.currentStage, departure, arrival, now) !== 'landed') return true;
+  if (presumedFlightStage(s.currentStage, departure, arrival, now, heldOnGround(s, now)) !== 'landed') return true;
   if (onward.some((leg) => flightInstant(leg.scheduledDeparture, leg.fromCode) > now)) return true;
   const landedAt =
     s.currentStage === 'landed'
@@ -383,7 +406,7 @@ export function flightProgress(s: Doc<'liveSessions'>, now: number): number {
     s.fromCode,
   );
   const arrives = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
-  const stage = presumedFlightStage(s.currentStage, departed, arrives, now);
+  const stage = presumedFlightStage(s.currentStage, departed, arrives, now, heldOnGround(s, now));
   if (stageIndex(stage) < stageIndex('departed')) return 0;
   if (stage === 'landed') return 1;
   if (Number.isNaN(departed) || Number.isNaN(arrives) || arrives <= departed) return 0.5;
@@ -556,7 +579,7 @@ export function buildContentState(
   const effectiveDeparture = s.estimatedDeparture ?? s.scheduledDeparture;
   const departureMs = flightInstant(effectiveDeparture, s.fromCode);
   const arrivalMs = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
-  const presumed = presumedFlightStage(s.currentStage, departureMs, arrivalMs, now);
+  const presumed = presumedFlightStage(s.currentStage, departureMs, arrivalMs, now, heldOnGround(s, now));
   const countdown = liveCountdown(presumed, departureMs, arrivalMs);
   const lead = liveLead({
     stage: s.currentStage,
@@ -696,6 +719,9 @@ export interface PublicSession {
   actualDeparture: string | null;
   estimatedArrival: string | null;
   actualArrival: string | null;
+  /** When the server last read the flight's live status — a fresh read with
+   * no take-off holds the flight at the gate (heldOnGround). */
+  lastCheckedAt?: string | null;
 }
 
 /** The ONLY way session data leaves the server for non-owners: a whitelist.
@@ -727,5 +753,6 @@ export function toPublicSession(
     actualDeparture: s.actualDeparture,
     estimatedArrival: s.estimatedArrival,
     actualArrival: s.actualArrival,
+    lastCheckedAt: s.lastCheckedAt,
   };
 }

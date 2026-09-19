@@ -87,6 +87,7 @@ export async function noteFlightFacts(journeyId: string, status: FlightStatus): 
     estimatedArrival: status.estimatedArrival ?? null,
     actualArrival: status.actualArrival ?? null,
     position: status.position ?? null,
+    observedAt: new Date().toISOString(),
   };
   Storage.setItemSync(factsKey(journeyId), JSON.stringify(facts));
   await mergeFlightStages(journeyId, facts);

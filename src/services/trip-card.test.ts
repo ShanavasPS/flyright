@@ -187,3 +187,27 @@ describe('splitClock', () => {
     expect(splitClock('17:08')).toEqual(['17:08', null]);
   });
 });
+
+describe('tripCard — a late departure the airport has not reported', () => {
+  // QR516-style: 16:40 scheduled, estimate unchanged, still at the gate at 16:55.
+  const fresh = { ...EMPTY_FACTS, estimatedDeparture: '2026-09-19T13:00:00Z', observedAt: '2026-09-19T13:10:00Z' };
+
+  it('holds the flight at the gate while a recent check says it has not left', () => {
+    const model = card({ at: '2026-09-19T13:15:00Z', facts: fresh });
+    expect(model.status).toEqual({ text: 'Not yet departed', tone: 'late' });
+    expect(model.clock).toMatchObject({ kind: 'static', label: 'Due to leave at' });
+    expect(model.progress).toBeNull();
+  });
+
+  it('goes by the timetable once the last check is stale, or for a trip with no feed', () => {
+    const stale = card({ at: '2026-09-19T13:45:00Z', facts: fresh });
+    expect(stale.clock).toMatchObject({ kind: 'countdown', label: 'Lands in' });
+    const manual = card({ at: '2026-09-19T13:15:00Z', facts: fresh, row: row({ source: 'manual' }) });
+    expect(manual.clock).toMatchObject({ kind: 'countdown', label: 'Lands in' });
+  });
+
+  it('flies as soon as the take-off is reported', () => {
+    const model = card({ at: '2026-09-19T13:31:00Z', facts: { ...fresh, actualDeparture: '2026-09-19T13:26:00Z', observedAt: '2026-09-19T13:30:00Z' } });
+    expect(model.status.text).toBe('In the air');
+  });
+});

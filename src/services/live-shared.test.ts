@@ -10,6 +10,8 @@ import {
   shouldStartActivity,
   stillLive,
   type LiveLeadInput,
+  heldOnGround,
+  presumedFlightStage,
 } from '../../convex/liveShared';
 import type { Doc } from '../../convex/_generated/dataModel';
 
@@ -331,5 +333,24 @@ describe('liveLead', () => {
       compact: 'Belt 7',
     });
     expect(liveLead({ ...base, presumed: 'landed', landedClock: null }).clockLabel).toBe('LANDED');
+  });
+});
+
+describe('heldOnGround / presumedFlightStage', () => {
+  const now = Date.parse('2026-09-19T17:00:00Z');
+  const dep = Date.parse('2026-09-19T16:40:00Z');
+  const arr = Date.parse('2026-09-19T21:03:00Z');
+
+  it('a fresh check with no take-off holds the flight at the gate', () => {
+    const held = heldOnGround({ currentStage: null, actualDeparture: null, lastCheckedAt: '2026-09-19T16:55:00Z' }, now);
+    expect(held).toBe(true);
+    expect(presumedFlightStage(null, dep, arr, now, held)).toBeNull();
+  });
+
+  it('a stale check, a reported take-off or no check at all lets the timetable decide', () => {
+    expect(heldOnGround({ currentStage: null, lastCheckedAt: '2026-09-19T16:30:00Z' }, now)).toBe(false);
+    expect(heldOnGround({ currentStage: null, actualDeparture: '2026-09-19T16:58Z', lastCheckedAt: '2026-09-19T16:59:00Z' }, now)).toBe(false);
+    expect(heldOnGround({ currentStage: null, lastCheckedAt: null }, now)).toBe(false);
+    expect(presumedFlightStage(null, dep, arr, now)).toBe('departed');
   });
 });

@@ -1,6 +1,6 @@
 import type { Doc } from './_generated/dataModel';
 import { flightInstant } from './airportZones';
-import { buildContentState, landedOrLater, presumedFlightStage, STAGE_LABELS } from './liveShared';
+import { buildContentState, heldOnGround, landedOrLater, presumedFlightStage, STAGE_LABELS } from './liveShared';
 
 const HOUR = 3_600_000;
 export const FOLLOWER_ACTIVITY_PREFIX = 'following~';
@@ -31,7 +31,7 @@ export function followerContentState(s: Doc<'liveSessions'>, name: string, now: 
   const landed = landedOrLater(s.currentStage);
   const presumed = presumedFlightStage(s.currentStage,
     flightInstant(s.estimatedDeparture ?? s.scheduledDeparture, s.fromCode),
-    flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode), now);
+    flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode), now, heldOnGround(s, now));
   const assumed = !!presumed && !landed && s.currentStage !== 'departed';
   const detail = assumed ? 'Going by the timetable' : stage ?? 'Waiting for departure';
   return {
