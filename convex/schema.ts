@@ -176,6 +176,9 @@ export default defineSchema({
     delayMinutes: v.union(v.number(), v.null()),
     gate: v.union(v.string(), v.null()),
     terminal: v.union(v.string(), v.null()),
+    /** The check-in desk the airport posted — what the traveller's own
+     * live card leads with at the airport. Optional: older rows. */
+    checkInDesk: v.optional(v.union(v.string(), v.null())),
     baggageBelt: v.union(v.string(), v.null()),
     estimatedDeparture: v.union(v.string(), v.null()),
     actualDeparture: v.union(v.string(), v.null()),

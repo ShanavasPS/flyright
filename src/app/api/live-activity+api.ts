@@ -43,6 +43,12 @@ const STATE_KEYS = [
   'emphasis',
   'depTime',
   'arrTime',
+  'clockLabel',
+  'tone',
+  'leadLabel',
+  'leadValue',
+  'leadSub',
+  'delayChip',
 ] as const;
 
 export async function POST(request: Request) {

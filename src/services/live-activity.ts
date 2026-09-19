@@ -84,6 +84,14 @@ function contentState(content: LiveContent) {
     emphasis: content.emphasis,
     depTime: content.depTime ?? '',
     arrTime: content.arrTime ?? '',
+    // What leads the card at this step (convex/liveShared.ts liveLead):
+    // the clock's label and colour, the one fact beside it, the late chip.
+    clockLabel: content.clockLabel,
+    tone: content.tone,
+    leadLabel: content.lead?.label ?? '',
+    leadValue: content.lead?.value ?? '',
+    leadSub: content.lead?.sub ?? '',
+    delayChip: content.delayChip ?? '',
   };
 }
 
@@ -121,6 +129,8 @@ export function startTravelActivity(journey: TravelJourney, content: LiveContent
       fromCode: content.fromCode,
       toCode: content.toCode,
       flightLabel: content.flightLabel,
+      // "Finnair" over the Lock Screen's route line, with the designator.
+      airline: journey.carrier,
     },
     contentState(content),
   );
@@ -205,6 +215,12 @@ function endById(activityId: string, content?: LiveContent): void {
         terminal: '',
         delayLabel: '',
         emphasis: 'none',
+        clockLabel: 'LANDED',
+        tone: 'landed',
+        leadLabel: '',
+        leadValue: '',
+        leadSub: '',
+        delayChip: '',
       };
   void fetch('/api/live-activity', {
     method: 'POST',

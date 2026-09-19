@@ -198,6 +198,7 @@ export function activityAttributes(s: Doc<'liveSessions'>): Record<string, unkno
     fromCode: s.fromCode,
     toCode: s.toCode,
     flightLabel: flight,
+    airline: s.carrier,
   };
 }
 
@@ -407,12 +408,141 @@ export function liveCountdown(
   return Number.isNaN(departureMs) ? null : { end: departureMs, kind: 'departure' };
 }
 
+/** What leads a live surface at each step of the day — the Lock Screen
+ * card, the Dynamic Island, the Android notification and the home screen's
+ * live card all read this one answer, so they never disagree:
+ *
+ *  - the big clock's label and colour ("DEPARTS IN" in the brand colour,
+ *    "BOARDING" in green, amber once half an hour late, "LANDS IN" aloft,
+ *    "LANDED 17:08" on the ground);
+ *  - the ONE fact beside it: the terminal before the airport, the check-in
+ *    desk at it, the gate from check-in until boarding, the seat once on
+ *    board and in the air, the baggage belt after landing;
+ *  - the island's word for that fact ("T2", "G53", "14A", "Belt 7").
+ *
+ * Pure, and shared by the app (liveContent) and the server
+ * (buildContentState) so a push never undoes what the device drew. */
+export interface LiveLeadInput {
+  /** The recorded stage, or the timetable's guess once the departure or
+   * arrival has passed with nothing recorded (presumedFlightStage). */
+  stage: string | null;
+  presumed: 'departed' | 'landed' | null;
+  /** The airline has opened boarding (its boarding time has passed). */
+  boardingOpen: boolean;
+  delayMinutes: number | null;
+  gate: string | null;
+  terminal: string | null;
+  checkInDesk: string | null;
+  baggageBelt: string | null;
+  /** The traveller's own seat — never sent for a follower's card. */
+  seat: string | null;
+  /** Clocks, already formatted in their airport's zone. */
+  boardingClock: string | null;
+  departureClock: string | null;
+  ticketedDepartureClock: string | null;
+  landedClock: string | null;
+}
+
+export interface LiveLead {
+  clockLabel: string;
+  tone: 'normal' | 'boarding' | 'delay' | 'landed';
+  lead: { label: string; value: string; sub: string } | null;
+  /** The Dynamic Island's compact word for the lead ('' for none). */
+  compact: string;
+  /** "+46 min" while the flight is half an hour or more late. */
+  delayChip: string;
+}
+
+export const LATE_MINUTES = 30;
+
+const delayText = (minutes: number): string => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? (m ? `+${h}h ${m} min` : `+${h}h`) : `+${m} min`;
+};
+
+export function liveLead(input: LiveLeadInput): LiveLead {
+  const { stage, presumed, gate, terminal, checkInDesk, baggageBelt, seat } = input;
+  const index = stageIndex(stage);
+  const delayed = input.delayMinutes != null && input.delayMinutes >= LATE_MINUTES;
+  const delayChip = delayed ? delayText(input.delayMinutes!) : '';
+
+  // On the ground at the other end: the belt, the last thing to find —
+  // until the bags are collected.
+  if (landedOrLater(stage) || presumed === 'landed') {
+    const belt = baggageBelt && index < stageIndex('bags_collected') ? baggageBelt : null;
+    return {
+      clockLabel: input.landedClock ? `LANDED ${input.landedClock}` : 'LANDED',
+      tone: 'landed',
+      lead: belt ? { label: 'BAGGAGE', value: `Belt ${belt}`, sub: '' } : null,
+      compact: belt ? `Belt ${belt}` : '',
+      delayChip: '',
+    };
+  }
+  const seatLead = seat ? { label: 'SEAT', value: seat, sub: '' } : null;
+  // In the air: the landing countdown, and where you sit.
+  if (stage === 'departed' || presumed === 'departed') {
+    return { clockLabel: 'LANDS IN', tone: delayed ? 'delay' : 'normal', lead: seatLead, compact: seat ?? '', delayChip };
+  }
+  // On board: the gate is behind you; the seat is the fact.
+  if (index >= stageIndex('boarded')) {
+    return { clockLabel: 'DEPARTS IN', tone: delayed ? 'delay' : 'normal', lead: seatLead, compact: seat ?? '', delayChip };
+  }
+  const gateLead = (sub: string) => ({ label: 'GATE', value: gate ?? '—', sub });
+  // Boarding has opened: wherever the walk stands, the gate is the task.
+  if (input.boardingOpen) {
+    return {
+      clockLabel: 'BOARDING',
+      tone: 'boarding',
+      lead: gateLead(input.departureClock ? `Departs ${input.departureClock}` : ''),
+      compact: gate ? `G${gate}` : 'Gate',
+      delayChip,
+    };
+  }
+  const tone = delayed ? 'delay' : 'normal';
+  const wasSub = delayed && input.ticketedDepartureClock ? `Was ${input.ticketedDepartureClock}` : '';
+  // Checked in (and through bag drop, security, passport control): the gate.
+  if (index >= stageIndex('checked_in')) {
+    const sub = gate
+      ? input.boardingClock
+        ? `Boards ${input.boardingClock}`
+        : wasSub
+      : 'Not posted yet';
+    return { clockLabel: 'DEPARTS IN', tone, lead: gateLead(sub), compact: gate ? `G${gate}` : 'Gate —', delayChip };
+  }
+  // At the airport, not checked in: the desk, with its terminal under it.
+  if (index >= stageIndex('at_airport') && checkInDesk) {
+    return {
+      clockLabel: 'DEPARTS IN',
+      tone,
+      lead: { label: 'CHECK-IN', value: checkInDesk, sub: terminal ? `Terminal ${terminal}` : wasSub },
+      compact: terminal ? `T${terminal}` : checkInDesk,
+      delayChip,
+    };
+  }
+  // On the way: the terminal to head for — or the gate when that is all
+  // the airport has posted.
+  if (terminal) {
+    return { clockLabel: 'DEPARTS IN', tone, lead: { label: 'TERMINAL', value: terminal, sub: wasSub }, compact: `T${terminal}`, delayChip };
+  }
+  if (gate) {
+    return { clockLabel: 'DEPARTS IN', tone, lead: gateLead(wasSub), compact: `G${gate}`, delayChip };
+  }
+  return { clockLabel: 'DEPARTS IN', tone, lead: null, compact: '', delayChip };
+}
+
 /** Server-side mirror of liveContent() for the Live Activity content state —
  * same dict keys the Swift widget reads. Clock times render as UTC (the
  * server doesn't know the traveler's timezone); the in-app timeline stays
  * local. The headline carries the countdown ("Flight in 3h", "Lands in 40
  * min"); the subtitle is the next step and never repeats it. */
-export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<string, unknown> {
+export function buildContentState(
+  s: Doc<'liveSessions'>,
+  now: number,
+  /** The traveller's seat, from their journey — for their own card only;
+   * a follower's card is built without it. */
+  own: { seat?: string | null } = {},
+): Record<string, unknown> {
   const delayed = s.delayMinutes != null && s.delayMinutes >= 30;
   const delayLabel = delayed
     ? `${Math.floor(s.delayMinutes! / 60) ? `${Math.floor(s.delayMinutes! / 60)}h ` : ''}${s.delayMinutes! % 60} min late`.replace('h 0 min', 'h')
@@ -428,6 +558,21 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   const arrivalMs = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
   const presumed = presumedFlightStage(s.currentStage, departureMs, arrivalMs, now);
   const countdown = liveCountdown(presumed, departureMs, arrivalMs);
+  const lead = liveLead({
+    stage: s.currentStage,
+    presumed,
+    boardingOpen: false,
+    delayMinutes: s.delayMinutes,
+    gate: s.gate,
+    terminal: s.terminal,
+    checkInDesk: s.checkInDesk ?? null,
+    baggageBelt: s.baggageBelt,
+    seat: own.seat ?? null,
+    boardingClock: null,
+    departureClock: fmtTime(effectiveDeparture, s.fromCode) || null,
+    ticketedDepartureClock: fmtTime(s.scheduledDeparture, s.fromCode) || null,
+    landedClock: fmtTime(s.actualArrival ?? s.stageTimes.landed ?? null, s.toCode) || null,
+  });
   let headline: string;
   if (landed) {
     headline = 'Landed';
@@ -490,6 +635,8 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
   else if (index >= BOARDED_INDEX || next === null) compactLabel = STAGE_COMPACT[s.currentStage] ?? '';
   else if (next === 'boarded') compactLabel = s.gate ? `G${s.gate}` : NEXT_STEP_COMPACT.boarded;
   else compactLabel = NEXT_STEP_COMPACT[next];
+  // The island's word follows the lead rule wherever it has one.
+  if (lead.compact) compactLabel = lead.compact;
 
   return {
     headline,
@@ -513,6 +660,14 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
       const clock = fmtTime(arrival, s.toCode);
       return clock ? clock + dayOffsetMark(effectiveDeparture, s.fromCode, arrival, s.toCode) : clock;
     })(),
+    // What leads at this step — the same liveLead the app draws with, so a
+    // push never swaps the card's clock label or fact for another.
+    clockLabel: lead.clockLabel,
+    tone: lead.tone,
+    leadLabel: lead.lead?.label ?? '',
+    leadValue: lead.lead?.value ?? '',
+    leadSub: lead.lead?.sub ?? '',
+    delayChip: lead.delayChip,
   };
 }
 

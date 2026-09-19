@@ -1,10 +1,9 @@
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
-  FadeInDown,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -26,7 +25,7 @@ import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { formatTime } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
-import type { TravelStats } from '@/services/timeline';
+import { cityOf, type TravelStats } from '@/services/timeline';
 import {
   activeJourney,
   liveContent,
@@ -100,6 +99,12 @@ export function HomeHero({
   const content = liveContent(active, state, facts, now, plan);
   const delayed = content.emphasis === 'delay';
   const statusColor = delayed ? theme.warning : theme.tint;
+  const toneColor =
+    content.tone === 'delay'
+      ? theme.warning
+      : content.tone === 'boarding' || content.tone === 'landed'
+        ? theme.success
+        : theme.tint;
   // What the ticket said, when the airline has moved a clock: struck through
   // under the time that now counts, as the trip screen and the rows do it.
   const depWas = movedFrom(active.scheduledDeparture, facts.estimatedDeparture, active.fromCode);
@@ -123,31 +128,81 @@ export function HomeHero({
           })
         }
         style={({ pressed }) => [styles.liveSection, pressed && styles.pressed]}>
-        {/* Boarding-pass header: the airline's mark top-left, status top-right. */}
+        {/* The airline's mark, and what state the card is in: the late
+            chip while half an hour or more behind, the live dot. */}
         <View style={styles.spacedRow}>
-          <AirlineLogo number={active.number} carrier={active.carrier} size={32} />
-          <View style={styles.headerRight}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.microLabel}>
-              {content.headline}
+          {/* Which flight, beside the airline's mark — the Lock Screen
+              leaves it out for the clock's sake; here there is room. */}
+          <View style={styles.flightId}>
+            <AirlineLogo number={active.number} carrier={active.carrier} size={32} />
+            <ThemedText type="smallBold" themeColor="heading" numberOfLines={1} style={styles.flightNumber}>
+              {content.flightLabel}
             </ThemedText>
+          </View>
+          <View style={styles.headerRight}>
+            {content.delayChip && (
+              <View style={[styles.delayChip, { backgroundColor: `${theme.warning}1F` }]}>
+                <ThemedText type="smallBold" style={{ color: theme.warning }}>
+                  {content.delayChip}
+                </ThemedText>
+              </View>
+            )}
             {phase === 'live' && <LiveDot />}
           </View>
         </View>
 
-        {/* The route is the centerpiece: big codes pinned to opposite edges,
-         * times beneath, a dotted contrail between them that doubles as the
-         * flight's progress bar — the plane waits at the origin until
-         * take-off, then flies the line to the destination. */}
+        {/* The one time fact, big, and the one place fact beside it — the
+            same rule the Lock Screen card and the Dynamic Island follow
+            (convex/liveShared.ts liveLead): terminal, then the check-in
+            desk, the gate, the seat once on board, the belt after landing. */}
+        <View style={styles.leadRow}>
+          <View style={styles.clockBlock}>
+            <View style={styles.clockLabelRow}>
+              <SymbolView name={clockIcon(content.clockLabel)} size={13} tintColor={toneColor} />
+              <ThemedText type="smallBold" style={[styles.clockLabel, { color: toneColor }]}>
+                {content.clockLabel}
+              </ThemedText>
+            </View>
+            <HeroClock
+              end={content.countdownEnd}
+              color={content.tone === 'delay' ? theme.warning : theme.heading}
+              fallback={content.tone === 'landed' ? cityOf(active.toCode) : content.headline}
+            />
+          </View>
+          {content.lead && (
+            <View style={styles.leadFact}>
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.leadLabel}>
+                {content.lead.label}
+              </ThemedText>
+              <ThemedText
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+                style={[
+                  styles.leadValue,
+                  { color: content.tone === 'boarding' || content.tone === 'landed' ? theme.success : theme.heading },
+                ]}>
+                {content.lead.value}
+              </ThemedText>
+              {!!content.lead.sub && (
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                  {content.lead.sub}
+                </ThemedText>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* The route as one line: the codes with the clocks the airline now
+            says (the ticketed ones struck through when moved), and the
+            contrail the plane flies as the flight goes. */}
         <View style={styles.routeRow}>
           <View style={styles.endpoint}>
             <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
               {content.fromCode}
             </ThemedText>
             {!!content.depTime && (
-              <ThemedText
-                type={depWas ? 'smallBold' : 'small'}
-                themeColor="textSecondary"
-                style={[styles.codeTime, depWas && delayed && { color: theme.warning }]}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.codeTime}>
                 {content.depTime}
               </ThemedText>
             )}
@@ -159,10 +214,7 @@ export function HomeHero({
               {content.toCode}
             </ThemedText>
             {!!content.arrTime && (
-              <ThemedText
-                type={arrWas ? 'smallBold' : 'small'}
-                themeColor="textSecondary"
-                style={[styles.codeTime, arrWas && delayed && { color: theme.warning }]}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.codeTime}>
                 {content.arrTime}
               </ThemedText>
             )}
@@ -170,62 +222,42 @@ export function HomeHero({
           </View>
         </View>
 
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-          {content.subtitle}
-        </ThemedText>
-
-        <View style={styles.spacedRow}>
-          {/* Re-keying on gate/terminal makes fresh airport news slide in
-           * instead of silently repainting. */}
-          <Animated.View
-            key={`${content.gate ?? '·'}-${content.terminal ?? '·'}`}
-            entering={FadeInDown.duration(300)}
-            style={styles.factWrap}>
-            <ThemedText type="smallBold" style={{ color: theme.tint }} numberOfLines={1}>
-              {[
-                content.flightLabel,
-                content.gate ? `Gate ${content.gate}` : null,
-                content.terminal ? `Terminal ${content.terminal}` : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </ThemedText>
-          </Animated.View>
-          <View style={styles.trailing}>
-            {/* The pass, one tap from the home screen on the day: the gate
-                is where a hand reaches for the phone (screens/boarding-pass). */}
-            {!!active.passCode && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Show boarding pass"
-                testID="hero-boarding-pass"
-                hitSlop={Spacing.one}
-                onPress={() => {
-                  tapLight();
-                  trackEvent('boarding_pass_opened', { from: 'home' });
-                  router.push({ pathname: '/boarding-pass', params: { journeyId: active.id } });
-                }}
-                style={({ pressed }) => [
-                  styles.passPill,
-                  { backgroundColor: `${theme.tint}1A`, opacity: pressed ? 0.7 : 1 },
-                ]}>
-                <SymbolView
-                  name={{ ios: 'qrcode', android: 'qr_code_2', web: 'qr_code_2' }}
-                  size={14}
-                  tintColor={theme.tint}
-                />
-                <ThemedText type="smallBold" style={[styles.passPillText, { color: theme.tint }]}>
-                  Pass
-                </ThemedText>
-              </Pressable>
-            )}
-            {/* Same disclosure affordance as the stats footer — this opens a screen. */}
-            <SymbolView
-              name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-              size={14}
-              tintColor={theme.textSecondary}
-            />
-          </View>
+        <View style={[styles.footerRow, { borderTopColor: theme.hairline }]}>
+          {/* The pass, one tap from the home screen on the day: the gate
+              is where a hand reaches for the phone (screens/boarding-pass). */}
+          {!!active.passCode && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Show boarding pass"
+              testID="hero-boarding-pass"
+              hitSlop={Spacing.one}
+              onPress={() => {
+                tapLight();
+                trackEvent('boarding_pass_opened', { from: 'home' });
+                router.push({ pathname: '/boarding-pass', params: { journeyId: active.id } });
+              }}
+              style={({ pressed }) => [
+                styles.passPill,
+                { backgroundColor: `${theme.tint}1A`, opacity: pressed ? 0.7 : 1 },
+              ]}>
+              <SymbolView
+                name={{ ios: 'qrcode', android: 'qr_code_2', web: 'qr_code_2' }}
+                size={14}
+                tintColor={theme.tint}
+              />
+              <ThemedText type="smallBold" style={[styles.passPillText, { color: theme.tint }]}>
+                Pass
+              </ThemedText>
+            </Pressable>
+          )}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.openTrip}>
+            Open trip
+          </ThemedText>
+          <SymbolView
+            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            size={14}
+            tintColor={theme.textSecondary}
+          />
         </View>
       </Pressable>
 
@@ -235,6 +267,45 @@ export function HomeHero({
       <RunningBorder color={statusColor} radius={BORDER_RADIUS} running={phase === 'live'} />
     </SheenCard>
     {variant === 'full' && <TravelStatsStrip stats={stats} />}
+    </View>
+  );
+}
+
+/** The clock label's glyph: the take-off until the wheels are up, the
+ * landing in the air, a tick once down. */
+function clockIcon(label: string): SymbolViewProps['name'] {
+  if (label.startsWith('LANDS')) return { ios: 'airplane.arrival', android: 'flight_land', web: 'flight_land' };
+  if (label.startsWith('LANDED')) return { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' };
+  return { ios: 'airplane.departure', android: 'flight_takeoff', web: 'flight_takeoff' };
+}
+
+/** The big countdown, hours and minutes ("2:14", "0:42") with the units
+ * marked under the digits so "0:42" never reads as seconds. Re-reads the
+ * clock every 15 seconds; once the moment has passed (or there is none) it
+ * shows the fallback words instead of a frozen 0:00. */
+function HeroClock({ end, color, fallback }: { end: number | null; color: string; fallback: string }) {
+  const now = useNow(15_000);
+  const left = end === null ? NaN : end - now.getTime();
+  if (!(left > 0)) {
+    return (
+      <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.clockWords, { color }]}>
+        {fallback}
+      </ThemedText>
+    );
+  }
+  const minutes = Math.floor(left / 60_000);
+  const clock = `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
+  return (
+    <View accessible accessibilityLabel={`${Math.floor(minutes / 60)} hours ${minutes % 60} minutes`}>
+      <ThemedText style={[styles.clock, { color }]}>{clock}</ThemedText>
+      <View style={styles.clockUnits}>
+        <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
+          HRS
+        </ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
+          MIN
+        </ThemedText>
+      </View>
     </View>
   );
 }
@@ -395,12 +466,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  microLabel: {
-    fontSize: 11,
-    lineHeight: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
   liveRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -442,11 +507,99 @@ const styles = StyleSheet.create({
   endpointRight: {
     alignItems: 'flex-end',
   },
+  // The route is the supporting line now; the clock and the fact lead.
   code: {
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: 800,
+    letterSpacing: 0.5,
+  },
+  flightId: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    flexShrink: 1,
+  },
+  flightNumber: {
+    fontSize: 15,
+    letterSpacing: 0.3,
+    flexShrink: 1,
+  },
+  delayChip: {
+    borderRadius: 999,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: 2,
+  },
+  leadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: Spacing.three,
+  },
+  // The clock keeps its width; a long fact beside it shrinks instead.
+  clockBlock: {
+    flexShrink: 0,
+    gap: Spacing.one,
+  },
+  clockLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+  },
+  clockLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.4,
+  },
+  clock: {
+    fontSize: 54,
+    lineHeight: 58,
+    fontWeight: 800,
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
+  clockWords: {
+    fontSize: 40,
+    lineHeight: 48,
+    fontWeight: 800,
+    letterSpacing: -0.5,
+  },
+  clockUnits: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginTop: -6,
+  },
+  clockUnit: {
+    fontSize: 9,
+    lineHeight: 12,
     fontWeight: 700,
     letterSpacing: 1,
+  },
+  leadFact: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: Spacing.half,
+  },
+  leadLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.3,
+  },
+  leadValue: {
+    fontSize: 40,
+    lineHeight: 44,
+    fontWeight: 800,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: Spacing.two + Spacing.one,
+  },
+  openTrip: {
+    flex: 1,
   },
   codeTime: {
     fontVariant: ['tabular-nums'],
@@ -501,11 +654,6 @@ const styles = StyleSheet.create({
   rotated: {
     transform: [{ rotate: '90deg' }],
   },
-  trailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
   passPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -517,9 +665,6 @@ const styles = StyleSheet.create({
   passPillText: {
     fontSize: 13,
     lineHeight: 18,
-  },
-  factWrap: {
-    flexShrink: 1,
   },
   wash: {
     position: 'absolute',

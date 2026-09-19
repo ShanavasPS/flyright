@@ -26,6 +26,7 @@ import {
   startTravelActivity,
   updateTravelActivity,
 } from '@/services/live-activity';
+import { liveUpdateLines } from '@/services/live-update-copy';
 import { getPushEnabled } from '@/services/notifications';
 import {
   EMPTY_FACTS,
@@ -112,21 +113,28 @@ async function ensureChannel(): Promise<void> {
 }
 
 /** The subset of LiveContent the Android native module renders. */
-const toLiveUpdate = (content: LiveContent): LiveUpdateContent => ({
-  title: content.title,
-  headline: content.headline,
-  subtitle: content.subtitle,
-  fromCode: content.fromCode,
-  toCode: content.toCode,
-  flightLabel: content.flightLabel,
-  progress: content.progress,
-  compactLabel: content.compactLabel,
-  countdownEnd: content.countdownEnd ?? 0,
-  gate: content.gate,
-  terminal: content.terminal,
-  delayLabel: content.delayLabel,
-  emphasis: content.emphasis,
-});
+const toLiveUpdate = (content: LiveContent): LiveUpdateContent => {
+  // What leads now, in the notification's own two lines (liveLead).
+  const lines = liveUpdateLines(content);
+  return {
+    title: content.title,
+    headline: content.headline,
+    subtitle: content.subtitle,
+    fromCode: content.fromCode,
+    toCode: content.toCode,
+    flightLabel: content.flightLabel,
+    progress: content.progress,
+    compactLabel: content.compactLabel,
+    countdownEnd: content.countdownEnd ?? 0,
+    gate: content.gate,
+    terminal: content.terminal,
+    delayLabel: content.delayLabel,
+    emphasis: content.emphasis,
+    leadTitle: lines.title,
+    leadText: lines.text,
+    tone: content.tone,
+  };
+};
 
 let reconciling: Promise<void> | null = null;
 

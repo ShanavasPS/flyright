@@ -8,7 +8,7 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
-import { landedOrLater, presumedFlightStage } from '../../convex/liveShared';
+import { landedOrLater, liveLead, presumedFlightStage } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
@@ -345,7 +345,11 @@ export type TravelJourney = Pick<
   | 'toCode'
   | 'scheduledDeparture'
   | 'scheduledArrival'
->;
+> & {
+  /** The traveller's seat, when they typed it or a boarding pass carried
+   * it: the live card's fact once they are on board. */
+  seat?: string | null;
+};
 
 export type TravelPhase = 'unsupported' | 'before' | 'reminder' | 'live' | 'ended';
 
@@ -486,6 +490,16 @@ export interface LiveContent {
   boardingTime: string | null;
   delayLabel: string | null;
   emphasis: 'none' | 'delay' | 'gate';
+  /** The big clock's label: "DEPARTS IN", "BOARDING", "LANDS IN",
+   * "LANDED 17:08" (convex/liveShared.ts liveLead — one rule for every
+   * surface). */
+  clockLabel: string;
+  tone: 'normal' | 'boarding' | 'delay' | 'landed';
+  /** The one fact beside the clock — terminal, check-in desk, gate, seat,
+   * belt — or null when the step has none worth the space. */
+  lead: { label: string; value: string; sub: string } | null;
+  /** "+46 min" while half an hour or more late, else null. */
+  delayChip: string | null;
 }
 
 /** Which instant the live surfaces' self-ticking countdown runs to. The
@@ -672,6 +686,24 @@ export function liveContent(
   const timeOf = (iso: string | null, zone: string | null) =>
     iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso, zone) : null;
   const countdown = liveCountdown(presumed, departureMs, arrivalMs);
+  const lead = liveLead({
+    stage: state.stage,
+    presumed,
+    boardingOpen,
+    delayMinutes: facts.delayMinutes,
+    gate: facts.gate,
+    terminal: facts.terminal,
+    checkInDesk: facts.checkInDesk,
+    baggageBelt: facts.baggageBelt,
+    seat: j.seat ?? null,
+    boardingClock: timeOf(facts.boardingTime, departureZone),
+    departureClock: timeOf(effectiveDeparture, departureZone),
+    ticketedDepartureClock: timeOf(j.scheduledDeparture, departureZone),
+    landedClock: timeOf(facts.actualArrival ?? state.stamps.landed ?? null, arrivalZone),
+  });
+  // The island's word follows the same rule as the card; the older
+  // next-step word stays for the moments the rule has nothing to say.
+  if (lead.compact) compactLabel = lead.compact;
   // "⁺¹" on a landing that reads on the next day's page — the surfaces
   // name the departure day only, and the widget shows this string as is.
   const effectiveArrival = facts.estimatedArrival ?? j.scheduledArrival;
@@ -706,5 +738,9 @@ export function liveContent(
     boardingTime: facts.boardingTime,
     delayLabel,
     emphasis: delayed ? 'delay' : !presumed && facts.gate ? 'gate' : 'none',
+    clockLabel: lead.clockLabel,
+    tone: lead.tone,
+    lead: lead.lead,
+    delayChip: lead.delayChip || null,
   };
 }

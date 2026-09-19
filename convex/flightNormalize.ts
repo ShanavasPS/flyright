@@ -240,6 +240,7 @@ export interface FlightFactsPatch {
   delayMinutes: number | null;
   gate: string | null;
   terminal: string | null;
+  checkInDesk: string | null;
   baggageBelt: string | null;
   estimatedDeparture: string | null;
   actualDeparture: string | null;
@@ -257,6 +258,7 @@ export function factsPatch(facts: NormalizedFlight): FlightFactsPatch {
     delayMinutes: facts.delayMinutes,
     gate: facts.gate,
     terminal: facts.terminal,
+    checkInDesk: facts.checkInDesk,
     baggageBelt: facts.baggageBelt,
     estimatedDeparture: facts.estimatedDeparture,
     actualDeparture: facts.actualDeparture,

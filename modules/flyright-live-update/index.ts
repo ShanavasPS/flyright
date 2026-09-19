@@ -30,6 +30,14 @@ export interface LiveUpdateContent {
   terminal: string | null;
   delayLabel: string | null;
   emphasis: 'none' | 'delay' | 'gate';
+  /** The lead rule's two lines (src/services/live-update-copy.ts): "Departs
+   * in · Gate 53" over "Boards 15:30". When set, they replace the route
+   * title and the headline/next-step line. Optional: an older JS side
+   * leaves them out and the card reads as before. */
+  leadTitle?: string;
+  leadText?: string;
+  /** Colours the card: 'delay' amber, 'boarding' green, else the brand. */
+  tone?: 'normal' | 'boarding' | 'delay' | 'landed';
 }
 
 const native = requireOptionalNativeModule<{

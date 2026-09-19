@@ -37,6 +37,12 @@ class LiveUpdateContent : Record {
   @Field val terminal: String? = null
   @Field val delayLabel: String? = null
   @Field val emphasis: String = "none"
+  /** The lead rule's lines: "Departs in · Gate 53" over "Boards 15:30".
+   * Empty from an older JS side, which keeps the route/headline layout. */
+  @Field val leadTitle: String = ""
+  @Field val leadText: String = ""
+  /** "normal" | "boarding" | "delay" | "landed" — the card's accent. */
+  @Field val tone: String = ""
 }
 
 // Shared with the JS side's expo-notifications channel of the same id — no
@@ -47,10 +53,11 @@ private const val CHANNEL_ID = "travel-day"
 // One notification per journey: fixed id, journey id as the tag.
 private const val NOTIFICATION_ID = 4207
 
-// Payout green / delay red / brand navy from src/constants/theme.ts.
+// Payout green / brand navy from src/constants/theme.ts.
 private const val COLOR_ON_TIME = 0xFF0FA362.toInt()
-private const val COLOR_DELAY = 0xFFD93036.toInt()
 private const val COLOR_BRAND = 0xFF13294B.toInt()
+// Amber for a late flight (theme.warning) — the lead rule's delay tone.
+private const val COLOR_LATE = 0xFFA9720B.toInt()
 
 class FlyRightLiveUpdateModule : Module() {
   override fun definition() = ModuleDefinition {
@@ -111,23 +118,40 @@ class FlyRightLiveUpdateModule : Module() {
     // The content line leads with the time fact ("Flight in 3h") and follows
     // with the next step — the headline has no slot of its own in a
     // notification, and the status-bar chip only shows the compact word.
-    val line = listOf(content.headline, content.subtitle).filter { it.isNotEmpty() }.joinToString(" · ")
+    val legacyLine = listOf(content.headline, content.subtitle).filter { it.isNotEmpty() }.joinToString(" · ")
+    // The lead rule, when the JS side sends it: the clock label and the one
+    // fact that matters now as the title, its sub line (led by "+46 min"
+    // when late) as the text, and the route codes quietly beneath — no
+    // flight number, no next-step sentence. The chip keeps the countdown.
+    val lead = content.leadTitle.isNotEmpty()
+    val routeCodes =
+      if (content.fromCode.isNotEmpty() && content.toCode.isNotEmpty()) "${content.fromCode} → ${content.toCode}" else ""
+    val title = if (lead) content.leadTitle else route
+    val line = if (lead) content.leadText else legacyLine
+    val accent = when {
+      content.tone == "delay" || (!lead && content.emphasis == "delay") -> COLOR_LATE
+      content.tone == "boarding" -> COLOR_ON_TIME
+      else -> COLOR_BRAND
+    }
     builder
       // The brand mark, not a generic plane: it's what shows in the status
       // bar and the Android 16 Live Update chip.
       .setSmallIcon(R.drawable.flyright_live_brand)
-      .setContentTitle(route)
+      .setContentTitle(title)
       .setContentText(line)
       .setOnlyAlertOnce(true)
       .setOngoing(live)
       .setAutoCancel(!live)
-      .setColor(if (content.emphasis == "delay") COLOR_DELAY else COLOR_BRAND)
+      .setColor(accent)
       .setContentIntent(tapIntent(journeyId))
-    if (facts.isNotEmpty()) builder.setSubText(facts)
+    // The lead already names the fact; beneath it only which trip this is.
+    val sub = if (lead) routeCodes else facts
+    if (sub.isNotEmpty()) builder.setSubText(sub)
 
     val percent = (content.progress.coerceIn(0.0, 1.0) * 100).toInt()
     if (Build.VERSION.SDK_INT >= 36) {
-      val track = if (content.emphasis == "delay") COLOR_DELAY else COLOR_ON_TIME
+      val late = content.tone == "delay" || (!lead && content.emphasis == "delay")
+      val track = if (late) COLOR_LATE else COLOR_ON_TIME
       builder.setStyle(
         Notification.ProgressStyle()
           // Full-length single segment; styled-by-progress dims the un-flown
@@ -165,7 +189,7 @@ class FlyRightLiveUpdateModule : Module() {
       }
     } else {
       builder.setProgress(100, percent, false)
-      val big = listOf(line, facts).filter { it.isNotEmpty() }.joinToString("\n")
+      val big = listOf(line, sub).filter { it.isNotEmpty() }.joinToString("\n")
       if (big.isNotEmpty()) builder.setStyle(Notification.BigTextStyle().bigText(big))
     }
 

@@ -391,21 +391,23 @@ describe('liveContent', () => {
     expect(before.compactLabel).toBe(formatTime('2026-08-25T08:00Z'));
 
     // Once the walk starts, the slot names the NEXT step, not the last one —
-    // and a posted gate waits until the gate is where you're headed.
+    // and when the gate is all the airport has posted, the island names it
+    // (the lead rule, convex/liveShared.ts liveLead).
     const atAirport = advance(EMPTY_TRAVEL_DAY, 'at_airport', liveNow);
     expect(liveContent(journey(), atAirport, facts({ gate: '24' }), liveNow).compactLabel).toBe(
-      'Check in',
+      'G24',
     );
     const throughSecurity = advance(atAirport, 'security', liveNow);
+    // Checked in and beyond, the gate leads — "Gate —" until it is posted.
     expect(liveContent(journey(), throughSecurity, EMPTY_FACTS, liveNow).compactLabel).toBe(
-      'Passport',
+      'Gate —',
     );
     const throughImmigration = advance(throughSecurity, 'immigration', liveNow);
     expect(
       liveContent(journey(), throughImmigration, facts({ gate: '24' }), liveNow).compactLabel,
     ).toBe('G24');
     expect(liveContent(journey(), throughImmigration, EMPTY_FACTS, liveNow).compactLabel).toBe(
-      'Gate',
+      'Gate —',
     );
 
     // From boarded on, the stage word wins even with a gate posted.

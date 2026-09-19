@@ -2,6 +2,7 @@ import { flightDay } from './airportZones';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import { journeyForKey } from './liveHelpers';
 import {
   internalAction,
   internalMutation,
@@ -30,6 +31,18 @@ const HOUR_MS = 3_600_000;
 export const getSession = internalQuery({
   args: { sessionId: v.id('liveSessions') },
   handler: (ctx, { sessionId }) => ctx.db.get(sessionId),
+});
+
+/** What the traveller's OWN Lock Screen card knows beyond the session: the
+ * seat from their journey. Never used for a follower's card. */
+export const ownCardExtras = internalQuery({
+  args: { sessionId: v.id('liveSessions') },
+  handler: async (ctx, { sessionId }) => {
+    const session = await ctx.db.get(sessionId);
+    if (!session) return { seat: null };
+    const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
+    return { seat: journey?.seat ?? null };
+  },
 });
 
 export const getNotifyTargets = internalQuery({
@@ -86,6 +99,7 @@ export const applyFlightFacts = internalMutation({
         delayMinutes: v.union(v.number(), v.null()),
         gate: v.union(v.string(), v.null()),
         terminal: v.union(v.string(), v.null()),
+        checkInDesk: v.optional(v.union(v.string(), v.null())),
         baggageBelt: v.union(v.string(), v.null()),
         estimatedDeparture: v.union(v.string(), v.null()),
         actualDeparture: v.union(v.string(), v.null()),
@@ -269,7 +283,8 @@ export const startActivity = internalAction({
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.runQuery(internal.liveInternal.getSession, { sessionId });
     if (!session?.activityId || session.status !== 'active') return;
-    const state = buildContentState(session, Date.now());
+    const own = await ctx.runQuery(internal.liveInternal.ownCardExtras, { sessionId });
+    const state = buildContentState(session, Date.now(), own);
     const started = await startLiveActivity(
       session.userId,
       session.activityId,
@@ -302,10 +317,11 @@ export const updateActivity = internalAction({
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.runQuery(internal.liveInternal.getSession, { sessionId });
     if (!session?.activityId) return;
+    const own = await ctx.runQuery(internal.liveInternal.ownCardExtras, { sessionId });
     await pushLiveActivity(
       session.activityId,
       session.status === 'active' ? 'update' : 'end',
-      buildContentState(session, Date.now()),
+      buildContentState(session, Date.now(), own),
     );
   },
 });

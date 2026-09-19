@@ -4,10 +4,12 @@ import {
   buildContentState,
   flightProgress,
   liveCountdown,
+  liveLead,
   nextPollDelayMs,
   sessionExpiryFor,
   shouldStartActivity,
   stillLive,
+  type LiveLeadInput,
 } from '../../convex/liveShared';
 import type { Doc } from '../../convex/_generated/dataModel';
 
@@ -258,5 +260,76 @@ describe('sessionExpiryFor', () => {
     expect(sessionExpiryFor('2026-09-09T06:05:00', now, 'DOH')).toBe(
       Date.parse('2026-09-09T03:05Z') + 48 * 3_600_000,
     );
+  });
+});
+
+describe('liveLead', () => {
+  const base = {
+    stage: null,
+    presumed: null,
+    boardingOpen: false,
+    delayMinutes: null,
+    gate: '53',
+    terminal: '2',
+    checkInDesk: 'A200',
+    baggageBelt: '7',
+    seat: '14A',
+    boardingClock: '15:30',
+    departureClock: '16:00',
+    ticketedDepartureClock: '15:14',
+    landedClock: '17:08',
+  } satisfies LiveLeadInput;
+
+  it('leads with the terminal on the way, the desk at the airport, the gate from check-in', () => {
+    expect(liveLead(base)).toMatchObject({ clockLabel: 'DEPARTS IN', lead: { label: 'TERMINAL', value: '2' }, compact: 'T2' });
+    expect(liveLead({ ...base, stage: 'at_airport' })).toMatchObject({
+      lead: { label: 'CHECK-IN', value: 'A200', sub: 'Terminal 2' },
+      compact: 'T2',
+    });
+    for (const stage of ['checked_in', 'bag_dropped', 'security', 'immigration']) {
+      expect(liveLead({ ...base, stage })).toMatchObject({
+        lead: { label: 'GATE', value: '53', sub: 'Boards 15:30' },
+        compact: 'G53',
+      });
+    }
+  });
+
+  it('says the gate is not posted yet rather than leading with nothing', () => {
+    expect(liveLead({ ...base, stage: 'security', gate: null })).toMatchObject({
+      lead: { label: 'GATE', value: '—', sub: 'Not posted yet' },
+      compact: 'Gate —',
+    });
+  });
+
+  it('turns green for boarding, then the seat leads on board and in the air', () => {
+    expect(liveLead({ ...base, stage: 'security', boardingOpen: true })).toMatchObject({
+      clockLabel: 'BOARDING',
+      tone: 'boarding',
+      lead: { label: 'GATE', value: '53', sub: 'Departs 16:00' },
+    });
+    expect(liveLead({ ...base, stage: 'boarded' })).toMatchObject({ lead: { label: 'SEAT', value: '14A' }, compact: '14A' });
+    expect(liveLead({ ...base, stage: 'departed' })).toMatchObject({ clockLabel: 'LANDS IN', lead: { label: 'SEAT' } });
+    // A follower's card carries no seat: the clock stands alone.
+    expect(liveLead({ ...base, stage: 'departed', seat: null })).toMatchObject({ lead: null, compact: '' });
+  });
+
+  it('goes amber with a chip when half an hour late', () => {
+    expect(liveLead({ ...base, stage: 'checked_in', delayMinutes: 46, boardingClock: null })).toMatchObject({
+      tone: 'delay',
+      delayChip: '+46 min',
+      lead: { sub: 'Was 15:14' },
+    });
+    expect(liveLead({ ...base, delayMinutes: 20 }).tone).toBe('normal');
+    expect(liveLead({ ...base, delayMinutes: 125 }).delayChip).toBe('+2h 5 min');
+  });
+
+  it('ends on the belt once landed, by the timetable too', () => {
+    expect(liveLead({ ...base, stage: 'landed' })).toMatchObject({
+      clockLabel: 'LANDED 17:08',
+      tone: 'landed',
+      lead: { label: 'BAGGAGE', value: 'Belt 7' },
+      compact: 'Belt 7',
+    });
+    expect(liveLead({ ...base, presumed: 'landed', landedClock: null }).clockLabel).toBe('LANDED');
   });
 });
