@@ -34,6 +34,30 @@ export function installedVersion(): string | undefined {
   return nativeApplicationVersion ?? Constants.expoConfig?.version;
 }
 
+/** Ask the server about this binary — may it still run, and what is live on
+ * the store — and remember the answer. Shared by the hook below and the
+ * background sweep (services/flight-watch), which badges the app icon for an
+ * update while the app is closed. A transient store failure keeps the last
+ * confirmed release rather than dropping its badge. */
+export async function fetchAppVersion(version: string): Promise<AppVersionResponse> {
+  const res = await fetch(
+    `/api/app-version?platform=${Platform.OS}&version=${encodeURIComponent(version)}`,
+  );
+  if (!res.ok) throw new Error(`app-version check failed: ${res.status}`);
+  const result = (await res.json()) as AppVersionResponse;
+  if (result.latest && !isVersion(result.latest.version)) throw new Error('Invalid store version');
+  const previous = cachedAppVersion();
+  const answer = result.latest ? result : { ...result, latest: previous?.latest, notes: previous?.notes };
+  cacheAppVersion(answer);
+  return answer;
+}
+
+/** Whether the store has something newer than `installed`. */
+export function hasNewerRelease(answer: AppVersionResponse | null | undefined, installed: string): boolean {
+  const latest = answer?.latest?.version;
+  return !!latest && compareVersions(latest, installed) > 0;
+}
+
 /**
  * One question to the server about this binary — may it still run, and is
  * there something newer — shared by the launch gate, the Settings row and
@@ -61,20 +85,7 @@ export function useAppVersion(): {
     staleTime: SIX_HOURS_MS,
     refetchInterval: SIX_HOURS_MS,
     retry: 1,
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/app-version?platform=${Platform.OS}&version=${encodeURIComponent(version!)}`,
-      );
-      if (!res.ok) throw new Error(`app-version check failed: ${res.status}`);
-      const result = (await res.json()) as AppVersionResponse;
-      if (result.latest && !isVersion(result.latest.version)) throw new Error('Invalid store version');
-      // A transient store lookup failure is not evidence that an update
-      // disappeared. Preserve the last confirmed release and its badge.
-      const previous = cachedAppVersion();
-      const answer = result.latest ? result : { ...result, latest: previous?.latest, notes: previous?.notes };
-      cacheAppVersion(answer);
-      return answer;
-    },
+    queryFn: () => fetchAppVersion(version!),
   });
 
   const latest = data?.latest ?? null;

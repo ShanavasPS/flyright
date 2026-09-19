@@ -3,6 +3,8 @@ import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 
 import { db } from '@/db/client';
+import { fetchAppVersion, hasNewerRelease, installedVersion } from '@/hooks/use-app-version';
+import { setAppBadge } from '@/services/app-badge';
 import { journeys } from '@/db/schema';
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight } from '@/services/flight-lookup';
@@ -32,6 +34,8 @@ const WATCH_AFTER_MS = 12 * HOUR_MS;
 // launched headless for a background run, before any component mounts.
 TaskManager.defineTask(TASK_NAME, async () => {
   try {
+    // First: it never throws, so a failed flight sweep can't skip it.
+    await badgeStoreUpdate();
     await checkTrackedFlights();
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch (error) {
@@ -39,6 +43,24 @@ TaskManager.defineTask(TASK_NAME, async () => {
     return BackgroundTask.BackgroundTaskResult.Failed;
   }
 });
+
+/** A newer release on the store badges the app icon while the app is shut
+ * — before, the badge (and Settings' own) appeared only once the app had
+ * been opened and asked. The other sources are unknown out here, so they are
+ * passed as null: nothing of theirs is set or cleared, and an update that is
+ * not there leaves the icon alone (the app clears its own when opened). */
+export async function badgeStoreUpdate(): Promise<void> {
+  const version = installedVersion();
+  if (!version) return;
+  try {
+    const answer = await fetchAppVersion(version);
+    if (hasNewerRelease(answer, version)) {
+      await setAppBadge({ people: null, support: null, update: 1 });
+    }
+  } catch {
+    // Offline or the store check failed: try again on the next sweep.
+  }
+}
 
 export async function registerFlightWatch(): Promise<void> {
   try {
