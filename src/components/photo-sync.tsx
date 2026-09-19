@@ -11,6 +11,7 @@ import { useLiveRows } from '@/services/live-rows';
 import { markUploadDone, markUploading, usePhotoUploadState } from '@/services/photo-upload-state';
 import {
   applyRemotePhoto,
+  clearPhotoUploads,
   markPhotoUploaded,
   markPhotosSynced,
   planPhotoSync,
@@ -61,14 +62,19 @@ export function PhotoSync() {
         }
         for (let offset = 0; offset < outbound.length; offset += 100) {
           const chunk = outbound.slice(offset, offset + 100);
-          await push({
+          const result = await push({
             rows: chunk.map((row) => ({
               ...toRemotePhoto(row),
               // SQLite stores the id as text; the validator wants the branded type.
               storageId: row.storageId as Id<'_storage'> | null,
             })),
           });
-          await markPhotosSynced(chunk);
+          // A photo whose file the server can't tie to this account is
+          // skipped rather than failing the batch: forget that file so the
+          // next pass uploads it afresh, and mark the rest synced.
+          const rejected = new Set(result?.rejected ?? []);
+          if (rejected.size) await clearPhotoUploads([...rejected]);
+          await markPhotosSynced(chunk.filter((row) => !rejected.has(row.id)));
         }
         for (const row of plan.apply) await applyRemotePhoto(row, userId);
       } catch {

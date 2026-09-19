@@ -1,0 +1,11 @@
+FlyRight 1.0.39 reorganises the trip page and the live travel-day surfaces, and renames the first tab.
+
+Trip page: between the map and the route there is now one card. It shows the flight and its status (Scheduled, On time, Delayed, Boarding, In the air, Landed, Flown), a countdown to departure or landing (hours, minutes and seconds), and fixed boxes for the departure airport's terminal, check-in desk, gate and boarding time, the ticket's seat and booking reference, and the baggage belt at arrival. Facts come from the flight-status provider already used (AeroDataBox) and are kept with the trip after it ends. Any box can be tapped to type the value in (a "Trip details" form); typed values are marked "Added by you" and are replaced if the airport later posts that field. For trips without live updates (entered by hand) every box offers "Add".
+
+Lock Screen / Dynamic Island (Live Activity) and the live card on the Flights tab: the countdown shows small ticking seconds beside the hours and minutes, and the fact beside it follows the traveller's progress (check-in desk, then gate, then seat, then baggage belt). On the dimmed Always-On screen the seconds are hidden.
+
+The first tab is renamed from "My travels" to "Flights"; its large title is removed. Trips the traveller follows appear as a row of faces at the top of Flights; tapping one shows that flight's status and latest photos. The traveller can see who liked their trip updates.
+
+Fixes: photos shared from the first leg of a connecting trip stay visible to followers during the next leg; a flight is no longer shown as in the air before it departs.
+
+To review: sign in with the configured reviewer account (enter the demo email, then choose Use another method and Sign in with your password). Open any trip from Flights to see the trip card; add a trip by hand (+ on Flights) with a departure a few hours from now to see the countdown and the "Add" boxes, and to start the Live Activity. No purchase is required. Existing account and trip data are retained on update.

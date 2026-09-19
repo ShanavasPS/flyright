@@ -170,6 +170,14 @@ export async function markPhotoUploaded(id: string, storageId: string, updatedAt
   await db.update(tripPhotos).set({ storageId, ...(updatedAt ? { updatedAt } : {}) }).where(eq(tripPhotos.id, id));
 }
 
+/** Forget the stored file of photos the server would not accept (see
+ * convex/photos.push), so the sync uploads them again. */
+export async function clearPhotoUploads(ids: string[]): Promise<void> {
+  for (const id of ids) {
+    await db.update(tripPhotos).set({ storageId: null }).where(eq(tripPhotos.id, id));
+  }
+}
+
 export async function markPhotosSynced(rows: { id: string; updatedAt: string }[]): Promise<void> {
   for (const { id, updatedAt } of rows) {
     await db

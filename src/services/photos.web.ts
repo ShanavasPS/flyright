@@ -44,6 +44,8 @@ export async function uploadPhoto(_row: TripPhotoRow, _uploadUrl: string): Promi
 
 export async function markPhotoUploaded(_id: string, _storageId: string): Promise<void> {}
 
+export async function clearPhotoUploads(_ids: string[]): Promise<void> {}
+
 export async function deletePhoto(_id: string): Promise<void> {
   throw new Error('Photos are not supported on web yet.');
 }

@@ -1,7 +1,8 @@
-import { mutation, query } from './_generated/server';
+import { mutation, query, type MutationCtx } from './_generated/server';
+import type { Id } from './_generated/dataModel';
 import { ConvexError, v } from 'convex/values';
 import { bounded, limit, DAY } from './abuse';
-import { requireFileOwner, deleteOwnedFile, ownedFileUrl, fileOwner } from './fileOwnership';
+import { deleteOwnedFile, ownedFileUrl, fileOwner } from './fileOwnership';
 import { issueUpload } from './uploads';
 
 import { storageInUse } from './updates';
@@ -32,7 +33,16 @@ export const generateUploadUrl = mutation({
 
 /** Last-write-wins upsert. A tombstone deletes the stored file too — the
  * bytes must not outlive the photo — and a re-push of the same tombstone is
- * a no-op, so retries are harmless. */
+ * a no-op, so retries are harmless.
+ *
+ * A row pointing at a file this account did not upload is skipped and named
+ * in `rejected`, never allowed to fail the batch: one such row used to throw
+ * for all of them, so none of the traveller's photos synced again and each
+ * pass re-uploaded the rest until the daily upload allowance ran out. The
+ * app drops the rejected rows' file reference and uploads them afresh. */
+const ownsFile = async (ctx: MutationCtx, userId: string, storageId: Id<'_storage'>) =>
+  (await fileOwner(ctx, storageId))?.userId === userId;
+
 export const push = mutation({
   args: { rows: v.array(photoRow) },
   handler: async (ctx, { rows }) => {
@@ -41,6 +51,7 @@ export const push = mutation({
 
     if (rows.length > 100) throw new ConvexError('Sync at most 100 photos at a time.');
     await limit(ctx, `photo-sync:${identity.subject}`, 3000, DAY, rows.length);
+    const rejected: string[] = [];
     for (const row of rows) {
       bounded(row.photoId, 100); bounded(row.journeyKey, 200);
       bounded(row.createdAt, 40); bounded(row.updatedAt, 40);
@@ -65,7 +76,11 @@ export const push = mutation({
         continue;
       }
 
-      if (row.storageId && row.storageId !== existing?.storageId) await requireFileOwner(ctx, identity.subject, row.storageId);
+      if (row.storageId && row.storageId !== existing?.storageId && !(await ownsFile(ctx, identity.subject, row.storageId))) {
+        console.warn(`[photos] push skipped ${row.photoId}: file not owned by the caller`);
+        rejected.push(row.photoId);
+        continue;
+      }
       if (!existing) {
         await ctx.db.insert('tripPhotos', { ...row, userId: identity.subject });
       } else if (row.updatedAt > existing.updatedAt) {
@@ -87,6 +102,7 @@ export const push = mutation({
         await ctx.db.patch(existing._id, row);
       }
     }
+    return { rejected };
   },
 });
 

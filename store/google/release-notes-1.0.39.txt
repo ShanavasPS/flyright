@@ -1,0 +1,5 @@
+• A trip's page has one card: a countdown to the second, then terminal, check-in, gate, boarding, seat, booking and baggage belt — kept after you land.
+• Tap any box to add what you know; the airport's own update wins.
+• The live notification and card lead with what matters now: desk, gate, seat, belt.
+• My travels is now Flights. Trips you follow sit there as a row of faces.
+• Trip photos stay with a connecting trip, and a flight no longer shows in the air too early.

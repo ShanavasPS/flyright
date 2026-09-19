@@ -12,8 +12,10 @@ declare const process: { env: Record<string, string | undefined> };
 export async function issueUpload(ctx: MutationCtx, userId: string) {
   const site = process.env.CONVEX_SITE_URL;
   if (!site) throw new ConvexError('Photo uploads are temporarily unavailable.');
-  await limit(ctx, `upload:${userId}`, 30, DAY);
-  await limit(ctx, 'upload:global', 500, DAY);
+  // A travel day's journal photos and status posts share this allowance;
+  // 30 ran out mid-trip and every post failed as "check your connection".
+  await limit(ctx, `upload:${userId}`, 200, DAY);
+  await limit(ctx, 'upload:global', 5000, DAY);
   const owned = await ctx.db.query('ownedFiles').withIndex('by_user', q => q.eq('userId', userId)).take(501);
   if (owned.length >= 500) throw new ConvexError('Your photo storage is full. Remove some photos first.');
   // The bearer ticket is random and bound to the authenticated caller.
