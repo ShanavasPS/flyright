@@ -15,6 +15,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.0.39',
+    date: '2026-09-19',
+    notes: [
+      'A trip’s page now has one card with everything in its place: a countdown to the second, then terminal, check-in, gate and boarding, your seat and booking, and the baggage belt — kept on the trip after you land.',
+      'Tap any box to add what you know. A gate you type reaches your Lock Screen too, and when the airport posts its own, the airport’s wins.',
+      'The Lock Screen and the live card show the seconds ticking, and lead with what matters right now: the check-in desk, the gate, your seat, then the belt.',
+      'My travels is now Flights, with a cleaner top. The trips you follow sit there as a row of faces — tap one for the flight and the latest photos — and you can see who liked your updates.',
+      'Photos from a trip stay with it when the connecting flight takes over, and a flight no longer shows as in the air before it has left.',
+    ],
+  },
+  {
     version: '1.0.38',
     date: '2026-09-18',
     notes: [
