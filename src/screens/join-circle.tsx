@@ -147,7 +147,7 @@ export function JoinCircle({ token }: { token: string }) {
       <Card>
         <ThemedText type="subtitle">This invite has expired</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Invite links last 7 days. Ask them to send a fresh one from the People tab.
+          Invite links last 7 days. Ask them to send a fresh one from the Friends tab.
         </ThemedText>
       </Card>
     );
@@ -199,7 +199,7 @@ export function JoinCircle({ token }: { token: string }) {
             {name} confirms who follows their trips. You&apos;ll get a notification the moment they say
             yes — then every heads-up and travel-day update follows.
           </ThemedText>
-          <PrimaryButton label="Open People" onPress={done} />
+          <PrimaryButton label="Open Friends" onPress={done} />
         </Card>
       );
     } else if (joined) {
@@ -221,7 +221,7 @@ export function JoinCircle({ token }: { token: string }) {
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             You already follow {name}&apos;s trips.
           </ThemedText>
-          <PrimaryButton label="Open People" onPress={done} />
+          <PrimaryButton label="Open Friends" onPress={done} />
         </>
       );
     } else if (ownerFull) {
@@ -232,7 +232,7 @@ export function JoinCircle({ token }: { token: string }) {
             {name}&apos;s circle is full for now. Free accounts share with {FREE_CIRCLE_LABEL};{' '}
             {name} can add more people with FlyRight Pro.
           </ThemedText>
-          <PrimaryButton label="Open People" onPress={done} />
+          <PrimaryButton label="Open Friends" onPress={done} />
         </>
       );
     } else {

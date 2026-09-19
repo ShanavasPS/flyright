@@ -78,7 +78,7 @@ tags:
 # The person screen's back button is named for the list it returns to, so
 # it collides with the tab of the same name — the header one comes first.
 - tapOn:
-    text: "People"
+    text: "Friends|People"
     index: 0
 - extendedWaitUntil:
     visible: "Followers.*"
@@ -122,7 +122,7 @@ tags:
 # And back the moment the subject is behind us. The header's back button
 # collides with the tab of the same name, so take the first.
 - tapOn:
-    text: "People"
+    text: "Friends|People"
     index: 0
 - extendedWaitUntil:
     visible: "Followers.*"

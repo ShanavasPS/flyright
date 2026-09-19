@@ -5,10 +5,11 @@ import { ConvexError, v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { maySee } from './audience';
-import { activeSessionForKey, journeyForKey, travelerName } from './liveHelpers';
+import { activeSessionForKey, journeyForKey, profileFor } from './liveHelpers';
 import { stageIndex } from './liveShared';
 import { blockedBetween } from './safetyHelpers';
-import { placeFor, UPDATE_TEXT_MAX, updateWindowOpen } from './updatesShared';
+import { safeAvatar } from './profileShared';
+import { likerRelation, placeFor, sortLikers, UPDATE_TEXT_MAX, updateWindowOpen } from './updatesShared';
 
 /** Trip updates: what a traveller shares from inside a trip, for the people
  * who follow them. Posting is the owner's; reading rides along on the same
@@ -95,23 +96,59 @@ export async function storageInUse(
   return updates.some((u) => u._id !== except.update);
 }
 
-/** OWNER — the updates on one of my trips, with who reacted by name, so the
- * traveller sees the hearts as people rather than a number. */
+/** One person behind a heart, as the owner's "Liked by" list shows them. */
+type Liker = {
+  userId: string;
+  name: string;
+  imageUrl: string | null;
+  relation: ReturnType<typeof likerRelation>;
+  at: string | null;
+};
+
+/** OWNER — the updates on one of my trips, with who reacted, so the
+ * traveller sees the hearts as people rather than a number: `reactedBy`
+ * (names, what installs before the "Liked by" list read) and `likers`
+ * (face, name, how they know me, when), newest heart first. */
 export const mine = query({
   args: { journeyKey: v.string() },
   handler: async (ctx, { journeyKey }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
-    const rows = await rowsFor(ctx, identity.subject, journeyKey);
-    const names = new Map<string, string>();
+    const me = identity.subject;
+    const rows = await rowsFor(ctx, me, journeyKey);
+    const people = new Map<string, Omit<Liker, 'at'>>();
+    const personFor = async (userId: string) => {
+      const known = people.get(userId);
+      if (known) return known;
+      const profile = await profileFor(ctx, userId);
+      const seat = await ctx.db
+        .query('circle')
+        .withIndex('by_owner_member', (q) => q.eq('ownerId', me).eq('memberId', userId))
+        .unique();
+      const theirs = await ctx.db
+        .query('circle')
+        .withIndex('by_owner_member', (q) => q.eq('ownerId', userId).eq('memberId', me))
+        .unique();
+      const person = {
+        userId,
+        name: profile?.name ?? 'Someone',
+        imageUrl: safeAvatar(profile?.imageUrl ?? null),
+        relation: likerRelation(seat, !!theirs),
+      };
+      people.set(userId, person);
+      return person;
+    };
     const out = [];
     for (const row of rows) {
-      const reactedBy = [];
+      const likers: Liker[] = [];
       for (const userId of row.reactedBy) {
-        if (!names.has(userId)) names.set(userId, (await travelerName(ctx, userId)) ?? 'Someone');
-        reactedBy.push(names.get(userId)!);
+        likers.push({ ...(await personFor(userId)), at: row.reactedAt?.[userId] ?? null });
       }
-      out.push({ ...(await publicUpdate(ctx, row, identity.subject)), reactedBy });
+      out.push({
+        ...(await publicUpdate(ctx, row, me)),
+        reactedBy: likers.map((l) => l.name),
+        likers: sortLikers(likers),
+      });
     }
     return out;
   },
@@ -198,10 +235,11 @@ export const react = mutation({
     const row = await ctx.db.get(updateId);
     if (!row || row.userId === me) return;
     if (!(await maySeeUpdate(ctx, row, me))) return;
-    const reactedBy = row.reactedBy.includes(me)
-      ? row.reactedBy.filter((id) => id !== me)
-      : [...row.reactedBy, me];
-    await ctx.db.patch(row._id, { reactedBy });
+    const had = row.reactedBy.includes(me);
+    const reactedBy = had ? row.reactedBy.filter((id) => id !== me) : [...row.reactedBy, me];
+    const rest = Object.fromEntries(Object.entries(row.reactedAt ?? {}).filter(([id]) => id !== me));
+    const reactedAt = had ? rest : { ...rest, [me]: new Date().toISOString() };
+    await ctx.db.patch(row._id, { reactedBy, reactedAt });
   },
 });
 
@@ -228,3 +266,60 @@ async function maySeeUpdate(ctx: MutationCtx, row: Doc<'tripUpdates'>, viewerId:
   }
   return false;
 }
+
+/** How far back the Friends tab's feed reaches: an update window is the day
+ * of the flight until a day after landing, so two days holds every post
+ * still worth a heart. */
+const FEED_MS = 48 * HOUR;
+const FEED_MAX = 30;
+
+/** FOLLOWER — the Friends tab's "Latest from trips": recent posts from
+ * everyone whose trips I follow, newest first, each with who posted it and
+ * the flight it came from. The circle's audience rule is checked per trip
+ * (a close-circle trip only for close members, never a private one), and a
+ * block in either direction hides the person entirely. */
+export const feed = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const me = identity.subject;
+    const cutoff = new Date(Date.now() - FEED_MS).toISOString();
+    const seats = await ctx.db
+      .query('circle')
+      .withIndex('by_member', (q) => q.eq('memberId', me))
+      .collect();
+    const out = [];
+    for (const seat of seats) {
+      if (await blockedBetween(ctx, seat.ownerId, me)) continue;
+      const rows = (
+        await ctx.db
+          .query('tripUpdates')
+          .withIndex('by_user', (q) => q.eq('userId', seat.ownerId))
+          .collect()
+      ).filter((row) => row.createdAt >= cutoff);
+      if (!rows.length) continue;
+      const profile = await profileFor(ctx, seat.ownerId);
+      const owner = {
+        userId: seat.ownerId,
+        name: profile?.name ?? 'A traveler',
+        imageUrl: safeAvatar(profile?.imageUrl ?? null),
+      };
+      const journeys = new Map<string, Doc<'journeys'> | null>();
+      for (const row of rows) {
+        if (!journeys.has(row.journeyKey)) {
+          journeys.set(row.journeyKey, await journeyForKey(ctx, seat.ownerId, row.journeyKey));
+        }
+        const journey = journeys.get(row.journeyKey);
+        if (!journey || !maySee(journey, !!seat.close)) continue;
+        out.push({
+          ...(await publicUpdate(ctx, row, me)),
+          owner,
+          trip: { journeyId: journey._id, number: journey.number, fromCode: journey.fromCode, toCode: journey.toCode },
+        });
+      }
+    }
+    out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return out.slice(0, FEED_MAX);
+  },
+});

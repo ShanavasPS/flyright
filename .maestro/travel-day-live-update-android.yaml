@@ -82,7 +82,7 @@ appId: com.shanavasshaji.flyright
 # (in-window journeys swap the watching card for the travel-day timeline).
 - tapOn: ".*AY1331.*"
 - extendedWaitUntil:
-    visible: ".*Travel day.*"
+    visible: ".*Trip progress.*"
     timeout: 15000
     optional: true
 - takeScreenshot: .maestro/out/travel-day-live-update-android

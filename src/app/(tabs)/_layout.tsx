@@ -73,7 +73,7 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="(people)">
-        <NativeTabs.Trigger.Label>People</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Friends</NativeTabs.Trigger.Label>
         {people > 0 && (
           <NativeTabs.Trigger.Badge>{people > 99 ? '99+' : String(people)}</NativeTabs.Trigger.Badge>
         )}

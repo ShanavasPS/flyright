@@ -697,10 +697,14 @@ export function liveContent(
     arrivesAt: Number.isNaN(arrivalMs) ? null : arrivalMs,
     countdownEnd: countdown?.end ?? null,
     countdownKind: countdown?.kind ?? null,
-    gate: facts.gate,
-    terminal: facts.terminal,
+    // The departure gate and terminal are the task until the wheels are up
+    // (recorded or by the timetable); in the air and after landing they are
+    // where the traveller used to be, so the card, the Lock Screen and the
+    // Android notification all drop them.
+    gate: presumed ? null : facts.gate,
+    terminal: presumed ? null : facts.terminal,
     boardingTime: facts.boardingTime,
     delayLabel,
-    emphasis: delayed ? 'delay' : facts.gate ? 'gate' : 'none',
+    emphasis: delayed ? 'delay' : !presumed && facts.gate ? 'gate' : 'none',
   };
 }

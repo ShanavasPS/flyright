@@ -43,7 +43,7 @@ appId: com.shanavasshaji.flyright
 - tapOn:
     id: "travel-day-banner"
 - extendedWaitUntil:
-    visible: "Travel day"
+    visible: "Trip progress"
     timeout: 20000
 # Airport-fact chips render from the seeded facts (plain Views — their text
 # stays individually visible, unlike the flattened hero).

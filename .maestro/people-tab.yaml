@@ -9,7 +9,7 @@ tags:
 - launchApp
 - openLink: flyright://people
 - extendedWaitUntil:
-    visible: "People"
+    visible: "Friends|People"
     timeout: 30000
 - assertVisible: ".*(Invite someone|Sign in|Nobody).*"
 - openLink: flyright://i/not-a-real-token

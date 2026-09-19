@@ -7,7 +7,7 @@ export default function PeopleStack() {
       {/* The title is set even though the header is hidden: it is what names
         the back button on every screen pushed over this one, and without it
         VoiceOver reads that button as nothing at all. */}
-      <Stack.Screen name="people" options={{ headerShown: false, title: 'People' }} />
+      <Stack.Screen name="people" options={{ headerShown: false, title: 'Friends' }} />
       <Stack.Screen
         name="trip/[token]"
         options={{ title: 'Live trip', headerBackButtonDisplayMode: 'minimal' }}

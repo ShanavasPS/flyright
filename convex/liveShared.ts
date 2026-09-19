@@ -501,10 +501,12 @@ export function buildContentState(s: Doc<'liveSessions'>, now: number): Record<s
     countdownKind: countdown?.kind ?? '',
     progress: flightProgress(s, now),
     stageLabel: s.currentStage ? (STAGE_LABELS[s.currentStage] ?? '') : '',
-    gate: s.gate ?? '',
-    terminal: s.terminal ?? '',
+    // Same rule as the app's liveContent: the departure gate and terminal
+    // leave the card once the flight has (recorded or by the timetable).
+    gate: presumed ? '' : (s.gate ?? ''),
+    terminal: presumed ? '' : (s.terminal ?? ''),
     delayLabel,
-    emphasis: delayed ? 'delay' : s.gate ? 'gate' : 'none',
+    emphasis: delayed ? 'delay' : !presumed && s.gate ? 'gate' : 'none',
     depTime: fmtTime(effectiveDeparture, s.fromCode),
     arrTime: (() => {
       const arrival = s.estimatedArrival ?? s.scheduledArrival;

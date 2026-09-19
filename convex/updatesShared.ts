@@ -68,3 +68,30 @@ export function placeFor(
   if (Number.isFinite(dep) && now >= dep) return null;
   return trip.fromCode;
 }
+
+/** How a person who liked an update stands with its owner: 'close' — in
+ * the owner's close circle; 'mutual' — they see the owner's trips and the
+ * owner sees theirs; 'follower' — they see the owner's trips; 'other' —
+ * neither (someone following one trip through its link). */
+export type LikerRelation = 'close' | 'mutual' | 'follower' | 'other';
+
+export function likerRelation(seat: { close?: boolean } | null, ownerFollowsThem: boolean): LikerRelation {
+  if (seat?.close) return 'close';
+  if (seat && ownerFollowsThem) return 'mutual';
+  if (seat) return 'follower';
+  return 'other';
+}
+
+/** Newest heart first; hearts from before times were kept go last, in the
+ * order they were given. */
+export function sortLikers<T extends { at: string | null }>(likers: T[]): T[] {
+  return likers
+    .map((liker, i) => ({ liker, i }))
+    .sort((a, b) => {
+      if (a.liker.at && b.liker.at) return b.liker.at.localeCompare(a.liker.at);
+      if (a.liker.at) return -1;
+      if (b.liker.at) return 1;
+      return a.i - b.i;
+    })
+    .map(({ liker }) => liker);
+}

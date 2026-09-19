@@ -133,6 +133,10 @@ export default defineSchema({
     stage: v.union(v.string(), v.null()),
     place: v.union(v.string(), v.null()),
     reactedBy: v.array(v.string()),
+    /** userId → when that heart was given, for the owner's "Liked by"
+     * list. Absent on hearts given before it existed (they list last,
+     * without a time). reactedBy stays the source of truth for who. */
+    reactedAt: v.optional(v.record(v.string(), v.string())),
     createdAt: v.string(),
   })
     .index('by_user', ['userId'])

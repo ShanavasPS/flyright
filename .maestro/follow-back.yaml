@@ -18,7 +18,7 @@ tags:
 - launchApp
 - openLink: flyright://people
 - extendedWaitUntil:
-    visible: "People"
+    visible: "Friends|People"
     timeout: 30000
 - tapOn:
     id: "tab-followers"

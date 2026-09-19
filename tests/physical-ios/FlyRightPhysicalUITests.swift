@@ -39,8 +39,16 @@ final class FlyRightPhysicalUITests: XCTestCase {
         XCTAssertFalse(error.exists, "An error appeared: \(error.exists ? error.label : "")", file: file, line: line)
     }
 
+    /// The tab once called People is Friends from 1.0.39; either label
+    /// finds it, so the suite still runs against an older installed build.
+    private func tabButton(_ title: String) -> XCUIElement {
+        guard title == "Friends" || title == "People" else { return app.tabBars.buttons[title] }
+        let friends = app.tabBars.buttons["Friends"]
+        return friends.waitForExistence(timeout: 5) ? friends : app.tabBars.buttons["People"]
+    }
+
     private func tapTab(_ title: String) {
-        let button = app.tabBars.buttons[title]
+        let button = tabButton(title)
         XCTAssertTrue(button.waitForExistence(timeout: 15), "Missing tab: \(title)")
         XCTAssertTrue(button.isHittable, "Tab is not tappable: \(title)")
         button.tap()
@@ -265,7 +273,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
         }
         app.launch()
         if let email = env["FLYRIGHT_SWITCH_EMAIL"], !email.isEmpty { switchAccount(to: email) }
-        let people = app.tabBars.buttons["People"]
+        let people = tabButton("Friends")
         XCTAssertTrue(people.waitForExistence(timeout: 30))
         people.tap()
         let invite = app.buttons["Invite someone to follow your trips"]
@@ -336,7 +344,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
             return nil
         }
         app.launch()
-        let people = app.tabBars.buttons["People"]
+        let people = tabButton("Friends")
         XCTAssertTrue(people.waitForExistence(timeout: 30))
         people.tap()
         let invite = app.buttons["Invite someone to follow your trips"]
@@ -408,7 +416,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
             assertHealthy()
             capture("pass-\(pass)-world")
 
-            tapTab("People")
+            tapTab("Friends")
             waitForContent("Sign in to invite|Nobody's following you yet|Following.*|Followers.*")
             assertHealthy()
             capture("pass-\(pass)-people")

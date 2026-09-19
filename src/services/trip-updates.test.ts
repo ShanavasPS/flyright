@@ -1,5 +1,5 @@
-import { placeFor, updateWindow, updateWindowOpen } from '../../convex/updatesShared';
-import { agoLabel, captionOf, photoAspect, updateContext } from './trip-updates';
+import { likerRelation, placeFor, sortLikers, updateWindow, updateWindowOpen } from '../../convex/updatesShared';
+import { agoLabel, captionOf, likedByParts, photoAspect, relationLabel, updateContext } from './trip-updates';
 
 /** HEL 07:10 → DOH 14:25 (local clocks), zoned as the lookup stores them. */
 const trip = {
@@ -94,5 +94,43 @@ describe('captionOf and photoAspect', () => {
     expect(photoAspect({ width: 1600, height: 900 })).toBeCloseTo(1.777, 2);
     expect(photoAspect({ width: 900, height: 1600 })).toBe(1.25);
     expect(photoAspect({ width: null, height: null })).toBe(1.5);
+  });
+});
+
+describe('likedByParts', () => {
+  const text = (names: string[]) => likedByParts(names).map((p) => (p.bold ? `*${p.text}*` : p.text)).join('');
+
+  it('names one or two people by first name, bold', () => {
+    expect(text([])).toBe('');
+    expect(text(['Clara Weiss'])).toBe('Liked by *Clara*');
+    expect(text(['Clara Weiss', 'Noah'])).toBe('Liked by *Clara* and *Noah*');
+  });
+
+  it('counts the rest after two names', () => {
+    expect(text(['Clara', 'Noah', 'Sofia'])).toBe('Liked by *Clara*, *Noah* and *1 other*');
+    expect(text(['Clara', 'Noah', 'Sofia', 'Dee', 'Maya'])).toBe('Liked by *Clara*, *Noah* and *3 others*');
+  });
+});
+
+describe('likerRelation', () => {
+  it('ranks close circle over mutual over follower', () => {
+    expect(likerRelation({ close: true }, true)).toBe('close');
+    expect(likerRelation({ close: false }, true)).toBe('mutual');
+    expect(likerRelation({}, false)).toBe('follower');
+    expect(likerRelation(null, true)).toBe('other');
+    expect(relationLabel('other')).toBeNull();
+    expect(relationLabel('follower')).toBe('Follows you');
+  });
+});
+
+describe('sortLikers', () => {
+  it('puts the newest heart first and untimed hearts last, in order', () => {
+    const sorted = sortLikers([
+      { id: 'a', at: null },
+      { id: 'b', at: '2026-09-19T08:00:00Z' },
+      { id: 'c', at: null },
+      { id: 'd', at: '2026-09-19T09:00:00Z' },
+    ]);
+    expect(sorted.map((l) => l.id)).toEqual(['d', 'b', 'a', 'c']);
   });
 });

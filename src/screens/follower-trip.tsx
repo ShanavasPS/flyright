@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
+import { useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +11,7 @@ import { Card } from '@/components/card';
 import { FollowerActivityControl } from '@/components/follower-activity-control';
 import { RouteHero, type Schedule } from '@/components/route-hero';
 import { RouteMap } from '@/components/route-map';
+import { FlightFactsStrip } from '@/components/flight-facts';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
@@ -37,7 +39,17 @@ import { hasLanded, type TravelStage } from '@/services/travel-day';
  * The follower can pin the shared trip to their own Lock Screen. Trip edits
  * still belong to the traveller; mute and unfollow live on the person's page.
  */
-export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyId: string }) {
+export function FollowerTrip({
+  ownerId,
+  journeyId,
+  focusPosts = false,
+}: {
+  ownerId: string;
+  journeyId: string;
+  /** Opened from one of their photos: land on what they shared, not on
+   * the map at the top. */
+  focusPosts?: boolean;
+}) {
   const router = useRouter();
   const now = useNow();
   const result = useQuery(api.circle.trip, {
@@ -45,6 +57,17 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
     journeyId: journeyId as Id<'journeys'>,
   });
   const react = useMutation(api.updates.react);
+  const scrollRef = useRef<ScrollView>(null);
+  // Where the posts sit, and whether the page still owes the reader that
+  // scroll: the map and timeline above them settle their heights after the
+  // first layout, so the page follows the posts down until the reader
+  // takes the scroll over.
+  const postsY = useRef<number | null>(null);
+  const following = useRef(focusPosts);
+  const toPosts = () => {
+    if (!following.current || postsY.current === null) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, postsY.current - Spacing.three), animated: false });
+  };
 
   // The header carries WHEN, exactly as the traveller's own trip screen
   // does — the route is in big type right below it either way.
@@ -105,6 +128,17 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
           }}
         />
 
+        {/* Their gate and terminal on the day, where the traveller has
+            them on their own trip: right under the map. */}
+        {session && (
+          <FlightFactsStrip
+            facts={adaptPublicSession(session).facts}
+            stage={(session.currentStage as TravelStage | null) ?? null}
+            departureZone={airportZone(trip.fromCode)}
+            tracked={session.flightStatus !== null}
+          />
+        )}
+
         {/* Whose trip this is, then the trip itself in the same hero the
             traveller sees on their own — one way to read a flight, however
             you came to be reading it. */}
@@ -139,15 +173,21 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
         {/* What they shared from this trip — kept on the trip for good, so
             a flown trip reads as the small set of postcards it was. */}
         {updates && updates.length > 0 && (
-          <UpdatesCard
-            eyebrow={`From ${owner.name}`}
-            updates={updates}
-            now={now}
-            onReact={(updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })}
-            onReport={(updateId) =>
-              router.push({ pathname: '/report', params: { userId: ownerId, name: owner.name, updateId } })
-            }
-          />
+          <View
+            onLayout={(e) => {
+              postsY.current = e.nativeEvent.layout.y;
+              toPosts();
+            }}>
+            <UpdatesCard
+              eyebrow={`From ${owner.name}`}
+              updates={updates}
+              now={now}
+              onReact={(updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })}
+              onReport={(updateId) =>
+                router.push({ pathname: '/report', params: { userId: ownerId, name: owner.name, updateId } })
+              }
+            />
+          </View>
         )}
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
@@ -176,6 +216,11 @@ export function FollowerTrip({ ownerId, journeyId }: { ownerId: string; journeyI
       <Stack.Screen options={{ title }} />
       <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
         <ScrollView
+          ref={scrollRef}
+          onContentSizeChange={toPosts}
+          onScrollBeginDrag={() => {
+            following.current = false;
+          }}
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}>

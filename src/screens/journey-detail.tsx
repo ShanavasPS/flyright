@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { SymbolView } from 'expo-symbols';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoardingPassCard } from '@/components/boarding-pass-card';
 import { Card } from '@/components/card';
+import { FlightFactsStrip } from '@/components/flight-facts';
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PrimaryButton } from '@/components/primary-button';
@@ -25,6 +26,7 @@ import { RouteHero, cityLabel, type Schedule } from '@/components/route-hero';
 import { RouteMap } from '@/components/route-map';
 import { OwnUpdatesCard } from '@/components/own-updates-card';
 import { IconBadge, SheenSweep } from '@/components/sheen-card';
+import { FlashToast } from '@/components/flash-toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
@@ -123,6 +125,12 @@ export function JourneyDetail({
   // Ticks so the travel-day timeline stays live while open; the coarser
   // claim-window math reads the same clock and doesn't mind the updates.
   const now = useNow(60_000).getTime();
+  // Opening the trip-progress card brings its steps into view, as the
+  // status sheet does: the card sits low on the page, and steps that open
+  // below the fold look like a tap that did nothing.
+  const scrollRef = useRef<ScrollView>(null);
+  const progressY = useRef(0);
+  const revealProgress = useRef(false);
   const router = useRouter();
   const { userId, isLoaded: authLoaded } = useAuth();
   const isDemo = isDemoJourneyId(journeyId);
@@ -395,9 +403,15 @@ export function JourneyDetail({
         {/* The travel-day timeline made the tall path (title + timeline +
             verdict) overflow smaller screens — everything scrolls now. */}
         <ScrollView
+          ref={scrollRef}
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={styles.scrollContent}
+          onContentSizeChange={() => {
+            if (!revealProgress.current) return;
+            revealProgress.current = false;
+            scrollRef.current?.scrollTo({ y: Math.max(0, progressY.current - Spacing.three), animated: true });
+          }}>
         {mapSource && (
           <RouteMap
             journey={mapSource}
@@ -409,6 +423,17 @@ export function JourneyDetail({
               focusWorldOn(isDemo ? null : journey.id);
               router.navigate('/world');
             }}
+          />
+        )}
+
+        {/* Where to go, first thing on the page on the day: the gate,
+            terminal and check-in sit right under the map. */}
+        {travelActive && row && !isDemo && (
+          <FlightFactsStrip
+            facts={getFlightFacts(row.id)}
+            stage={travelState.stage}
+            departureZone={airportZone(row.fromCode)}
+            tracked={row.source === 'lookup'}
           />
         )}
 
@@ -465,44 +490,52 @@ export function JourneyDetail({
         )}
 
         {(travelActive || travelPreview) && row && (
-          <TravelDayTimeline
-            journey={row}
-            state={travelState}
-            facts={getFlightFacts(row.id)}
-            plan={travelPlan}
-            action={shareActions}
-            locked={travelPreview}
-            unlocksAt={travelWin?.startsAt}
-            title={travelPreview ? 'Upcoming trip' : 'Travel day'}
-            // Before the window this card IS the upcoming-trip card, so the
-            // summary that used to have its own card sits under the steps.
-            footer={
-              travelPreview ? (
-                <View style={styles.timelineFooter}>
-                  <ThemedText type="small">
-                    You&apos;ll fly {Math.round(journey.distanceKm).toLocaleString()} km
-                    {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
-                  </ThemedText>
-                  {!journalOnly && (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {status.isPending
-                        ? 'Checking the latest status…'
-                        : "We're watching this flight. If a delay makes you eligible for compensation, you'll know here first."}
+          <View
+            onLayout={(e) => {
+              progressY.current = e.nativeEvent.layout.y;
+            }}>
+            <TravelDayTimeline
+              onToggle={(open) => {
+                revealProgress.current = open;
+              }}
+              journey={row}
+              state={travelState}
+              facts={getFlightFacts(row.id)}
+              plan={travelPlan}
+              action={shareActions}
+              locked={travelPreview}
+              unlocksAt={travelWin?.startsAt}
+              title={travelPreview ? 'Upcoming trip' : 'Trip progress'}
+              // Before the window this card IS the upcoming-trip card, so the
+              // summary that used to have its own card sits under the steps.
+              footer={
+                travelPreview ? (
+                  <View style={styles.timelineFooter}>
+                    <ThemedText type="small">
+                      You&apos;ll fly {Math.round(journey.distanceKm).toLocaleString()} km
+                      {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
                     </ThemedText>
-                  )}
-                </View>
-              ) : undefined
-            }
-            onAdvance={(stage: TravelStage) => {
-              void advanceStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
-            }}
-            onRewind={(stage: TravelStage) => {
-              void rewindStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
-            }}
-            onUndo={() => {
-              void undoStage(row.id, travelRules).then(() => reconcileTravelDay());
-            }}
-          />
+                    {!journalOnly && (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {status.isPending
+                          ? 'Checking the latest status…'
+                          : "We're watching this flight. If a delay makes you eligible for compensation, you'll know here first."}
+                      </ThemedText>
+                    )}
+                  </View>
+                ) : undefined
+              }
+              onAdvance={(stage: TravelStage) => {
+                void advanceStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
+              }}
+              onRewind={(stage: TravelStage) => {
+                void rewindStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
+              }}
+              onUndo={() => {
+                void undoStage(row.id, travelRules).then(() => reconcileTravelDay());
+              }}
+            />
+          </View>
         )}
 
         {/* What the traveller shares with the people following this trip,
@@ -585,6 +618,8 @@ export function JourneyDetail({
         )}
         {audienceSheet}
       </SafeAreaView>
+      {/* "Update shared" once the composer closes over this trip. */}
+      <FlashToast />
     </ThemedView>
   );
 }

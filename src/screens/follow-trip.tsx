@@ -12,6 +12,7 @@ import { AirlineLogo } from '@/components/airline-logo';
 import { AppHandoff } from '@/components/app-handoff';
 import { Card } from '@/components/card';
 import { FollowerActivityControl } from '@/components/follower-activity-control';
+import { FlightFactsStrip } from '@/components/flight-facts';
 import { PrimaryButton } from '@/components/primary-button';
 import { RouteLeg } from '@/components/route-leg';
 import { ThemedText } from '@/components/themed-text';
@@ -169,6 +170,12 @@ export function FollowTrip({ token, sessionId }: { token?: string; sessionId?: I
             ...times,
             ...movedClocks(session),
           }}
+        />
+        <FlightFactsStrip
+          facts={facts}
+          stage={state.stage}
+          departureZone={airportZone(session.fromCode)}
+          tracked={session.flightStatus !== null}
         />
 
         <TravelDayTimeline journey={journey} state={state} facts={facts} plan={plan} readOnly />

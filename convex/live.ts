@@ -421,6 +421,9 @@ export const following = query({
           await followerCount(ctx, session._id),
         ),
         onward,
+        // The trip behind the session, so a follower can open it in the
+        // Friends tab (a photo on the rail's sheet goes to its trip page).
+        journeyId: (await journeyForKey(ctx, session.userId, session.naturalKey))?._id ?? null,
         // The traveller's latest word from the trip, for the pass to show
         // beside the flight — the rest is on their page.
         update: await latestUpdate(ctx, session.userId, session.naturalKey, identity.subject),

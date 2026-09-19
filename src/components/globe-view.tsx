@@ -602,7 +602,6 @@ export function GlobeView({
         )}
         <Path path={dotsPath} color={colors.background} style="stroke" strokeWidth={2} />
         <Path path={dotsPath} color={colors.tint} />
-        {beaconVector && <Beacon v={beaconVector} camera={camera} color={colors.tint} animate={beaconAnimate} />}
         {stillRoutes.map((route) => (
           <PlaneGlyph key={route.key} route={route} camera={camera} colors={colors} clock={null} />
         ))}
@@ -614,6 +613,15 @@ export function GlobeView({
           <AirportLabel key={airport.iata} airport={airport} camera={camera} font={font} color={colors.label} mode={labels} />
         ))}
       </Canvas>
+      {/* The radar rings get a canvas of their own, over the globe: their
+          clock redraws only this small layer each frame. Inside the globe's
+          canvas every tick re-ran the sun-lit earth shader on the main
+          thread, and the page it sits on answered taps a second late. */}
+      {beaconVector && (
+        <Canvas style={[styles.canvas, StyleSheet.absoluteFill]} pointerEvents="none">
+          <Beacon v={beaconVector} camera={camera} color={colors.tint} animate={beaconAnimate} />
+        </Canvas>
+      )}
     </Animated.View>
   );
 

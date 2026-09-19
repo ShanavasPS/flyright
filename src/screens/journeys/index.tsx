@@ -23,6 +23,7 @@ import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { LayoverMark } from '@/components/layover-mark';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { FlashToast } from '@/components/flash-toast';
 import { FollowingSection } from '@/components/following-section';
 import { JournalSkeleton } from '@/components/journal-skeleton';
 import { HomeHero, useHeroTrip } from '@/components/travel-day-banner';
@@ -281,7 +282,7 @@ export function Journeys() {
                 {/* Above the traveller's own hero: one row of faces however
                     many people are flying, so it never pushes the journal
                     down the way a card per person did. */}
-                {!!CONVEX_URL && <FollowingSection />}
+                {!!CONVEX_URL && <FollowingSection own={hero} />}
                 {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
               </>
             }
@@ -317,7 +318,7 @@ export function Journeys() {
             <SignedOutNoticeCard next="/" />
             {/* Someone who only follows others has no journal yet, but
                 their people's trips still belong here. */}
-            {!!CONVEX_URL && <FollowingSection />}
+            {!!CONVEX_URL && <FollowingSection own={hero} />}
             <JournalHero onAdd={() => router.push('/add')} />
           </ScrollView>
         )}
@@ -347,6 +348,8 @@ export function Journeys() {
       ) : (
         listPane
       )}
+      {/* "Update shared" after posting from the rail's You tile or the hero. */}
+      <FlashToast />
     </ThemedView>
   );
 }

@@ -57,7 +57,7 @@ tags:
           when:
             platform: Android
           commands:
-            - tapOn: "People"
+            - tapOn: "Friends|People"
       - runFlow:
           when:
             platform: iOS

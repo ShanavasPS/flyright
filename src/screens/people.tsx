@@ -19,10 +19,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { CIRCLE_FULL, FREE_CIRCLE_LABEL } from '../../convex/circleShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
+import { FeedCard, type FeedPost } from '@/components/feed-card';
+import { FollowingRail } from '@/components/following-rail';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
 import { LivePass } from '@/components/live-pass';
 import { RouteLeg } from '@/components/route-leg';
@@ -44,7 +47,7 @@ import { trackEvent } from '@/services/analytics';
 import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
 import { useProLocked } from '@/services/purchases';
-import { spanLabel } from '@/services/public-session';
+import { onHomeScreen, spanLabel } from '@/services/public-session';
 
 type CircleList = NonNullable<ReturnType<typeof useQuery<typeof api.circle.list>>>;
 type Following = CircleList['following'][number];
@@ -66,20 +69,32 @@ type Item =
   | { key: string; type: 'pending'; request: Outgoing; kind: 'invite' | 'follow' }
   | { key: string; type: 'note'; count: number }
   | { key: string; type: 'empty'; title: string; detail: string }
-  | { key: string; type: 'invite'; locked: boolean };
+  | { key: string; type: 'invite'; locked: boolean }
+  | { key: string; type: 'rail' }
+  | { key: string; type: 'post'; post: FeedPost };
 
 /** Whose trips I follow. Invitations to follow someone answer at the top,
  * because someone is waiting on it; then the people, live trips first; then
  * the asks I have out to people who don't follow me (asks to a follower show
  * on their row in Followers instead). */
-function followingItems(data: CircleList): Item[] {
+function followingItems(data: CircleList, flying: boolean, posts: FeedPost[]): Item[] {
   const items: Item[] = [];
   if (data.incoming.length) {
     items.push({ key: 'label:invitations', type: 'label', text: 'Invitations' });
     for (const r of data.incoming) items.push({ key: `request:${r.id}`, type: 'request', request: r });
-    if (data.following.length) items.push({ key: 'label:following', type: 'label', text: 'Following' });
   }
-  for (const p of data.following) items.push({ key: `following:${p.userId}`, type: 'following', person: p });
+  // Who is in the air, then what they have been posting, then everyone
+  // else by their next flight. Somebody on the rail is not listed again.
+  if (flying) items.push({ key: 'rail', type: 'rail' });
+  if (posts.length) {
+    items.push({ key: 'label:posts', type: 'label', text: 'Latest from trips' });
+    for (const post of posts) items.push({ key: `post:${post.updateId}`, type: 'post', post });
+  }
+  const rest = flying ? data.following.filter((p) => !p.live) : data.following;
+  if (rest.length && (data.incoming.length || flying || posts.length)) {
+    items.push({ key: 'label:following', type: 'label', text: flying || posts.length ? 'Coming up' : 'Following' });
+  }
+  for (const p of rest) items.push({ key: `following:${p.userId}`, type: 'following', person: p });
   for (const r of data.asked) items.push({ key: `pending:${r.id}`, type: 'pending', request: r, kind: 'follow' });
   if (!data.following.length && !data.incoming.length) {
     items.push({
@@ -207,6 +222,11 @@ export function People() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
+  const liveEntries = useQuery(api.live.following, isSignedIn ? {} : 'skip');
+  const feed = useQuery(api.updates.feed, isSignedIn ? {} : 'skip');
+  const react = useMutation(api.updates.react);
+  const now = useNow();
+  const flying = liveEntries?.filter(({ session, onward }) => onHomeScreen(session, now, onward)) ?? [];
   const invite = useInvite(!!data?.full);
   const proLocked = useProLocked();
   const focused = useIsFocused();
@@ -315,7 +335,7 @@ export function People() {
       />
     );
     if (tab === 'following') {
-      items = followingItems(data);
+      items = followingItems(data, flying.length > 0, feed ?? []);
       footer = (
         <>
           <RedeemInviteLink />
@@ -365,6 +385,34 @@ export function People() {
         return <EmptyTab title={item.title} detail={item.detail} />;
       case 'invite':
         return <InviteRow locked={item.locked} onInvite={invite} />;
+      case 'rail':
+        return <FollowingRail title="Flying now" entries={flying} now={now} />;
+      case 'post':
+        return (
+          <FeedCard
+            post={item.post}
+            now={now}
+            onOpenPerson={() => router.push({ pathname: '/person/[id]', params: { id: item.post.owner.userId } })}
+            onOpenTrip={() =>
+              router.push({
+                pathname: '/person/[id]/trip/[journeyId]',
+                params: { id: item.post.owner.userId, journeyId: item.post.trip.journeyId, focus: 'posts' },
+              })
+            }
+            onReact={() => void react({ updateId: item.post.updateId as Id<'tripUpdates'> })}
+            onReport={() =>
+              Alert.alert('Report this update?', 'Tell us what is wrong with it. The person who posted it will not know.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Report',
+                  style: 'destructive',
+                  onPress: () =>
+                    router.push({ pathname: '/report', params: { name: item.post.owner.name, updateId: item.post.updateId } }),
+                },
+              ])
+            }
+          />
+        );
     }
   };
 
@@ -374,7 +422,7 @@ export function People() {
         <View style={styles.titleRow}>
           <View style={styles.titleBlock}>
             <ThemedText type="title" themeColor="heading">
-              People
+              Friends
             </ThemedText>
           </View>
           {isSignedIn && <InviteButton onPress={invite} />}

@@ -6,11 +6,12 @@ import { FollowerTrip } from '@/screens/follower-trip';
  * the profile and back again to People — the way a push that opens straight
  * on a trip has to unwind. */
 export default function PersonTripRoute() {
-  const { id, journeyId } = useLocalSearchParams<{ id: string; journeyId: string }>();
+  const { id, journeyId, focus } = useLocalSearchParams<{ id: string; journeyId: string; focus?: string }>();
   return (
     <FollowerTrip
       ownerId={typeof id === 'string' ? id : ''}
       journeyId={typeof journeyId === 'string' ? journeyId : ''}
+      focusPosts={focus === 'posts'}
     />
   );
 }

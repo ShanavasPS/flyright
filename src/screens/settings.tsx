@@ -323,7 +323,7 @@ function PushNotificationsRow() {
         <View style={styles.rowLabel}>
           <ThemedText>Push notifications</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Flight alerts, People activity, support replies and app updates.
+            Flight alerts, Friends activity, support replies and app updates.
           </ThemedText>
           {Platform.OS === 'ios' && enabled && !badgesAllowed && (
             <Pressable accessibilityRole="button" onPress={() => Linking.openSettings()}>

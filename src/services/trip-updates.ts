@@ -7,6 +7,8 @@ import { STAGE_LABELS, type TravelStage } from '@/services/travel-day';
 import { cityOf } from '@/services/timeline';
 import { formatDayLabel, formatTime } from '@/services/dates';
 
+import type { LikerRelation } from '../../convex/updatesShared';
+
 export { UPDATE_TEXT_MAX, updateWindow, updateWindowOpen } from '../../convex/updatesShared';
 
 /** One update as every follower surface receives it (convex/updates.ts). */
@@ -23,9 +25,57 @@ export interface TripUpdate {
   reacted: boolean;
 }
 
-/** The owner's copy carries the names behind the hearts. */
+/** One person behind a heart on the owner's update (convex/updates.ts
+ * `mine`). `at` is null for hearts given before the time was kept. */
+export interface Liker {
+  userId: string;
+  name: string;
+  imageUrl: string | null;
+  relation: LikerRelation;
+  at: string | null;
+}
+
+/** The owner's copy carries the people behind the hearts: `reactedBy` is
+ * names only; `likers` (faces, relation, time) is absent from a server that
+ * predates the "Liked by" list. */
 export interface OwnUpdate extends TripUpdate {
   reactedBy: string[];
+  likers?: Liker[];
+}
+
+/** "Liked by Clara, Noah and 3 others" as runs of text, the names (and the
+ * "N others") bold: first names only, at most two named. */
+export function likedByParts(names: string[]): { text: string; bold: boolean }[] {
+  const first = names.map((n) => n.trim().split(/\s+/)[0] || n);
+  if (!first.length) return [];
+  const parts: { text: string; bold: boolean }[] = [{ text: 'Liked by ', bold: false }];
+  if (first.length === 1) return [...parts, { text: first[0]!, bold: true }];
+  if (first.length === 2) {
+    return [...parts, { text: first[0]!, bold: true }, { text: ' and ', bold: false }, { text: first[1]!, bold: true }];
+  }
+  const rest = first.length - 2;
+  return [
+    ...parts,
+    { text: first[0]!, bold: true },
+    { text: ', ', bold: false },
+    { text: first[1]!, bold: true },
+    { text: ' and ', bold: false },
+    { text: `${rest} other${rest === 1 ? '' : 's'}`, bold: true },
+  ];
+}
+
+/** The line under a liker's name: how they know the traveller. */
+export function relationLabel(relation: LikerRelation): string | null {
+  switch (relation) {
+    case 'close':
+      return 'Close circle';
+    case 'mutual':
+      return 'You follow each other';
+    case 'follower':
+      return 'Follows you';
+    default:
+      return null;
+  }
 }
 
 /** "On board · Helsinki", "In the air", "Landed · Doha", "Doha": where the

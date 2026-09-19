@@ -283,6 +283,27 @@ describe('liveContent', () => {
     ).toBe('Departing now');
   });
 
+  it('keeps the gate through the airport walk and drops it once the flight has left', () => {
+    const facts = { ...EMPTY_FACTS, gate: '53', terminal: '2' };
+    const walking = liveContent(
+      journey(),
+      { stage: 'immigration', stamps: { immigration: '2026-08-25T05:00:00Z' } },
+      facts,
+      liveNow,
+    );
+    expect([walking.gate, walking.terminal, walking.emphasis]).toEqual(['53', '2', 'gate']);
+    const aloft = liveContent(
+      journey(),
+      { stage: 'departed', stamps: { departed: '2026-08-25T08:05:00Z' } },
+      facts,
+      new Date('2026-08-25T09:00Z'),
+    );
+    expect([aloft.gate, aloft.terminal, aloft.emphasis]).toEqual([null, null, 'none']);
+    // By the timetable alone, too: nothing recorded, departure long gone.
+    const byClock = liveContent(journey(), EMPTY_TRAVEL_DAY, facts, new Date('2026-08-25T09:00Z'));
+    expect(byClock.gate).toBeNull();
+  });
+
   it('reads the timetable once the departure is gone with nothing recorded', () => {
     // A manual trip whose "Departed" was never tapped: no more "Departing
     // now" through the flight; the plane and the countdown follow the clocks.

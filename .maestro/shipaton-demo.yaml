@@ -42,10 +42,10 @@ appId: com.shanavasshaji.flyright
 - tapOn:
     id: travel-day-banner
 - extendedWaitUntil:
-    visible: "Travel day"
+    visible: "Trip progress"
     timeout: 20000
 - scrollUntilVisible:
-    element: "Travel day"
+    element: "Trip progress"
     direction: DOWN
     centerElement: true
 - waitForAnimationToEnd
@@ -71,7 +71,7 @@ appId: com.shanavasshaji.flyright
 
 - openLink: flyright://people
 - extendedWaitUntil:
-    visible: "People"
+    visible: "Friends|People"
     timeout: 20000
 - waitForAnimationToEnd
 - startRecording: ${DEMO_OUT}/raw/04-people

@@ -3,13 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   FadeInDown,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withSpring,
   withTiming,
-  ZoomIn,
 } from 'react-native-reanimated';
 
 import { Card } from '@/components/card';
@@ -85,7 +83,12 @@ type NodeState = 'done' | 'current' | 'next' | 'open' | 'auto' | 'skipped' | 'lo
  * spring down the rail to the current stage; tapping ahead advances,
  * tapping an earlier stamped stage slides back to it. Flight-driven rows are
  * never tappable, `readOnly` renders the same view for followers, and
- * `locked` shows the steps before the travel window opens. */
+ * `locked` shows the steps before the travel window opens.
+ *
+ * The card is one accordion everywhere it appears: a small heading with the
+ * latest step on the line under it, and a chevron. The trip screens open it
+ * (it is what they are for); a follower's status sheet keeps it shut until
+ * asked, so the posts and the leg lead. */
 export function TravelDayTimeline({
   journey,
   state,
@@ -94,12 +97,14 @@ export function TravelDayTimeline({
   readOnly = false,
   locked = false,
   unlocksAt,
-  title = 'Travel day',
+  title = 'Trip progress',
   footer,
   onAdvance,
   onRewind,
   onUndo,
   action,
+  defaultOpen = true,
+  onToggle,
 }: {
   journey: TravelJourney;
   state: TravelDayState;
@@ -111,7 +116,7 @@ export function TravelDayTimeline({
   locked?: boolean;
   /** When the window opens (T−24h) — shown in the locked caption. */
   unlocksAt?: Date;
-  /** Card heading — "Upcoming trip" while locked, "Travel day" once live. */
+  /** Card heading — "Upcoming trip" while locked, "Trip progress" once live. */
   title?: string;
   /** Optional copy under the steps (the trip summary before the window). */
   footer?: React.ReactNode;
@@ -121,8 +126,30 @@ export function TravelDayTimeline({
   onUndo?: () => void;
   /** Optional header-row control — the traveler's share pill. */
   action?: React.ReactNode;
+  /** Whether the steps show when the card first mounts. Each mount starts
+   * here again: nothing remembers the last open or closed. */
+  defaultOpen?: boolean;
+  /** After a tap on the heading, the new state — a sheet scrolls the
+   * opened steps into view with it. */
+  onToggle?: (open: boolean) => void;
 }) {
   const theme = useTheme();
+  const [open, setOpen] = useState(defaultOpen);
+  // When the steps last appeared. What is on the card as it opens is simply
+  // there — the pop-in for a new gate and the caption fade are for news
+  // that lands while the card is already open, not for opening it.
+  const [quiet, setQuiet] = useState(true);
+  useEffect(() => {
+    if (!open || !quiet) return;
+    const timer = setTimeout(() => setQuiet(false), 600);
+    return () => clearTimeout(timer);
+  }, [open, quiet]);
+  const animateNews = !quiet;
+  const toggle = () => {
+    if (!open) setQuiet(true);
+    setOpen(!open);
+    onToggle?.(!open);
+  };
   const interactive = !readOnly && !locked;
   const currentIndex = stageIndex(state.stage);
   // The walk happens at the departure airport, so its clock is the one the
@@ -130,27 +157,10 @@ export function TravelDayTimeline({
   // over. Neither follows the phone around.
   const departureZone = airportZone(journey.fromCode);
   const arrivalZone = airportZone(journey.toCode);
-  const factsWithData = journey.source === 'lookup';
   // Journal trips have no status feed, so the traveler stamps departed/landed
   // too; tracked flights keep those data-only (and say so on the row).
   const manualTrip = journey.source === 'manual';
   const rules = { manualTrip, plan };
-
-  const chips: { label: string; value: string; tone?: 'danger' }[] = [];
-  if (!locked) {
-    if (facts.delayMinutes != null && facts.delayMinutes >= 30) {
-      chips.push({ label: 'Delay', value: `${facts.delayMinutes} min`, tone: 'danger' });
-    }
-    if (facts.gate) chips.push({ label: 'Gate', value: facts.gate });
-    if (facts.terminal) chips.push({ label: 'Terminal', value: facts.terminal });
-    if (facts.checkInDesk) chips.push({ label: 'Check-in', value: facts.checkInDesk });
-    if (facts.boardingTime) {
-      chips.push({ label: 'Boarding', value: formatTime(facts.boardingTime, departureZone) });
-    }
-    if (hasLanded(state.stage) && facts.baggageBelt) {
-      chips.push({ label: 'Baggage', value: facts.baggageBelt });
-    }
-  }
 
   // The one tap that's usually next: the first un-stamped tappable stage.
   const nextStage = interactive ? nextStageOf(state, rules) : null;
@@ -189,6 +199,20 @@ export function TravelDayTimeline({
   const fillStyle = useAnimatedStyle(() => ({ height: fillHeight.value }));
   const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateY: thumbY.value }] }));
 
+  // The heading's second line: the step reached and when, in the airport's
+  // clock where it happened — what the card says while shut.
+  const stamped = state.stage ? state.stamps[state.stage] : null;
+  const summary = state.stage
+    ? [
+        STAGE_LABELS[state.stage],
+        stamped ? formatTime(stamped, hasLanded(state.stage) ? arrivalZone : departureZone) : null,
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : locked
+      ? 'Steps unlock 24 hours before departure'
+      : 'Not started yet';
+
   const unlockLabel = unlocksAt
     ? `${formatDayLabel(unlocksAt.toISOString(), departureZone)} at ${formatTime(unlocksAt.toISOString(), departureZone)}`
     : null;
@@ -196,211 +220,215 @@ export function TravelDayTimeline({
   return (
     <Card>
       <View style={styles.headerRow}>
-        {/* Locked, this is the upcoming-trip card: its title is the quiet
-            uppercase eyebrow that card always had, leaving the header to the
-            share controls. Live, the big "Travel day" heading takes over. */}
-        {locked ? (
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-            {title.toUpperCase()}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={`${title}: ${summary}`}
+          testID="travel-day-toggle"
+          onPress={toggle}
+          style={({ pressed }) => [styles.heading, pressed && styles.pressed]}>
+          {/* Locked, this is the upcoming-trip card: its title is the quiet
+              uppercase eyebrow that card always had. */}
+          {locked ? (
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
+              {title.toUpperCase()}
+            </ThemedText>
+          ) : (
+            <ThemedText themeColor="heading" style={styles.title}>
+              {title}
+            </ThemedText>
+          )}
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {summary}
           </ThemedText>
-        ) : (
-          <ThemedText type="subtitle" style={styles.title}>
-            {title}
-          </ThemedText>
-        )}
+        </Pressable>
         {action}
+        {/* The chevron is the card's last word, right of any share controls. */}
+        <Pressable
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+          hitSlop={Spacing.three}
+          onPress={toggle}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <SymbolView
+            name={
+              open
+                ? { ios: 'chevron.up', android: 'expand_less', web: 'expand_less' }
+                : { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' }
+            }
+            size={14}
+            tintColor={theme.textSecondary}
+          />
+        </Pressable>
       </View>
 
-      {locked && (
-        <ThemedView type="background" style={styles.lockedNote}>
-          <SymbolView name={LOCK} size={14} tintColor={theme.textSecondary} />
-          <ThemedText type="small" themeColor="textSecondary" style={styles.lockedText}>
-            Steps unlock 24 hours before departure
-            {unlockLabel ? ` — ${unlockLabel}` : ''}.
-          </ThemedText>
-        </ThemedView>
-      )}
+      {open && (
+        <>
+          {locked && (
+            <ThemedView type="background" style={styles.lockedNote}>
+              <SymbolView name={LOCK} size={14} tintColor={theme.textSecondary} />
+              <ThemedText type="small" themeColor="textSecondary" style={styles.lockedText}>
+                Steps unlock 24 hours before departure
+                {unlockLabel ? ` — ${unlockLabel}` : ''}.
+              </ThemedText>
+            </ThemedView>
+          )}
 
-      {chips.length > 0 && (
-        <View style={styles.chipRow}>
-          {/* Fresh airport facts pop in and the row reflows around them —
-           * a new delay or gate should arrive, not materialize. */}
-          {chips.map((chip) => (
-            <Animated.View
-              key={chip.label}
-              entering={ZoomIn.springify().damping(16)}
-              layout={LinearTransition.springify().damping(18)}>
-              <ThemedView type="background" style={styles.chip}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {chip.label}
-                </ThemedText>
-                <ThemedText
-                  type="smallBold"
-                  style={chip.tone === 'danger' ? { color: theme.danger } : undefined}>
-                  {chip.value}
-                </ThemedText>
-              </ThemedView>
-            </Animated.View>
-          ))}
-        </View>
-      )}
-      {!locked && factsWithData && chips.length === 0 && (
-        <ThemedText type="small" themeColor="textSecondary">
-          Gate and boarding details appear here as the airport posts them.
-        </ThemedText>
-      )}
-
-      <View style={[styles.stages, locked && styles.stagesLocked]}>
-        {measured && (
-          <>
-            <View
-              style={[
-                styles.rail,
-                { top: railTop, height: railHeight, backgroundColor: theme.backgroundSelected },
-              ]}
-            />
-            {!locked && (
-              <Animated.View
-                style={[styles.railFill, { top: railTop, backgroundColor: theme.tint }, fillStyle]}
-              />
-            )}
-            {!locked && currentIndex >= 0 && (
-              <Animated.View
-                pointerEvents="none"
-                style={[styles.thumb, { backgroundColor: theme.tint }, thumbStyle]}
-              />
-            )}
-          </>
-        )}
-        {plan.map((stage, index) => {
-          const stamp = state.stamps[stage];
-          const isCurrent = !locked && stage === state.stage;
-          const reached = !locked && stamp !== undefined;
-          const advanceable = interactive && !!onAdvance && canAdvanceTo(state, stage, rules);
-          const rewindable = interactive && !!onRewind && canRewindTo(state, stage, rules);
-          const tappable = advanceable || rewindable;
-          const isNext = stage === nextStage;
-          const skipped = !locked && !reached && stageIndex(stage) < currentIndex;
-          // Tracked flights stamp these from live data — say so on the row,
-          // so the missing tap target reads as "automatic", not "broken".
-          const autoStamped = !manualTrip && !reached && !skipped && isFlightStage(stage);
-
-          const nodeState: NodeState = locked
-            ? 'locked'
-            : isCurrent
-              ? 'current'
-              : reached
-                ? 'done'
-                : skipped
-                  ? 'skipped'
-                  : autoStamped
-                    ? 'auto'
-                    : isNext
-                      ? 'next'
-                      : 'open';
-
-          // The next step reads as its action ("I'm on board"), the rest as
-          // plain labels. The accessible name must contain this same string —
-          // announcing text that differs from what's shown fails label-in-name.
-          const rowLabel = advanceable && isNext ? STAGE_PROMPTS[stage] : STAGE_LABELS[stage];
-          const labelColor =
-            nodeState === 'current'
-              ? theme.tint
-              : nodeState === 'done'
-                ? theme.heading
-                : nodeState === 'next'
-                  ? theme.heading
-                  : theme.textSecondary;
-
-          const caption = reached
-            ? formatTime(stamp, hasLanded(stage) ? arrivalZone : departureZone)
-            : skipped
-              ? 'Skipped'
-              : autoStamped && !readOnly
-                ? 'Fills in from live flight data'
-                : null;
-
-          const showUndo = isCurrent && interactive && !!onUndo && (manualTrip || isTravelerStage(stage));
-
-          const onRowLayout = (e: LayoutChangeEvent) => {
-            const { y, height } = e.nativeEvent.layout;
-            const center = y + height / 2;
-            setCenters((prev) => {
-              if (prev[index] === center) return prev;
-              const next = [...prev];
-              next[index] = center;
-              return next;
-            });
-          };
-
-          const rowContent = (
-            <>
-              <View style={styles.rowText}>
-                <ThemedText
-                  type={nodeState === 'current' || nodeState === 'next' ? 'smallBold' : 'small'}
-                  style={{ color: labelColor }}>
-                  {rowLabel}
-                </ThemedText>
-                {(caption || showUndo) && (
-                  <Animated.View entering={FadeInDown.duration(220)} style={styles.captionRow}>
-                    {caption && (
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {caption}
-                      </ThemedText>
-                    )}
-                    {showUndo && (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Undo last step"
-                        hitSlop={Spacing.two}
-                        onPress={onUndo}>
-                        <ThemedText type="small" style={{ color: theme.tint }}>
-                          {caption ? '· Undo' : 'Undo'}
-                        </ThemedText>
-                      </Pressable>
-                    )}
-                  </Animated.View>
+          <View style={[styles.stages, locked && styles.stagesLocked]}>
+            {measured && (
+              <>
+                <View
+                  style={[
+                    styles.rail,
+                    { top: railTop, height: railHeight, backgroundColor: theme.backgroundSelected },
+                  ]}
+                />
+                {!locked && (
+                  <Animated.View
+                    style={[styles.railFill, { top: railTop, backgroundColor: theme.tint }, fillStyle]}
+                  />
                 )}
-              </View>
-              <StageNode state={nodeState} icon={STAGE_ICONS[stage]} />
-            </>
-          );
+                {!locked && currentIndex >= 0 && (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[styles.thumb, { backgroundColor: theme.tint }, thumbStyle]}
+                  />
+                )}
+              </>
+            )}
+            {plan.map((stage, index) => {
+              const stamp = state.stamps[stage];
+              const isCurrent = !locked && stage === state.stage;
+              const reached = !locked && stamp !== undefined;
+              const advanceable = interactive && !!onAdvance && canAdvanceTo(state, stage, rules);
+              const rewindable = interactive && !!onRewind && canRewindTo(state, stage, rules);
+              const tappable = advanceable || rewindable;
+              const isNext = stage === nextStage;
+              const skipped = !locked && !reached && stageIndex(stage) < currentIndex;
+              // Tracked flights stamp these from live data — say so on the row,
+              // so the missing tap target reads as "automatic", not "broken".
+              const autoStamped = !manualTrip && !reached && !skipped && isFlightStage(stage);
 
-          // Tappable rows are Pressables; the rest are plain Views — an iOS
-          // Pressable flattens its children into one accessibility label,
-          // which would swallow the nested Undo button.
-          if (!tappable) {
-            return (
-              <View
-                key={stage}
-                style={styles.stageRow}
-                onLayout={onRowLayout}
-                accessibilityState={locked ? { disabled: true } : undefined}>
-                {rowContent}
-              </View>
-            );
-          }
-          return (
-            <StageRow
-              key={stage}
-              label={advanceable ? rowLabel : `Go back to ${rowLabel}`}
-              onLayout={onRowLayout}
-              onPress={() => {
-                if (advanceable) {
-                  tapMedium();
-                  onAdvance!(stage);
-                } else {
-                  tapLight();
-                  onRewind!(stage);
-                }
-              }}>
-              {rowContent}
-            </StageRow>
-          );
-        })}
-      </View>
+              const nodeState: NodeState = locked
+                ? 'locked'
+                : isCurrent
+                  ? 'current'
+                  : reached
+                    ? 'done'
+                    : skipped
+                      ? 'skipped'
+                      : autoStamped
+                        ? 'auto'
+                        : isNext
+                          ? 'next'
+                          : 'open';
 
-      {footer}
+              // The next step reads as its action ("I'm on board"), the rest as
+              // plain labels. The accessible name must contain this same string —
+              // announcing text that differs from what's shown fails label-in-name.
+              const rowLabel = advanceable && isNext ? STAGE_PROMPTS[stage] : STAGE_LABELS[stage];
+              const labelColor =
+                nodeState === 'current'
+                  ? theme.tint
+                  : nodeState === 'done'
+                    ? theme.heading
+                    : nodeState === 'next'
+                      ? theme.heading
+                      : theme.textSecondary;
+
+              const caption = reached
+                ? formatTime(stamp, hasLanded(stage) ? arrivalZone : departureZone)
+                : skipped
+                  ? 'Skipped'
+                  : autoStamped && !readOnly
+                    ? 'Fills in from live flight data'
+                    : null;
+
+              const showUndo = isCurrent && interactive && !!onUndo && (manualTrip || isTravelerStage(stage));
+
+              const onRowLayout = (e: LayoutChangeEvent) => {
+                const { y, height } = e.nativeEvent.layout;
+                const center = y + height / 2;
+                setCenters((prev) => {
+                  if (prev[index] === center) return prev;
+                  const next = [...prev];
+                  next[index] = center;
+                  return next;
+                });
+              };
+
+              const rowContent = (
+                <>
+                  <View style={styles.rowText}>
+                    <ThemedText
+                      type={nodeState === 'current' || nodeState === 'next' ? 'smallBold' : 'small'}
+                      style={{ color: labelColor }}>
+                      {rowLabel}
+                    </ThemedText>
+                    {(caption || showUndo) && (
+                      <Animated.View
+                        entering={animateNews ? FadeInDown.duration(220) : undefined}
+                        style={styles.captionRow}>
+                        {caption && (
+                          <ThemedText type="small" themeColor="textSecondary">
+                            {caption}
+                          </ThemedText>
+                        )}
+                        {showUndo && (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Undo last step"
+                            hitSlop={Spacing.two}
+                            onPress={onUndo}>
+                            <ThemedText type="small" style={{ color: theme.tint }}>
+                              {caption ? '· Undo' : 'Undo'}
+                            </ThemedText>
+                          </Pressable>
+                        )}
+                      </Animated.View>
+                    )}
+                  </View>
+                  <StageNode state={nodeState} icon={STAGE_ICONS[stage]} />
+                </>
+              );
+
+              // Tappable rows are Pressables; the rest are plain Views — an iOS
+              // Pressable flattens its children into one accessibility label,
+              // which would swallow the nested Undo button.
+              if (!tappable) {
+                return (
+                  <View
+                    key={stage}
+                    style={styles.stageRow}
+                    onLayout={onRowLayout}
+                    accessibilityState={locked ? { disabled: true } : undefined}>
+                    {rowContent}
+                  </View>
+                );
+              }
+              return (
+                <StageRow
+                  key={stage}
+                  label={advanceable ? rowLabel : `Go back to ${rowLabel}`}
+                  onLayout={onRowLayout}
+                  onPress={() => {
+                    if (advanceable) {
+                      tapMedium();
+                      onAdvance!(stage);
+                    } else {
+                      tapLight();
+                      onRewind!(stage);
+                    }
+                  }}>
+                  {rowContent}
+                </StageRow>
+              );
+            })}
+          </View>
+
+          {footer}
+        </>
+      )}
     </Card>
   );
 }
@@ -524,8 +552,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
+  // A step up from the stage labels (16) so the heading reads as the
+  // card's title, well short of the old 32pt one.
   title: {
     flexShrink: 1,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: 700,
+  },
+  heading: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   eyebrow: {
     flexShrink: 1,
@@ -541,19 +581,6 @@ const styles = StyleSheet.create({
   },
   lockedText: {
     flex: 1,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: Spacing.one,
-    borderRadius: Spacing.two,
-    paddingVertical: 2,
-    paddingHorizontal: Spacing.two,
   },
   stages: {
     gap: Spacing.three,

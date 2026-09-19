@@ -8,6 +8,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { db } from '@/db/client';
 import { tripPhotos } from '@/db/schema';
 import { useLiveRows } from '@/services/live-rows';
+import { markUploadDone, markUploading, usePhotoUploadState } from '@/services/photo-upload-state';
 import {
   applyRemotePhoto,
   markPhotoUploaded,
@@ -29,6 +30,9 @@ export function PhotoSync() {
   const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
   const { data: local } = useLiveRows(db.select().from(tripPhotos));
   const busy = useRef(false);
+  // A Retry on the photo strip bumps this, re-running the plan even when
+  // nothing else changed.
+  const { nonce } = usePhotoUploadState();
 
   useEffect(() => {
     if (!userId || !isAuthenticated || remote === undefined || !local) return;
@@ -43,12 +47,16 @@ export function PhotoSync() {
       try {
         const outbound = [...plan.push];
         for (const row of plan.upload) {
+          markUploading(row.id);
           try {
             const storageId = await uploadPhoto(row, await generateUploadUrl());
             await markPhotoUploaded(row.id, storageId, row.updatedAt);
             outbound.push({ ...row, storageId });
+            markUploadDone(row.id, true);
           } catch {
-            // Missing file or bad network: leave it dirty for the next pass.
+            // Missing file or bad network: leave it dirty for the next pass,
+            // and let the strip say it is waiting.
+            markUploadDone(row.id, false);
           }
         }
         for (let offset = 0; offset < outbound.length; offset += 100) {
@@ -69,7 +77,7 @@ export function PhotoSync() {
         busy.current = false;
       }
     })();
-  }, [userId, isAuthenticated, remote, local, push, generateUploadUrl]);
+  }, [userId, isAuthenticated, remote, local, push, generateUploadUrl, nonce]);
 
   return null;
 }

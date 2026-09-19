@@ -1,15 +1,18 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
+import { LikedBySheet } from '@/components/liked-by-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   agoLabel,
   captionOf,
+  likedByParts,
   photoAspect,
   updateContext,
   type OwnUpdate,
@@ -153,27 +156,78 @@ function UpdateRow({
               </ThemedText>
             )}
           </Pressable>
-        ) : own && own.reactedBy.length > 0 ? (
-          <View style={styles.heart}>
-            <SymbolView
-              name={{ ios: 'heart.fill', android: 'favorite', web: 'favorite' }}
-              size={16}
-              tintColor={theme.danger}
-            />
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {namesLine(own.reactedBy)}
-            </ThemedText>
-          </View>
         ) : null}
       </View>
+      {/* The owner's hearts are people: faces and first names on a row of
+          their own (they used to squeeze in beside the meta line and get
+          clipped), the whole list a tap away. */}
+      {own && own.reactedBy.length > 0 && <LikesRow update={own} />}
     </Pressable>
   );
 }
 
-/** "Anna", "Anna and Sam", "Anna, Sam and 2 others". */
-export function namesLine(names: string[]): string {
-  if (names.length <= 2) return names.join(' and ');
-  return `${names[0]}, ${names[1]} and ${names.length - 2} other${names.length - 2 === 1 ? '' : 's'}`;
+function LikesRow({ update }: { update: OwnUpdate }) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  // A server from before the "Liked by" list sends names only: the line
+  // still reads, without faces, and there is no list to open.
+  const likers = update.likers ?? null;
+  const names = likers ? likers.map((l) => l.name) : update.reactedBy;
+  const parts = likedByParts(names);
+  const line = (
+    <>
+      {likers ? (
+        <View style={styles.faces}>
+          {likers.slice(0, 3).map((liker, i) => (
+            <View
+              key={liker.userId}
+              style={[styles.face, { borderColor: theme.backgroundElement }, i > 0 && styles.faceOverlap]}>
+              <Avatar name={liker.name} imageUrl={liker.imageUrl} size={24} />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <SymbolView
+          name={{ ios: 'heart.fill', android: 'favorite', web: 'favorite' }}
+          size={16}
+          tintColor={theme.danger}
+        />
+      )}
+      <ThemedText type="small" style={styles.likedBy}>
+        {parts.map((part, i) => (
+          <ThemedText key={i} type={part.bold ? 'smallBold' : 'small'}>
+            {part.text}
+          </ThemedText>
+        ))}
+      </ThemedText>
+    </>
+  );
+  if (!likers) return <View style={styles.likes}>{line}</View>;
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={parts.map((p) => p.text).join('')}
+        accessibilityHint="Shows everyone who liked this update"
+        testID="liked-by"
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [
+          styles.likes,
+          styles.likesButton,
+          { backgroundColor: theme.field },
+          pressed && styles.pressed,
+        ]}>
+        {line}
+        <SymbolView
+          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+          size={12}
+          weight="semibold"
+          tintColor={theme.textSecondary}
+        />
+      </Pressable>
+      <LikedBySheet update={update} likers={likers} visible={open} onClose={() => setOpen(false)} />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -201,4 +255,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
   },
+  likes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two + 2,
+  },
+  likesButton: {
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.three - 2,
+  },
+  likedBy: { flex: 1 },
+  faces: { flexDirection: 'row' },
+  face: {
+    borderWidth: 2,
+    borderRadius: 14,
+  },
+  faceOverlap: { marginLeft: -Spacing.two },
 });

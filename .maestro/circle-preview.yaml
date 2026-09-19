@@ -12,7 +12,7 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "My travels"
     timeout: 90000
-- tapOn: "People"
+- tapOn: "Friends|People"
 - extendedWaitUntil:
     visible: "See what they see"
     timeout: 20000

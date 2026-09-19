@@ -4,7 +4,7 @@ import { useMutation } from 'convex/react';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useState, type ComponentProps } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -32,6 +39,7 @@ import { trackEvent } from '@/services/analytics';
 import { airportZone } from '@/services/airports';
 import { watcherNames } from '@/services/circle';
 import { formatDayLabelWithYear } from '@/services/dates';
+import { showFlash } from '@/services/flash';
 import { noteSuccess } from '@/services/haptics';
 import { useJourney } from '@/services/journeys';
 import {
@@ -72,11 +80,16 @@ export function TripUpdateComposer() {
   const [text, setText] = useState('');
   const [picked, setPicked] = useState<PickedImage | null>(null);
   const [busy, setBusy] = useState(false);
+  // From the moment the picker opens until it hands the photo over:
+  // converting or fetching one from iCloud takes seconds after it closes,
+  // and the photo slot says so instead of sitting empty.
+  const [preparing, setPreparing] = useState(false);
 
-  const canPost = !busy && !!row && (text.trim().length > 0 || !!picked);
+  const canPost = !busy && !preparing && !!row && (text.trim().length > 0 || !!picked);
 
   const addPhoto = () =>
     showPhotoSourceMenu(async (source) => {
+      setPreparing(true);
       try {
         const [image] = await pickImages(source, { limit: 1 });
         if (image) setPicked(image);
@@ -89,6 +102,8 @@ export function TripUpdateComposer() {
         } else {
           Alert.alert('Could not add the photo', 'Something went wrong — please try again.');
         }
+      } finally {
+        setPreparing(false);
       }
     });
 
@@ -120,6 +135,9 @@ export function TripUpdateComposer() {
       });
       noteSuccess();
       trackEvent('trip_update_posted', { photo: !!picked, chars: text.trim().length });
+      // The composer closes on success; the trip underneath says it went
+      // out, and to whom.
+      showFlash('Update shared', sharedWith(visibilityOf(row), followers ?? []));
       router.back();
     } catch (error) {
       const code = error instanceof ConvexError ? String(error.data) : '';
@@ -190,7 +208,12 @@ export function TripUpdateComposer() {
           ...headerOptions,
           headerRight: () =>
             busy ? (
-              <ActivityIndicator style={styles.headerButton} />
+              <View style={[styles.headerButton, styles.posting]} accessibilityLabel="Posting">
+                <ActivityIndicator size="small" />
+                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.headerLabel}>
+                  Posting
+                </ThemedText>
+              </View>
             ) : (
               <HeaderButton label="Post" bold disabled={!canPost} onPress={submit} />
             ),
@@ -215,7 +238,7 @@ export function TripUpdateComposer() {
           placeholderTextColor={theme.textSecondary}
           textAlignVertical="top"
           editable={!busy}
-          style={[styles.editor, { color: theme.text }]}
+          style={[styles.editor, { color: theme.text }, busy && styles.dimmed]}
         />
         {remaining <= 40 && (
           <ThemedText type="small" themeColor={remaining === 0 ? 'danger' : 'textSecondary'} style={styles.counter}>
@@ -223,7 +246,19 @@ export function TripUpdateComposer() {
           </ThemedText>
         )}
 
-        {picked ? (
+        {preparing && !picked ? (
+          <View
+            accessibilityLabel="Preparing your photo"
+            style={[styles.photo, styles.preparing, { backgroundColor: theme.field }]}>
+            <ActivityIndicator color={theme.tint} />
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              Preparing your photo…
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Large or iCloud photos take a few seconds
+            </ThemedText>
+          </View>
+        ) : picked ? (
           <View>
             <Image
               source={{ uri: picked.uri }}
@@ -231,19 +266,28 @@ export function TripUpdateComposer() {
               accessibilityIgnoresInvertColors
               style={[styles.photo, { aspectRatio: photoAspect(picked), backgroundColor: theme.field }]}
             />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Remove photo"
-              hitSlop={Spacing.two}
-              disabled={busy}
-              onPress={() => setPicked(null)}
-              style={({ pressed }) => [styles.removePhoto, pressed && styles.pressed]}>
-              <SymbolView
-                name={{ ios: 'xmark', android: 'close', web: 'close' }}
-                size={14}
-                tintColor="#FFFFFF"
-              />
-            </Pressable>
+            {busy && (
+              <View style={styles.uploading} accessibilityLabel="Uploading photo">
+                <ThemedText type="smallBold" style={styles.uploadingText}>
+                  Uploading photo
+                </ThemedText>
+                <IndeterminateBar />
+              </View>
+            )}
+            {!busy && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
+                hitSlop={Spacing.two}
+                onPress={() => setPicked(null)}
+                style={({ pressed }) => [styles.removePhoto, pressed && styles.pressed]}>
+                <SymbolView
+                  name={{ ios: 'xmark', android: 'close', web: 'close' }}
+                  size={14}
+                  tintColor="#FFFFFF"
+                />
+              </Pressable>
+            )}
           </View>
         ) : (
           <Pressable
@@ -284,6 +328,33 @@ export function TripUpdateComposer() {
         </View>
       </ScrollView>
     </ThemedView>
+  );
+}
+
+/** "Clara, Noah & Sofia can see it now" — the toast's line once it is out. */
+function sharedWith(
+  visibility: ReturnType<typeof visibilityOf>,
+  followers: { name: string | null; close: boolean }[],
+): string {
+  const people = visibility === 'close' ? followers.filter((f) => f.close) : followers;
+  if (people.length) return `${watcherNames(people)} can see it now`;
+  return visibility === 'close'
+    ? 'Your close circle will see it on this trip'
+    : 'Your circle will see it on this trip';
+}
+
+/** A bar that runs without a number — the upload has no progress to report
+ * (see photo-files: it goes out in one request), only that it is moving. */
+function IndeterminateBar() {
+  const x = useSharedValue(0);
+  useEffect(() => {
+    x.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }), -1);
+  }, [x]);
+  const run = useAnimatedStyle(() => ({ left: `${x.value * 70 - 10}%` }));
+  return (
+    <View style={styles.track}>
+      <Animated.View style={[styles.runner, run]} />
+    </View>
   );
 }
 
@@ -389,6 +460,45 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   pressed: { opacity: 0.6 },
+  dimmed: { opacity: 0.5 },
+  preparing: {
+    aspectRatio: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  uploading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    backgroundColor: 'rgba(7,15,32,0.4)',
+  },
+  uploadingText: { color: '#FFFFFF' },
+  track: {
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  runner: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '40%',
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  posting: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+  },
   autoBlock: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: Spacing.three,
