@@ -33,7 +33,7 @@ appId: com.shanavasshaji.flyright
 - launchApp:
     stopApp: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 60000
 # The delayed live hero must be up (amber fill, gate fact line).
 - extendedWaitUntil:

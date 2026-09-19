@@ -10,7 +10,7 @@ appId: com.shanavasshaji.flyright
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - tapOn: "Friends|People"
 - extendedWaitUntil:

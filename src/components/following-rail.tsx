@@ -61,7 +61,9 @@ export function FollowingRail({
   leading,
   trailing,
 }: {
-  title: string;
+  /** A label over the faces; left out on Flights, where the faces and their
+   * rings say what they are. */
+  title?: string;
   entries: FollowingEntry[];
   now: Date;
   /** A tile before the faces — the traveller's own "You" tile. */
@@ -78,9 +80,11 @@ export function FollowingRail({
 
   return (
     <View style={styles.section}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.title}>
-        {title}
-      </ThemedText>
+      {title && (
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.title}>
+          {title}
+        </ThemedText>
+      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

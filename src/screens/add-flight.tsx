@@ -712,8 +712,8 @@ export function AddFlight({ step }: { step: Step }) {
         title: editId
           ? 'Trip updated'
           : manualMode || flightPast
-            ? 'Saved to My travels'
-            : 'Added to My travels',
+            ? 'Saved to Flights'
+            : 'Added to Flights',
         subtitle: editId
           ? 'Your changes are saved.'
           : manualMode
@@ -1237,7 +1237,7 @@ export function AddFlight({ step }: { step: Step }) {
                 {audienceRow('card')}
                 <View style={styles.cta}>
                   <PrimaryButton
-                    label={editId ? 'Save changes →' : 'Add to My travels →'}
+                    label={editId ? 'Save changes →' : 'Add to Flights →'}
                     onPress={saveManual}
                   />
                 </View>
@@ -1301,7 +1301,7 @@ export function AddFlight({ step }: { step: Step }) {
                   {audienceRow('pass')}
                   <PassDivider />
                   <PassAction
-                    label={flightPast ? 'Save to My travels →' : 'Track this flight →'}
+                    label={flightPast ? 'Save to Flights →' : 'Track this flight →'}
                     onPress={track}
                   />
                 </>
@@ -1360,7 +1360,7 @@ export function AddFlightDone() {
           />
         </View>
         <ThemedText type="subtitle" themeColor="heading">
-          {title ?? 'Saved to My travels'}
+          {title ?? 'Saved to Flights'}
         </ThemedText>
         {!!label && (
           <View style={styles.chip}>

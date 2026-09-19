@@ -52,7 +52,7 @@ appId: com.shanavasshaji.flyright
     timeout: 10000
 - tapOn: "Allow notifications"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - tapOn: "Add a flight, past or future"
 - extendedWaitUntil:
@@ -70,12 +70,12 @@ appId: com.shanavasshaji.flyright
     timeout: 5000
 - tapOn: ".*Today.*"
 - extendedWaitUntil:
-    visible: ".*(Track this flight|Save to My travels).*"
+    visible: ".*(Track this flight|Save to Flights).*"
     timeout: 20000
 - assertVisible: ".*HEL → .*"
-- tapOn: ".*(Track this flight|Save to My travels).*"
+- tapOn: ".*(Track this flight|Save to Flights).*"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 10000
 - assertVisible: ".*AY1331.*"
 # Reconcile runs on the journey mutation; give it a beat, then the timeline

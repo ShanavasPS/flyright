@@ -46,7 +46,7 @@ appId: com.shanavasshaji.flyright
           text: "Allow"
           optional: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - tapOn: "Add a flight, past or future"
 - extendedWaitUntil:

@@ -9,7 +9,7 @@ tags:
 - launchApp:
     stopApp: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 60000
 - extendedWaitUntil:
     visible: "demo-pause-never-matches"
@@ -39,13 +39,13 @@ tags:
     optional: true
 - tapOn: ".*Tomorrow.*"
 - extendedWaitUntil:
-    visible: ".*(Track this flight|Save to My travels).*"
+    visible: ".*(Track this flight|Save to Flights).*"
     timeout: 30000
 - extendedWaitUntil:
     visible: "demo-pause-never-matches"
     timeout: 3200
     optional: true
-- tapOn: ".*(Track this flight|Save to My travels).*"
+- tapOn: ".*(Track this flight|Save to Flights).*"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 15000

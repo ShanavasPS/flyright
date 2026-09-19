@@ -11,8 +11,8 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Save the travel code →"
     timeout: 60000
-- assertVisible: ".*In My travels.*update boarding pass.*"
-- assertNotVisible: "Add 1 flight to My travels →"
+- assertVisible: ".*In Flights.*update boarding pass.*"
+- assertNotVisible: "Add 1 flight to Flights →"
 - takeScreenshot: ${SHOTS}/wallet-update-review
 - tapOn: "Save the travel code →"
 - extendedWaitUntil:

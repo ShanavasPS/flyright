@@ -46,7 +46,7 @@ appId: com.shanavasshaji.flyright
           text: "Allow"
           optional: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - openLink: flyright://add-flight
 - extendedWaitUntil:

@@ -18,7 +18,7 @@ env:
 - launchApp
 - openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - openLink: "flyright://world"
 - extendedWaitUntil:

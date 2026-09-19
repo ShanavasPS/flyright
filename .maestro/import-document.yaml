@@ -34,7 +34,7 @@ appId: com.shanavasshaji.flyright
 - launchApp
 # A cold dev-client start can outlast the deep link — wait for the list first.
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - openLink: "flyright:///import-document?uri=${encodeURIComponent(DOC_URL)}"
 - extendedWaitUntil:
@@ -50,14 +50,14 @@ appId: com.shanavasshaji.flyright
 - takeScreenshot: ${SHOTS}/import-review
 # Every leg is selected by default once its lookup settles; the CTA counts them.
 - extendedWaitUntil:
-    visible: "Add .* flights to My travels →"
+    visible: "Add .* flights →"
     timeout: 30000
-- tapOn: "Add .* flights to My travels →"
+- tapOn: "Add .* flights →"
 - extendedWaitUntil:
     visible: ".*flights added"
     timeout: 20000
 - takeScreenshot: ${SHOTS}/import-added
 # Back on the journal with the trips in place.
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 10000

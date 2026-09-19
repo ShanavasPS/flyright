@@ -22,7 +22,7 @@ tags:
           clearState: false
           permissions: {}
       - extendedWaitUntil:
-          visible: "My travels"
+          visible: "Flights"
           timeout: 90000
       - assertNotVisible: "Something went wrong"
       - takeScreenshot: ${SHOTS}/travels

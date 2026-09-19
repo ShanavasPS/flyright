@@ -948,7 +948,7 @@ function showTripMenu(
     items.push({ text: 'Who sees this trip…', onPress: changeAudience });
   }
   items.push({
-    text: 'Remove from My travels',
+    text: 'Remove from Flights',
     onPress: () => confirmRemove(journeyId, router),
     destructive: true,
   });

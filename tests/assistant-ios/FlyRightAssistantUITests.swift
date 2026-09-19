@@ -37,7 +37,7 @@ final class FlyRightAssistantUITests: XCTestCase {
 
     private func prepareJournal() {
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["My travels"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.tabBars.buttons["Flights"].waitForExistence(timeout: 60))
         guard let flightNumber else { return }
         let trip = app.links.matching(NSPredicate(format: "label CONTAINS %@", flightNumber)).firstMatch
         XCTAssertTrue(trip.waitForExistence(timeout: 30), "Expected saved flight is missing before testing")
@@ -71,7 +71,7 @@ final class FlyRightAssistantUITests: XCTestCase {
 
     private func returnHome() {
         if element("Close").exists { element("Close").tap() }
-        else if app.buttons["My travels"].firstMatch.exists { app.buttons["My travels"].firstMatch.tap() }
+        else if app.buttons["Flights"].firstMatch.exists { app.buttons["Flights"].firstMatch.tap() }
         else if app.navigationBars.buttons["Back"].firstMatch.exists { app.navigationBars.buttons["Back"].firstMatch.tap() }
         if !app.buttons["Add a flight, past or future"].exists && app.navigationBars.buttons["Back"].firstMatch.exists {
             app.navigationBars.buttons["Back"].firstMatch.tap()
@@ -188,7 +188,7 @@ final class FlyRightAssistantUITests: XCTestCase {
         }
         XCUIDevice.shared.appearance = .dark
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["My travels"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.tabBars.buttons["Flights"].waitForExistence(timeout: 60))
         pause(1.0)
         let hero = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "AY1331")).firstMatch
         XCTAssertTrue(hero.waitForExistence(timeout: 10))

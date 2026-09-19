@@ -42,7 +42,7 @@ appId: com.shanavasshaji.flyright
 - launchApp:
     stopApp: true # relaunch so live queries see externally seeded rows
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 # LogBox toast covers the tab bar on dev builds.
 - tapOn:

@@ -26,7 +26,7 @@ appId: com.shanavasshaji.flyright
     timeout: 30000
 - tapOn: "Skip"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - assertVisible: "Where have you flown?"
 # NativeTabs labels don't respond to Maestro taps on iOS 26 (see

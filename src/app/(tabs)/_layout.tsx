@@ -57,7 +57,7 @@ export default function TabsLayout() {
       iconColor={{ default: colors.textSecondary, selected: colors.tint }}
       labelStyle={{ color: colors.textSecondary, selected: { color: colors.tint } }}>
       <NativeTabs.Trigger name="(journeys)">
-        <NativeTabs.Trigger.Label>My travels</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Flights</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/journeys.png')}
           renderingMode="template"

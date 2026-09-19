@@ -9,7 +9,7 @@
 # not exist there. Same AERODATABOX/.env.local + time-of-day requirements as
 # travel-day-flex-mode.yaml.
 #
-# The two-pane assert: the list pane's "My travels" title and the detail
+# The two-pane assert: the list pane's "Flights" title and the detail
 # pane's "Finnair AY1331" trip title are visible simultaneously — impossible
 # in the single-pane layout, where the detail is a pushed route.
 #
@@ -41,14 +41,14 @@ appId: com.shanavasshaji.flyright
     timeout: 8000
 - tapOn: ".*Tomorrow.*"
 - extendedWaitUntil:
-    visible: ".*(Track this flight|Save to My travels).*"
+    visible: ".*(Track this flight|Save to Flights).*"
     timeout: 20000
-- tapOn: ".*(Track this flight|Save to My travels).*"
+- tapOn: ".*(Track this flight|Save to Flights).*"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 10000
 # Two-pane proof: list title and the detail pane's trip title, together.
-- assertVisible: "My travels"
+- assertVisible: "Flights"
 - extendedWaitUntil:
     visible: "Finnair AY1331"
     timeout: 10000

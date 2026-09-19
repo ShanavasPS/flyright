@@ -51,7 +51,7 @@ export default function NotFound() {
               <ThemedText type="link">Update on {storeName}</ThemedText>
             </Pressable>
           )}
-          <PrimaryButton label="Back to my travels" onPress={() => router.replace('/')} />
+          <PrimaryButton label="Back to flights" onPress={() => router.replace('/')} />
         </Card>
       </SafeAreaView>
     </ThemedView>

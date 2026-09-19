@@ -17,7 +17,7 @@ appId: com.shanavasshaji.flyright
 - launchApp
 # Android debug cold starts (force-stopped app + bundle auto-load) outlive 30s.
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - openLink: "flyright://settings"
 - extendedWaitUntil:

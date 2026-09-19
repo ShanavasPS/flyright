@@ -39,13 +39,13 @@ const EVERY_SCENARIO: [string, Partial<ImportStatusInput>][] = [
 describe('importStatus', () => {
   it('says what saving does to a trip already in My travels, not what to do', () => {
     expect(status({ attachable: true, already: true, pass: true })).toEqual({
-      text: 'Already in My travels · this boarding pass will be saved to it', tone: 'good',
+      text: 'Already in Flights · this boarding pass will be saved to it', tone: 'good',
     });
     expect(status({ attachable: true, already: true, ticket: true }).text)
-      .toBe('Already in My travels · this ticket code will be saved to it');
+      .toBe('Already in Flights · this ticket code will be saved to it');
     expect(status({ attachable: true, already: true }).text)
-      .toBe('Already in My travels · its details will be updated');
-    expect(status({ already: true })).toEqual({ text: 'Already in My travels · nothing new to save', tone: 'dim' });
+      .toBe('Already in Flights · its details will be updated');
+    expect(status({ already: true })).toEqual({ text: 'Already in Flights · nothing new to save', tone: 'dim' });
   });
 
   it('prefers the boarding pass over a ticket code when a leg carries both', () => {

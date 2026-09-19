@@ -123,7 +123,7 @@ it('waits for all five PDF trips, then saves them without any scrolling', async 
 
   await finish(3, 4);
   expect(button().props.disabled).toBe(false);
-  expect(button().props.label).toBe('Add 5 flights to My travels →');
+  expect(button().props.label).toBe('Add 5 flights →');
   await pressAdd();
   expect(savedFlights()).toEqual(segments.map(segment => segment.flight));
 });
@@ -190,7 +190,7 @@ it('preserves a traveller’s deselection while the other lookups finish', async
   const firstCard = screen!.root.findAllByProps({ accessibilityRole: 'checkbox' })[0];
   act(() => firstCard.props.onPress());
   await finish(3, 4);
-  expect(button().props.label).toBe('Add 4 flights to My travels →');
+  expect(button().props.label).toBe('Add 4 flights →');
   await pressAdd();
   expect(savedFlights()).toEqual(segments.slice(1).map(segment => segment.flight));
 });

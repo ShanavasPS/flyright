@@ -26,7 +26,7 @@ tags:
 - launchApp:
     clearState: false
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - openLink: "flyright://settings"
 - extendedWaitUntil:
@@ -52,7 +52,7 @@ tags:
     env:
       EMAIL: ${NEW_EMAIL}
 - extendedWaitUntil:
-    visible: ".*(My travels|Settings|Welcome|Every flight).*"
+    visible: ".*(Flights|Settings|Welcome|Every flight).*"
     timeout: 60000
 - openLink: "flyright://settings"
 - extendedWaitUntil:
@@ -80,7 +80,7 @@ tags:
     env:
       EMAIL: ${ORIGINAL_EMAIL}
 - extendedWaitUntil:
-    visible: ".*(My travels|Settings|Welcome|Every flight).*"
+    visible: ".*(Flights|Settings|Welcome|Every flight).*"
     timeout: 60000
 - openLink: "flyright://settings"
 - extendedWaitUntil:

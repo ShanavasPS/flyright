@@ -10,7 +10,7 @@
 #   adb -s <serial> push pass.png /sdcard/Download/mock-boarding-pass.png
 #   adb -s <serial> shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE \
 #     -d file:///sdcard/Download/mock-boarding-pass.png
-# Then, with the app on My travels and (for a dev client) Metro on :8081:
+# Then, with the app on Flights and (for a dev client) Metro on :8081:
 #   maestro --device <serial> test -e IMAGE_NAME=mock-boarding-pass.png \
 #     -e FLIGHT='Qatar Airways QR304' -e SHOTS=/tmp/import .maestro/import-upload-android.yaml
 # Remove the image afterwards: adb shell rm /sdcard/Download/mock-boarding-pass.png
@@ -23,7 +23,7 @@ tags:
 - launchApp:
     clearState: false
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - openLink: "flyright://add-flight"
 - extendedWaitUntil:

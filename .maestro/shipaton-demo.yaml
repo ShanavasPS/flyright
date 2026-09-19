@@ -4,7 +4,7 @@
 appId: com.shanavasshaji.flyright
 ---
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - waitForAnimationToEnd
 - startRecording: ${DEMO_OUT}/raw/01-intro
@@ -37,7 +37,7 @@ appId: com.shanavasshaji.flyright
 
 - tapOn: "Close"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - tapOn:
     id: travel-day-banner

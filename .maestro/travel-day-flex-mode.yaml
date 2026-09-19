@@ -15,7 +15,7 @@
 #   adb -s <emulator> emu sensor set hinge-angle0 90    # half-open (tabletop)
 #   adb -s <emulator> emu sensor set hinge-angle0 180   # flat
 # Expected in tabletop: hero alone above the hinge (glance variant, no stats
-# footer), "My travels" title + journal list below it.
+# footer), "Flights" title + journal list below it.
 #
 # Synthetic-AVD quirks: (1) androidx.window never reports halfOpened here and
 # isSeparating stays true even flat, so the split shows at any angle on this
@@ -57,7 +57,7 @@ env:
     timeout: 10000
 - tapOn: "Allow notifications"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - tapOn: "Add a flight, past or future"
 - extendedWaitUntil:
@@ -79,11 +79,11 @@ env:
     timeout: 8000
 - tapOn: ".*${DAY}.*"
 - extendedWaitUntil:
-    visible: ".*(Track this flight|Save to My travels).*"
+    visible: ".*(Track this flight|Save to Flights).*"
     timeout: 20000
-- tapOn: ".*(Track this flight|Save to My travels).*"
+- tapOn: ".*(Track this flight|Save to Flights).*"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 10000
 # The boarding-pass hero, in whichever phase the seeded flight landed in.
 - extendedWaitUntil:

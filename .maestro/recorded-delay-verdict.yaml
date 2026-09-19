@@ -26,7 +26,7 @@ appId: com.shanavasshaji.flyright
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 20000
 # The row must already carry the money badge — the list resolves it from the
 # same disruptions cache, no network.

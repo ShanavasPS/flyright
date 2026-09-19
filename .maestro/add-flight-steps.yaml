@@ -1,7 +1,7 @@
-# Add-flight steps as pushed screens: the flow lives in the My travels stack,
+# Add-flight steps as pushed screens: the flow lives in the Flights stack,
 # one screen per step (flight number → date → details), each with the stack's
 # header and back chevron and no tab bar. Walks forward through the manual
-# path and back out to My travels, checking each step's title on the way.
+# path and back out to Flights, checking each step's title on the way.
 # Back is a left-edge swipe on iOS (Maestro's `back` presses Home there) and
 # the system back on Android. Nothing is saved.
 # Run: maestro test .maestro/add-flight-steps.yaml   (booted device with the
@@ -46,7 +46,7 @@ appId: com.shanavasshaji.flyright
           text: "Allow"
           optional: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - openLink: flyright://add-flight
 - extendedWaitUntil:

@@ -95,7 +95,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
         unlockIfNeeded()
         capture("after-unlock")
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["My travels"].waitForExistence(timeout: 60), "FlyRight did not come up after the unlock")
+        XCTAssertTrue(app.tabBars.buttons["Flights"].waitForExistence(timeout: 60), "FlyRight did not come up after the unlock")
         capture("launched-after-unlock")
     }
 
@@ -243,7 +243,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
         XCTAssertFalse(email.isEmpty, "Set TEST_RUNNER_FLYRIGHT_SWITCH_EMAIL")
         app.launch()
         switchAccount(to: email)
-        XCTAssertTrue(app.tabBars.buttons["My travels"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.tabBars.buttons["Flights"].waitForExistence(timeout: 30))
     }
 
     func testCaptureShareFrames() throws {
@@ -400,12 +400,12 @@ final class FlyRightPhysicalUITests: XCTestCase {
         for pass in 1...2 {
             app.terminate()
             app.launch()
-            XCTAssertTrue(app.tabBars.buttons["My travels"].waitForExistence(timeout: 60))
+            XCTAssertTrue(app.tabBars.buttons["Flights"].waitForExistence(timeout: 60))
             // Include a startup observation window for delayed backend failures.
             Thread.sleep(forTimeInterval: 30)
             assertHealthy()
 
-            tapTab("My travels")
+            tapTab("Flights")
             waitForContent("Add a flight, past or future")
             assertHealthy()
             capture("pass-\(pass)-travels")
@@ -438,7 +438,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
             state.lifetime = .keepAlways
             add(state)
 
-            tapTab("My travels")
+            tapTab("Flights")
             waitForContent("Add a flight, past or future")
             assertHealthy()
         }

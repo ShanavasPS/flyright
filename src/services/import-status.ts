@@ -35,14 +35,14 @@ export function importStatus({ pass, ticket, attachable, already, plan, edited, 
   if (attachable) {
     return {
       text: pass
-        ? 'Already in My travels · this boarding pass will be saved to it'
+        ? 'Already in Flights · this boarding pass will be saved to it'
         : ticket
-          ? 'Already in My travels · this ticket code will be saved to it'
-          : 'Already in My travels · its details will be updated',
+          ? 'Already in Flights · this ticket code will be saved to it'
+          : 'Already in Flights · its details will be updated',
       tone: 'good',
     };
   }
-  if (already) return { text: 'Already in My travels · nothing new to save', tone: 'dim' };
+  if (already) return { text: 'Already in Flights · nothing new to save', tone: 'dim' };
   if (plan.kind === 'pending') return { text: 'Looking up…', tone: 'dim' };
   if (plan.kind === 'lookup') {
     const f = plan.flight;

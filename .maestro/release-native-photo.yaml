@@ -10,7 +10,7 @@ tags:
 - launchApp:
     clearState: false
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - openLink: "flyright://dev/release-check"
 - extendedWaitUntil:

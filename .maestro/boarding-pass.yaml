@@ -8,7 +8,7 @@ appId: com.shanavasshaji.flyright
     text: "Don’t Allow|Don't allow|Don.t Allow"
     optional: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 60000
 - tapOn:
     id: hero-boarding-pass

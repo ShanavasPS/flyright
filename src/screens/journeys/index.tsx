@@ -241,15 +241,14 @@ export function Journeys() {
         style={[styles.safeArea, !!tabletopHinge && styles.belowHinge]}>
         <View style={styles.titleRow}>
           <View style={styles.titleBlock}>
+            {/* The day line alone: the tab already says Flights, and a
+                large title under it only pushed the live card down. */}
             <ThemedText
               type="smallBold"
               themeColor="textSecondary"
               style={styles.eyebrow}
               numberOfLines={1}>
               {headerEyebrow(sections, hero, now)}
-            </ThemedText>
-            <ThemedText type="title" themeColor="heading">
-              My travels
             </ThemedText>
           </View>
           <View style={styles.titleActions}>

@@ -28,7 +28,7 @@ appId: com.shanavasshaji.flyright
     timeout: 90000
 - tapOn: "Skip"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - tapOn: "Settings"
 - extendedWaitUntil:
@@ -43,9 +43,9 @@ appId: com.shanavasshaji.flyright
     visible:
       id: "contact-support"
     timeout: 30000
-- tapOn: "My travels"
+- tapOn: "Flights"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 10000
 - tapOn: "Add a flight, past or future"
 - extendedWaitUntil:
@@ -62,9 +62,9 @@ appId: com.shanavasshaji.flyright
     timeout: 5000
 - tapOn: ".*Yesterday.*"
 - extendedWaitUntil:
-    visible: ".*Save to My travels.*"
+    visible: ".*Save to Flights.*"
     timeout: 15000
-- tapOn: ".*Save to My travels.*"
+- tapOn: ".*Save to Flights.*"
 - extendedWaitUntil:
     visible: ".*AY1331.*"
     timeout: 15000

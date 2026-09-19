@@ -27,7 +27,7 @@ appId: com.shanavasshaji.flyright
     timeout: 90000
 - tapOn: "Skip"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 # The ATT prompt lands a beat after onboarding; clear it before the tap so it
 # can't sit over the sheet.

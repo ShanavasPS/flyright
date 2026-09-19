@@ -6,7 +6,7 @@ tags:
 - launchApp:
     stopApp: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 60000
 - openLink: "flyright:///paywall"
 - extendedWaitUntil:

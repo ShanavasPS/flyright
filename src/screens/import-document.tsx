@@ -500,8 +500,8 @@ export function ImportDocument() {
             {count === 0
               ? "Saved on the trip page. Open the code when you need it at the airport."
               : tracked > 0
-                ? "They're in My travels — we'll watch the upcoming ones for delays and anything you're owed."
-                : "They're in My travels. If a flight was disrupted, its verdict is waiting on the trip page."}
+                ? "They're in Flights — we'll watch the upcoming ones for delays and anything you're owed."
+                : "They're in Flights. If a flight was disrupted, its verdict is waiting on the trip page."}
             {count > 0 && attached > 0
               ? attached === 1
                 ? ' A travel code went on a trip you already had.'
@@ -630,7 +630,7 @@ export function ImportDocument() {
                 phase.kind === 'saving'
                   ? 'Adding…'
                   : !authLoaded || journeys === undefined
-                    ? 'Checking My travels…'
+                    ? 'Checking your flights…'
                   : pendingCount > 0
                     ? `Checking flights… ${segments.length - pendingCount} of ${segments.length}`
                   : selectedRows.length === 0
@@ -640,8 +640,8 @@ export function ImportDocument() {
                         ? 'Save the travel code →'
                         : `Add ${selectedRows.length} travel codes →`
                       : selectedRows.length === 1
-                        ? 'Add 1 flight to My travels →'
-                        : `Add ${selectedRows.length} flights to My travels →`
+                        ? 'Add 1 flight →'
+                        : `Add ${selectedRows.length} flights →`
               }
               disabled={phase.kind === 'saving' || pendingCount > 0 || selectedRows.length === 0}
               onPress={save}

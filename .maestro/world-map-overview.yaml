@@ -45,7 +45,7 @@ appId: com.shanavasshaji.flyright
     timeout: 10000
 - openLink: "flyright:///"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 15000
 - openLink: "flyright:///world"
 - extendedWaitUntil:

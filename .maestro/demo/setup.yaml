@@ -36,7 +36,7 @@ tags:
     text: "Skip"
     optional: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 60000
 # Notification prime, if it shows on this path.
 - tapOn:
@@ -52,7 +52,7 @@ tags:
     env:
       EMAIL: ${EMAIL}
 - extendedWaitUntil:
-    visible: ".*(Not now|Continue|Settings|My travels).*"
+    visible: ".*(Not now|Continue|Settings|Flights).*"
     timeout: 30000
 - tapOn:
     text: "Not now"

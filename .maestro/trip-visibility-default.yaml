@@ -14,7 +14,7 @@ env:
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 # 1. The Settings default.
 - openLink: "flyright:///settings"
@@ -54,9 +54,9 @@ env:
     visible: ".*Only me.*Nobody else.*"
     timeout: 5000
 - takeScreenshot: ${SHOTS}/add-flight-private
-- tapOn: ".*Save to My travels.*"
+- tapOn: ".*Save to Flights.*"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 10000
 # 3. The trip wears the chip, and its menu changes it.
 - openLink: "flyright:///journey/${FLIGHT}-${DATE}"
@@ -75,7 +75,7 @@ env:
 - takeScreenshot: ${SHOTS}/trip-close-circle
 # 4. Leave the device as found.
 - tapOn: "Trip options"
-- tapOn: "Remove from My travels"
+- tapOn: "Remove from Flights"
 - extendedWaitUntil:
     visible: "Remove"
     timeout: 5000

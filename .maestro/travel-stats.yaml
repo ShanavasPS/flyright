@@ -1,4 +1,4 @@
-# Travel stats and the lists behind its cards. From My travels the summary
+# Travel stats and the lists behind its cards. From Flights the summary
 # card opens the stats page (hero, record flight, top destination, most-flown
 # airline, most-flown aircraft, tiles); each card's "All …" link opens
 # Flights, Places, Airlines or Aircraft, whose sort tabs reorder the list. Needs at least one trip in the
@@ -44,7 +44,7 @@ appId: com.shanavasshaji.flyright
           text: "Allow"
           optional: true
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - extendedWaitUntil:
     visible: "All travel stats.*"

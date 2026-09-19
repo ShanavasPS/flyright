@@ -27,7 +27,7 @@ appId: com.shanavasshaji.flyright
     timeout: 30000
 - tapOn: "Skip"
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 30000
 - tapOn: "Settings"
 - extendedWaitUntil:

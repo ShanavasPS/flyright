@@ -58,7 +58,6 @@ export function FollowingSection({
   return (
     <>
       <FollowingRail
-        title={live.length ? 'Following' : 'Your trip'}
         entries={live}
         now={now}
         leading={

@@ -13,7 +13,7 @@ appId: com.shanavasshaji.flyright
 - openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 # The dev-client link re-downloads the bundle — that can outlive 30s cold.
 - extendedWaitUntil:
-    visible: "My travels"
+    visible: "Flights"
     timeout: 90000
 - openLink: "flyright://paywall"
 - extendedWaitUntil:
