@@ -49,6 +49,7 @@ import {
   allTravelDayRows,
   markActivity,
   mergeFlightStages,
+  repairFlightStages,
   rowToState,
 } from '@/services/travel-day-store';
 
@@ -228,7 +229,7 @@ async function doReconcile(): Promise<void> {
 
   for (const j of journeyRows) {
     const row = byJourney.get(j.id);
-    const state = rowToState(row);
+    const state = await repairFlightStages(j.id, rowToState(row), j);
     const plan = planOf(j.id);
     const { phase } = travelWindow(j, state, now, plan);
 

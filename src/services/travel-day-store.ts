@@ -130,6 +130,20 @@ export async function mergeFlightStages(journeyId: string, facts: FlightFacts): 
   await writeState(journeyId, next);
 }
 
+/** Drop flight stamps from another day's flight (withoutForeignFlightStamps)
+ * without waiting for a status lookup — the lifecycle runs it for every trip
+ * on each reconcile, so an affected trip reads right from the first frame,
+ * offline too. Returns the state to render. */
+export async function repairFlightStages(
+  journeyId: string,
+  state: TravelDayState,
+  leg: { scheduledDeparture: string; fromCode: string },
+): Promise<TravelDayState> {
+  const clean = withoutForeignFlightStamps(state, leg);
+  if (clean !== state) await writeState(journeyId, clean);
+  return clean;
+}
+
 /** Lifecycle bookkeeping: when a live surface first appeared / was torn down. */
 export async function markActivity(
   journeyId: string,
