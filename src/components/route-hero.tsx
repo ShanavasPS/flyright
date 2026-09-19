@@ -69,7 +69,7 @@ function durationLabel(journey: HeroJourney): string | null {
 /** "EK215 · Emirates"; just the number when the carrier is only its IATA
  * code (lookup rows store the code); just the carrier for entries without a
  * flight number. */
-function flightLabel(journey: HeroJourney): string {
+export function flightLabel(journey: Pick<HeroJourney, 'number' | 'carrier'>): string {
   const carrier = journey.carrier.trim();
   if (!journey.number) return carrier;
   if (!carrier || carrier.toUpperCase() === airlineCode(journey.number)) return journey.number;
@@ -112,6 +112,7 @@ export function RouteHero({
   schedule,
   progress = null,
   action,
+  eyebrow = true,
 }: {
   journey: HeroJourney;
   now: number;
@@ -120,6 +121,10 @@ export function RouteHero({
    * null before departure and after landing. */
   progress?: number | null;
   action?: React.ReactNode;
+  /** The flight-number row and the moved-flight notice. Off on the
+   * traveller's own trip page, where the trip card above carries both —
+   * the number beside its status, the move in that status. */
+  eyebrow?: boolean;
 }) {
   const theme = useTheme();
   const airborne = progress != null;
@@ -135,26 +140,28 @@ export function RouteHero({
 
   return (
     <View style={styles.hero}>
-      <View style={styles.eyebrowRow}>
-        <AirlineLogo number={journey.number} carrier={journey.carrier} size={28} />
-        <ThemedText type="smallBold" themeColor="heading" style={styles.eyebrowText} numberOfLines={1}>
-          {flightLabel(journey)}
-        </ThemedText>
-        <View
-          style={[
-            styles.chip,
-            { backgroundColor: flown ? theme.field : `${theme.tint}1A` },
-          ]}>
-          <ThemedText
-            type="smallBold"
-            style={[styles.chipText, { color: flown ? theme.textSecondary : theme.tint }]}>
-            {chip}
+      {eyebrow && (
+        <View style={styles.eyebrowRow}>
+          <AirlineLogo number={journey.number} carrier={journey.carrier} size={28} />
+          <ThemedText type="smallBold" themeColor="heading" style={styles.eyebrowText} numberOfLines={1}>
+            {flightLabel(journey)}
           </ThemedText>
+          <View
+            style={[
+              styles.chip,
+              { backgroundColor: flown ? theme.field : `${theme.tint}1A` },
+            ]}>
+            <ThemedText
+              type="smallBold"
+              style={[styles.chipText, { color: flown ? theme.textSecondary : theme.tint }]}>
+              {chip}
+            </ThemedText>
+          </View>
+          {action}
         </View>
-        {action}
-      </View>
+      )}
 
-      {schedule?.moved && schedule.departureWas && (
+      {eyebrow && schedule?.moved && schedule.departureWas && (
         <View style={[styles.movedNotice, { backgroundColor: `${theme.tint}14` }]}>
           <ThemedText type="smallBold" style={{ color: theme.tint }}>
             {journey.carrier} moved this flight

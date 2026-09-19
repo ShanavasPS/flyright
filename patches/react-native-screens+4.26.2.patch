@@ -1,0 +1,18 @@
+diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/container/TabsContainer.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/container/TabsContainer.kt
+index 27e2254..5a3a263 100644
+--- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/container/TabsContainer.kt
++++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/container/TabsContainer.kt
+@@ -386,7 +386,12 @@ class TabsContainer internal constructor(
+         }
+     }
+ 
+-    override fun getInterfaceInsets(): EdgeInsets = EdgeInsets(0.0f, 0.0f, 0.0f, bottomNavigationView.height.toFloat())
++    // A hidden bar keeps its last measured height; report none, as
++    // updateInterfaceInsets does. Without this a SafeAreaView attaching while
++    // the bar is hidden (a screen coming back from under a modal) pads its
++    // content by the invisible bar.
++    override fun getInterfaceInsets(): EdgeInsets =
++        EdgeInsets(0.0f, 0.0f, 0.0f, if (tabBarHidden) 0.0f else bottomNavigationView.height.toFloat())
+ 
+     override fun getResolvedUiNightMode() = colorSchemeCoordinator.getResolvedUiNightMode()
+ 

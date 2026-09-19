@@ -37,6 +37,8 @@ import {
   type TravelJourney,
 } from '@/services/travel-day';
 import { stagePlans } from '@/services/travel-day-plan';
+import { withRecord, type RecordRow } from '@/services/trip-record';
+import { recordAirportFacts } from '@/services/trip-record-store';
 import {
   endTravelLiveUpdate,
   postTravelLiveUpdate,
@@ -87,6 +89,15 @@ export async function noteFlightFacts(journeyId: string, status: FlightStatus): 
   };
   Storage.setItemSync(factsKey(journeyId), JSON.stringify(facts));
   await mergeFlightStages(journeyId, facts);
+  // The trip keeps what the airport posted once these facts are gone.
+  await recordAirportFacts(journeyId, facts);
+}
+
+/** The facts every surface draws from: the latest live facts, with the
+ * trip's record filling what they lack — a gate the traveller typed, or
+ * one the feed has since dropped. */
+export function factsFor(row: { id: string } & RecordRow): FlightFacts {
+  return withRecord(getFlightFacts(row.id), row);
 }
 
 export function getFlightFacts(journeyId: string): FlightFacts {
@@ -183,7 +194,7 @@ async function doReconcile(): Promise<void> {
 
   await ensureChannel();
   const now = new Date();
-  const journeyRows: (TravelJourney & { id: string })[] = await db
+  const journeyRows: (TravelJourney & RecordRow & { id: string })[] = await db
     .select()
     .from(journeys)
     .where(isNull(journeys.deletedAt));
@@ -226,7 +237,7 @@ async function doReconcile(): Promise<void> {
       // boarding. Start iOS activities at T−4h (the live phase) only — one
       // that already exists keeps updating through the reminder phase.
       if (Platform.OS === 'ios' && phase === 'reminder' && !getActivityId(j.id)) continue;
-      const facts = getFlightFacts(j.id);
+      const facts = factsFor(j);
       const content = liveContent(j, state, facts, now, plan);
       // Progress is bucketed to 2% so the in-flight plane creeps along on
       // each reconcile without re-posting for sub-pixel changes.
@@ -266,7 +277,7 @@ async function doReconcile(): Promise<void> {
     } else if (row && row.activityStartedAt && !row.endedAt) {
       // The final render lingers dimmed after the end — give it the real
       // last state ("Landed in LHR") instead of a generic goodbye.
-      await teardown(j.id, 'ended', liveContent(j, state, getFlightFacts(j.id), now, plan));
+      await teardown(j.id, 'ended', liveContent(j, state, factsFor(j), now, plan));
     }
   }
 

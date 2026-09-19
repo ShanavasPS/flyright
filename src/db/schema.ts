@@ -51,6 +51,22 @@ export const journeys = sqliteTable('journeys', {
    *  Feeds the aircraft section of Travel stats. */
   aircraftModel: text('aircraft_model'),
   aircraftReg: text('aircraft_reg'),
+  /** The trip's airport record — the departure terminal, check-in desk,
+   *  gate and boarding time, the belt at the other end, and when the flight
+   *  really took off and landed. Written as the airport posts them (and kept
+   *  once the live facts are gone), or typed by the traveller; null until
+   *  known. Boarding and actual times are instants (ISO with offset). */
+  terminal: text('terminal'),
+  checkInDesk: text('check_in_desk'),
+  gate: text('gate'),
+  boardingTime: text('boarding_time'),
+  baggageBelt: text('baggage_belt'),
+  actualDeparture: text('actual_departure'),
+  actualArrival: text('actual_arrival'),
+  /** JSON array of the record's fields the traveller typed themselves
+   *  ("gate", "baggageBelt"…) — shown as "Added by you" until the airport
+   *  posts that field, which then wins. Null when none. */
+  factsByUser: text('facts_by_user'),
   /** Receipt code for check-in; retained when a boarding pass is added. */
   ticketCode: text('ticket_code'),
   ticketFormat: text('ticket_format'),

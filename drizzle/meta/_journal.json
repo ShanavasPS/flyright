@@ -99,6 +99,13 @@
       "when": 1789675480157,
       "tag": "0013_aircraft",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1789822001359,
+      "tag": "0014_trip_record",
+      "breakpoints": true
     }
   ]
 }

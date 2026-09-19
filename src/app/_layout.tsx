@@ -259,6 +259,16 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* The trip card's facts typed in — the same card modal, Cancel
+                and Save in the header, the form ending at the keyboard. */}
+              <Stack.Screen
+                name="trip-details"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
               {/* "Share an update" — a photo and a line from inside a trip,
                 for the people following it. The same card modal as the
                 notes editor, for the same keyboard reason. */}

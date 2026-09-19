@@ -18,7 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoardingPassCard } from '@/components/boarding-pass-card';
 import { Card } from '@/components/card';
-import { FlightFactsStrip } from '@/components/flight-facts';
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PrimaryButton } from '@/components/primary-button';
@@ -30,6 +29,7 @@ import { FlashToast } from '@/components/flash-toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { TripCard } from '@/components/trip-card';
 import { TripPhotos } from '@/components/trip-photos';
 import { useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
 import { TripShareActions } from '@/components/trip-share';
@@ -72,18 +72,15 @@ import {
 import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
 import { shiftLabel } from '@/services/schedule-change';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
-import { DEFAULT_PLAN, flightProgress, travelWindow, type TravelStage } from '@/services/travel-day';
+import { DEFAULT_PLAN, EMPTY_FACTS, flightProgress, travelWindow, type TravelStage } from '@/services/travel-day';
 import { stagePlanFor } from '@/services/travel-day-plan';
+import { tripCard } from '@/services/trip-card';
 import { tripFacts } from '@/services/trip-facts';
 import { visibilityChip, visibilityOf } from '@/services/trip-visibility';
 import { focusWorldOn } from '@/services/world-focus';
 import { ALL_TIME } from '@/services/world-period';
 import { openWorldShare } from '@/services/world-share';
-import {
-  getFlightFacts,
-  noteFlightFacts,
-  reconcileTravelDay,
-} from '@/services/travel-day-lifecycle';
+import { factsFor, noteFlightFacts, reconcileTravelDay } from '@/services/travel-day-lifecycle';
 import { advanceStage, rewindStage, undoStage, useTravelDay } from '@/services/travel-day-store';
 
 // Past this age, EU261/UK261 claim windows (2–6 years depending on country)
@@ -221,7 +218,7 @@ export function JourneyDetail({
   // plane. Null on the ground either side, and for the demo.
   const liveProgress = useMemo(() => {
     if (isDemo || !row) return null;
-    const fraction = flightProgress(row, travelState, getFlightFacts(row.id), new Date(now));
+    const fraction = flightProgress(row, travelState, factsFor(row), new Date(now));
     return fraction > 0 && fraction < 1 ? fraction : null;
   }, [isDemo, row, travelState, now]);
   // Which stages this leg's travel day has: the whole airport walk for a
@@ -381,6 +378,41 @@ export function JourneyDetail({
     }
   };
 
+  // Embedded panes have no stack header, so share and ··· sit inline — on
+  // the trip card when there is one, else on the route hero.
+  const inlineActions = (
+    <View style={styles.inlineActions}>
+      <HeaderIcon
+        label="Share this trip"
+        name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }}
+        onPress={shareThisTrip}
+      />
+      {!isDemo && row && (
+        <HeaderIcon
+          label="Trip options"
+          name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
+          onPress={() => showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router)}
+        />
+      )}
+    </View>
+  );
+
+  // What every live piece of the page draws from: the latest airport facts
+  // with the trip's record filling the gaps (a gate typed by the traveller,
+  // the belt once the live facts are gone).
+  const facts = row && !isDemo ? factsFor(row) : EMPTY_FACTS;
+  const card =
+    row && !isDemo
+      ? tripCard({
+          row,
+          facts,
+          state: travelState,
+          phase: travelPhase,
+          now: new Date(now),
+          statusKnown: !!status.data,
+        })
+      : null;
+
   // What the inset map draws: the DB row, or the demo journey shaped like one.
   const mapSource = row ?? {
     id: journey.id,
@@ -416,7 +448,7 @@ export function JourneyDetail({
           <RouteMap
             journey={mapSource}
             path={flightPath}
-            live={row && !isDemo ? { journey: row, state: travelState, facts: getFlightFacts(row.id), now } : null}
+            live={row && !isDemo ? { journey: row, state: travelState, facts, now } : null}
             onPress={() => {
               // Hand the trip to the World tab (see services/world-focus).
               // The demo isn't a DB row, so World shows every travel for it.
@@ -426,14 +458,15 @@ export function JourneyDetail({
           />
         )}
 
-        {/* Where to go, first thing on the page on the day: the gate,
-            terminal and check-in sit right under the map. */}
-        {travelActive && row && !isDemo && (
-          <FlightFactsStrip
-            facts={getFlightFacts(row.id)}
-            stage={travelState.stage}
-            departureZone={airportZone(row.fromCode)}
-            tracked={row.source === 'lookup'}
+        {/* The trip card: its status and clock, then everything known —
+            the departure airport's facts, the ticket, the belt — in the same
+            places in every state. Each box opens the details editor. */}
+        {card && row && (
+          <TripCard
+            model={card}
+            journey={journey}
+            onEdit={(field) => router.push({ pathname: '/trip-details', params: { journeyId: row.id, field } })}
+            action={embedded ? inlineActions : undefined}
           />
         )}
 
@@ -455,27 +488,8 @@ export function JourneyDetail({
           now={now}
           schedule={schedule}
           progress={liveProgress}
-          action={
-            // Embedded panes have no stack header, so share and ··· sit inline.
-            embedded ? (
-              <View style={styles.inlineActions}>
-                <HeaderIcon
-                  label="Share this trip"
-                  name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }}
-                  onPress={shareThisTrip}
-                />
-                {!isDemo && row && (
-                  <HeaderIcon
-                    label="Trip options"
-                    name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
-                    onPress={() =>
-                      showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router)
-                    }
-                  />
-                )}
-              </View>
-            ) : null
-          }
+          eyebrow={!card}
+          action={!card && embedded ? inlineActions : null}
         />
 
         {isLookupable && upcoming && proLocked && <InboundTeaserCard />}
@@ -500,7 +514,7 @@ export function JourneyDetail({
               }}
               journey={row}
               state={travelState}
-              facts={getFlightFacts(row.id)}
+              facts={facts}
               plan={travelPlan}
               action={shareActions}
               locked={travelPreview}
@@ -750,14 +764,10 @@ function TripLogCard({
   );
 }
 
-/** "Seat 32K", "Booking ABC123" — the details the traveler typed or a
- * boarding-pass scan supplied. */
+/** Who sees the trip, as a chip. The seat and booking used to sit here
+ * too; the trip card above now shows them in every state. */
 function tripDetailChips(row: JourneyRow): string[] {
-  return [
-    row.seat && `Seat ${row.seat}`,
-    row.bookingReference && `Booking ${row.bookingReference}`,
-    visibilityChip(visibilityOf(row)),
-  ].filter((chip): chip is string => !!chip);
+  return [visibilityChip(visibilityOf(row))].filter((chip): chip is string => !!chip);
 }
 
 /** Everything the traveler adds to a trip themselves: seat and booking

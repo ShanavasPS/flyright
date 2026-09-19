@@ -35,7 +35,7 @@ import {
   type TravelPhase,
 } from '@/services/travel-day';
 import { noteWarning, tapLight } from '@/services/haptics';
-import { getFlightFacts } from '@/services/travel-day-lifecycle';
+import { factsFor } from '@/services/travel-day-lifecycle';
 import { stagePlans } from '@/services/travel-day-plan';
 import { useTravelDayStates } from '@/services/travel-day-store';
 
@@ -95,7 +95,7 @@ export function HomeHero({
   if (!hero) return <TravelStatsHeader stats={stats} />;
   const { journey: active, phase, state, plan } = hero;
 
-  const facts = getFlightFacts(active.id);
+  const facts = factsFor(active);
   const content = liveContent(active, state, facts, now, plan);
   const delayed = content.emphasis === 'delay';
   const statusColor = delayed ? theme.warning : theme.tint;

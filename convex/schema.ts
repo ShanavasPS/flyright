@@ -64,6 +64,17 @@ export default defineSchema({
      * found by number; omitted by older clients, null for journal entries. */
     aircraftModel: v.optional(v.union(v.string(), v.null())),
     aircraftReg: v.optional(v.union(v.string(), v.null())),
+    /** The trip's airport record — terminal, check-in desk, gate, boarding
+     * time, baggage belt, actual take-off and landing — and the JSON list
+     * of those the traveller typed. Omitted by older clients. */
+    terminal: v.optional(v.union(v.string(), v.null())),
+    checkInDesk: v.optional(v.union(v.string(), v.null())),
+    gate: v.optional(v.union(v.string(), v.null())),
+    boardingTime: v.optional(v.union(v.string(), v.null())),
+    baggageBelt: v.optional(v.union(v.string(), v.null())),
+    actualDeparture: v.optional(v.union(v.string(), v.null())),
+    actualArrival: v.optional(v.union(v.string(), v.null())),
+    factsByUser: v.optional(v.union(v.string(), v.null())),
     /** Close circle only: members outside the owner's close circle get no
      * People-tab listing, no push, no follow of its live session, and a
      * shared link shows them the traveler, not the trip. They still count
