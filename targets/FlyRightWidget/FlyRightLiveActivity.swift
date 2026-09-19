@@ -394,32 +394,29 @@ private struct ClockLabelRow: View {
     }
 }
 
-/// The big slot: the ticking countdown with its HRS / MIN marks, or — with
-/// no clock to run — a word (the destination once landed, "Departing now").
+/// The big slot: the ticking countdown with its HRS / MIN marks and the
+/// seconds small beside it, or — with no clock to run — a word (the
+/// destination once landed, "Departing now").
 private struct BigClock: View {
     let model: TravelDayModel
     let size: CGFloat
     let marks: Bool
+    /// Always-On: the system draws a timer's seconds as "--" while the screen
+    /// is dimmed (it redraws about once a minute), so the seconds step aside
+    /// and the clock reads a plain H:MM until the screen wakes.
+    @Environment(\.isLuminanceReduced) private var dimmed
 
     var body: some View {
         if let end = model.countdown {
-            let clock = ClockText(end: end, size: size, color: model.tone == .delay ? Brand.amber : Brand.white)
-            if marks {
-                clock
-                    .padding(.bottom, 11)
-                    .overlay(alignment: .bottom) {
-                        HStack(spacing: 0) {
-                            Text("HRS")
-                            Spacer(minLength: 4)
-                            Text("MIN")
-                        }
-                        .font(.system(size: 8, weight: .bold))
-                        .kerning(1)
-                        .foregroundStyle(Brand.whiteDim)
-                        .padding(.horizontal, size * 0.06)
-                    }
-            } else {
-                clock
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                hoursAndMinutes(end: end)
+                if !dimmed {
+                    SecondsText(
+                        end: end,
+                        size: size * 0.42,
+                        color: model.tone == .delay ? Brand.amber.opacity(0.75) : Brand.whiteDim
+                    )
+                }
             }
         } else {
             Text(model.clockWord)
@@ -428,6 +425,82 @@ private struct BigClock: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
+    }
+
+    @ViewBuilder
+    private func hoursAndMinutes(end: Date) -> some View {
+        let clock = ClockText(end: end, size: size, color: model.tone == .delay ? Brand.amber : Brand.white)
+        if marks {
+            clock
+                .padding(.bottom, 11)
+                .overlay(alignment: .bottom) {
+                    HStack(spacing: 0) {
+                        Text("HRS")
+                        Spacer(minLength: 4)
+                        Text("MIN")
+                    }
+                    .font(.system(size: 8, weight: .bold))
+                    .kerning(1)
+                    .foregroundStyle(Brand.whiteDim)
+                    .padding(.horizontal, size * 0.06)
+                }
+        } else {
+            clock
+        }
+    }
+}
+
+/// The seconds beside the big clock, small: the same system timer as
+/// ClockText — "1H:MM:SS" under ten hours (shifted the same way), "HH:MM:SS"
+/// beyond — leading-aligned and slid left by the width of its first five
+/// characters, so only ":SS" falls inside a transparent ":00". (Right-aligning
+/// the timer instead drew nothing on the Lock Screen: a timer text keeps its
+/// digits at the leading edge of whatever box it gets.) Only system types, so
+/// the archive decodes; it ticks between pushes and stops on ":00".
+private struct SecondsText: View {
+    let end: Date
+    let size: CGFloat
+    let color: Color
+
+    private static let shift: TimeInterval = 10 * 3600
+
+    var body: some View {
+        let font = Font.system(size: size, weight: .bold, design: .rounded)
+        let long = end.timeIntervalSinceNow >= Self.shift
+        let range = long ? Date()...end : Date()...end.addingTimeInterval(Self.shift)
+        Text(":00")
+            .font(font)
+            .monospacedDigit()
+            .lineLimit(1)
+            .foregroundStyle(.clear)
+            .fixedSize()
+            .accessibilityHidden(true)
+            .overlay(alignment: .leading) {
+                Text(timerInterval: range, pauseTime: long ? nil : end, countsDown: true, showsHours: true)
+                    .font(font)
+                    .monospacedDigit()
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .multilineTextAlignment(.leading)
+                    .frame(width: size * 8, alignment: .leading)
+                    .offset(x: -Self.leadWidth(size))
+            }
+            .clipped()
+    }
+
+    /// "00:00" — the hours, colon and minutes in front of the seconds — in
+    /// this text's font, measured from the system font at render time.
+    private static func leadWidth(_ size: CGFloat) -> CGFloat {
+        var descriptor = UIFont.systemFont(ofSize: size, weight: .bold).fontDescriptor
+        descriptor = descriptor.withDesign(.rounded) ?? descriptor
+        descriptor = descriptor.addingAttributes([
+            .featureSettings: [[
+                UIFontDescriptor.FeatureKey.type: kNumberSpacingType,
+                UIFontDescriptor.FeatureKey.selector: kMonospacedNumbersSelector,
+            ]],
+        ])
+        let font = UIFont(descriptor: descriptor, size: size)
+        return ("00:00" as NSString).size(withAttributes: [.font: font]).width
     }
 }
 

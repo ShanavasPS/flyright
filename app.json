@@ -218,6 +218,7 @@
         "onesignal-expo-plugin",
         {
           "mode": "production",
+          "iPhoneDeploymentTarget": "16.2",
           "liveActivities": {
             "targetName": "FlyRightWidget",
             "widgetFilePath": "./targets/FlyRightWidget/FlyRightLiveActivity.swift",

@@ -280,11 +280,12 @@ function clockIcon(label: string): SymbolViewProps['name'] {
 }
 
 /** The big countdown, hours and minutes ("2:14", "0:42") with the units
- * marked under the digits so "0:42" never reads as seconds. Re-reads the
- * clock every 15 seconds; once the moment has passed (or there is none) it
- * shows the fallback words instead of a frozen 0:00. */
+ * marked under the digits so "0:42" never reads as seconds, and the seconds
+ * ticking small beside them — as the trip page and the Lock Screen show it.
+ * Once the moment has passed (or there is none) it shows the fallback words
+ * instead of a frozen 0:00. */
 function HeroClock({ end, color, fallback }: { end: number | null; color: string; fallback: string }) {
-  const now = useNow(15_000);
+  const now = useNow(1_000);
   const left = end === null ? NaN : end - now.getTime();
   if (!(left > 0)) {
     return (
@@ -294,18 +295,27 @@ function HeroClock({ end, color, fallback }: { end: number | null; color: string
     );
   }
   const minutes = Math.floor(left / 60_000);
+  const seconds = Math.floor(left / 1000) % 60;
   const clock = `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
   return (
-    <View accessible accessibilityLabel={`${Math.floor(minutes / 60)} hours ${minutes % 60} minutes`}>
-      <ThemedText style={[styles.clock, { color }]}>{clock}</ThemedText>
-      <View style={styles.clockUnits}>
-        <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
-          HRS
-        </ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
-          MIN
-        </ThemedText>
+    <View
+      accessible
+      accessibilityLabel={`${Math.floor(minutes / 60)} hours ${minutes % 60} minutes`}
+      style={styles.clockRow}>
+      <View>
+        <ThemedText style={[styles.clock, { color }]}>{clock}</ThemedText>
+        <View style={styles.clockUnits}>
+          <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
+            HRS
+          </ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
+            MIN
+          </ThemedText>
+        </View>
       </View>
+      <ThemedText themeColor="textSecondary" style={styles.clockSeconds}>
+        :{String(seconds).padStart(2, '0')}
+      </ThemedText>
     </View>
   );
 }
@@ -556,6 +566,16 @@ const styles = StyleSheet.create({
     lineHeight: 58,
     fontWeight: 800,
     letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
+  clockRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  clockSeconds: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 700,
     fontVariant: ['tabular-nums'],
   },
   clockWords: {
