@@ -321,9 +321,67 @@ export function rewindTo(
   return { stage: target, stamps };
 }
 
+/** How long before its own scheduled departure a flight could have left:
+ * nothing that early is this leg. An actual time from before it belongs to
+ * another day's flight under the same number — the 2026-09-18 incident, when
+ * a leg wrongly moved two days back picked up the 17th's take-off and kept
+ * it after the trip was put back ("Departed 20:31", "Lands in 5h 45m" hours
+ * before boarding). */
+const EARLIEST_ACTUAL_MS = 12 * 3_600_000;
+
+/** The instant before which no departure or landing can be this leg's. */
+function earliestActual(j: Pick<TravelJourney, 'scheduledDeparture' | 'fromCode'>): number {
+  return flightInstant(j.scheduledDeparture, airportZone(j.fromCode)) - EARLIEST_ACTUAL_MS;
+}
+
+/** The state without flight stamps from before this leg could have left
+ * (and, when the landing is one of them, without the arrival steps after
+ * it), the stage set to the furthest stamp that remains. A real stamp on
+ * either side of a foreign one stays — tonight's landing is kept when the
+ * departure beside it was another day's. The same object when nothing is
+ * dropped. */
+export function withoutForeignFlightStamps(
+  state: TravelDayState,
+  j: Pick<TravelJourney, 'scheduledDeparture' | 'fromCode'>,
+): TravelDayState {
+  const floor = earliestActual(j);
+  if (Number.isNaN(floor)) return state;
+  const isForeign = (stage: TravelStage) => {
+    const stamp = state.stamps[stage];
+    return stamp !== undefined && Date.parse(stamp) < floor;
+  };
+  const foreign = FLIGHT_STAGES.filter(isForeign);
+  if (!foreign.length) return state;
+  const landingDropped = foreign.includes('landed');
+  const stamps: TravelDayState['stamps'] = {};
+  let stage: TravelStage | null = null;
+  for (const s of STAGE_ORDER) {
+    const stamp = state.stamps[s];
+    if (stamp === undefined) continue;
+    if ((foreign as TravelStage[]).includes(s)) continue;
+    if (landingDropped && stageIndex(s) > stageIndex('landed')) continue;
+    stamps[s] = stamp;
+    stage = s;
+  }
+  return { stage, stamps };
+}
+
 /** Flight data outranks taps: an actual departure/arrival promotes the state
- * regardless of where the traveler's own timeline sits. */
-export function applyFlightFacts(state: TravelDayState, facts: FlightFacts): TravelDayState {
+ * regardless of where the traveler's own timeline sits. With the leg, an
+ * actual time from before it could have left is another day's flight and is
+ * ignored. */
+export function applyFlightFacts(
+  state: TravelDayState,
+  facts: FlightFacts,
+  j?: Pick<TravelJourney, 'scheduledDeparture' | 'fromCode'>,
+): TravelDayState {
+  if (j) {
+    const floor = earliestActual(j);
+    const foreign = (iso: string | null) => !!iso && Date.parse(iso) < floor;
+    if (foreign(facts.actualDeparture) || foreign(facts.actualArrival)) {
+      facts = { ...facts, actualDeparture: null, actualArrival: null };
+    }
+  }
   let next = state;
   if (facts.actualDeparture && stageIndex(next.stage) < stageIndex('departed')) {
     next = { stage: 'departed', stamps: { ...next.stamps, departed: facts.actualDeparture } };

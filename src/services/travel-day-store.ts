@@ -15,13 +15,14 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { Observe } from 'expo-observe';
 
 import { db } from '@/db/client';
-import { travelDay } from '@/db/schema';
+import { journeys, travelDay } from '@/db/schema';
 import {
   EMPTY_TRAVEL_DAY,
   advance,
   applyFlightFacts,
   rewindTo,
   undoLast,
+  withoutForeignFlightStamps,
   type FlightFacts,
   type StageRules,
   type TravelDayState,
@@ -116,7 +117,15 @@ export async function rewindStage(
  * closes the timeline even if the traveler never taps again. */
 export async function mergeFlightStages(journeyId: string, facts: FlightFacts): Promise<void> {
   const state = await readState(journeyId);
-  const next = applyFlightFacts(state, facts);
+  const [leg] = await db
+    .select({ scheduledDeparture: journeys.scheduledDeparture, fromCode: journeys.fromCode })
+    .from(journeys)
+    .where(eq(journeys.id, journeyId));
+  // A flight stamp from before this leg could have left is another day's
+  // flight: drop it (the repair for trips hit by the 2026-09-18 lookup bug),
+  // then merge only facts that can be this leg's.
+  const cleaned = leg ? withoutForeignFlightStamps(state, leg) : state;
+  const next = applyFlightFacts(cleaned, facts, leg);
   if (next === state) return;
   await writeState(journeyId, next);
 }

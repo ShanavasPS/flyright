@@ -6,6 +6,7 @@ import {
   activeJourney,
   advance,
   applyFlightFacts,
+  withoutForeignFlightStamps,
   canAdvanceTo,
   canRewindTo,
   flightProgress,
@@ -682,5 +683,41 @@ describe('next-day landings', () => {
       new Date('2026-08-25T12:00Z'),
     );
     expect(late.arrTime).toMatch(/⁺¹$/);
+  });
+});
+
+describe('flight stamps from another day (2026-09-18 incident)', () => {
+  // QR516 DOH→COK on the 19th, 19:40 local; the 17th's QR516 left 17:31Z.
+  const leg = { scheduledDeparture: '2026-09-19T16:40Z', fromCode: 'DOH' };
+
+  it('ignores an actual departure from before the leg could have left', () => {
+    const facts = { ...EMPTY_FACTS, actualDeparture: '2026-09-17T17:31Z' };
+    expect(applyFlightFacts(EMPTY_TRAVEL_DAY, facts, leg)).toBe(EMPTY_TRAVEL_DAY);
+    // Its own take-off still counts.
+    const own = applyFlightFacts(EMPTY_TRAVEL_DAY, { ...EMPTY_FACTS, actualDeparture: '2026-09-19T16:52Z' }, leg);
+    expect(own).toEqual({ stage: 'departed', stamps: { departed: '2026-09-19T16:52Z' } });
+  });
+
+  it('clears a stored foreign departure, keeping the airport walk before it', () => {
+    const stuck = {
+      stage: 'departed' as const,
+      stamps: { at_airport: '2026-09-19T14:10:00.000Z', departed: '2026-09-17T17:31Z' },
+    };
+    expect(withoutForeignFlightStamps(stuck, leg)).toEqual({
+      stage: 'at_airport',
+      stamps: { at_airport: '2026-09-19T14:10:00.000Z' },
+    });
+    // Tonight's landing, stamped by the old app beside the foreign take-off,
+    // is kept.
+    const landed = {
+      stage: 'landed' as const,
+      stamps: { departed: '2026-09-17T17:31Z', landed: '2026-09-19T21:05Z' },
+    };
+    expect(withoutForeignFlightStamps(landed, leg)).toEqual({
+      stage: 'landed',
+      stamps: { landed: '2026-09-19T21:05Z' },
+    });
+    const clean = { stage: 'departed' as const, stamps: { departed: '2026-09-19T16:52Z' } };
+    expect(withoutForeignFlightStamps(clean, leg)).toBe(clean);
   });
 });
