@@ -170,7 +170,7 @@ function ProfileButton({
 function QuietDay() {
   return (
     <View style={styles.quiet}>
-      <ThemedText type="subtitle">Nothing in the air.</ThemedText>
+      <ThemedText type="default">Nothing in the air.</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         When someone you follow flies, they show up here.
       </ThemedText>

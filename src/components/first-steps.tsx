@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -26,7 +27,7 @@ export function FirstSteps({ signedIn, following }: { signedIn: boolean; followi
       <ThemedText type="smallBold" themeColor="textSecondary" style={styles.meter}>
         {done} OF 2
       </ThemedText>
-      <ThemedText type="subtitle">A follow has two ends.</ThemedText>
+      <Text style={[styles.headline, { color: theme.heading }]}>A follow has two ends.</Text>
 
       <View style={styles.link}>
         <End filled={mine} label="You" />
@@ -44,18 +45,10 @@ export function FirstSteps({ signedIn, following }: { signedIn: boolean; followi
         Make both and you&apos;ll know when they land.
       </ThemedText>
 
-      <Pressable
-        accessibilityRole="button"
+      <PrimaryButton
+        label={mine ? 'Find someone to follow' : 'Sign in'}
         onPress={() => router.push(mine ? '/people' : '/sign-in')}
-        style={({ pressed }) => [
-          styles.action,
-          { backgroundColor: theme.tint },
-          pressed && styles.pressed,
-        ]}>
-        <ThemedText type="subtitle" style={{ color: theme.background }}>
-          {mine ? 'Find someone to follow' : 'Sign in'}
-        </ThemedText>
-      </Pressable>
+      />
 
       <ThemedText type="small" themeColor="textSecondary">
         Your own flights go in Flights.
@@ -93,16 +86,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   meter: { letterSpacing: 1 },
+  // The journal's empty hero sets the scale for a first screen: a headline
+  // in the mid-twenties over a 14pt line, not a 32pt title.
+  headline: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   link: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.three },
   end: { alignItems: 'center', gap: Spacing.one },
   ring: { width: RING, height: RING, borderRadius: RING / 2, borderWidth: 2 },
   line: { flex: 1, borderTopWidth: 2, marginBottom: Spacing.four },
   dashed: { borderStyle: 'dashed' },
-  action: {
-    alignItems: 'center',
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.one,
-  },
-  pressed: { opacity: 0.7 },
 });
