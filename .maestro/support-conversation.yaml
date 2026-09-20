@@ -7,7 +7,7 @@
 appId: com.shanavasshaji.flyright
 ---
 - launchApp
-- tapOn: "Settings"
+- openLink: "flyright://settings"
 - runFlow:
     when:
       visible: "Sign in or create account"

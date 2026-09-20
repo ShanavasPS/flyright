@@ -408,17 +408,18 @@ export function Settings() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      {/* The navigation bar already clears the status bar and the notch, and
+          the scroll view insets itself under it — taking the top edge here
+          as well left a second gap the height of a header above the title. */}
+      <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
         {/* The settings stack is taller than small windows (iPad
             compatibility mode, small phones) — it must scroll. */}
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}>
-        <ThemedText type="title" themeColor="heading">
-          Settings
-        </ThemedText>
-
+        {/* The screen is named in the navigation bar (see the home stack),
+            which is where the door it opens from — the avatar — expects it. */}
         <UpdateAvailableCard />
 
         <AccountCard />

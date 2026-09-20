@@ -15,9 +15,14 @@ export default function HomeStack() {
   return (
     <Stack>
       <Stack.Screen name="index" options={{ headerShown: false, title: 'Home' }} />
-      {/* Settings writes its own large title, so the bar carries only the
-          way back — the same shape as a trip page. */}
-      <Stack.Screen name="settings" options={{ title: '', headerBackButtonDisplayMode: 'minimal' }} />
+      {/* The name sits in the bar, not in the page: it is reached from the
+          avatar, so the bar is where iOS puts it, and a navigation title is
+          the right size for it — the page's own large heading pushed every
+          row down a line for nothing. No hairline under it either. */}
+      <Stack.Screen
+        name="settings"
+        options={{ title: 'Profile', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
+      />
       <Stack.Screen
         name="manage-subscription"
         options={{ title: 'Manage subscription', headerBackButtonDisplayMode: 'minimal' }}

@@ -30,7 +30,7 @@ tags:
           when:
             platform: Android
           commands:
-            - tapOn: "Settings"
+            - openLink: "flyright://settings"
       - runFlow:
           when:
             platform: iOS
