@@ -14,6 +14,7 @@ import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { formatDayLabel, formatTime } from '@/services/dates';
@@ -28,7 +29,9 @@ import {
   canRewindTo,
   hasLanded,
   isTravelerStage,
+  landingDue,
   stageIndex,
+  stageRules,
   type FlightFacts,
   type StagePlan,
   type TravelDayState,
@@ -158,9 +161,14 @@ export function TravelDayTimeline({
   const departureZone = airportZone(journey.fromCode);
   const arrivalZone = airportZone(journey.toCode);
   // Journal trips have no status feed, so the traveler stamps departed/landed
-  // too; tracked flights keep those data-only (and say so on the row).
+  // too. A tracked flight's take-off stays data-only, but its landing is a tap
+  // from the moment the wheels are up — no feed covers every airport — and the
+  // arrival steps open with it. `overdue` only changes what the row SAYS, and
+  // turns on with the clock, so the card ticks while it is up.
   const manualTrip = journey.source === 'manual';
-  const rules = { manualTrip, plan };
+  const now = useNow(60_000);
+  const rules = stageRules(journey, state, facts, now, plan);
+  const overdue = landingDue(journey, state, facts, now);
 
   // The one tap that's usually next: the first un-stamped tappable stage.
   const nextStage = interactive ? nextStageOf(state, rules) : null;
@@ -307,7 +315,11 @@ export function TravelDayTimeline({
               const skipped = !locked && !reached && stageIndex(stage) < currentIndex;
               // Tracked flights stamp these from live data — say so on the row,
               // so the missing tap target reads as "automatic", not "broken".
-              const autoStamped = !manualTrip && !reached && !skipped && isFlightStage(stage);
+              // The landing is both: it fills itself in when the airline says
+              // so, and it is a tap in the meantime.
+              const autoStamped =
+                !manualTrip && !reached && !skipped && isFlightStage(stage) && !advanceable;
+              const tappableLanding = !manualTrip && stage === 'landed' && advanceable;
 
               const nodeState: NodeState = locked
                 ? 'locked'
@@ -340,11 +352,20 @@ export function TravelDayTimeline({
                 ? formatTime(stamp, hasLanded(stage) ? arrivalZone : departureZone)
                 : skipped
                   ? 'Skipped'
-                  : autoStamped && !readOnly
-                    ? 'Fills in from live flight data'
-                    : null;
+                  : tappableLanding && !readOnly
+                    ? overdue
+                      ? 'No arrival reported — tap when you are down'
+                      : 'Fills in from live flight data — or tap when you land'
+                    : autoStamped && !readOnly
+                      ? 'Fills in from live flight data'
+                      : null;
 
-              const showUndo = isCurrent && interactive && !!onUndo && (manualTrip || isTravelerStage(stage));
+              // A landing the traveller called themselves is theirs to take
+              // back; one the airline reported is not (rules.mayStampLanding
+              // goes false the moment an actual arrival lands).
+              const undoable =
+                manualTrip || isTravelerStage(stage) || (stage === 'landed' && !!rules.mayStampLanding);
+              const showUndo = isCurrent && interactive && !!onUndo && undoable;
 
               const onRowLayout = (e: LayoutChangeEvent) => {
                 const { y, height } = e.nativeEvent.layout;

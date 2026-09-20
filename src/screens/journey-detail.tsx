@@ -72,7 +72,14 @@ import {
 import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
 import { shiftLabel } from '@/services/schedule-change';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
-import { DEFAULT_PLAN, EMPTY_FACTS, flightProgress, travelWindow, type TravelStage } from '@/services/travel-day';
+import {
+  DEFAULT_PLAN,
+  EMPTY_FACTS,
+  flightProgress,
+  stageRules,
+  travelWindow,
+  type TravelStage,
+} from '@/services/travel-day';
 import { stagePlanFor } from '@/services/travel-day-plan';
 import { tripCard } from '@/services/trip-card';
 import { tripFacts } from '@/services/trip-facts';
@@ -228,9 +235,16 @@ export function JourneyDetail({
     () => (row && journal ? stagePlanFor(row, journal) : DEFAULT_PLAN),
     [row, journal],
   );
+  // What the traveller may tap right now. Depends on the clock as well as the
+  // row: a flight overdue with no arrival reported opens its own landing, so
+  // an airport that never tells the provider a flight is down can't strand
+  // the trip in the air (see landingDue).
   const travelRules = useMemo(
-    () => ({ manualTrip: row?.source === 'manual', plan: travelPlan }),
-    [row?.source, travelPlan],
+    () =>
+      row
+        ? stageRules(row, travelState, factsFor(row), new Date(now), travelPlan)
+        : { manualTrip: false, plan: travelPlan },
+    [row, travelState, now, travelPlan],
   );
 
   // The delay cache the journeys list badges from — the status provider

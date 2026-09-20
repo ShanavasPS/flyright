@@ -10,6 +10,8 @@ import {
   canAdvanceTo,
   canRewindTo,
   flightProgress,
+  landingDue,
+  stageRules,
   liveContent,
   nextStage,
   rewindTo,
@@ -719,5 +721,116 @@ describe('flight stamps from another day (2026-09-18 incident)', () => {
     });
     const clean = { stage: 'departed' as const, stamps: { departed: '2026-09-19T16:52Z' } };
     expect(withoutForeignFlightStamps(clean, leg)).toBe(clean);
+  });
+});
+
+describe('a landing the traveller calls themselves', () => {
+  // QR516 DOH→COK, 2026-09-19: Doha stamped the take-off, Kochi's arrival
+  // feed is schedule-only and the record sat at "Departed" all night. The
+  // traveller was left reading "Landing now" with passport control and the
+  // belt locked behind a stage only the feed was allowed to set.
+  const leg = journey({
+    id: 'QR516-2026-09-19',
+    number: 'QR516',
+    carrier: 'Qatar Airways',
+    fromCode: 'DOH',
+    toCode: 'COK',
+    scheduledDeparture: '2026-09-19T16:40Z',
+    scheduledArrival: '2026-09-19T21:15Z',
+  });
+  const plan = stagePlan({ connecting: true, onward: false, entersHere: true, bagsHere: true });
+  const airborne: TravelDayState = {
+    stage: 'departed',
+    stamps: { boarded: '2026-09-19T17:12Z', departed: '2026-09-19T17:06Z' },
+  };
+  const aloft = facts({ actualDeparture: '2026-09-19T17:06Z', estimatedArrival: '2026-09-19T21:29Z' });
+  const rulesAt = (now: string) => stageRules(leg, airborne, aloft, new Date(now), plan);
+
+  it('offers the landing from the moment the wheels are up', () => {
+    // Mid-flight, hours before it is due: still theirs to call.
+    const rules = rulesAt('2026-09-19T19:00Z');
+    expect(rules.mayStampLanding).toBe(true);
+    expect(canAdvanceTo(airborne, 'landed', rules)).toBe(true);
+    expect(canAdvanceTo(airborne, 'arrival_immigration', rules)).toBe(true);
+    // The take-off is still never a tap, and a stage outside the leg's walk
+    // is never offered.
+    expect(canAdvanceTo({ stage: 'boarded', stamps: {} }, 'departed', rules)).toBe(false);
+    expect(canAdvanceTo(airborne, 'bags_rechecked', rules)).toBe(false);
+  });
+
+  it('keeps the landing shut before take-off', () => {
+    const atGate: TravelDayState = { stage: 'boarded', stamps: { boarded: '2026-09-19T17:12Z' } };
+    const rules = stageRules(leg, atGate, facts(), new Date('2026-09-19T16:50Z'), plan);
+    expect(rules.mayStampLanding).toBe(false);
+    expect(canAdvanceTo(atGate, 'landed', rules)).toBe(false);
+    expect(canAdvanceTo(atGate, 'arrival_immigration', rules)).toBe(false);
+  });
+
+  it('hands the landing back to the airline once it reports one', () => {
+    const reported = facts({ ...aloft, actualArrival: '2026-09-19T21:20Z' });
+    const rules = stageRules(leg, airborne, reported, new Date('2026-09-19T23:10Z'), plan);
+    expect(rules.mayStampLanding).toBe(false);
+  });
+
+  it('stamps the tap time while the flight is still due, the timetable after', () => {
+    const early = advance(airborne, 'landed', new Date('2026-09-19T19:00Z'), rulesAt('2026-09-19T19:00Z'));
+    expect(early.stamps.landed).toBe('2026-09-19T19:00:00.000Z');
+    // Late: they are off the plane long before they tap, so the estimate is
+    // the better answer than 23:10.
+    const late = advance(airborne, 'landed', new Date('2026-09-19T23:10Z'), rulesAt('2026-09-19T23:10Z'));
+    expect(late.stamps.landed).toBe('2026-09-19T21:29:00.000Z');
+  });
+
+  it('records the landing when the traveller taps straight to passport control', () => {
+    const rules = rulesAt('2026-09-19T23:10Z');
+    const through = advance(airborne, 'arrival_immigration', new Date('2026-09-19T23:10Z'), rules);
+    expect(through.stage).toBe('arrival_immigration');
+    expect(through.stamps.arrival_immigration).toBe('2026-09-19T23:10:00.000Z');
+    // Nobody clears passport control without landing — the row must not read
+    // "Skipped".
+    expect(through.stamps.landed).toBe('2026-09-19T21:29:00.000Z');
+  });
+
+  it('lets them take back a landing they stamped, but not one the airline sent', () => {
+    const rules = rulesAt('2026-09-19T23:10Z');
+    const tapped = advance(airborne, 'landed', new Date('2026-09-19T23:10Z'), rules);
+    const theirs = stageRules(leg, tapped, aloft, new Date('2026-09-19T23:12Z'), plan);
+    // Back to the take-off the airline did report — the stamp below it.
+    expect(undoLast(tapped, theirs).stage).toBe('departed');
+    expect(undoLast(tapped, theirs).stamps.landed).toBeUndefined();
+    // A premature arrival step slides back onto the landing, not across the
+    // flight into the departure airport's walk.
+    const through = advance(tapped, 'arrival_immigration', new Date('2026-09-19T23:15Z'), theirs);
+    expect(canRewindTo(through, 'landed', theirs)).toBe(true);
+    expect(canRewindTo(through, 'boarded', theirs)).toBe(false);
+    // The airline's own arrival is not theirs to undo.
+    const reported = stageRules(
+      leg,
+      tapped,
+      facts({ ...aloft, actualArrival: '2026-09-19T21:20Z' }),
+      new Date('2026-09-19T23:12Z'),
+      plan,
+    );
+    expect(undoLast(tapped, reported)).toBe(tapped);
+  });
+
+  it('only ASKS for the landing once it is plainly overdue', () => {
+    expect(landingDue(leg, airborne, aloft, new Date('2026-09-19T19:00Z'))).toBe(false);
+    expect(landingDue(leg, airborne, aloft, new Date('2026-09-19T21:45Z'))).toBe(false);
+    expect(landingDue(leg, airborne, aloft, new Date('2026-09-19T23:10Z'))).toBe(true);
+    const onApproach = liveContent(leg, airborne, aloft, new Date('2026-09-19T21:45Z'), plan);
+    expect(onApproach.subtitle).toBe('In the air');
+    const overdue = liveContent(leg, airborne, aloft, new Date('2026-09-19T23:10Z'), plan);
+    expect(overdue.subtitle).toBe('Landed? Tap to confirm');
+  });
+
+  it('leaves a manual trip in the air alone until its own arrival passes', () => {
+    // A journal trip's flight stages were always the traveller's; nothing
+    // here may turn "In the air" into a prompt while it really is.
+    const manual = journey({ source: 'manual', scheduledArrival: '2026-08-25T10:35Z' });
+    const flying: TravelDayState = { stage: 'departed', stamps: { departed: '2026-08-25T08:05Z' } };
+    expect(liveContent(manual, flying, EMPTY_FACTS, new Date('2026-08-25T09:30Z')).subtitle).toBe(
+      'In the air',
+    );
   });
 });

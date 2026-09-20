@@ -232,31 +232,115 @@ const isArrivalStage = (stage: TravelStage): boolean =>
   stageIndex(stage) > stageIndex('landed');
 
 /** What the traveler may do to a trip's stages: manual journal trips have
- * no status feed, so the flight stages are theirs to stamp too (tracked
- * flights keep them data-only); the plan is the leg's walk (stagePlan) —
- * a stage outside it is never offered, tapped or reached. */
+ * no status feed, so every stage is theirs to stamp; the plan is the leg's
+ * walk (stagePlan) — a stage outside it is never offered, tapped or reached. */
 export interface StageRules {
   manualTrip?: boolean;
   plan?: StagePlan;
+  /** The flight is in the air with no arrival reported: the landing, and the
+   * arrival steps behind it, are the traveller's to stamp and to take back.
+   * Built by stageRules; never set by hand. */
+  mayStampLanding?: boolean;
+  /** The instant to stamp such a landing with, when the flight is already
+   * past its (estimated) arrival — a traveller is usually well off the plane
+   * by the time they tap, and the timetable is closer to the truth than the
+   * tap. Null while the flight is still due, where the tap time is all there
+   * is. */
+  landedAt?: string | null;
 }
 
-const travelerMaySet = (stage: TravelStage, manualTrip: boolean): boolean =>
-  manualTrip || isTravelerStage(stage);
+/** When a flight with no reported arrival is reckoned to have landed — the
+ * estimate if there is one, else the timetable, as an instant (manual rows
+ * carry bare wall clocks, so pin them to the arrival airport first). */
+function reckonedArrival(
+  j: Pick<TravelJourney, 'scheduledArrival' | 'toCode'>,
+  facts: FlightFacts,
+): string | null {
+  const at = flightInstant(facts.estimatedArrival ?? j.scheduledArrival, airportZone(j.toCode));
+  return Number.isNaN(at) ? null : new Date(at).toISOString();
+}
+
+/** Off the ground: the take-off is recorded, by the airline or by the
+ * traveller. From here the landing is theirs to call — no airline tells
+ * every airport's story. */
+const isAirborne = (state: TravelDayState, facts: FlightFacts): boolean =>
+  state.stage === 'departed' || !!facts.actualDeparture;
+
+/** How long past its (estimated) arrival a flight has to be before the
+ * surfaces start ASKING for the landing rather than just allowing it. */
+export const LANDING_OVERDUE_MS = 30 * 60_000;
+
+/** Whether the clock says this flight must be down by now: airborne, nothing
+ * recorded past the take-off, and LANDING_OVERDUE_MS past its arrival.
+ *
+ * Not every airport tells the provider when a flight lands. Kochi is one:
+ * QR516 DOH→COK sat at status "Departed" with no arrival time all evening on
+ * 2026-09-19 (and all of the 18th, and the 17th) — `arrival.quality` there is
+ * `["Basic"]`, schedule and prediction only, while Doha's departures come
+ * through `["Basic","Live"]`. The take-off stamps itself and the landing
+ * never does. This changes no surface on its own (presumedFlightStage still
+ * reads only what was recorded); it decides when the app stops saying the
+ * landing will fill itself in and starts asking for it. */
+export function landingDue(
+  j: Pick<TravelJourney, 'scheduledArrival' | 'toCode'>,
+  state: TravelDayState,
+  facts: FlightFacts,
+  now: Date,
+): boolean {
+  if (hasLanded(state.stage) || !isAirborne(state, facts)) return false;
+  const at = reckonedArrival(j, facts);
+  return at !== null && now.getTime() >= Date.parse(at) + LANDING_OVERDUE_MS;
+}
+
+/** The whole rule set for one leg right now. Every surface that offers a tap
+ * builds its rules here, so the timeline, the trip screen and the live
+ * surfaces never disagree about what is tappable. */
+export function stageRules(
+  j: Pick<TravelJourney, 'source' | 'scheduledArrival' | 'toCode'>,
+  state: TravelDayState,
+  facts: FlightFacts,
+  now: Date,
+  plan: StagePlan = DEFAULT_PLAN,
+): StageRules {
+  // Once the wheels are up the landing belongs to the traveller — until the
+  // airline reports one, which outranks any tap and can't be taken back.
+  const mayStampLanding = isAirborne(state, facts) && !facts.actualArrival;
+  const reckoned = reckonedArrival(j, facts);
+  return {
+    manualTrip: j.source === 'manual',
+    plan,
+    mayStampLanding,
+    landedAt:
+      mayStampLanding && reckoned !== null && Date.parse(reckoned) <= now.getTime()
+        ? reckoned
+        : null,
+  };
+}
+
+const travelerMaySet = (
+  stage: TravelStage,
+  manualTrip: boolean,
+  mayStampLanding = false,
+): boolean =>
+  manualTrip || isTravelerStage(stage) || (mayStampLanding && stage === 'landed');
 
 /** Taps move forward only and may skip stages within their side of the
- * flight. On tracked flights they can never set a flight-driven stage;
- * manual trips may tap through 'landed'. Nobody taps an arrival step before
- * the landing is recorded: "through immigration" while the plane is in the
- * air is a mis-tap, not a skip. */
+ * flight. The take-off is never a tap on a tracked flight, but the landing
+ * always is once the wheels are up (mayStampLanding) — no feed covers every
+ * airport, and a traveller standing in the terminal is the better authority
+ * than a record that stopped updating. An airline's own arrival closes it
+ * again. Nobody taps an arrival step before the landing, but the same rule
+ * that opens the landing opens them: "through immigration" on the ground is
+ * a skip, in the air it is a mis-tap. */
 export function canAdvanceTo(
   state: TravelDayState,
   target: TravelStage,
   rules: StageRules = {},
 ): boolean {
-  const { manualTrip = false, plan = DEFAULT_PLAN } = rules;
+  const { manualTrip = false, plan = DEFAULT_PLAN, mayStampLanding = false } = rules;
   if (!plan.includes(target)) return false;
-  if (!travelerMaySet(target, manualTrip)) return false;
-  if (isArrivalStage(target) && !hasLanded(state.stage)) return false;
+  if (!travelerMaySet(target, manualTrip, mayStampLanding)) return false;
+  if (isArrivalStage(target) && !hasLanded(state.stage) && !mayStampLanding) return false;
   return stageIndex(target) > stageIndex(state.stage);
 }
 
@@ -267,7 +351,16 @@ export function advance(
   rules: StageRules = {},
 ): TravelDayState {
   if (!canAdvanceTo(state, target, rules)) return state;
-  return { stage: target, stamps: { ...state.stamps, [target]: now.toISOString() } };
+  const stamps = { ...state.stamps, [target]: now.toISOString() };
+  // A landing nobody reported happened when the timetable says it did, not
+  // when the traveller got round to tapping — by then they are usually well
+  // off the plane. And nobody clears passport control without landing: a tap
+  // straight onto an arrival step records the landing too, rather than
+  // leaving that row reading "Skipped".
+  if (rules.mayStampLanding && (target === 'landed' || isArrivalStage(target))) {
+    stamps.landed = rules.landedAt ?? stamps.landed ?? now.toISOString();
+  }
+  return { stage: target, stamps };
 }
 
 /** The step the traveler takes next: the first stage of the plan they're
@@ -283,11 +376,15 @@ export function nextStage(state: TravelDayState, rules: StageRules = {}): Travel
 }
 
 /** Undo the most recent stamp only — one level, and on tracked flights never
- * a flight-driven stage (those aren't the traveler's to take back; on manual
- * trips every stamp is theirs). An arrival step undoes back to 'landed'. */
+ * a flight-driven stage the feed set (those aren't the traveler's to take
+ * back; on manual trips every stamp is theirs). A landing they stamped
+ * themselves they may take back, or the tap becomes a one-way door. An
+ * arrival step undoes back to 'landed'. */
 export function undoLast(state: TravelDayState, rules: StageRules = {}): TravelDayState {
-  const { manualTrip = false } = rules;
-  if (state.stage === null || !travelerMaySet(state.stage, manualTrip)) return state;
+  const { manualTrip = false, mayStampLanding = false } = rules;
+  if (state.stage === null || !travelerMaySet(state.stage, manualTrip, mayStampLanding)) {
+    return state;
+  }
   const stamps = { ...state.stamps };
   delete stamps[state.stage];
   const remaining = STAGE_ORDER.filter((s) => stamps[s] !== undefined);
@@ -296,17 +393,23 @@ export function undoLast(state: TravelDayState, rules: StageRules = {}): TravelD
 
 /** Sliding the timeline back: any earlier *stamped* stage the traveler owns
  * is a valid landing spot, and — like undo — tracked flights lock the slider
- * once the flight has departed: the arrival steps slide among themselves,
- * never back across the flight. */
+ * across the flight: the arrival steps slide among themselves, never back
+ * into the departure airport's walk. The one crossing allowed is back onto a
+ * landing they stamped themselves (mayStampLanding), so a premature "through
+ * immigration" is recoverable without losing the landing with it. */
 export function canRewindTo(
   state: TravelDayState,
   target: TravelStage,
   rules: StageRules = {},
 ): boolean {
-  const { manualTrip = false } = rules;
-  if (state.stage === null || !travelerMaySet(state.stage, manualTrip)) return false;
-  if (!travelerMaySet(target, manualTrip)) return false;
-  if (!manualTrip && isArrivalStage(state.stage) !== isArrivalStage(target)) return false;
+  const { manualTrip = false, mayStampLanding = false } = rules;
+  if (state.stage === null || !travelerMaySet(state.stage, manualTrip, mayStampLanding)) {
+    return false;
+  }
+  if (!travelerMaySet(target, manualTrip, mayStampLanding)) return false;
+  if (!manualTrip && isArrivalStage(state.stage) !== isArrivalStage(target)) {
+    if (!(mayStampLanding && target === 'landed')) return false;
+  }
   return state.stamps[target] !== undefined && stageIndex(target) < stageIndex(state.stage);
 }
 
@@ -648,8 +751,14 @@ export function liveContent(
 
   const index = stageIndex(state.stage);
   const stageLabel = state.stage ? STAGE_LABELS[state.stage] : null;
-  const manualTrip = j.source === 'manual';
-  const next = nextStage(state, { manualTrip, plan });
+  // The prompt follows the same rules as the timeline's tap targets, so an
+  // overdue flight whose arrival never came through asks for the landing on
+  // the Lock Screen too, not just in the app.
+  const rules = stageRules(j, state, facts, now, plan);
+  const next = nextStage(state, rules);
+  // The landing is tappable from take-off, but the surfaces only start
+  // ASKING for it once no arrival has come and the flight is plainly down.
+  const overdue = landingDue(j, state, facts, now);
   const landed = hasLanded(state.stage);
   const boardingOpen = !!facts.boardingTime && Date.parse(facts.boardingTime) <= now.getTime();
   const gateWord = facts.gate ? `gate ${facts.gate}` : 'your gate';
@@ -714,6 +823,10 @@ export function liveContent(
     } else {
       subtitle = `Welcome to ${j.toCode}`;
     }
+  } else if (overdue) {
+    // Overdue with nothing from the arrival airport, which for some of them
+    // means nothing is ever coming: the one thing left to do is say so.
+    subtitle = 'Landed? Tap to confirm';
   } else if (state.stage === 'departed') {
     subtitle = facts.baggageBelt ? `In the air · Bags at belt ${facts.baggageBelt}` : 'In the air';
   } else if (presumed === 'landed') {
