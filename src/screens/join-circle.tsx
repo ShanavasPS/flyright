@@ -37,6 +37,10 @@ export function JoinCircle({ token }: { token: string }) {
   const { isAuthenticated } = useConvexAuth();
   const invite = useQuery(api.circle.inviteByToken, { token });
   const accept = useMutation(api.circle.accept);
+  // Files the attempt when the owner's circle turned out to be full, so it
+  // waits in their People tab and they are told once. Without it the tap
+  // dies here and the owner never learns anyone tried.
+  const noteFullInvite = useMutation(api.circle.noteFullInvite);
   const shareBack = useMutation(api.circle.shareBack);
   const [busy, setBusy] = useState(false);
   // What the tap came to: 'requested' (the usual — waits on the owner) or
@@ -87,7 +91,10 @@ export function JoinCircle({ token }: { token: string }) {
       await requestPushPermission();
       if (result.status === 'following' && result.sharingBack) done();
     } catch (e) {
-      if (e instanceof ConvexError && e.data === CIRCLE_FULL) setOwnerFull(true);
+      if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
+        setOwnerFull(true);
+        void noteFullInvite({ token }).catch(() => {});
+      }
       // Otherwise offline, or expired mid-view (the reactive query flips to
       // gone). Either way the traveller gets a reason and a retry.
       else setFailed(true);
@@ -226,11 +233,12 @@ export function JoinCircle({ token }: { token: string }) {
       );
     } else if (ownerFull) {
       // The owner's problem to solve, not the invitee's — no upsell here.
+      // The ask is filed and waiting, and they have been told, so this is
+      // not a dead end: say both, briefly.
       action = (
         <>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-            {name}&apos;s circle is full for now. Free accounts share with {FREE_CIRCLE_LABEL};{' '}
-            {name} can add more people with FlyRight Pro.
+            {name} had room when they sent this. They&apos;ve been told, and your ask keeps.
           </ThemedText>
           <PrimaryButton label="Open Friends" onPress={done} />
         </>

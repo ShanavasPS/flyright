@@ -1,8 +1,10 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
+import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -19,6 +21,11 @@ export function FirstSteps({ signedIn, following }: { signedIn: boolean; followi
   const theme = useTheme();
   const router = useRouter();
   const mine = signedIn;
+  // Nobody has signed in yet, so this is the first screen of the app. A
+  // stranger is owed a hello and a plain sentence about what it does —
+  // not a diagram of a follow, which only means something once you want
+  // one. The steps come back the moment there is an account to count.
+  if (!signedIn) return <Welcome onSignIn={() => router.push('/sign-in')} />;
   const theirs = following > 0;
   const done = (mine ? 1 : 0) + (theirs ? 1 : 0);
 
@@ -57,6 +64,30 @@ export function FirstSteps({ signedIn, following }: { signedIn: boolean; followi
   );
 }
 
+/** The app's own pass, holding its introduction: what it does on the day you
+ * fly, then the one thing an account adds. Claims are not mentioned — the
+ * intro pages already sell those twice, and the travel day is the headline
+ * the product leads on. */
+function Welcome({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <PassCard>
+      <View style={styles.welcomeTop}>
+        <MicroLabel>Welcome to FlyRight</MicroLabel>
+        <MiniContrail />
+      </View>
+      <View style={styles.welcomeCopy}>
+        <Text style={styles.welcomeHeadline}>Your travel day, live.</Text>
+        <Text style={styles.welcomePitch}>
+          Gates, delays and boarding as they happen. Sign in and your friends can follow along —
+          and you can follow theirs.
+        </Text>
+      </View>
+      <PassDivider />
+      <PassAction label="Sign in" onPress={onSignIn} />
+    </PassCard>
+  );
+}
+
 function End({ filled, label }: { filled: boolean; label: string }) {
   const theme = useTheme();
   return (
@@ -89,6 +120,10 @@ const styles = StyleSheet.create({
   // The journal's empty hero sets the scale for a first screen: a headline
   // in the mid-twenties over a 14pt line, not a 32pt title.
   headline: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
+  welcomeTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  welcomeCopy: { gap: Spacing.two, paddingVertical: Spacing.four },
+  welcomeHeadline: { color: WHITE, fontSize: 26, lineHeight: 32, fontWeight: '700' },
+  welcomePitch: { color: WHITE_DIM, fontSize: 15, lineHeight: 22, fontWeight: '500' },
   link: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.three },
   end: { alignItems: 'center', gap: Spacing.one },
   ring: { width: RING, height: RING, borderRadius: RING / 2, borderWidth: 2 },
