@@ -3,7 +3,7 @@
  * The Lock Screen, the Dynamic Island, the home screen's live card and the
  * trip page all count to the same instant, so they must all say the same
  * thing when it passes. This pins what each one does. */
-import { liveCountdown } from '../../convex/liveShared';
+import { clockEndsAt, clockStaleAt, liveCountdown } from '../../convex/liveShared';
 import { EMPTY_FACTS, liveContent, type FlightFacts, type TravelDayState, type TravelJourney } from '@/services/travel-day';
 import { tripCard } from '@/services/trip-card';
 import type { JourneyRow } from '@/services/journeys';
@@ -133,5 +133,80 @@ describe('the clock reaches zero', () => {
     // Without a clock the push carries no stale date either — there is
     // nothing to go stale at.
     expect(liveCountdown('landed', dep, arr, dep)).toBeNull();
+  });
+});
+
+describe('clockStaleAt — when the widget clock stops being right', () => {
+  const now = Date.parse('2026-09-20T09:00:00Z');
+  const at = (endIso: string) => clockStaleAt(Date.parse(endIso), now);
+
+  it('has nothing to say without a countdown', () => {
+    expect(clockStaleAt(0, now)).toBeNull();
+    expect(clockStaleAt(null, now)).toBeNull();
+    expect(clockStaleAt(undefined, now)).toBeNull();
+  });
+
+  it('lands on the ten-hour crossing while the flight is further out', () => {
+    // 13h out: the clock changes shape 3h from now, not at take-off.
+    expect(at('2026-09-20T22:00:00Z')).toBe(Date.parse('2026-09-20T12:00:00Z'));
+  });
+
+  it('lands on the countdown itself once inside ten hours', () => {
+    expect(at('2026-09-20T15:30:00Z')).toBe(Date.parse('2026-09-20T15:30:00Z'));
+  });
+
+  it('takes the crossing only while it is still ahead', () => {
+    // Exactly ten hours out: the crossing is now, so the end is next.
+    expect(at('2026-09-20T19:00:00Z')).toBe(Date.parse('2026-09-20T19:00:00Z'));
+  });
+
+  it('still names the end after the countdown has run out', () => {
+    // A stale date in the past is what tells iOS the card is already wrong.
+    expect(at('2026-09-20T08:59:00Z')).toBe(Date.parse('2026-09-20T08:59:00Z'));
+  });
+});
+
+describe('the moment the widget clock breaks, per session', () => {
+  const base = {
+    currentStage: null,
+    fromCode: 'HEL',
+    toCode: 'ARN',
+    scheduledDeparture: '2026-09-20T12:00:00Z',
+    scheduledArrival: '2026-09-20T14:00:00Z',
+    stageTimes: {},
+    plan: [],
+    status: 'active',
+    carrier: 'Finnair',
+    number: 'AY77',
+    delayMinutes: null,
+    gate: null,
+    terminal: null,
+    baggageBelt: null,
+    estimatedDeparture: null,
+    actualDeparture: null,
+    estimatedArrival: null,
+    actualArrival: null,
+    flightStatus: null,
+  };
+
+  it('is the departure when the flight is inside ten hours', () => {
+    const now = Date.parse('2026-09-20T09:00:00Z');
+    const end = clockEndsAt(base as never, now);
+    expect(end).toBe(Date.parse('2026-09-20T12:00:00Z'));
+    // Three hours out, nothing changes shape before take-off.
+    expect(clockStaleAt(end, now)).toBe(end);
+  });
+
+  it('is the ten-hour crossing when the flight is further out', () => {
+    const now = Date.parse('2026-09-19T23:00:00Z');
+    const end = clockEndsAt(base as never, now);
+    expect(clockStaleAt(end, now)).toBe(Date.parse('2026-09-20T02:00:00Z'));
+  });
+
+  it('has no deadline once every clock on the card is spent', () => {
+    // Past the arrival: no countdown left, so nothing can go wrong.
+    const now = Date.parse('2026-09-20T15:00:00Z');
+    expect(clockEndsAt({ ...base, currentStage: 'landed' } as never, now)).toBeNull();
+    expect(clockStaleAt(null, now)).toBeNull();
   });
 });

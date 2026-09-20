@@ -17,6 +17,8 @@ import { Platform } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
 import Storage from 'expo-sqlite/kv-store';
 
+import { clockStaleAt } from '../../convex/liveShared';
+import { setLiveActivityStaleDate, updateLiveActivityLocally } from '../../modules/flyright-live-activities';
 import { ONESIGNAL_APP_ID } from '@/constants/config';
 import type { LiveContent, TravelJourney } from '@/services/travel-day';
 
@@ -136,6 +138,18 @@ export function startTravelActivity(journey: TravelJourney, content: LiveContent
   );
   Storage.setItemSync(activityKey(journey.id), `${buildStamp()}|${activityId}`);
   Storage.setItemSync(startedKey(journey.id), String(Date.now()));
+  markStale(activityId, content);
+}
+
+/** Mark the card untrustworthy from the moment its clock stops being right
+ * (clockStaleAt). This does NOT repair it — an archived view never re-decides
+ * anything, and a stale date was verified on the simulator to leave the
+ * mangled clock exactly as it was. The repair is the server's refresh push
+ * (liveInternal armClockRefresh); this only makes iOS dim a card whose
+ * refresh never landed, instead of leaving it looking current. */
+function markStale(activityId: string, content: LiveContent): void {
+  const at = clockStaleAt(content.countdownEnd ?? 0);
+  if (at !== null) void setLiveActivityStaleDate(activityId, at).catch(() => {});
 }
 
 /** Ids this process has asked the server to end — an activity being torn
@@ -176,11 +190,19 @@ export function forgetActivityIfDead(journeyId: string, liveIds: readonly string
 export function updateTravelActivity(journeyId: string, content: LiveContent): void {
   const activityId = getActivityId(journeyId);
   if (!supported() || !activityId) return;
+  const state = contentState(content);
+  // Straight through ActivityKit first: it needs no network, so this is the
+  // only path that works in the air — where the countdown runs out and the
+  // archived clock would otherwise draw nonsense until the phone lands. The
+  // proxy still runs, because it is what refreshes the push token and what
+  // reaches the card when the app is not the one asking.
+  void updateLiveActivityLocally(activityId, state).catch(() => {});
   void fetch('/api/live-activity', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ activityId, event: 'update', contentState: contentState(content) }),
+    body: JSON.stringify({ activityId, event: 'update', contentState: state }),
   }).catch(() => {});
+  markStale(activityId, content);
 }
 
 /** End the activity and forget its id (window closed or feature toggled

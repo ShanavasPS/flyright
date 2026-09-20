@@ -2,6 +2,8 @@ import { flightDay } from './airportZones';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import type { Id } from './_generated/dataModel';
+import type { MutationCtx } from './_generated/server';
 import { journeyForKey } from './liveHelpers';
 import {
   internalAction,
@@ -12,6 +14,8 @@ import { fetchFlightFacts } from './flightData';
 import {
   activityAttributes,
   buildContentState,
+  clockEndsAt,
+  clockStaleAt,
   makeToken,
   nextPollDelayMs,
   shouldStartActivity,
@@ -193,6 +197,7 @@ export const applyFlightFacts = internalMutation({
     } else if (widgetWorthy && session.activityId) {
       await ctx.scheduler.runAfter(0, internal.liveInternal.updateActivity, { sessionId });
     }
+    await armClockRefresh(ctx, sessionId, now);
 
     // Re-arm the chain from the fresh state.
     updated = (await ctx.db.get(sessionId))!;
@@ -311,6 +316,36 @@ export const clearActivity = internalMutation({
     if (session?.activityId === activityId) await ctx.db.patch(sessionId, { activityId: null });
   },
 });
+
+/** Aim one extra push at the moment the card's clock stops being right.
+ *
+ * `clockStaleAt` explains which moment and why the card cannot fix itself:
+ * its view is archived when sent and never re-decides anything, so the only
+ * repair is content that arrives then. Without this the lock screen and the
+ * Dynamic Island draw a mangled countdown — ":59:-" — from the instant the
+ * flight goes until the next poll, which is minutes.
+ *
+ * Replaces its own earlier job every poll, so the deadline follows a delay. */
+async function armClockRefresh(
+  ctx: { db: MutationCtx['db']; scheduler: MutationCtx['scheduler'] },
+  sessionId: Id<'liveSessions'>,
+  now: number,
+): Promise<void> {
+  const session = await ctx.db.get(sessionId);
+  if (!session) return;
+  const previous = session.clockScheduledId ?? null;
+  const end = session.activityId && session.status === 'active' ? clockEndsAt(session, now) : null;
+  const breaks = clockStaleAt(end, now);
+  // A second past it: the push must land with the moment already behind it,
+  // so the content it carries is the one the card should have been showing.
+  const at = breaks === null ? null : Math.max(breaks + 1_000, now + 1_000);
+  if (previous) await ctx.scheduler.cancel(previous).catch(() => {});
+  const clockScheduledId =
+    at === null
+      ? null
+      : await ctx.scheduler.runAt(at, internal.liveInternal.updateActivity, { sessionId });
+  await ctx.db.patch(sessionId, { clockScheduledId });
+}
 
 export const updateActivity = internalAction({
   args: { sessionId: v.id('liveSessions') },

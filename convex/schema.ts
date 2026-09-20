@@ -214,6 +214,12 @@ export default defineSchema({
     notifiedGate: v.union(v.string(), v.null()),
     pendingNotify: v.boolean(),
     pollScheduledId: v.union(v.id('_scheduled_functions'), v.null()),
+    // The extra push aimed at the instant the widget's clock runs out. A
+    // Live Activity view is archived when it is sent and never re-decides
+    // anything, so the card has to be replaced at that moment or it draws a
+    // mangled countdown until the next poll. Optional: sessions written
+    // before this existed have none.
+    clockScheduledId: v.optional(v.union(v.id('_scheduled_functions'), v.null())),
     createdAt: v.string(),
     updatedAt: v.string(),
   })

@@ -851,3 +851,47 @@ export function toPublicSession(
     liveUntil: liveUntil(s, onward),
   };
 }
+
+/** Ten hours: the point where the widget's clock changes shape.
+ * See ClockText in targets/FlyRightWidget/FlyRightLiveActivity.swift. */
+const CLOCK_FORMAT_SHIFT_MS = 10 * 3_600_000;
+
+/** When the widget's archived clock stops being right — ms since the epoch,
+ * or null when there is no clock to go wrong.
+ *
+ * Two moments break it, and both are invisible from inside the card. The
+ * clock counts down to ten hours PAST the real instant and crops the leading
+ * digit, which is the only way to keep an "H:MM" shape across the hour
+ * boundary (iOS drops the hour under sixty minutes; measured). That crop is
+ * one digit wide below ten hours remaining and two above, so the TEN-HOUR
+ * CROSSING changes what it should cut; and past the COUNTDOWN'S OWN END the
+ * shifted value falls under ten hours, iOS draws one hour digit instead of
+ * two, and the crop lands mid-number — the ":59:-" the card used to show.
+ *
+ * A Live Activity's view runs once, in the app's process, and is archived;
+ * `Date()` and every branch taken from it freeze there. A stale date does
+ * NOT bring it back to life — that was verified on the simulator with the
+ * date provably set and held, and the card stayed wrong. Only new content
+ * replaces the view. So this instant is what the server aims a refresh push
+ * at (liveInternal armClockRefresh), and what it marks the card stale at, so
+ * a card whose refresh never lands at least reads as untrustworthy.
+ *
+ * Only the nearer of the two fits in one deadline; the refresh that lands
+ * there computes the next one. */
+export function clockStaleAt(countdownEnd: number | null | undefined, now = Date.now()): number | null {
+  if (!countdownEnd || !Number.isFinite(countdownEnd) || countdownEnd <= 0) return null;
+  const crossing = countdownEnd - CLOCK_FORMAT_SHIFT_MS;
+  return crossing > now ? crossing : countdownEnd;
+}
+
+/** The instant the card's countdown runs out — ms, or null when the session
+ * has no clock to run out. The same anchor `buildContentState` sends, so the
+ * refresh lands exactly where the widget's archived clock goes wrong. */
+export function clockEndsAt(
+  session: Parameters<typeof buildContentState>[0],
+  now: number,
+): number | null {
+  const state = buildContentState(session, now);
+  const end = Number(state.countdownEnd);
+  return Number.isFinite(end) && end > now ? end : null;
+}

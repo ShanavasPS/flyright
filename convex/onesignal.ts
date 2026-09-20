@@ -1,3 +1,4 @@
+import { clockStaleAt } from './liveShared';
 import { pushAlias } from './pushIdentity';
 /** OneSignal REST helpers — used only from actions. Needs ONESIGNAL_APP_ID
  * and ONESIGNAL_REST_API_KEY set on the deployment (npx convex env set). */
@@ -151,14 +152,9 @@ export async function startLiveActivity(
  * before it can.
  *
  * Whichever comes first. */
-const FORMAT_SHIFT_MS = 10 * 3_600_000;
-
 function staleDate(contentState: Record<string, unknown>): { stale_date: number } | Record<string, never> {
-  const end = Number(contentState.countdownEnd);
-  if (!Number.isFinite(end) || end <= 0) return {};
-  const crossing = end - FORMAT_SHIFT_MS;
-  const at = crossing > Date.now() ? crossing : end;
-  return { stale_date: Math.floor(at / 1000) };
+  const at = clockStaleAt(Number(contentState.countdownEnd));
+  return at === null ? {} : { stale_date: Math.floor(at / 1000) };
 }
 
 /** Update or end the traveler's lock-screen Live Activity. */

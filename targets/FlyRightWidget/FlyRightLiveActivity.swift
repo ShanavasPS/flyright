@@ -161,7 +161,11 @@ private struct TravelDayModel {
     /// destination once landed, the old headline ("Departing now") before.
     var clockWord: String {
         if landed { return toCode ?? "Landed" }
-        return headline ?? (countdownKind == "arrival" ? "Landing now" : "Departing now")
+        let now = countdownKind == "arrival" ? "Landing now" : "Departing now"
+        // A countdown that has run out leaves a headline written before it
+        // did — "Flight in 8 min", minutes after the flight went.
+        if countdownEnd != nil { return now }
+        return headline ?? now
     }
 
     /// The glyph beside the clock's label.
@@ -419,11 +423,15 @@ private struct BigClock: View {
                 }
             }
         } else {
+            // A word is not a clock: "Departing now" is thirteen characters
+            // where "0:00" is four, and at the clock's own size it ran over
+            // the fact beside it and clipped TERMINAL. Smaller, and free to
+            // shrink further on the narrow surfaces.
             Text(model.clockWord)
-                .font(.system(size: size * 0.72, weight: .heavy, design: .rounded))
+                .font(.system(size: size * 0.44, weight: .heavy, design: .rounded))
                 .foregroundStyle(Brand.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.5)
         }
     }
 
