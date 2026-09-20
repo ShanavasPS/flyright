@@ -8,7 +8,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import { CIRCLE_FULL, FREE_CIRCLE_LABEL } from '../../convex/circleShared';
+import { CIRCLE_FULL } from '../../convex/circleShared';
 
 import { AppHandoff } from '@/components/app-handoff';
 import { Avatar } from '@/components/avatar';
