@@ -101,7 +101,7 @@ export function JoinCircle({ token }: { token: string }) {
     } finally {
       setBusy(false);
     }
-  }, [accept, done, token]);
+  }, [accept, done, noteFullInvite, token]);
 
   // "Sign in to follow" has to mean follow: with an account and a Convex
   // identity in hand, redeem the invite they already said yes to. Without
