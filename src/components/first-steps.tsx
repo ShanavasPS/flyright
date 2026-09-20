@@ -75,13 +75,22 @@ function GetStarted({
         </Text>
       </View>
       <PassDivider />
-      {/* Two ways in, drawn the same. Either one fills this screen, and the
-          app has no opinion on which: a traveller takes the first, somebody
-          who came to watch a friend takes the second, and a filled pill
-          beside a text link would tell them they had picked the lesser one. */}
+      {/* Two ways in, drawn the same — the pass's white pill, twice. Either
+          one fills this screen and the app has no opinion on which: a
+          traveller takes the first, somebody who installed this to watch a
+          friend land takes the second. Stacked rather than side by side, so
+          neither has to shrink or wrap to fit half a card. */}
       <View style={styles.pair}>
-        <PassChoice label="Add a flight" onPress={onAddFlight} />
-        <PassChoice label="Follow someone" onPress={onFindPeople} />
+        <PassAction
+          label="Add a flight"
+          onPress={onAddFlight}
+          icon={{ ios: 'plus', android: 'add', web: 'add' }}
+        />
+        <PassAction
+          label="Follow someone"
+          onPress={onFindPeople}
+          icon={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }}
+        />
       </View>
     </PassCard>
   );
@@ -147,21 +156,6 @@ function Welcome({ onSignIn }: { onSignIn: () => void }) {
   );
 }
 
-/** One of a pair of equal actions on the navy pass: an outlined pill in the
- * pass's own white, so neither reads as the primary. */
-function PassChoice({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.choice, pressed && styles.pressed]}>
-      <Text style={styles.choiceLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function End({ filled, label }: { filled: boolean; label: string }) {
   const theme = useTheme();
   return (
@@ -195,19 +189,7 @@ const styles = StyleSheet.create({
   // in the mid-twenties over a 14pt line, not a 32pt title.
   headline: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   actions: { gap: Spacing.two, marginTop: Spacing.two },
-  pair: { flexDirection: 'row', gap: Spacing.two },
-  choice: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.two,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(242,246,251,0.32)',
-    backgroundColor: 'rgba(242,246,251,0.10)',
-  },
-  choiceLabel: { color: WHITE, fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  pair: { gap: Spacing.two },
   secondary: {
     alignItems: 'center',
     borderWidth: StyleSheet.hairlineWidth,
