@@ -94,6 +94,22 @@ over oceans and on the ground) carried forward along its track, else from the
 timetable (`flightProgress`). The server side of this (`providerFetch`,
 `flightNormalize`) reaches production with the next backend + hosting deploy.
 
+# The design system (Claude artifact)
+
+Before you design, redesign or mock up anything visual — a marketing page, a
+store screenshot, a deck, a social post, a screen redesign artifact — read
+FlyRight's design system first: https://claude.ai/artifact/5V5zGwdsNjkjsk7C9Jmg7v
+
+`read` its `project/README.md` for the brand book (voice, colour rules,
+type, spacing, iconography), `project/tokens.json` for exact values, and a
+component's `project/components/<Name>/README.md` before recreating it. It is
+built from `src/constants/theme.ts`, `src/global.css` and the icon/feature-graphic
+scripts, and it is the single source for surfaces outside the binary — do not
+re-derive the palette from memory or from a screenshot. Nothing in it compiles
+into the app: `src/constants/theme.ts` stays the app's own token file, and the
+system is re-synced from it when it changes (record the new ref in
+`tokens.json` `meta`).
+
 <!-- stripe-projects-cli managed:agents-md:start -->
 # The website (getflyright.com)
 
