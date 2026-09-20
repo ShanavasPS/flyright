@@ -255,6 +255,9 @@
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
             "minSdkVersion": 26
+          },
+          "ios": {
+            "enableSceneSupport": true
           }
         }
       ],
