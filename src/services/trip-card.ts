@@ -159,6 +159,12 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
     const at = facts.actualArrival ?? state.stamps.landed ?? facts.estimatedArrival ?? row.scheduledArrival;
     const [value, unit] = splitClock(formatTime(at, arrivalZone));
     clock = { kind: 'static', label: 'Landed at', value, unit };
+  } else if (airborne && !Number.isNaN(arrivalMs) && arrivalMs <= t) {
+    // The arrival it was counting to has passed and nothing has reported a
+    // landing. A countdown here renders a dead "0:00" that never moves again;
+    // the live card and the Lock Screen both give up the clock and say where
+    // the flight is, so this says the same.
+    clock = { kind: 'static', label: 'In the air', value: 'Landing', unit: 'now' };
   } else if (airborne && !Number.isNaN(arrivalMs)) {
     clock = { kind: 'countdown', label: 'Lands in', end: arrivalMs, tone: delayed ? 'late' : 'normal' };
     const fraction = flightProgress(row, state, facts, now);
