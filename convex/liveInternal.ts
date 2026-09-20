@@ -15,7 +15,7 @@ import {
   activityAttributes,
   buildContentState,
   clockEndsAt,
-  clockStaleAt,
+  clockRefreshAt,
   makeToken,
   nextPollDelayMs,
   shouldStartActivity,
@@ -335,7 +335,7 @@ async function armClockRefresh(
   if (!session) return;
   const previous = session.clockScheduledId ?? null;
   const end = session.activityId && session.status === 'active' ? clockEndsAt(session, now) : null;
-  const breaks = clockStaleAt(end, now);
+  const breaks = clockRefreshAt(end, now);
   // A second past it: the push must land with the moment already behind it,
   // so the content it carries is the one the card should have been showing.
   const at = breaks === null ? null : Math.max(breaks + 1_000, now + 1_000);

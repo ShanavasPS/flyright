@@ -493,17 +493,22 @@ export function liveCountdown(
   currentStage: string | null,
   departureMs: number,
   arrivalMs: number,
-  /** Now. An instant already gone is not a clock: the widget's is archived at
-   * push time and ticks on the device, so one sent spent renders as a frozen
-   * 0:00 at best and, once iOS drops an hour digit from it, as garbled
-   * minutes and seconds (ClockText crops a fixed number of leading
-   * characters). Omitted by callers that only want the anchor. */
+  /** Now. The clock retires with a minute still on it: "0:00" is what every
+   * surface would read for that last minute anyway, and the word says the
+   * same thing better. It also takes the widget out of harm's way — its card
+   * is archived at push time and cannot re-decide anything, so a countdown
+   * still on it when the instant passes garbles (see clockStaleAt), and now
+   * no card sent in the final minute carries one. Omitted by callers that
+   * only want the anchor. */
   now?: number,
 ): { end: number; kind: 'departure' | 'arrival' } | null {
   const clock = countdownAnchor(currentStage, departureMs, arrivalMs);
-  if (clock && now !== undefined && clock.end <= now) return null;
+  if (clock && now !== undefined && clock.end - now < CLOCK_RETIRES_MS) return null;
   return clock;
 }
+
+/** The last minute belongs to "Departing now" / "Landing now", not to 0:00. */
+export const CLOCK_RETIRES_MS = 60_000;
 
 function countdownAnchor(
   currentStage: string | null,
@@ -856,37 +861,46 @@ export function toPublicSession(
  * See ClockText in targets/FlyRightWidget/FlyRightLiveActivity.swift. */
 const CLOCK_FORMAT_SHIFT_MS = 10 * 3_600_000;
 
-/** When the widget's archived clock stops being right — ms since the epoch,
- * or null when there is no clock to go wrong.
+/** The one moment a stale date may name: the instant the countdown runs out.
  *
- * Two moments break it, and both are invisible from inside the card. The
- * clock counts down to ten hours PAST the real instant and crops the leading
- * digit, which is the only way to keep an "H:MM" shape across the hour
- * boundary (iOS drops the hour under sixty minutes; measured). That crop is
- * one digit wide below ten hours remaining and two above, so the TEN-HOUR
- * CROSSING changes what it should cut; and past the COUNTDOWN'S OWN END the
- * shifted value falls under ten hours, iOS draws one hour digit instead of
- * two, and the crop lands mid-number — the ":59:-" the card used to show.
+ * A stale date is the only thing that makes iOS rebuild an archived Live
+ * Activity view without new content — no network, no running app. Measured,
+ * after three wrong guesses: the rebuild DOES happen, and `Date()` inside it
+ * IS current again, but only if the view actually reads `context.isStale`
+ * (SwiftUI skips the body otherwise, since the content has not changed).
+ * The widget therefore reads the flag and ignores its value, and the clock's
+ * own "has this run out?" test does the deciding.
  *
- * A Live Activity's view runs once, in the app's process, and is archived;
- * `Date()` and every branch taken from it freeze there. A stale date does
- * NOT bring it back to life — that was verified on the simulator with the
- * date provably set and held, and the card stayed wrong. Only new content
- * replaces the view. So this instant is what the server aims a refresh push
- * at (liveInternal armClockRefresh), and what it marks the card stale at, so
- * a card whose refresh never lands at least reads as untrustworthy.
- *
- * Only the nearer of the two fits in one deadline; the refresh that lands
- * there computes the next one. */
+ * There is exactly one rebuild, so it is spent on the moment that affects
+ * every flight rather than the ten-hour crossing, which is long-haul only
+ * and has the refresh push and the device's local update over it. Aiming it
+ * a minute early instead does not work: the countdown is still valid then,
+ * so the rebuilt view keeps the clock and garbles a minute later. */
 export function clockStaleAt(countdownEnd: number | null | undefined, now = Date.now()): number | null {
   if (!countdownEnd || !Number.isFinite(countdownEnd) || countdownEnd <= 0) return null;
-  const crossing = countdownEnd - CLOCK_FORMAT_SHIFT_MS;
-  return crossing > now ? crossing : countdownEnd;
+  void now;
+  return countdownEnd;
 }
 
-/** The instant the card's countdown runs out — ms, or null when the session
- * has no clock to run out. The same anchor `buildContentState` sends, so the
- * refresh lands exactly where the widget's archived clock goes wrong. */
+/** When the archived card must be REPLACED, because the clock it drew stops
+ * being drawable — ms since the epoch, or null when it has no clock.
+ *
+ * Two moments, both invisible from inside the card. The clock counts down to
+ * ten hours past the real instant and crops the leading digit, the only way
+ * to hold an "H:MM" shape across the hour boundary (iOS drops the hour under
+ * sixty minutes; measured). That crop is one digit wide below ten hours
+ * remaining and two above, so the TEN-HOUR CROSSING changes what it should
+ * cut; and the clock RETIRES a minute before its instant, after which the
+ * card should be showing the word instead.
+ *
+ * Only the nearer fits in one deadline; the refresh that lands there works
+ * out the next one. */
+export function clockRefreshAt(countdownEnd: number | null | undefined, now = Date.now()): number | null {
+  if (!countdownEnd || !Number.isFinite(countdownEnd) || countdownEnd <= 0) return null;
+  const crossing = countdownEnd - CLOCK_FORMAT_SHIFT_MS;
+  return crossing > now ? crossing : countdownEnd - CLOCK_RETIRES_MS;
+}
+
 export function clockEndsAt(
   session: Parameters<typeof buildContentState>[0],
   now: number,

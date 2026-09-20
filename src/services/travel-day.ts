@@ -694,13 +694,16 @@ export function liveCountdown(
   stage: TravelStage | null,
   departureMs: number,
   arrivalMs: number,
-  /** Now. An instant already gone is not a clock — see the Convex twin. */
+  /** Now. The clock retires with a minute still on it — see the Convex twin. */
   now?: number,
 ): { end: number; kind: 'departure' | 'arrival' } | null {
   const clock = countdownAnchor(stage, departureMs, arrivalMs);
-  if (clock && now !== undefined && clock.end <= now) return null;
+  if (clock && now !== undefined && clock.end - now < CLOCK_RETIRES_MS) return null;
   return clock;
 }
+
+/** The last minute belongs to "Departing now" / "Landing now", not to 0:00. */
+export const CLOCK_RETIRES_MS = 60_000;
 
 function countdownAnchor(
   stage: TravelStage | null,

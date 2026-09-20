@@ -3,7 +3,7 @@
  * The Lock Screen, the Dynamic Island, the home screen's live card and the
  * trip page all count to the same instant, so they must all say the same
  * thing when it passes. This pins what each one does. */
-import { clockEndsAt, clockStaleAt, liveCountdown } from '../../convex/liveShared';
+import { clockEndsAt, clockRefreshAt, clockStaleAt, liveCountdown } from '../../convex/liveShared';
 import { EMPTY_FACTS, liveContent, type FlightFacts, type TravelDayState, type TravelJourney } from '@/services/travel-day';
 import { tripCard } from '@/services/trip-card';
 import type { JourneyRow } from '@/services/journeys';
@@ -136,14 +136,14 @@ describe('the clock reaches zero', () => {
   });
 });
 
-describe('clockStaleAt — when the widget clock stops being right', () => {
+describe('clockRefreshAt — when the archived card must be replaced', () => {
   const now = Date.parse('2026-09-20T09:00:00Z');
-  const at = (endIso: string) => clockStaleAt(Date.parse(endIso), now);
+  const at = (endIso: string) => clockRefreshAt(Date.parse(endIso), now);
 
   it('has nothing to say without a countdown', () => {
-    expect(clockStaleAt(0, now)).toBeNull();
-    expect(clockStaleAt(null, now)).toBeNull();
-    expect(clockStaleAt(undefined, now)).toBeNull();
+    expect(clockRefreshAt(0, now)).toBeNull();
+    expect(clockRefreshAt(null, now)).toBeNull();
+    expect(clockRefreshAt(undefined, now)).toBeNull();
   });
 
   it('lands on the ten-hour crossing while the flight is further out', () => {
@@ -151,18 +151,20 @@ describe('clockStaleAt — when the widget clock stops being right', () => {
     expect(at('2026-09-20T22:00:00Z')).toBe(Date.parse('2026-09-20T12:00:00Z'));
   });
 
-  it('lands on the countdown itself once inside ten hours', () => {
-    expect(at('2026-09-20T15:30:00Z')).toBe(Date.parse('2026-09-20T15:30:00Z'));
+  it('lands a minute before the countdown once inside ten hours', () => {
+    // The clock retires with a minute on it, so that is when the card has to
+    // be replaced — not the instant itself.
+    expect(at('2026-09-20T15:30:00Z')).toBe(Date.parse('2026-09-20T15:29:00Z'));
   });
 
   it('takes the crossing only while it is still ahead', () => {
-    // Exactly ten hours out: the crossing is now, so the end is next.
-    expect(at('2026-09-20T19:00:00Z')).toBe(Date.parse('2026-09-20T19:00:00Z'));
+    // Exactly ten hours out: the crossing is now, so the retirement is next.
+    expect(at('2026-09-20T19:00:00Z')).toBe(Date.parse('2026-09-20T18:59:00Z'));
   });
 
-  it('still names the end after the countdown has run out', () => {
-    // A stale date in the past is what tells iOS the card is already wrong.
-    expect(at('2026-09-20T08:59:00Z')).toBe(Date.parse('2026-09-20T08:59:00Z'));
+  it('still names a moment already gone once the countdown has run out', () => {
+    // A deadline in the past is what tells iOS the card is already wrong.
+    expect(at('2026-09-20T08:59:00Z')).toBe(Date.parse('2026-09-20T08:58:00Z'));
   });
 });
 
@@ -193,20 +195,72 @@ describe('the moment the widget clock breaks, per session', () => {
     const now = Date.parse('2026-09-20T09:00:00Z');
     const end = clockEndsAt(base as never, now);
     expect(end).toBe(Date.parse('2026-09-20T12:00:00Z'));
-    // Three hours out, nothing changes shape before take-off.
-    expect(clockStaleAt(end, now)).toBe(end);
+    // Three hours out, the next thing to happen is the clock retiring.
+    expect(clockRefreshAt(end, now)).toBe(Date.parse('2026-09-20T11:59:00Z'));
   });
 
   it('is the ten-hour crossing when the flight is further out', () => {
     const now = Date.parse('2026-09-19T23:00:00Z');
     const end = clockEndsAt(base as never, now);
-    expect(clockStaleAt(end, now)).toBe(Date.parse('2026-09-20T02:00:00Z'));
+    expect(clockRefreshAt(end, now)).toBe(Date.parse('2026-09-20T02:00:00Z'));
   });
 
   it('has no deadline once every clock on the card is spent', () => {
     // Past the arrival: no countdown left, so nothing can go wrong.
     const now = Date.parse('2026-09-20T15:00:00Z');
     expect(clockEndsAt({ ...base, currentStage: 'landed' } as never, now)).toBeNull();
+    expect(clockRefreshAt(null, now)).toBeNull();
+  });
+});
+
+describe('the clock retires a minute early', () => {
+  const dep = Date.parse('2026-09-20T12:00:00Z');
+  const arr = Date.parse('2026-09-20T14:00:00Z');
+  const at = (iso: string) => liveCountdown(null, dep, arr, Date.parse(iso));
+
+  it('still counts with more than a minute to go', () => {
+    expect(at('2026-09-20T11:58:59Z')).toEqual({ end: dep, kind: 'departure' });
+  });
+
+  it('gives up the clock for the last minute — the word says it better', () => {
+    // This is the whole "0:00" minute: every surface reads the same word.
+    expect(at('2026-09-20T11:59:01Z')).toBeNull();
+    expect(at('2026-09-20T11:59:59Z')).toBeNull();
+  });
+
+  it('stays gone once the instant has passed', () => {
+    expect(at('2026-09-20T12:00:30Z')).toBeNull();
+  });
+
+  it('retires the arrival clock the same way in the air', () => {
+    expect(liveCountdown('departed', dep, arr, Date.parse('2026-09-20T13:58:00Z'))).toEqual({
+      end: arr,
+      kind: 'arrival',
+    });
+    expect(liveCountdown('departed', dep, arr, Date.parse('2026-09-20T13:59:30Z'))).toBeNull();
+  });
+});
+
+describe('clockStaleAt — the one rebuild an offline card ever gets', () => {
+  const now = Date.parse('2026-09-20T09:00:00Z');
+
+  it('is the countdown itself, never the ten-hour crossing', () => {
+    // A long-haul card whose stale date sat on the crossing announced
+    // "Landing now" nine hours out. The crossing belongs to clockRefreshAt.
+    const end = Date.parse('2026-09-20T22:00:00Z');
+    expect(clockStaleAt(end, now)).toBe(end);
+    expect(clockRefreshAt(end, now)).toBe(Date.parse('2026-09-20T12:00:00Z'));
+  });
+
+  it('is not aimed a minute early — the clock is still valid there', () => {
+    // At end minus a minute the rebuilt view would keep its clock and
+    // garble sixty seconds later, which is the bug it is meant to prevent.
+    const end = Date.parse('2026-09-20T15:30:00Z');
+    expect(clockStaleAt(end, now)).toBe(end);
+  });
+
+  it('has nothing to say without a countdown', () => {
+    expect(clockStaleAt(0, now)).toBeNull();
     expect(clockStaleAt(null, now)).toBeNull();
   });
 });

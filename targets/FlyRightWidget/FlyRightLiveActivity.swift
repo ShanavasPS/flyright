@@ -86,6 +86,10 @@ private struct TravelDayModel {
     /// departure or the arrival. Nil once landed or when unknown.
     let countdownEnd: Date?
     let countdownKind: String?
+    /// iOS's own verdict that this card has outlived its content. Unlike
+    /// anything derived from `Date()`, this is handed in fresh — the view is
+    /// archived, so a date captured when it was built never moves again.
+    let isStale: Bool
 
     init(context: ActivityViewContext<DefaultLiveActivityAttributes>) {
         // Empty strings travel as "not set" (the JS side can't send nils
@@ -132,6 +136,7 @@ private struct TravelDayModel {
         let endMs = number(state["countdownEnd"]) ?? 0
         countdownEnd = endMs > 0 ? Date(timeIntervalSince1970: endMs / 1000) : nil
         countdownKind = text(state["countdownKind"]?.asString())
+        isStale = context.isStale
 
         // Older states carry no lead keys: read the clock label off the
         // countdown's kind, the tone off the old emphasis, and show no fact.
@@ -151,6 +156,19 @@ private struct TravelDayModel {
     /// The instant the clock counts to — nil once it has passed: a closed
     /// range can't run backwards, and a clock stuck at 0:00 says nothing.
     var countdown: Date? {
+        // `isStale` is read and deliberately not obeyed. An archived card
+        // never re-runs this on its own, so `Date()` below stays frozen at
+        // the moment the view was built — which is why a countdown that ran
+        // out afterwards used to draw ":59:-". Touching the flag is what
+        // makes SwiftUI run the body again when the stale date passes (it
+        // skips it otherwise, the content being unchanged), and in THAT run
+        // `Date()` is current, so the test finally decides correctly.
+        //
+        // Obeying the flag instead is wrong, and was measured to be: the
+        // value only says "something is due", not what — a card whose stale
+        // date sat on the ten-hour crossing announced "Landing now" nine
+        // hours from landing.
+        _ = isStale
         guard let countdownEnd, countdownEnd > Date() else { return nil }
         return countdownEnd
     }
