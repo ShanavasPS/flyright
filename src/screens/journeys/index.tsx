@@ -620,7 +620,11 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    // The day line sits on the row's floor, not its middle. The row is as
+    // tall as the buttons (40pt touch targets) and the line is 16, so
+    // centring it left 12pt of nothing between the line and the faces
+    // directly beneath it. Bottom-aligned, the two read as one block.
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
