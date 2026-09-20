@@ -134,7 +134,7 @@ export function HomeHero({
           {/* Which flight, beside the airline's mark — the Lock Screen
               leaves it out for the clock's sake; here there is room. */}
           <View style={styles.flightId}>
-            <AirlineLogo number={active.number} carrier={active.carrier} size={32} />
+            <AirlineLogo number={active.number} carrier={active.carrier} size={28} />
             <ThemedText type="smallBold" themeColor="heading" numberOfLines={1} style={styles.flightNumber}>
               {content.flightLabel}
             </ThemedText>
@@ -158,7 +158,7 @@ export function HomeHero({
         <View style={styles.leadRow}>
           <View style={styles.clockBlock}>
             <View style={styles.clockLabelRow}>
-              <SymbolView name={clockIcon(content.clockLabel)} size={13} tintColor={toneColor} />
+              <SymbolView name={clockIcon(content.clockLabel)} size={12} tintColor={toneColor} />
               <ThemedText type="smallBold" style={[styles.clockLabel, { color: toneColor }]}>
                 {content.clockLabel}
               </ThemedText>
@@ -464,12 +464,17 @@ const styles = StyleSheet.create({
   },
   // The wash overlay is clipped to the rounded corners; SheenCard supplies
   // the surface, border and radius.
+  // Sized to the all-time summary card it replaces on a travel day, so the
+  // hero is one shape every day and only its content swaps. SheenCard's
+  // Spacing.four padding is the single biggest saving; the clock below is the
+  // other. Nothing is dropped — the rows are the same rows, tighter.
   card: {
     overflow: 'hidden',
     borderWidth: BORDER_WIDTH,
+    padding: Spacing.three,
   },
   liveSection: {
-    gap: Spacing.two,
+    gap: Spacing.two - 2,
   },
   spacedRow: {
     flexDirection: 'row',
@@ -487,8 +492,8 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
   },
   liveLabel: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 13,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -519,8 +524,8 @@ const styles = StyleSheet.create({
   },
   // The route is the supporting line now; the clock and the fact lead.
   code: {
-    fontSize: 17,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 21,
     fontWeight: 800,
     letterSpacing: 0.5,
   },
@@ -531,7 +536,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   flightNumber: {
-    fontSize: 15,
+    fontSize: 14,
     letterSpacing: 0.3,
     flexShrink: 1,
   },
@@ -557,13 +562,13 @@ const styles = StyleSheet.create({
     gap: Spacing.one + 2,
   },
   clockLabel: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 13,
     letterSpacing: 1.4,
   },
   clock: {
-    fontSize: 54,
-    lineHeight: 58,
+    fontSize: 38,
+    lineHeight: 44,
     fontWeight: 800,
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
@@ -573,14 +578,14 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   clockSeconds: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: 700,
     fontVariant: ['tabular-nums'],
   },
   clockWords: {
-    fontSize: 40,
-    lineHeight: 48,
+    fontSize: 28,
+    lineHeight: 34,
     fontWeight: 800,
     letterSpacing: -0.5,
   },
@@ -602,13 +607,13 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   leadLabel: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 13,
     letterSpacing: 1.3,
   },
   leadValue: {
-    fontSize: 40,
-    lineHeight: 44,
+    fontSize: 26,
+    lineHeight: 30,
     fontWeight: 800,
   },
   footerRow: {
@@ -616,7 +621,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: Spacing.two + Spacing.one,
+    paddingTop: Spacing.two,
   },
   openTrip: {
     flex: 1,
