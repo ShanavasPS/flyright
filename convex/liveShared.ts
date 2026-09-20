@@ -125,13 +125,21 @@ export function preferredSession<
   );
 }
 
-/** How long a trip stays a live card after it lands — long enough to see
- * the belt and know they are through, short enough that yesterday's flight
- * is not what a follower opens the app to. The same two hours for a trip
- * only the timetable says has landed. The session itself stays open longer
- * (SESSION_TTL_MS) so a late stage or belt still reaches followers; the
- * card just stops leading with it. */
-export const LIVE_AFTER_LANDING_MS = 2 * HOUR_MS;
+/** How long a trip stays a live card after it lands.
+ *
+ * Two hours once, chosen when a tracked flight ended at `landed` and the only
+ * thing left to see was the belt. It no longer holds: a leg of a longer
+ * itinerary carries arrival steps (passport control, the belt, the bag
+ * re-check) that a queue can push well past two hours, and an airport that
+ * never reports an arrival leaves the landing to the traveller's own tap,
+ * which can itself come hours late — the clock runs from the stamp either
+ * way. Twelve hours covers the walk out of any airport and still keeps
+ * yesterday's flight off the surface a follower opens in the morning. The
+ * same window for a trip only the timetable says has landed. The session
+ * itself stays open longer (SESSION_TTL_MS, and 24 h past a reported arrival)
+ * so a late stage or belt still reaches followers; the card just stops
+ * leading with it. */
+export const LIVE_AFTER_LANDING_MS = 12 * HOUR_MS;
 
 /** Whether a session still belongs on a follower's live surfaces — the home
  * row, the People tab pass, the live card on the person's page: always

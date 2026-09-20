@@ -234,23 +234,27 @@ describe('shouldStartActivity (server push-to-start)', () => {
 
 describe('stillLive', () => {
   // Due to land 06:05 in Doha = 03:05Z.
-  it('keeps a trip live until two hours after it lands, recorded or by the timetable', () => {
+  it('keeps a trip live until twelve hours after it lands, recorded or by the timetable', () => {
     expect(stillLive(session(), Date.parse('2026-09-09T00:00Z'))).toBe(true);
-    expect(stillLive(session(), Date.parse('2026-09-09T05:00Z'))).toBe(true);
-    expect(stillLive(session(), Date.parse('2026-09-09T05:10Z'))).toBe(false);
+    // Nothing recorded: the timetable arrival (03:05Z) starts the clock.
+    expect(stillLive(session(), Date.parse('2026-09-09T14:55Z'))).toBe(true);
+    expect(stillLive(session(), Date.parse('2026-09-09T15:10Z'))).toBe(false);
+    // A recorded landing starts it from the stamp instead.
     const landed = session({ currentStage: 'landed', stageTimes: { landed: '2026-09-09T03:30:00.000Z' } });
-    expect(stillLive(landed, Date.parse('2026-09-09T05:20Z'))).toBe(true);
-    expect(stillLive(landed, Date.parse('2026-09-09T05:40Z'))).toBe(false);
+    expect(stillLive(landed, Date.parse('2026-09-09T15:20Z'))).toBe(true);
+    expect(stillLive(landed, Date.parse('2026-09-09T15:40Z'))).toBe(false);
   });
   it('stays live while a connecting leg is still to leave', () => {
+    // Past the twelve hours the landing alone would have bought (arrival
+    // 03:05Z), so only the onward leg can be keeping it live.
     expect(
-      stillLive(session(), Date.parse('2026-09-09T06:00Z'), [
-        { scheduledDeparture: '2026-09-09T06:00:00.000Z', fromCode: 'DOH' },
+      stillLive(session(), Date.parse('2026-09-09T16:00Z'), [
+        { scheduledDeparture: '2026-09-09T16:00:00.000Z', fromCode: 'DOH' },
       ]),
     ).toBe(false);
     expect(
-      stillLive(session(), Date.parse('2026-09-09T06:00Z'), [
-        { scheduledDeparture: '2026-09-09T08:00:00.000Z', fromCode: 'DOH' },
+      stillLive(session(), Date.parse('2026-09-09T16:00Z'), [
+        { scheduledDeparture: '2026-09-09T18:00:00.000Z', fromCode: 'DOH' },
       ]),
     ).toBe(true);
   });

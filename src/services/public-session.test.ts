@@ -157,28 +157,28 @@ describe('onHomeScreen', () => {
     expect(onHomeScreen(stamped, now)).toBe(true);
     expect(onHomeScreen({ ...stamped, currentStage: 'departed' }, at('2026-09-09T20:00:00Z'))).toBe(true);
   });
-  it('lets a landed trip go two hours after the landing stamp', () => {
+  it('lets a landed trip go twelve hours after the landing stamp', () => {
     const landed = { ...stamped, currentStage: 'landed', stageTimes: { landed: '2026-09-09T05:00:00Z' } };
-    expect(onHomeScreen(landed, at('2026-09-09T06:59:00Z'))).toBe(true);
-    expect(onHomeScreen(landed, at('2026-09-09T07:01:00Z'))).toBe(false);
+    expect(onHomeScreen(landed, at('2026-09-09T16:59:00Z'))).toBe(true);
+    expect(onHomeScreen(landed, at('2026-09-09T17:01:00Z'))).toBe(false);
   });
   it("falls back to the airline's actual arrival, and stays when neither is known", () => {
     expect(
       onHomeScreen(
         { ...stamped, currentStage: 'landed', actualArrival: '2026-09-09T05:00:00Z' },
-        at('2026-09-09T08:00:00Z'),
+        at('2026-09-09T18:00:00Z'),
       ),
     ).toBe(false);
     expect(onHomeScreen({ ...stamped, currentStage: 'landed' }, now)).toBe(true);
   });
-  it('lets a trip nobody recorded landing go two hours after the timetable arrival', () => {
+  it('lets a trip nobody recorded landing go twelve hours after the timetable arrival', () => {
     // Scheduled arrival 09:15Z with no stage at all.
-    expect(onHomeScreen(stamped, at('2026-09-09T11:00:00Z'))).toBe(true);
-    expect(onHomeScreen(stamped, at('2026-09-09T11:20:00Z'))).toBe(false);
+    expect(onHomeScreen(stamped, at('2026-09-09T21:00:00Z'))).toBe(true);
+    expect(onHomeScreen(stamped, at('2026-09-09T21:20:00Z'))).toBe(false);
     // ...unless a connecting leg is still to leave.
     expect(
-      onHomeScreen(stamped, at('2026-09-09T11:20:00Z'), [
-        { scheduledDeparture: '2026-09-09T13:00:00Z', fromCode: 'LHR' },
+      onHomeScreen(stamped, at('2026-09-09T21:20:00Z'), [
+        { scheduledDeparture: '2026-09-09T23:00:00Z', fromCode: 'LHR' },
       ]),
     ).toBe(true);
   });
