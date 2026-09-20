@@ -1,0 +1,5 @@
+• The app opens on Home: your travel day, the people you follow who are in the air, and what they have posted.
+• Flights is your journal, and today's flight stays in it — with a live row that counts down to the landing.
+• Friends is your circle: whoever is flying gets their full live card, gate and delays included.
+• Settings moved to your picture in the top corner; the + for a new flight sits beside it.
+• People who signed in without a name can be found and followed again.
