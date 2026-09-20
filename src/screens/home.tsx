@@ -48,9 +48,17 @@ export function Home() {
   const circle = useQuery(api.circle.list, live && isSignedIn ? {} : 'skip');
   const following = circle?.following ?? [];
 
-  // The two steps are done once both ends of a follow exist. Nothing else
-  // counts: a flight of your own is the Flights tab's business.
-  const stepsDone = !!isSignedIn && following.length > 0;
+  // An invitation waiting on somebody — one you sent, or one sent to you.
+  // Either way the follow is half made, which is what the card draws.
+  const waiting = circle?.outgoing?.[0] ?? null;
+  const invited = circle?.incoming?.[0] ?? null;
+  const pending = waiting
+    ? { name: waiting.name, theirs: false }
+    : invited
+      ? { name: invited.name, theirs: true }
+      : null;
+  // Home has something of its own to show once there is a trip or a person.
+  const furnished = !!isSignedIn && (following.length > 0 || (journeys ?? []).length > 0);
 
   return (
     <ThemedView style={styles.fill}>
@@ -79,10 +87,10 @@ export function Home() {
             // The live card alone: the all-time summary is the Flights tab's,
             // and the two sit next to each other.
             variant="glance"
-            fallback={stepsDone ? <QuietDay /> : null}
+            fallback={furnished ? <QuietDay /> : null}
           />
 
-          {!stepsDone && <FirstSteps signedIn={!!isSignedIn} following={following.length} />}
+          {!furnished && <FirstSteps signedIn={!!isSignedIn} pending={pending} />}
 
           {(feed ?? []).map((post) => (
             <FeedCard

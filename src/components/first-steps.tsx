@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { GhostTravelDay } from '@/components/ghost-trips';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
-import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
@@ -17,49 +17,111 @@ import { useTheme } from '@/hooks/use-theme';
  * the words underneath stay few. A follow genuinely needs both ends: the
  * circle is signed-in only (convex/circle.ts requires an identity to invite,
  * accept or be asked), which is what step 1 is for. */
-export function FirstSteps({ signedIn, following }: { signedIn: boolean; following: number }) {
-  const theme = useTheme();
+export function FirstSteps({
+  signedIn,
+  pending,
+}: {
+  signedIn: boolean;
+  /** An invitation waiting on somebody: one you sent, or one sent to you.
+   * Null when there is none, which is the ordinary empty Home. */
+  pending: { name: string; theirs: boolean } | null;
+}) {
   const router = useRouter();
-  const mine = signedIn;
   // Nobody has signed in yet, so this is the first screen of the app. A
   // stranger is owed a hello and a plain sentence about what it does —
-  // not a diagram of a follow, which only means something once you want
-  // one. The steps come back the moment there is an account to count.
+  // not a diagram of a follow, which only means something once there is
+  // one to wait for.
   if (!signedIn) return <Welcome onSignIn={() => router.push('/sign-in')} />;
-  const theirs = following > 0;
-  const done = (mine ? 1 : 0) + (theirs ? 1 : 0);
+  // A follow that has been asked for and not yet answered: one end made,
+  // the other still open. That is what the drawing is actually about.
+  if (pending) return <PendingFollow name={pending.name} theirs={pending.theirs} />;
+  return (
+    <GetStarted
+      onAddFlight={() => router.push('/add')}
+      onFindPeople={() => router.push('/people')}
+    />
+  );
+}
 
+/** Signed in, and Home has nothing to put on itself: no trip of your own and
+ * nobody to follow. Both are worth saying, because either one fills it —
+ * a traveller wants the first, somebody who came to watch a friend wants the
+ * second, and neither should have to guess which this app wants from them.
+ *
+ * On the navy pass, over a ghost of what Home holds when it is full — the
+ * faces of whoever is flying and a live card. Deliberately not the journal's
+ * deck of rows: that is the Flights tab's empty screen, and the two sit next
+ * to each other, so the same picture on both would read as one screen shown
+ * twice. The shapes say what will stand here without inventing a flight. */
+function GetStarted({
+  onAddFlight,
+  onFindPeople,
+}: {
+  onAddFlight: () => void;
+  onFindPeople: () => void;
+}) {
+  return (
+    <PassCard>
+      <View style={styles.welcomeTop}>
+        <MicroLabel>Nothing in the air</MicroLabel>
+        <MiniContrail />
+      </View>
+      <GhostTravelDay />
+      <View style={styles.welcomeCopy}>
+        <Text style={styles.welcomeHeadline}>This fills up on flight day.</Text>
+        <Text style={styles.welcomePitch}>
+          Your own travel day runs here — and so does everyone you follow, the moment they post or
+          take off.
+        </Text>
+      </View>
+      <PassDivider />
+      <PassAction
+        label="Add a flight"
+        onPress={onAddFlight}
+        icon={{ ios: 'plus', android: 'add', web: 'add' }}
+      />
+      <Pressable
+        accessibilityRole="button"
+        onPress={onFindPeople}
+        style={({ pressed }) => [styles.passSecondary, pressed && styles.pressed]}>
+        <Text style={styles.passSecondaryLabel}>Follow someone instead</Text>
+      </Pressable>
+    </PassCard>
+  );
+}
+
+/** A follow has two ends, and one of them is waiting. Shown to whoever is
+ * waiting on whom: the person who sent the invitation sees their own end
+ * made, the person who received one sees theirs still open. */
+function PendingFollow({ name, theirs }: { name: string; theirs: boolean }) {
+  const theme = useTheme();
+  const router = useRouter();
   return (
     <View style={[styles.card, { borderColor: theme.hairline }]}>
       <ThemedText type="smallBold" themeColor="textSecondary" style={styles.meter}>
-        {done} OF 2
+        1 OF 2
       </ThemedText>
-      <Text style={[styles.headline, { color: theme.heading }]}>A follow has two ends.</Text>
+      <Text style={[styles.headline, { color: theme.heading }]}>
+        {theirs ? `${name} invited you.` : `Waiting on ${name}.`}
+      </Text>
 
       <View style={styles.link}>
-        <End filled={mine} label="You" />
-        <View
-          style={[
-            styles.line,
-            { borderColor: done === 2 ? theme.success : theme.hairline },
-            done < 2 && styles.dashed,
-          ]}
-        />
-        <End filled={theirs} label="Them" />
+        <End filled={!theirs} label="You" />
+        <View style={[styles.line, { borderColor: theme.hairline }, styles.dashed]} />
+        <End filled={theirs} label={name.split(' ')[0]} />
       </View>
 
       <ThemedText type="small" themeColor="textSecondary">
-        Make both and you&apos;ll know when they land.
+        {theirs
+          ? 'Say yes and their travel days show up here.'
+          : 'Their travel days show up here once they say yes.'}
       </ThemedText>
-
-      <PrimaryButton
-        label={mine ? 'Find someone to follow' : 'Sign in'}
-        onPress={() => router.push(mine ? '/people' : '/sign-in')}
-      />
-
-      <ThemedText type="small" themeColor="textSecondary">
-        Your own flights go in Flights.
-      </ThemedText>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/people')}
+        style={({ pressed }) => [styles.link_, pressed && styles.pressed]}>
+        <ThemedText type="link">{theirs ? 'Open Friends' : 'See who you asked'}</ThemedText>
+      </Pressable>
     </View>
   );
 }
@@ -120,6 +182,17 @@ const styles = StyleSheet.create({
   // The journal's empty hero sets the scale for a first screen: a headline
   // in the mid-twenties over a 14pt line, not a 32pt title.
   headline: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
+  actions: { gap: Spacing.two, marginTop: Spacing.two },
+  passSecondary: { alignItems: 'center', paddingTop: Spacing.three },
+  passSecondaryLabel: { color: WHITE_DIM, fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  secondary: {
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  secondaryLabel: { fontSize: 16, lineHeight: 20, fontWeight: '600' },
+  link_: { paddingTop: Spacing.one },
   welcomeTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   welcomeCopy: { gap: Spacing.two, paddingVertical: Spacing.four },
   welcomeHeadline: { color: WHITE, fontSize: 26, lineHeight: 32, fontWeight: '700' },
@@ -129,4 +202,5 @@ const styles = StyleSheet.create({
   ring: { width: RING, height: RING, borderRadius: RING / 2, borderWidth: 2 },
   line: { flex: 1, borderTopWidth: 2, marginBottom: Spacing.four },
   dashed: { borderStyle: 'dashed' },
+  pressed: { opacity: 0.7 },
 });
