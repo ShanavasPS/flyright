@@ -592,7 +592,7 @@ function SheetBody({
                             pathname: '/update-viewer',
                             params: {
                               ownerId: entry.ownerId,
-                              journeyKey: entry.journeyId as string,
+                              journeyId: entry.journeyId as string,
                               updateId: u.updateId,
                               name: entry.owner.name,
                             },

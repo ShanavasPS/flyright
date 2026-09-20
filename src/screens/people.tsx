@@ -412,7 +412,7 @@ export function People() {
                 pathname: '/update-viewer',
                 params: {
                   ownerId: item.post.owner.userId,
-                  journeyKey: item.post.trip.journeyId,
+                  journeyId: item.post.trip.journeyId,
                   updateId: item.post.updateId,
                   name: item.post.owner.name,
                 },

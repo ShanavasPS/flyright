@@ -11,6 +11,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -44,8 +45,11 @@ const COMMENT_MAX = 300;
  * It pages sideways through every photo on the same trip, so a traveller who
  * posted four from one airport reads as four, not four separate errands. */
 export function UpdateViewer() {
-  const { ownerId, journeyKey, updateId, name } = useLocalSearchParams<{
+  const { ownerId, journeyId, journeyKey, updateId, name } = useLocalSearchParams<{
     ownerId?: string;
+    /** Somebody else's trip. */
+    journeyId?: string;
+    /** My own, which the device knows by its local id. */
     journeyKey?: string;
     updateId?: string;
     name?: string;
@@ -56,7 +60,11 @@ export function UpdateViewer() {
   const { width } = useWindowDimensions();
   const posts = useQuery(
     api.updates.forTrip,
-    ownerId && journeyKey ? { ownerId, journeyKey } : 'skip',
+    journeyId
+      ? { journeyId: journeyId as Id<'journeys'> }
+      : journeyKey
+        ? { journeyKey }
+        : 'skip',
   );
   const react = useMutation(api.updates.react);
   // Your own post: the server refuses a heart on it, so this counts rather
@@ -204,10 +212,14 @@ export function UpdateViewer() {
             accessibilityRole="button"
             style={styles.action}
             onPress={() =>
-              router.push({
-                pathname: '/person/[id]/trip/[journeyId]',
-                params: { id: ownerId ?? '', journeyId: journeyKey ?? '', focus: 'posts' },
-              })
+              router.push(
+                journeyId
+                  ? {
+                      pathname: '/person/[id]/trip/[journeyId]',
+                      params: { id: ownerId ?? '', journeyId, focus: 'posts' },
+                    }
+                  : { pathname: '/journey/[id]', params: { id: journeyKey ?? '' } },
+              )
             }>
             <Text style={styles.openTrip}>Open trip</Text>
             <SymbolView
@@ -269,19 +281,14 @@ function CommentSheet({
             <Text style={styles.sheetTitle}>
               {!rows ? 'Comments' : rows.length === 1 ? '1 comment' : `${rows.length} comments`}
             </Text>
-            <FlatList
-              data={rows ?? []}
-              keyExtractor={(c) => c.commentId}
-              style={styles.thread}
-              contentContainerStyle={styles.threadBody}
-              keyboardShouldPersistTaps="handled"
-              ListEmptyComponent={
-                !rows ? null : (
-                  <Text style={styles.empty}>No replies yet. Say something.</Text>
-                )
-              }
-              renderItem={({ item }) => (
+            {/* A circle is a handful of people, so a thread is short: a
+                scroll view sizes to its content and the sheet grows with it,
+                where a list had to be told a height and clipped without one. */}
+            <ScrollView style={styles.thread} contentContainerStyle={styles.threadBody} keyboardShouldPersistTaps="handled">
+              {rows?.length === 0 && <Text style={styles.empty}>No replies yet. Say something.</Text>}
+              {(rows ?? []).map((item) => (
                 <Pressable
+                  key={item.commentId}
                   onLongPress={() => item.mine && remove({ commentId: item.commentId as Id<'updateComments'> })}
                   delayLongPress={400}
                   accessibilityHint={item.mine ? 'Long press to delete' : undefined}
@@ -294,8 +301,8 @@ function CommentSheet({
                     <Text style={styles.commentText}>{item.text}</Text>
                   </View>
                 </Pressable>
-              )}
-            />
+              ))}
+            </ScrollView>
             <View style={[styles.composer, { paddingBottom: insets.bottom + 12 }]}>
               <TextInput
                 value={draft}
@@ -360,13 +367,13 @@ const styles = StyleSheet.create({
   openTrip: { color: DIM, fontSize: 13 },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: { backgroundColor: SHEET, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: '78%', paddingTop: 8 },
+  sheet: { backgroundColor: SHEET, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 8 },
   grabber: { width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(242,246,251,0.22)', alignSelf: 'center' },
   sheetTitle: { color: WHITE, fontSize: 13, fontWeight: '700', letterSpacing: 0.6, paddingHorizontal: 16, paddingVertical: 12 },
-  thread: { flexGrow: 0 },
+  thread: { maxHeight: 320 },
   threadBody: { paddingHorizontal: 16, paddingBottom: 8, gap: 16 },
   empty: { color: DIM, fontSize: 14, paddingVertical: 8 },
-  comment: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  comment: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', alignSelf: 'stretch' },
   commentBody: { flex: 1, gap: 3 },
   commentWho: { color: WHITE, fontSize: 13, fontWeight: '700' },
   commentAgo: { color: DIM, fontWeight: '400' },

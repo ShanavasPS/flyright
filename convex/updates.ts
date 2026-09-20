@@ -351,12 +351,33 @@ export const feed = query({
  * Audience per row through maySeeUpdate, the same rule the heart and the
  * replies use, so a close-circle trip's photos stay in the close circle. */
 export const forTrip = query({
-  args: { ownerId: v.string(), journeyKey: v.string() },
-  handler: async (ctx, { ownerId, journeyKey }) => {
+  args: {
+    /** Somebody else's trip, as every follower payload already names it. The
+     * owner and the natural key are read from it here: naturalKey is guessable
+     * (FLIGHT-DATE) and never leaves the server (toPublicSession). */
+    journeyId: v.optional(v.id('journeys')),
+    /** My own trip, which the device knows by its local id — the same string
+     * the natural key is. Only ever read against the caller's own rows. */
+    journeyKey: v.optional(v.string()),
+  },
+  handler: async (ctx, { journeyId, journeyKey }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const me = identity.subject;
-    const rows = await rowsFor(ctx, ownerId, journeyKey);
+    let ownerId: string;
+    let key: string;
+    if (journeyId) {
+      const journey = await ctx.db.get(journeyId);
+      if (!journey || journey.deletedAt) return null;
+      ownerId = journey.userId;
+      key = journey.naturalKey;
+    } else if (journeyKey) {
+      ownerId = me;
+      key = journeyKey;
+    } else {
+      return null;
+    }
+    const rows = await rowsFor(ctx, ownerId, key);
     const out = [];
     for (const row of rows) {
       if (row.userId !== me && !(await maySeeUpdate(ctx, row, me))) continue;
