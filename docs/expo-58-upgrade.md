@@ -1,6 +1,6 @@
 # Expo SDK 58 (beta) — upgrade study and state
 
-Branch `expo-58-ios27`. Last verified 2026-09-20.
+Branch `expo-58-ios27`. Last verified 2026-09-20 (iOS 27 section corrected the same day).
 
 ## Why
 
@@ -21,20 +21,37 @@ SDK 57 compiles against iOS 26 and cannot adopt iOS 27's UIScene life cycle.
 SDK 58 goes stable when React Native 0.88 ships; Expo said the beta runs three
 to four weeks from 2026-09.
 
-## The one thing that blocks shipping it
+## iOS 27 does NOT need this branch (corrected 2026-09-20)
 
-**EAS Build has no Xcode 27 image.** The newest is
-`macos-tahoe-26.5-xcode-26.6`; Expo's changelog says Xcode 27 images are
+**This section used to say the Xcode 27 image was "the one thing that blocks
+shipping it", which put iOS 27 behind SDK 58 and therefore behind Clerk. That
+was wrong.** Expo backported scene support to **SDK 57.0.23**
+(`expo-build-properties` `ios.enableSceneSupport`, no-op on SDK 58+), so
+`main` reaches the iOS 27 SDK with a patch bump and one flag. It has:
+`expo` 57.0.24, `expo-build-properties` 57.0.21, the flag set — measured both
+ways on an iOS 27.0 simulator (see the 2026-09-20 entry in
+[release-state.md](release-state.md)). Clerk blocks SDK 58. It never blocked
+iOS 27.
+
+What is true about the image: **EAS Build has no Xcode 27 image.** The newest
+is `macos-tahoe-26.5-xcode-26.6`; Expo's changelog says Xcode 27 images are
 "coming soon". Until one exists, a cloud production build compiles against the
-iOS 26 SDK, so the store binary is *not* built for iOS 27 even on SDK 58 —
-the scene-lifecycle files are generated, but the iOS 27 behaviours they unlock
-(resizable iPhone apps, `isLiquidGlassAvailable`) are gated on the SDK the
-binary was compiled with. Local `expo run:ios` builds do use Xcode 27.
+iOS 26 SDK whatever the source says — on SDK 57 *and* on this branch — so the
+iOS 27 behaviours (resizable iPhone apps, `isLiquidGlassAvailable`) stay gated.
+That is a schedule constraint shared by every branch, not a property of SDK 58,
+and Apple's SDK deadline is April 2027. Local `expo run:ios` builds do use
+Xcode 27.
 
 Re-check `https://docs.expo.dev/build-reference/infrastructure/` before
 planning a release off this branch.
 
-## Second blocker: Clerk
+## What this branch is still for
+
+SDK 58 itself: React Native 0.88, the strict TypeScript API, Gradle 9 / AGP 9,
+and adopting the scene lifecycle from the project template instead of through
+a config plugin. Its blocker is Clerk, below.
+
+## The blocker: Clerk
 
 `@clerk/expo` (4.6.8 and its canary of 2026-09-18) declares
 `peerDependencies.expo: ">=54 <58"`. npm install needs `--legacy-peer-deps`,
