@@ -583,7 +583,11 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    gap: Spacing.three,
+    // Tight under the day line: the first thing below it is the rail of
+    // faces, and a full Spacing.three left the traveller's own face floating
+    // in the middle of nothing. What is left between them is the title row's
+    // own height — 40pt touch targets around a 12pt line.
+    gap: Spacing.two,
   },
   // Tabletop (Flex mode): the pane above the hinge — hero centered in it.
   topPane: {

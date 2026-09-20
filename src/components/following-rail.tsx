@@ -33,12 +33,12 @@ export type FollowingEntry = NonNullable<
   ReturnType<typeof useQuery<typeof api.live.following>>
 >[number];
 
-const FACE = 54;
-const RING = 70;
-const STROKE = 3.5;
+const FACE = 46;
+const RING = 60;
+const STROKE = 3;
 const RADIUS = (RING - STROKE) / 2 - 1;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const TILE = 78;
+const TILE = 70;
 
 const COUNTDOWN_ICONS: Record<'takeoff' | 'landing', SymbolViewProps['name']> = {
   takeoff: { ios: 'airplane.departure', android: 'flight_takeoff', web: 'flight_takeoff' },
@@ -306,16 +306,20 @@ export function YouTile({
       <ThemedText type="smallBold" style={styles.name} numberOfLines={1}>
         You
       </ThemedText>
-      <View style={styles.statusRow}>
-        {latest && hearts > 0 ? (
-          <>
-            <SymbolView name={{ ios: 'heart.fill', android: 'favorite', web: 'favorite' }} size={11} tintColor={theme.danger} />
-            <Text style={[styles.status, { color: theme.danger }]}>{hearts}</Text>
-          </>
-        ) : (
-          <Text style={[styles.status, { color: theme.tint }]}>{latest ? 'Posted' : 'Share'}</Text>
-        )}
-      </View>
+      {/* Nothing posted yet says nothing: the + on the ring is the invitation,
+          and a word under it only repeated the tap it sits on. */}
+      {!!latest && (
+        <View style={styles.statusRow}>
+          {hearts > 0 ? (
+            <>
+              <SymbolView name={{ ios: 'heart.fill', android: 'favorite', web: 'favorite' }} size={11} tintColor={theme.danger} />
+              <Text style={[styles.status, { color: theme.danger }]}>{hearts}</Text>
+            </>
+          ) : (
+            <Text style={[styles.status, { color: theme.tint }]}>Posted</Text>
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -707,8 +711,10 @@ const styles = StyleSheet.create({
   },
   rail: {
     paddingHorizontal: Spacing.three,
-    // Room for the update mark, which sits above the ring's top edge.
-    paddingTop: Spacing.one,
+    // Room for the update mark, which sits above the ring's top edge — two
+    // points, not four: the rail sits directly under the day line and every
+    // point above the first face reads as the header drifting away from it.
+    paddingTop: Spacing.half,
     gap: Spacing.two,
   },
   face: {
@@ -732,9 +738,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 0,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
