@@ -451,12 +451,12 @@ private struct BigClock: View {
 }
 
 /// The seconds beside the big clock, small: the same system timer as
-/// ClockText — always "HH:MM:SS", shifted the same way — leading-aligned and
-/// slid left by the width of its first five characters, so only ":SS" falls
-/// inside a transparent ":00". (Right-aligning the timer instead drew nothing
-/// on the Lock Screen: a timer text keeps its digits at the leading edge of
-/// whatever box it gets.) Only system types, so the archive decodes; it ticks
-/// between pushes and stops on ":00".
+/// ClockText — "1H:MM:SS" under ten hours (shifted the same way), "HH:MM:SS"
+/// beyond — leading-aligned and slid left by the width of its first five
+/// characters, so only ":SS" falls inside a transparent ":00". (Right-aligning
+/// the timer instead drew nothing on the Lock Screen: a timer text keeps its
+/// digits at the leading edge of whatever box it gets.) Only system types, so
+/// the archive decodes; it ticks between pushes and stops on ":00".
 private struct SecondsText: View {
     let end: Date
     let size: CGFloat
@@ -466,7 +466,8 @@ private struct SecondsText: View {
 
     var body: some View {
         let font = Font.system(size: size, weight: .bold, design: .rounded)
-        let range = Date()...end.addingTimeInterval(Self.shift)
+        let long = end.timeIntervalSinceNow >= Self.shift
+        let range = long ? Date()...end : Date()...end.addingTimeInterval(Self.shift)
         Text(":00")
             .font(font)
             .monospacedDigit()
@@ -475,7 +476,7 @@ private struct SecondsText: View {
             .fixedSize()
             .accessibilityHidden(true)
             .overlay(alignment: .leading) {
-                Text(timerInterval: range, pauseTime: end, countsDown: true, showsHours: true)
+                Text(timerInterval: range, pauseTime: long ? nil : end, countsDown: true, showsHours: true)
                     .font(font)
                     .monospacedDigit()
                     .foregroundStyle(color)
@@ -521,27 +522,28 @@ private struct ClockText: View {
 
     /// iOS's timer drops the hour below sixty minutes ("57:12", not
     /// "0:57:12"), and the card can't re-lay itself out at that moment — the
-    /// Lock Screen only redraws on a push. So the timer counts to ten hours
-    /// PAST the real end: it always reads "1H:MM:SS", and cropping one digit
-    /// off the front and the seconds off the back leaves "H:MM" — 1:23, then
-    /// 0:57, 0:05 — with no layout change on the way. It pauses at the real
-    /// end, frozen on "0:00".
+    /// Lock Screen only redraws on an update. So under ten hours the timer
+    /// counts to ten hours PAST the real end: it always reads "1H:MM:SS",
+    /// and cropping one digit off the front and the seconds off the back
+    /// leaves "H:MM" — 1:23, then 0:57, 0:05 — with no layout change on the
+    /// way. It pauses at the real end, frozen on "0:00". Ten hours or more
+    /// out, the plain timer's "HH:MM" is cropped at the back only.
     ///
-    /// The shift runs the whole clock, with no branch for a distant end. The
-    /// crop takes a FIXED number of leading characters, so it is only right
-    /// while the hour keeps two digits — shifted, that holds for every
-    /// remaining time from zero to ninety hours, far past the eight ActivityKit
-    /// allows an activity. Counting to the unshifted end for a distant one
-    /// used to skip the shift, and that was the branch that broke: the moment
-    /// it fell under ten hours the hour became one digit, under one hour it
-    /// vanished, and the archived crop — which cannot notice — landed
-    /// mid-number.
+    /// BOTH branches are needed, and the shift is NOT the general case: the
+    /// digit it crops is the shift's own leading 1, which is only there while
+    /// the shifted value stays under twenty hours — that is, under ten hours
+    /// remaining. Apply it above that and it eats a real digit: 10h55m reads
+    /// "20:55", crops to "0:55". Each branch is right when the view is built
+    /// and wrong once the value crosses ten hours, which no archived view can
+    /// notice — so the push carries a stale date AT that crossing
+    /// (convex/onesignal.ts staleDate) and iOS rebuilds the view there.
     private static let shift: TimeInterval = 10 * 3600
 
     var body: some View {
         let font = Font.system(size: size, weight: .heavy, design: .rounded)
-        let reference = "0:00"
-        let range = Date()...end.addingTimeInterval(Self.shift)
+        let long = end.timeIntervalSinceNow >= Self.shift
+        let reference = long ? "00:00" : "0:00"
+        let range = long ? Date()...end : Date()...end.addingTimeInterval(Self.shift)
         Text(reference)
             .font(font)
             .monospacedDigit()
@@ -554,7 +556,7 @@ private struct ClockText: View {
             .fixedSize()
             .accessibilityHidden(true)
             .overlay(alignment: .leading) {
-                Text(timerInterval: range, pauseTime: end, countsDown: true, showsHours: true)
+                Text(timerInterval: range, pauseTime: long ? nil : end, countsDown: true, showsHours: true)
                     .font(font)
                     .monospacedDigit()
                     .foregroundStyle(color)
@@ -565,7 +567,7 @@ private struct ClockText: View {
                     // own width, which truncates to "1:…".
                     .frame(width: size * 6, alignment: .leading)
                     // Slide the leading "1" out of the clip.
-                    .offset(x: -Self.digitWidth(size))
+                    .offset(x: long ? 0 : -Self.digitWidth(size))
             }
             .clipped()
     }

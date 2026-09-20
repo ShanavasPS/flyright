@@ -131,22 +131,34 @@ export async function startLiveActivity(
   return started;
 }
 
-/** When the widget's self-ticking clock runs out, as APNs wants it: seconds
- * since the epoch, or nothing when there is no clock.
+/** When iOS should rebuild the widget's view by itself, as APNs wants it:
+ * seconds since the epoch, or nothing when there is no clock.
  *
  * A Live Activity's view is archived at push time and re-rendered on the
- * device to tick; the guard that swaps the clock for a word
- * (FlyRightLiveActivity.swift `countdown`) is only re-read when the view is
- * BUILT, which happens on a push. So past its end the archived clock keeps
- * rendering — and ClockText crops a fixed number of leading characters, so
- * the moment iOS drops an hour digit the crop lands mid-number and the Lock
- * Screen and Dynamic Island show garbled minutes and seconds. A stale date
- * makes iOS rebuild the view at that instant with nothing from us, so the
- * word takes the slot before the digits can break. */
+ * device only to tick, so nothing in it can notice a moment passing. Two
+ * moments matter.
+ *
+ * The end: past it the guard that swaps the clock for a word
+ * (FlyRightLiveActivity.swift `countdown`) would drop it, but the guard is
+ * only read when the view is BUILT.
+ *
+ * And ten hours out, where ClockText changes shape. It crops a fixed number
+ * of leading characters, and which number is right depends on whether the
+ * clock is counting to the real end (ten hours or more away) or to ten hours
+ * past it (nearer than that). A view archived on one side of that line and
+ * still on screen after the crossing crops the wrong digit — "10h55m" renders
+ * as ":55". The stale date lands ON the crossing, so the view is rebuilt
+ * before it can.
+ *
+ * Whichever comes first. */
+const FORMAT_SHIFT_MS = 10 * 3_600_000;
+
 function staleDate(contentState: Record<string, unknown>): { stale_date: number } | Record<string, never> {
   const end = Number(contentState.countdownEnd);
   if (!Number.isFinite(end) || end <= 0) return {};
-  return { stale_date: Math.floor(end / 1000) };
+  const crossing = end - FORMAT_SHIFT_MS;
+  const at = crossing > Date.now() ? crossing : end;
+  return { stale_date: Math.floor(at / 1000) };
 }
 
 /** Update or end the traveler's lock-screen Live Activity. */
