@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -81,18 +81,26 @@ export function HomeHero({
   journeys,
   stats,
   variant = 'full',
+  fallback,
 }: {
   journeys: JourneyRow[];
   stats: TravelStats;
-  /** 'glance' = the tabletop (Flex mode) top pane: live card only, no
-   * stats strip — it must fit a half-screen without scrolling. */
+  /** 'glance' = the live card by itself, with no all-time strip under it.
+   * The fold's top pane needs that (it must fit a half-screen without
+   * scrolling) and so does Home, where the all-time card belongs to the
+   * Flights tab next door and would otherwise appear on both. */
   variant?: 'full' | 'glance';
+  /** What stands here on an ordinary day. The journal's answer is the navy
+   * all-time card; Home's is its own, because the two tabs sit next to each
+   * other and the same summary on both would read as one screen shown
+   * twice. */
+  fallback?: ReactNode;
 }) {
   const router = useRouter();
   const theme = useTheme();
   const now = useNow(60_000);
   const hero = useHeroTrip(journeys, now);
-  if (!hero) return <TravelStatsHeader stats={stats} />;
+  if (!hero) return <>{fallback ?? <TravelStatsHeader stats={stats} />}</>;
   const { journey: active, phase, state, plan } = hero;
 
   const facts = factsFor(active);

@@ -24,17 +24,16 @@ import { LayoverMark } from '@/components/layover-mark';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FlashToast } from '@/components/flash-toast';
-import { FollowingSection } from '@/components/following-section';
 import { JournalSkeleton } from '@/components/journal-skeleton';
 import { HomeHero, useHeroTrip } from '@/components/travel-day-banner';
 import {
   COBALT,
   MiniContrail,
+  TravelStatsHeader,
   WHITE,
   WHITE_DIM,
   WHITE_FAINT,
 } from '@/components/travel-stats-header';
-import { CONVEX_URL } from '@/constants/config';
 import { MaxContentWidth, Spacing, TwoPaneMinWidth } from '@/constants/theme';
 import { JourneyDetail } from '@/screens/journey-detail';
 import { useTheme } from '@/hooks/use-theme';
@@ -277,12 +276,11 @@ export function Journeys() {
             // share a single navy card; otherwise the stats card stands alone.
             ListHeaderComponent={
               <>
-                <SignedOutNoticeCard next="/" />
-                {/* Above the traveller's own hero: one row of faces however
-                    many people are flying, so it never pushes the journal
-                    down the way a card per person did. */}
-                {!!CONVEX_URL && <FollowingSection own={hero} />}
-                {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
+                <SignedOutNoticeCard next="/flights" />
+                {/* The live card and the faces of whoever is flying moved to
+                    Home. This tab is the journal: every flight, and the
+                    all-time card over it. */}
+                {!tabletopHinge && <TravelStatsHeader stats={stats} />}
               </>
             }
             renderSectionHeader={({ section }) => (
@@ -314,10 +312,9 @@ export function Journeys() {
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
-            <SignedOutNoticeCard next="/" />
-            {/* Someone who only follows others has no journal yet, but
-                their people's trips still belong here. */}
-            {!!CONVEX_URL && <FollowingSection own={hero} />}
+            <SignedOutNoticeCard next="/flights" />
+            {/* Someone who only follows others has no journal — and no
+                reason to be sold one here. Their people are on Home. */}
             <JournalHero onAdd={() => router.push('/add')} />
           </ScrollView>
         )}
@@ -329,6 +326,9 @@ export function Journeys() {
     <ThemedView style={styles.container}>
       {tabletopHinge && (
         <View style={[styles.topPane, { height: tabletopHinge.top }]}>
+          {/* The fold's top pane is still the live card: the tabletop layout
+              is written per screen, and Home has no fold pane yet. Until it
+              does, this is the one place the card outlives its move. */}
           <SafeAreaView edges={['top', 'left', 'right']} style={styles.topPaneSafe}>
             <HomeHero journeys={journeys ?? []} stats={stats} variant="glance" />
           </SafeAreaView>

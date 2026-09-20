@@ -66,7 +66,7 @@ function AssistantMessage({ title, detail, loading, children }: {
           <ThemedText type="subtitle">{title}</ThemedText>
           {detail && <ThemedText themeColor="textSecondary">{detail}</ThemedText>}
           {children}
-          <PrimaryButton label="Flights" onPress={() => router.replace('/')} />
+          <PrimaryButton label="Flights" onPress={() => router.replace('/flights')} />
         </Card>
       </SafeAreaView>
     </ThemedView>

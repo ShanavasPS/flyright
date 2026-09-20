@@ -4,7 +4,6 @@ import { Platform, useColorScheme } from 'react-native';
 
 import { useAttention } from '@/components/attention-provider';
 import { Colors } from '@/constants/theme';
-import { useAppVersion } from '@/hooks/use-app-version';
 
 /** Screens the bar steps aside for: a person, a trip, and a map.
  *
@@ -31,9 +30,6 @@ export default function TabsLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
   const pathname = usePathname();
-  // A newer build on the store puts a count on Settings, the way iOS marks
-  // its own Settings for a software update — the row inside explains it.
-  const { update } = useAppVersion();
   // Arrivals on the People tab not yet looked at: a new follower, a
   // request, an ask allowed. Clears when the side they're on is opened —
   // the segment inside keeps counting what still needs an answer.
@@ -56,18 +52,18 @@ export default function TabsLayout() {
       indicatorColor={colors.backgroundSelected}
       iconColor={{ default: colors.textSecondary, selected: colors.tint }}
       labelStyle={{ color: colors.textSecondary, selected: { color: colors.tint } }}>
-      <NativeTabs.Trigger name="(journeys)">
-        <NativeTabs.Trigger.Label>Flights</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="(home)">
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/journeys.png')}
+          src={require('@/assets/images/tabIcons/home.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="world">
-        <NativeTabs.Trigger.Label>World</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="(journeys)">
+        <NativeTabs.Trigger.Label>Flights</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/world.png')}
+          src={require('@/assets/images/tabIcons/journeys.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -83,6 +79,14 @@ export default function TabsLayout() {
         />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="world">
+        <NativeTabs.Trigger.Label>World</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/world.png')}
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="claims">
         <NativeTabs.Trigger.Label>Claims</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
@@ -91,16 +95,6 @@ export default function TabsLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="(settings)">
-        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
-        {/* Mounted only while there is an update: the badge's `hidden` prop
-            does not clear a badge that has already shown its text. */}
-        {update && <NativeTabs.Trigger.Badge>1</NativeTabs.Trigger.Badge>}
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/settings.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

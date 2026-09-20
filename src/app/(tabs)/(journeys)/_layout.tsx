@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 // Assistant links can enter this stack directly. Keep My travels underneath
 // the trip so its immersive screen always has a way back.
-export const unstable_settings = { anchor: 'index' };
+export const unstable_settings = { anchor: 'flights' };
 
 // Screens this tab pushes live in this nested stack: pushing on the root
 // stack detaches the native tab controller, which resets to the first tab
@@ -13,7 +13,7 @@ export default function JourneysStack() {
       {/* The title is set even though the header is hidden: it is what names
         the back button on every screen pushed over this one, and without it
         VoiceOver reads that button as nothing at all. */}
-      <Stack.Screen name="index" options={{ headerShown: false, title: 'Flights' }} />
+      <Stack.Screen name="flights" options={{ headerShown: false, title: 'Flights' }} />
       <Stack.Screen
         name="journey/[id]"
         options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}

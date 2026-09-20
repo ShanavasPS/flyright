@@ -4,10 +4,20 @@ import { Platform } from 'react-native';
 import { NewMessageButton } from '@/screens/support-messages';
 
 // See (journeys)/_layout.tsx for why pushed screens live inside the tab.
-export default function SettingsStack() {
+//
+// Settings has no tab of its own any more: it is pushed from the avatar in
+// Home's header, so it lives in Home's stack. Keeping the files in this
+// group means every route path is unchanged — /settings, /account,
+// /messages — because a group's name never appears in a URL.
+export const unstable_settings = { anchor: 'index' };
+
+export default function HomeStack() {
   return (
     <Stack>
-      <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false, title: 'Home' }} />
+      {/* Settings writes its own large title, so the bar carries only the
+          way back — the same shape as a trip page. */}
+      <Stack.Screen name="settings" options={{ title: '', headerBackButtonDisplayMode: 'minimal' }} />
       <Stack.Screen
         name="manage-subscription"
         options={{ title: 'Manage subscription', headerBackButtonDisplayMode: 'minimal' }}
