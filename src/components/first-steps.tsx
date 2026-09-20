@@ -199,7 +199,10 @@ const styles = StyleSheet.create({
   secondaryLabel: { fontSize: 16, lineHeight: 20, fontWeight: '600' },
   link_: { paddingTop: Spacing.one },
   welcomeTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  welcomeCopy: { gap: Spacing.two, paddingVertical: Spacing.four },
+  // No padding of its own: PassCard already puts Spacing.three between its
+  // children, and adding to it stacked 40pt above the headline and 40 below
+  // — most of a small phone's screen spent on nothing.
+  welcomeCopy: { gap: Spacing.two },
   welcomeHeadline: { color: WHITE, fontSize: 26, lineHeight: 32, fontWeight: '700' },
   welcomePitch: { color: WHITE_DIM, fontSize: 15, lineHeight: 22, fontWeight: '500' },
   link: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.three },

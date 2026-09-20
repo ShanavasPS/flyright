@@ -81,7 +81,7 @@ export function GhostTravelDay() {
 }
 
 const styles = StyleSheet.create({
-  day: { gap: Spacing.three, marginTop: Spacing.one },
+  day: { gap: Spacing.two },
   faces: { flexDirection: 'row', gap: Spacing.two },
   face: {
     width: 34,
