@@ -1,7 +1,9 @@
 import { v } from 'convex/values';
 
-import { internalMutation } from './_generated/server';
+import { internal } from './_generated/api';
+import { internalAction, internalMutation } from './_generated/server';
 import { armHeadsUp, createSession, materializeCircleFollows } from './liveHelpers';
+import { sendFollowerPush } from './onesignal';
 
 /**
  * Dev-only knobs, callable from the CLI alone (internal functions never
@@ -298,5 +300,51 @@ export const seedDemoCircle = internalMutation({
       out.push(`session ${person.userId} ${naturalKey} @ ${trip.stage}`);
     }
     return out;
+  },
+});
+
+/** Send ONE push to a live session's followers with copy written by hand —
+ * `npx convex run devTools:pushToFollowers '{"sessionId":"…","body":"…"}'`.
+ *
+ * The poll chain's own stage pushes are deliberately narrow: each stage
+ * fires at most once (notifiedStages) and a stamp older than
+ * STAGE_PUSH_FRESH_MS is dropped, so a landing recorded hours after the fact
+ * reaches nobody. That is right for the automatic path and leaves no way to
+ * tell a circle about a landing the provider never reported (Kochi never
+ * closed QR516 out on 2026-09-19). This is that way. It goes through
+ * sendFollowerPush, so the same alias resolution, mute rules and deep link
+ * apply as for a real stage push; it writes nothing and marks nothing as
+ * notified. Internal, so no client can reach it. */
+export const pushToFollowers = internalAction({
+  args: {
+    sessionId: v.id('liveSessions'),
+    body: v.string(),
+    /** Defaults to the chain's own "QR516 · DOH → COK". */
+    heading: v.optional(v.string()),
+  },
+  // Explicit return type: this action reads the generated `internal` object,
+  // which contains this action, and TypeScript will not infer through that
+  // cycle (TS7022) — it degrades the whole api type when it tries.
+  handler: async (
+    ctx,
+    { sessionId, body, heading },
+  ): Promise<{ sent: number; reason?: string; heading?: string; body?: string }> => {
+    const targets: {
+      externalIds: string[];
+      session: { number: string; carrier: string; fromCode: string; toCode: string };
+      token: string | null;
+    } | null = await ctx.runQuery(internal.liveInternal.getNotifyTargets, { sessionId });
+    if (!targets) return { sent: 0, reason: 'no such session' };
+    if (!targets.token) return { sent: 0, reason: 'trip is not shared — nothing to open' };
+    if (!targets.externalIds.length) return { sent: 0, reason: 'no unmuted followers' };
+    const s = targets.session;
+    const title = heading ?? `${s.number || s.carrier} · ${s.fromCode} → ${s.toCode}`;
+    await sendFollowerPush(
+      targets.externalIds,
+      title,
+      body,
+      `https://getflyright.com/t/${targets.token}`,
+    );
+    return { sent: targets.externalIds.length, heading: title, body };
   },
 });
