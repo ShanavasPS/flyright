@@ -106,22 +106,35 @@ export function heldOnGround(
   return Number.isFinite(checked) && now - checked >= 0 && now - checked <= FRESH_STATUS_MS;
 }
 
-/** Of a traveller's active sessions, the one a follower should be shown:
- * a leg still in the air or still to leave beats one that has landed (the
- * landed leg of a connection stays active for two days while the next leg
- * becomes the story), soonest departure first among equals. */
+/** Of a traveller's active sessions, the one a follower should be shown.
+ *
+ * A leg still to leave or still in the air beats one already down: the landed
+ * leg of a connection keeps its session open for two days while the next leg
+ * becomes the story. Within each group the order is NOT the same. Among legs
+ * still coming, the soonest is the next thing to happen. Among legs already
+ * down, the LATEST is where the traveller actually is — the first leg of a
+ * connection is yesterday by the time the second lands.
+ *
+ * Sorting both groups by soonest departure picked Shanavas's HEL→DOH (landed
+ * 13:35Z) over his DOH→COK (landed 21:15Z) the next morning. Callers test
+ * `stillLive` on the chosen session ALONE and drop the traveller if it fails,
+ * so the stale leg took the fresh arrival down with it and he vanished from
+ * his circle's surfaces while his landing was still news.
+ *
+ * "Down" is landedOrLater, not `=== 'landed'`: a leg at passport control or
+ * the belt is on the ground, and a leg genuinely in the air outranks it. */
 export function preferredSession<
   T extends { currentStage: string | null; scheduledDeparture: string; fromCode: string },
 >(
   sessions: T[],
 ): T | null {
-  const score = (s: T) => (s.currentStage === 'landed' ? 1 : 0);
+  const down = (s: T) => landedOrLater(s.currentStage);
+  const departure = (s: T) => flightInstant(s.scheduledDeparture, s.fromCode);
   return (
-    [...sessions].sort(
-      (a, b) =>
-        score(a) - score(b) ||
-        flightInstant(a.scheduledDeparture, a.fromCode) - flightInstant(b.scheduledDeparture, b.fromCode),
-    )[0] ?? null
+    [...sessions].sort((a, b) => {
+      if (down(a) !== down(b)) return down(a) ? 1 : -1;
+      return down(a) ? departure(b) - departure(a) : departure(a) - departure(b);
+    })[0] ?? null
   );
 }
 

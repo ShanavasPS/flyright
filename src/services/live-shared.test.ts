@@ -8,6 +8,7 @@ import {
   nextPollDelayMs,
   sessionExpiryFor,
   shouldStartActivity,
+  preferredSession,
   stillLive,
   type LiveLeadInput,
   heldOnGround,
@@ -229,6 +230,58 @@ describe('shouldStartActivity (server push-to-start)', () => {
     const s = fresh({ activityStartedAt: attempted });
     expect(shouldStartActivity(s, dep - 3 * 3_600_000)).toBe(false);
     expect(shouldStartActivity(s, dep - 4 * 3_600_000 + ACTIVITY_LIFETIME_MS)).toBe(true);
+  });
+});
+
+describe('preferredSession', () => {
+  // Shanavas's 2026-09-19 connection, as a follower's home screen saw it at
+  // 05:05Z the next morning: HEL→DOH landed 13:35Z, DOH→COK landed 21:15Z,
+  // both sessions still active. The second landing is the one that is still
+  // news; the first is yesterday.
+  const hel = session({
+    number: 'QR304',
+    fromCode: 'HEL',
+    toCode: 'DOH',
+    scheduledDeparture: '2026-09-19T06:50:00.000Z',
+    currentStage: 'landed',
+    stageTimes: { landed: '2026-09-19T13:35:59.329Z' },
+  });
+  const doh = session({
+    number: 'QR516',
+    fromCode: 'DOH',
+    toCode: 'COK',
+    scheduledDeparture: '2026-09-19T16:40Z',
+    scheduledArrival: '2026-09-19T21:15Z',
+    currentStage: 'landed',
+    stageTimes: { landed: '2026-09-19T21:15Z' },
+  });
+
+  it('shows the latest leg once both are down, not the first', () => {
+    expect(preferredSession([hel, doh])?.number).toBe('QR516');
+    expect(preferredSession([doh, hel])?.number).toBe('QR516');
+  });
+
+  it('keeps the traveller on a follower surface while the last landing is fresh', () => {
+    // The caller tests stillLive on the CHOSEN session only, so picking the
+    // stale leg drops the traveller entirely.
+    const now = Date.parse('2026-09-20T05:05Z');
+    expect(stillLive(hel, now)).toBe(false);
+    expect(stillLive(doh, now)).toBe(true);
+    expect(stillLive(preferredSession([hel, doh])!, now)).toBe(true);
+  });
+
+  it('still prefers a leg that has not landed, and the soonest of those', () => {
+    const boarding = session({ number: 'QR517', scheduledDeparture: '2026-09-19T20:00Z', currentStage: 'boarded' });
+    expect(preferredSession([hel, boarding])?.number).toBe('QR517');
+    const later = session({ number: 'QR9', scheduledDeparture: '2026-09-19T22:00Z', currentStage: null });
+    expect(preferredSession([later, boarding])?.number).toBe('QR517');
+  });
+
+  it('treats an arrival step as down, not as still going', () => {
+    // bags_collected is on the ground; a leg actually in the air outranks it.
+    const bags = session({ number: 'QR1', scheduledDeparture: '2026-09-19T06:00Z', currentStage: 'bags_collected' });
+    const flying = session({ number: 'QR2', scheduledDeparture: '2026-09-19T12:00Z', currentStage: 'departed' });
+    expect(preferredSession([bags, flying])?.number).toBe('QR2');
   });
 });
 
