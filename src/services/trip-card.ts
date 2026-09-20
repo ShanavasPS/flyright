@@ -164,7 +164,9 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
     // landing. A countdown here renders a dead "0:00" that never moves again;
     // the live card and the Lock Screen both give up the clock and say where
     // the flight is, so this says the same.
-    clock = { kind: 'static', label: 'In the air', value: 'Landing', unit: 'now' };
+    // "Lands in", not "In the air": the status pill already says that, and
+    // the live card and the Lock Screen label this slot the same way.
+    clock = { kind: 'static', label: 'Lands in', value: 'Landing', unit: 'now' };
   } else if (airborne && !Number.isNaN(arrivalMs)) {
     clock = { kind: 'countdown', label: 'Lands in', end: arrivalMs, tone: delayed ? 'late' : 'normal' };
     const fraction = flightProgress(row, state, facts, now);

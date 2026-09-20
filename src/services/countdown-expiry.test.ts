@@ -56,8 +56,16 @@ describe('the clock reaches zero', () => {
       // It must not still be offering a countdown to an instant that passed:
       // that renders a "0:00" that never moves again.
       expect(clock!.kind).toBe('static');
-      expect((clock as { value: string; unit: string }).value).toBe('Landing');
-      expect((clock as { value: string; unit: string }).unit).toBe('now');
+      // The same words, under the same label, as the live card and the Lock
+      // Screen show in their own clock slots at this moment.
+      const live = liveContent(leg, state, facts, now);
+      expect(live.clockLabel).toBe('LANDS IN');
+      expect(live.headline).toBe('Landing now');
+      const shown = clock as { label: string; value: string; unit: string };
+      expect(shown.label).toBe('Lands in');
+      expect(`${shown.value} ${shown.unit}`).toBe('Landing now');
+      // ...and not a second copy of the status pill beside it.
+      expect(shown.label).not.toBe(card(state, facts, now).status.text);
     });
   });
 
