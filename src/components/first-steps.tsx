@@ -75,17 +75,14 @@ function GetStarted({
         </Text>
       </View>
       <PassDivider />
-      <PassAction
-        label="Add a flight"
-        onPress={onAddFlight}
-        icon={{ ios: 'plus', android: 'add', web: 'add' }}
-      />
-      <Pressable
-        accessibilityRole="button"
-        onPress={onFindPeople}
-        style={({ pressed }) => [styles.passSecondary, pressed && styles.pressed]}>
-        <Text style={styles.passSecondaryLabel}>Follow someone instead</Text>
-      </Pressable>
+      {/* Two ways in, drawn the same. Either one fills this screen, and the
+          app has no opinion on which: a traveller takes the first, somebody
+          who came to watch a friend takes the second, and a filled pill
+          beside a text link would tell them they had picked the lesser one. */}
+      <View style={styles.pair}>
+        <PassChoice label="Add a flight" onPress={onAddFlight} />
+        <PassChoice label="Follow someone" onPress={onFindPeople} />
+      </View>
     </PassCard>
   );
 }
@@ -150,6 +147,21 @@ function Welcome({ onSignIn }: { onSignIn: () => void }) {
   );
 }
 
+/** One of a pair of equal actions on the navy pass: an outlined pill in the
+ * pass's own white, so neither reads as the primary. */
+function PassChoice({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.choice, pressed && styles.pressed]}>
+      <Text style={styles.choiceLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function End({ filled, label }: { filled: boolean; label: string }) {
   const theme = useTheme();
   return (
@@ -183,8 +195,19 @@ const styles = StyleSheet.create({
   // in the mid-twenties over a 14pt line, not a 32pt title.
   headline: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   actions: { gap: Spacing.two, marginTop: Spacing.two },
-  passSecondary: { alignItems: 'center', paddingTop: Spacing.three },
-  passSecondaryLabel: { color: WHITE_DIM, fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  pair: { flexDirection: 'row', gap: Spacing.two },
+  choice: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(242,246,251,0.32)',
+    backgroundColor: 'rgba(242,246,251,0.10)',
+  },
+  choiceLabel: { color: WHITE, fontSize: 15, lineHeight: 20, fontWeight: '600' },
   secondary: {
     alignItems: 'center',
     borderWidth: StyleSheet.hairlineWidth,
