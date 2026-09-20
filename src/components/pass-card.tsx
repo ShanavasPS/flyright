@@ -1,6 +1,8 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
+import type { ViewStyleProp } from '@/types/styles';
+
 import { ThemedText } from '@/components/themed-text';
 import {
   COBALT,
@@ -28,7 +30,7 @@ export function PassCard({
   testID,
 }: {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: ViewStyleProp;
   testID?: string;
 }) {
   return (

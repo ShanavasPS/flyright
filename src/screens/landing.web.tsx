@@ -4,6 +4,8 @@ import Head from 'expo-router/head';
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type ViewStyle } from 'react-native';
 
+import type { ViewStyleProp, AnyViewStyleValue } from '@/types/styles';
+
 import { ExternalLink } from '@/components/external-link';
 import { PrimaryButton } from '@/components/primary-button';
 import { PhoneVideo } from '@/components/phone-video';
@@ -33,12 +35,12 @@ const COMPACT = 900;
 const THEMED = {
   transitionProperty: 'background-color, border-color',
   transitionDuration: '260ms',
-} as unknown as ViewStyle;
+} as unknown as AnyViewStyleValue;
 const INTERACTIVE = {
   transitionProperty: 'transform, background-color, opacity',
   transitionDuration: '180ms',
   transitionTimingFunction: 'ease-out',
-} as unknown as ViewStyle;
+} as unknown as AnyViewStyleValue;
 
 /** The brand's night sky: the claims band keeps it in both themes, the way
  * the share poster does. */

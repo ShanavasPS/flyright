@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, type View, type ViewProps } from 'react-native';
+import { Animated, Easing, type View, type ViewProps, type ViewInstance} from 'react-native';
 
 /** The website's motion, kept to two moves: a block that fades and settles
  * into place the first time it scrolls into view (`Reveal`), and a slow
@@ -35,7 +35,7 @@ export function Reveal({
   eager?: boolean;
 }) {
   const [progress] = useState(() => new Animated.Value(0));
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
 
   useEffect(() => {
     const node = ref.current as unknown as Element | null;

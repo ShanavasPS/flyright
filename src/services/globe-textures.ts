@@ -1,6 +1,6 @@
 import { AlphaType, ColorType, Skia, useImage, type SkImage } from '@shopify/react-native-skia';
 import { useEffect, useState } from 'react';
-import { Image, InteractionManager } from 'react-native';
+import { Image } from 'react-native';
 
 /**
  * The globe's textures (see scripts/generate-globe-texture.mjs): every one
@@ -52,7 +52,8 @@ const breathe = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 /** Decode a bundled PNG and keep only its alpha, as an 8-bit image. */
 async function loadAlphaTile(module: number): Promise<SkImage | null> {
-  const { uri } = Image.resolveAssetSource(module);
+  const uri = Image.resolveAssetSource(module)?.uri;
+  if (!uri) return null;
   const data = await Skia.Data.fromURI(uri);
   const decoded = Skia.Image.MakeImageFromEncoded(data);
   data.dispose();
@@ -114,14 +115,21 @@ export function useGlobeTextures(wanted = true): GlobeTextures {
   useEffect(() => {
     if (!wanted) return;
     let live = true;
-    const task = InteractionManager.runAfterInteractions(() => {
-      void loadDetail().then((loaded) => {
-        if (live) setDetail(loaded);
-      });
-    });
+    // React Native 0.88 removed InteractionManager; an idle callback is what
+    // it recommends instead, and says the same thing — decode the tiles once
+    // the frames that matter are done. The deadline keeps a busy screen from
+    // holding the textures back forever.
+    const task = requestIdleCallback(
+      () => {
+        void loadDetail().then((loaded) => {
+          if (live) setDetail(loaded);
+        });
+      },
+      { timeout: 2_000 },
+    );
     return () => {
       live = false;
-      task.cancel();
+      cancelIdleCallback(task);
     };
   }, [wanted]);
   return { base, detail: detail.detail, borders: detail.borders };

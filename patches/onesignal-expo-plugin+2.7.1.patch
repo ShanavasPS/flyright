@@ -1,0 +1,13 @@
+diff --git a/node_modules/onesignal-expo-plugin/dist/index.js b/node_modules/onesignal-expo-plugin/dist/index.js
+index fc127f8..d48bc64 100644
+--- a/node_modules/onesignal-expo-plugin/dist/index.js
++++ b/node_modules/onesignal-expo-plugin/dist/index.js
+@@ -25,7 +25,7 @@ path = __toESM(path);
+ let fs = require("fs");
+ fs = __toESM(fs);
+ let _expo_image_utils = require("@expo/image-utils");
+-let expo_config_plugins_js = require("expo/config-plugins.js");
++let expo_config_plugins_js = require("expo/config-plugins");
+ let fs_promises = require("fs/promises");
+ fs_promises = __toESM(fs_promises);
+ const TARGETED_DEVICE_FAMILY = `"1,2"`;

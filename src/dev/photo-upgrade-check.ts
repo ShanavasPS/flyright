@@ -28,17 +28,17 @@ export async function checkNativePhotoUpgrade(): Promise<void> {
   };
   try {
     file.create();
-    file.write(bytes);
+    file.writeSync(bytes);
     if (resolvePhotoUri(oldUri) !== file.uri) throw new Error('Photo path was not rebased after upgrade');
     if (await uploadPhoto(row, `${endpoint}/upload`) !== 'release-check-photo') throw new Error('Native upload failed');
     await expectFailure(oldUri, 'unavailable', '503');
-    file.write(new Uint8Array());
+    file.writeSync(new Uint8Array());
     await expectFailure(oldUri, 'must-not-upload', 'unavailable');
     file.delete();
     await expectFailure(oldUri, 'must-not-upload', 'unavailable');
     // A failed file must not prevent the next healthy file from uploading.
     file.create();
-    file.write(bytes);
+    file.writeSync(bytes);
     if (await uploadPhoto(row, `${endpoint}/upload`) !== 'release-check-photo') throw new Error('Upload did not recover');
   } finally {
     if (file.exists) file.delete();

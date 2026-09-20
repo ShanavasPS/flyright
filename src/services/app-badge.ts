@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { ATTENTION_CHANNEL, attentionBadge, attentionCopy, attentionId, type AttentionCounts, type AttentionSource } from './attention';
@@ -35,7 +36,7 @@ async function writeBadge(counts: AttentionCounts): Promise<void> {
   const enabled = await getPushEnabled();
   await Notifications.setNotificationChannelAsync(ATTENTION_CHANNEL, {
     name: 'Unread activity and app updates',
-    importance: Notifications.AndroidImportance.LOW,
+    importance: AndroidImportance.LOW,
     showBadge: true,
     sound: null,
     enableVibrate: false,

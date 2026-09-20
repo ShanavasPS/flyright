@@ -12,6 +12,7 @@ import {
   Share,
   StyleSheet,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -132,7 +133,7 @@ export function JourneyDetail({
   // Opening the trip-progress card brings its steps into view, as the
   // status sheet does: the card sits low on the page, and steps that open
   // below the fold look like a tap that did nothing.
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const progressY = useRef(0);
   const revealProgress = useRef(false);
   const router = useRouter();

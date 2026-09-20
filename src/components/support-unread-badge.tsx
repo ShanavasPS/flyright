@@ -3,6 +3,8 @@ import { useQuery } from 'convex/react';
 import { Component, type ReactNode } from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
+import type { ViewStyleProp } from '@/types/styles';
+
 import { api } from '../../convex/_generated/api';
 
 import { CONVEX_URL } from '@/constants/config';
@@ -15,7 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
  * when cloud sync is off, or when nobody is signed in — so callers can drop
  * it in unconditionally.
  */
-export function SupportUnreadBadge({ style }: { style?: ViewStyle }) {
+export function SupportUnreadBadge({ style }: { style?: ViewStyleProp }) {
   const { isSignedIn } = useAuth();
   if (!CONVEX_URL || !isSignedIn) return null;
   return (
@@ -25,7 +27,7 @@ export function SupportUnreadBadge({ style }: { style?: ViewStyle }) {
   );
 }
 
-function Count({ style }: { style?: ViewStyle }) {
+function Count({ style }: { style?: ViewStyleProp }) {
   const theme = useTheme();
   const count = useQuery(api.support.unreadCount, {});
   if (!count) return null;

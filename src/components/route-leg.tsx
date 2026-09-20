@@ -2,6 +2,8 @@ import { SymbolView } from 'expo-symbols';
 import { Fragment, useState } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import type { ViewStyleProp } from '@/types/styles';
+
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -224,7 +226,7 @@ export function Contrail({
   tint: string;
   dotColor: string;
   size?: number;
-  style?: StyleProp<ViewStyle>;
+  style?: ViewStyleProp;
 }) {
   const [width, setWidth] = useState(0);
   const travel = Math.max(0, width - size);

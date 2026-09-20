@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
+import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, StyleSheet, View, type ScrollViewInstance} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -17,7 +17,7 @@ const VISIBLE = 5;
  * sixty years is no way to pick one. */
 export function YearWheel({ value, years, onChange }: YearWheelProps) {
   const theme = useTheme();
-  const list = useRef<ScrollView>(null);
+  const list = useRef<ScrollViewInstance>(null);
   const pad = Math.floor(VISIBLE / 2);
   const index = Math.max(0, years.indexOf(value));
   // Start on the current year. A plain ScrollView (not a FlatList) so the

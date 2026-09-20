@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
+
+import type { ViewStyleProp } from '@/types/styles';
 import Svg, { Path } from 'react-native-svg';
 
 import { renderBarcode } from '../../modules/flyright-document-import';
@@ -86,7 +88,7 @@ export function Barcode({
   /** Stand the symbol on end (see rotateMatrix). */
   rotated?: boolean;
   color?: string;
-  style?: ViewStyle;
+  style?: ViewStyleProp;
   testID?: string;
   /** Told once when the symbol can't be drawn on this platform. */
   onFailed?: () => void;

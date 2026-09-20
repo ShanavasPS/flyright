@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
 import { useRef } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, type ScrollViewInstance} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
@@ -57,7 +57,7 @@ export function FollowerTrip({
     journeyId: journeyId as Id<'journeys'>,
   });
   const react = useMutation(api.updates.react);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   // Where the posts sit, and whether the page still owes the reader that
   // scroll: the map and timeline above them settle their heights after the
   // first layout, so the page follows the posts down until the reader

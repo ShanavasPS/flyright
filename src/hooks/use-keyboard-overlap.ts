@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { Dimensions, Keyboard, Platform, type View } from 'react-native';
+import { Dimensions, Keyboard, Platform, type View, type ViewInstance} from 'react-native';
 
 /** How far the editor's bottom edge must rise to meet the keyboard's top
  * edge, both in window coordinates — so it holds inside a card modal, under
@@ -9,7 +9,7 @@ import { Dimensions, Keyboard, Platform, type View } from 'react-native';
  * changes: keyboard frame events on one side, the view's layout on the other.
  * The layout hook matters because autoFocus raises the keyboard before the
  * first layout, when a measurement would read zeros. */
-export function useKeyboardOverlap(content: RefObject<View | null>) {
+export function useKeyboardOverlap(content: RefObject<ViewInstance | null>) {
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
   const [bottom, setBottom] = useState<number | null>(null);
 

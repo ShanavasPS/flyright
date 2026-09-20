@@ -273,7 +273,7 @@ async function render(model: ShareMapModel, theme: PosterTheme, key: string): Pr
     const file = new File(dir, `${key}.png`);
     if (file.exists) file.delete();
     file.create();
-    file.write(png);
+    await file.write(png);
     return file.uri;
   } finally {
     staging.destroy();

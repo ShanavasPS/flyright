@@ -56,7 +56,9 @@ export function registerWalletText(text: string): string {
   dir.create({ idempotent: true, intermediates: true });
   const handle = randomUUID();
   const file = new File(dir, handle);
-  file.write(text);
+  // writeSync, not write: SDK 58 made write() async, and the entry recorded on
+  // the next line hands the uri straight to a reader.
+  file.writeSync(text);
   entries.set(handle, { uri: file.uri, name: 'Wallet boarding pass', mimeType: 'text/plain', expires: Date.now() + 3600_000 });
   return handle;
 }

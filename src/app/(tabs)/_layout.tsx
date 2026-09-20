@@ -1,9 +1,10 @@
 import { Slot, usePathname } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 
 import { useAttention } from '@/components/attention-provider';
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAppVersion } from '@/hooks/use-app-version';
 
 /** Screens the bar steps aside for: a person, a trip, and a map.
@@ -29,7 +30,7 @@ const IMMERSIVE = [
 
 export default function TabsLayout() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = Colors[scheme];
   const pathname = usePathname();
   // A newer build on the store puts a count on Settings, the way iOS marks
   // its own Settings for a software update — the row inside explains it.

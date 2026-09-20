@@ -9,6 +9,8 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type ScrollViewInstance,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,8 +32,8 @@ export function SupportThread({ threadId }: { threadId: Id<'supportThreads'> }) 
   const data = useQuery(api.support.thread, { threadId });
   const reply = useMutation(api.support.reply);
   const markRead = useMutation(api.support.markRead);
-  const scrollRef = useRef<ScrollView>(null);
-  const composerRef = useRef<View>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const composerRef = useRef<ViewInstance>(null);
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
   const androidKeyboardPad = useAndroidKeyboardPad(composerRef);
@@ -179,7 +181,7 @@ function useKeyboardOpen() {
  * event (the suggestion strip changes the keyboard height) and reset on hide.
  * Because the padding itself moves the composer, each measurement is a delta
  * on top of the padding already applied. */
-function useAndroidKeyboardPad(composer: RefObject<View | null>) {
+function useAndroidKeyboardPad(composer: RefObject<ViewInstance | null>) {
   const [pad, setPad] = useState(0);
   useEffect(() => {
     if (Platform.OS !== 'android') return;

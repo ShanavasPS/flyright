@@ -12,6 +12,7 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
@@ -60,7 +61,7 @@ export function ShareWorld() {
   const [prefs, setPrefs] = useState(getSharePrefs);
   const [busy, setBusy] = useState(false);
   const [now] = useState(() => new Date());
-  const cardRef = useRef<View>(null);
+  const cardRef = useRef<ViewInstance>(null);
 
   const firstName = user?.firstName ?? null;
   const copy = useMemo(

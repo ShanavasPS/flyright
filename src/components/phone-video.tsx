@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import type { ViewStyleProp } from '@/types/styles';
+
 /** Native shows the still; the web twin (phone-video.web.tsx) plays a loop. */
 export function PhoneVideo({
   still,
@@ -9,7 +11,7 @@ export function PhoneVideo({
 }: {
   still: number;
   video: string;
-  style?: StyleProp<ViewStyle>;
+  style?: ViewStyleProp;
   alt?: string;
 }) {
   return (

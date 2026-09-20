@@ -9,6 +9,9 @@ import {
   View,
   type LayoutChangeEvent,
   type TextInputProps,
+  type ScrollViewInstance,
+  type ViewInstance,
+  type TextInputInstance,
 } from 'react-native';
 
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
@@ -78,16 +81,16 @@ export function TripDetailsEdit() {
   const { userId } = useAuth();
   const { row, loaded, error } = useJourney(journeyId ?? '', userId);
 
-  const contentRef = useRef<View | null>(null);
+  const contentRef = useRef<ViewInstance | null>(null);
   const { pad: keyboardPad, onLayout: measureContent } = useKeyboardOverlap(contentRef);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const scrollY = useRef(0);
   const [viewport, setViewport] = useState(0);
   // Where each field sits inside its group, and each group in the scroll
   // content — layouts arrive in no set order, so they are added up late.
   const frames = useRef<Partial<Record<Field, { group: string; y: number; height: number }>>>({});
   const groupOffsets = useRef<Record<string, number>>({});
-  const inputs = useRef<Partial<Record<Field, TextInput | null>>>({});
+  const inputs = useRef<Partial<Record<Field, TextInputInstance | null>>>({});
   const [focused, setFocused] = useState<Field | null>(null);
   const [drafts, setDrafts] = useState<Partial<Record<Field, string>>>({});
 

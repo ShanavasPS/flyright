@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { forwardRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type ViewInstance} from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { WORLD } from '@/services/geo';
@@ -20,7 +20,7 @@ import {
  * exact map (services/route-heat), laid under the routes; null draws the
  * plain atlas. Pass the ref on to `captureRef`. */
 export const WorldShareCard = forwardRef<
-  View,
+  ViewInstance,
   {
     model: ShareMapModel;
     copy: ShareCopy;

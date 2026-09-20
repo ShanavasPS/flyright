@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, TextInput, View, type ViewInstance} from 'react-native';
 
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { ThemedText } from '@/components/themed-text';
@@ -23,7 +23,7 @@ export function JourneyNote() {
   const theme = useTheme();
   const { userId } = useAuth();
   const { row, loaded, error } = useJourney(journeyId ?? '', userId);
-  const contentRef = useRef<View | null>(null);
+  const contentRef = useRef<ViewInstance | null>(null);
   const { pad: keyboardPad, onLayout: measureContent } = useKeyboardOverlap(contentRef);
 
   // Unset until the traveler types, so the stored note shows through as the

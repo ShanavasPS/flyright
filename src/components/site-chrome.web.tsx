@@ -6,6 +6,8 @@ import { SymbolView } from 'expo-symbols';
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 
+import type { ViewStyleProp, AnyViewStyleValue } from '@/types/styles';
+
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -55,7 +57,7 @@ const TRANSITION = {
   transitionProperty: 'background-color, border-color, box-shadow, transform, opacity',
   transitionDuration: '220ms',
   transitionTimingFunction: 'ease-out',
-} as unknown as ViewStyle;
+} as unknown as AnyViewStyleValue;
 
 function SiteHeader({ scrolled }: { scrolled: boolean }) {
   const theme = useTheme();

@@ -187,7 +187,7 @@
       "versionCode": 54
     },
     "web": {
-      "output": "server",
+      "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -200,7 +200,8 @@
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "no-referrer",
             "Content-Security-Policy": "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
-          }
+          },
+          "apiRoutes": true
         }
       ],
       [
@@ -282,6 +283,7 @@
       "./plugins/with-pods-uuid-fix.js",
       "./plugins/with-android-theme.js",
       "./plugins/with-android-no-backup.js",
+      "./plugins/with-android-gradle-memory.js",
       "./plugins/with-assistant-actions.js"
     ],
     "experiments": {

@@ -5,8 +5,10 @@ import { useEffect, useRef } from 'react';
  * Dismiss handler for Clerk's native views (AuthView / UserProfileView).
  * Their onDismiss also fires while the screen is already being popped (header
  * back, swipe-down) — popping again would bubble past this screen's stack and
- * switch tabs. beforeRemove flips the guard the moment any pop starts, and the
- * handler itself is single-fire.
+ * switch tabs. Losing focus flips the guard the moment any pop starts, and the
+ * handler itself is single-fire. (SDK 58 removed `beforeRemove`; its successor
+ * `removed` fires after the component has unmounted, too late to guard
+ * anything, so this listens for the blur that begins the pop instead.)
  *
  * Dismissal targets a path instead of router.back(): NativeTabs never commits
  * finger-tap tab switches to the router state, so a plain JS back() repaints
@@ -20,7 +22,7 @@ export function useDismissOnce(target: Href) {
 
   useEffect(
     () =>
-      navigation.addListener('beforeRemove', () => {
+      navigation.addListener('blur', () => {
         dismissed.current = true;
       }),
     [navigation],

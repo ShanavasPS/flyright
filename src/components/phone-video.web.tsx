@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle, type ViewInstance} from 'react-native';
+
+import type { ViewStyleProp, ViewStyleValue } from '@/types/styles';
 import { unstable_createElement } from 'react-native-web';
 
 /** A capture that moves: the still underneath, a muted looping video over
@@ -18,10 +20,10 @@ export function PhoneVideo({
   still: number;
   /** URL of the loop, served from public/. */
   video: string;
-  style?: StyleProp<ViewStyle>;
+  style?: ViewStyleProp;
   alt?: string;
 }) {
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const [wanted, setWanted] = useState(false);
   const [playing, setPlaying] = useState(false);
 
@@ -80,5 +82,5 @@ const styles = StyleSheet.create({
     // The still shows until the first frame plays, then the loop fades in.
     transitionProperty: 'opacity',
     transitionDuration: '400ms',
-  } as unknown as ViewStyle,
+  } as unknown as ViewStyleValue,
 });

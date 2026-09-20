@@ -1,5 +1,7 @@
 import { ActivityIndicator, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import type { ViewStyleProp } from '@/types/styles';
+
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,7 +11,7 @@ import { Spacing } from '@/constants/theme';
 /** Centred spinner for a screen (or a screen's body) whose rows haven't
  * landed yet — the honest frame between mount and the first read, in place
  * of painting the empty state and taking it back. */
-export function LoadingState({ style }: { style?: StyleProp<ViewStyle> }) {
+export function LoadingState({ style }: { style?: ViewStyleProp }) {
   return (
     <ThemedView style={[styles.fill, style]}>
       <ActivityIndicator />
@@ -27,7 +29,7 @@ export function DataErrorCard({
 }: {
   title?: string;
   error?: Error | null;
-  style?: StyleProp<ViewStyle>;
+  style?: ViewStyleProp;
 }) {
   return (
     <Card style={style}>

@@ -11,6 +11,7 @@
 
 import { isNull } from 'drizzle-orm';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { Observe } from 'expo-observe';
 import { Platform } from 'react-native';
 import Storage from 'expo-sqlite/kv-store';
@@ -118,7 +119,7 @@ async function ensureChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Travel day',
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: AndroidImportance.DEFAULT,
     sound: null,
     enableVibrate: false,
     vibrationPattern: undefined,

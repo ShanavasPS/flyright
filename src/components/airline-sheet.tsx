@@ -9,6 +9,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type TextInputInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -56,7 +57,7 @@ function AirlineSheetBody({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const keyboardHeight = useKeyboardHeight();
   const matches = searchCarriers(query);
   // A page sheet on iOS starts below the status bar by itself; Android's

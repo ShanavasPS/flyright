@@ -9,6 +9,16 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      // Types only. react-native-view-shot's exports map answers the
+      // "react-native" condition (which expo/tsconfig.base sets) with its raw
+      // src/index.tsx, and that source has not been migrated to React Native
+      // 0.88's strict API — it still types refs as components and styles as
+      // ViewStyle, so typechecking the app means typechecking its errors.
+      // Point TypeScript at the declarations it also ships, which describe the
+      // same API. Metro is unaffected and still bundles src/index.tsx.
+      "react-native-view-shot": [
+        "./node_modules/react-native-view-shot/lib/index.d.ts"
       ]
     }
   },

@@ -17,6 +17,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type TextInputInstance,
 } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -250,7 +251,7 @@ export function AddFlight({ step }: { step: Step }) {
   // third letter landed read as "no such airport". Prefills (edit, scan,
   // lookup) never set this, so they open with the fields quiet.
   const [typing, setTyping] = useState<'from' | 'to' | null>(null);
-  const toInputRef = useRef<TextInput>(null);
+  const toInputRef = useRef<TextInputInstance>(null);
   const [airlineSheetOpen, setAirlineSheetOpen] = useState(false);
   const [timePickerFor, setTimePickerFor] = useState<'dep' | 'arr' | null>(null);
   const followers = useCircleFollowers();
