@@ -674,6 +674,18 @@ export function liveCountdown(
   stage: TravelStage | null,
   departureMs: number,
   arrivalMs: number,
+  /** Now. An instant already gone is not a clock — see the Convex twin. */
+  now?: number,
+): { end: number; kind: 'departure' | 'arrival' } | null {
+  const clock = countdownAnchor(stage, departureMs, arrivalMs);
+  if (clock && now !== undefined && clock.end <= now) return null;
+  return clock;
+}
+
+function countdownAnchor(
+  stage: TravelStage | null,
+  departureMs: number,
+  arrivalMs: number,
 ): { end: number; kind: 'departure' | 'arrival' } | null {
   if (stage === 'landed') return null;
   if (stage === 'departed') {
@@ -884,7 +896,7 @@ export function liveContent(
 
   const timeOf = (iso: string | null, zone: string | null) =>
     iso && !Number.isNaN(Date.parse(iso)) ? formatTime(iso, zone) : null;
-  const countdown = liveCountdown(presumed, departureMs, arrivalMs);
+  const countdown = liveCountdown(presumed, departureMs, arrivalMs, now.getTime());
   const lead = liveLead({
     stage: state.stage,
     presumed,

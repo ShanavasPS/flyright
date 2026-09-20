@@ -493,6 +493,22 @@ export function liveCountdown(
   currentStage: string | null,
   departureMs: number,
   arrivalMs: number,
+  /** Now. An instant already gone is not a clock: the widget's is archived at
+   * push time and ticks on the device, so one sent spent renders as a frozen
+   * 0:00 at best and, once iOS drops an hour digit from it, as garbled
+   * minutes and seconds (ClockText crops a fixed number of leading
+   * characters). Omitted by callers that only want the anchor. */
+  now?: number,
+): { end: number; kind: 'departure' | 'arrival' } | null {
+  const clock = countdownAnchor(currentStage, departureMs, arrivalMs);
+  if (clock && now !== undefined && clock.end <= now) return null;
+  return clock;
+}
+
+function countdownAnchor(
+  currentStage: string | null,
+  departureMs: number,
+  arrivalMs: number,
 ): { end: number; kind: 'departure' | 'arrival' } | null {
   if (currentStage === 'landed') return null;
   if (currentStage === 'departed') {
@@ -650,7 +666,7 @@ export function buildContentState(
   const departureMs = flightInstant(effectiveDeparture, s.fromCode);
   const arrivalMs = flightInstant(s.estimatedArrival ?? s.scheduledArrival, s.toCode);
   const presumed = presumedFlightStage(s.currentStage, departureMs, arrivalMs, now, heldOnGround(s, now));
-  const countdown = liveCountdown(presumed, departureMs, arrivalMs);
+  const countdown = liveCountdown(presumed, departureMs, arrivalMs, now);
   const lead = liveLead({
     stage: s.currentStage,
     presumed,

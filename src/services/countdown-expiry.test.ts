@@ -43,8 +43,10 @@ describe('the clock reaches zero', () => {
 
     it('the live card stops counting and says where the flight is', () => {
       const content = liveContent(leg, state, facts, now);
-      expect(content.countdownEnd).toBe(Date.parse('2026-09-20T11:10Z'));
-      expect(content.countdownEnd! < now.getTime()).toBe(true);
+      // No clock at all, rather than one anchored to an instant already gone:
+      // the widget archives what it is sent and ticks it on the device.
+      expect(content.countdownEnd).toBeNull();
+      expect(content.countdownKind).toBeNull();
       expect(content.headline).toBe('Landing now');
     });
 
@@ -90,10 +92,17 @@ describe('the clock reaches zero', () => {
   });
 
   it('gives the widget no clock at all once the instant has passed', () => {
-    // liveCountdown hands the widget an instant; the widget guards it, but a
-    // payload whose clock is already spent should not be sent as one.
-    const spent = liveCountdown('departed', Date.parse('2026-09-20T08:00Z'), Date.parse('2026-09-20T11:10Z'));
-    expect(spent).not.toBeNull();
-    expect(spent!.end).toBe(Date.parse('2026-09-20T11:10Z'));
+    const dep = Date.parse('2026-09-20T08:00Z');
+    const arr = Date.parse('2026-09-20T11:10Z');
+    // Still ahead: the anchor the widget counts to.
+    expect(liveCountdown('departed', dep, arr, arr - 60_000)).toEqual({ end: arr, kind: 'arrival' });
+    // Gone: nothing, so the widget shows its word instead of a clock it
+    // would render frozen — and then garbled, once iOS drops an hour digit
+    // from it and ClockText's fixed crop lands mid-number.
+    expect(liveCountdown('departed', dep, arr, arr + 1)).toBeNull();
+    expect(liveCountdown('boarded', dep, arr, dep + 1)).toBeNull();
+    // Without a clock the push carries no stale date either — there is
+    // nothing to go stale at.
+    expect(liveCountdown('landed', dep, arr, dep)).toBeNull();
   });
 });
