@@ -1,4 +1,5 @@
 import { bounded, limit, MINUTE, HOUR, DAY } from './abuse';
+import { flightInstant } from './airportZones';
 import { safeAvatar } from './profileShared';
 import { ConvexError, v } from 'convex/values';
 
@@ -1007,11 +1008,16 @@ async function nextTrip(ctx: QueryCtx, ownerId: string, close: boolean, now: num
     scheduledDeparture: string;
     scheduledArrival: string;
   } | null = null;
+  // flightInstant, not Date.parse: a manually entered row carries a bare wall
+  // clock, and reading it as UTC can leave a trip that left hours ago still
+  // reading as upcoming.
+  let nextAt = Infinity;
   for (const j of journeys) {
     if (j.deletedAt || !maySee(j, close)) continue;
-    const dep = Date.parse(j.scheduledDeparture);
+    const dep = flightInstant(j.scheduledDeparture, j.fromCode);
     if (Number.isNaN(dep) || dep < now) continue;
-    if (!next || dep < Date.parse(next.scheduledDeparture)) {
+    if (!next || dep < nextAt) {
+      nextAt = dep;
       next = {
         carrier: j.carrier,
         number: j.number,
@@ -1084,7 +1090,10 @@ export const list = query({
       }
       const live = await liveCard(ctx, preferredSession(active), owner.name, !!row.close, me);
 
-      const next = live ? null : await nextTrip(ctx, row.ownerId, !!row.close, now);
+      // Both, always. The client hides a live pass the moment its deadline
+      // passes (liveUntil) without waiting for this query to be invalidated,
+      // and then needs the next trip to show in its place.
+      const next = await nextTrip(ctx, row.ownerId, !!row.close, now);
       following.push({
         ...owner,
         muted: row.muted,

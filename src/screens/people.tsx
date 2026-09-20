@@ -77,7 +77,17 @@ type Item =
  * because someone is waiting on it; then the people, live trips first; then
  * the asks I have out to people who don't follow me (asks to a follower show
  * on their row in Followers instead). */
-function followingItems(data: CircleList, flying: boolean, posts: FeedPost[]): Item[] {
+function followingItems(
+  data: CircleList,
+  /** Who is on the rail right now — the same entries it draws, so the list
+   * below it excludes exactly those people and no others. Reading `p.live`
+   * instead approximated it, and the two disagreed the moment a live card
+   * outlived its window: the person fell off the rail but kept their pass,
+   * which then rendered a finished trip under "Coming up". */
+  flying: { ownerId: string }[],
+  posts: FeedPost[],
+): Item[] {
+  const onRail = new Set(flying.map((entry) => entry.ownerId));
   const items: Item[] = [];
   if (data.incoming.length) {
     items.push({ key: 'label:invitations', type: 'label', text: 'Invitations' });
@@ -85,14 +95,18 @@ function followingItems(data: CircleList, flying: boolean, posts: FeedPost[]): I
   }
   // Who is in the air, then what they have been posting, then everyone
   // else by their next flight. Somebody on the rail is not listed again.
-  if (flying) items.push({ key: 'rail', type: 'rail' });
+  if (flying.length) items.push({ key: 'rail', type: 'rail' });
   if (posts.length) {
     items.push({ key: 'label:posts', type: 'label', text: 'Latest from trips' });
     for (const post of posts) items.push({ key: `post:${post.updateId}`, type: 'post', post });
   }
-  const rest = flying ? data.following.filter((p) => !p.live) : data.following;
-  if (rest.length && (data.incoming.length || flying || posts.length)) {
-    items.push({ key: 'label:following', type: 'label', text: flying || posts.length ? 'Coming up' : 'Following' });
+  const rest = data.following.filter((p) => !onRail.has(p.userId));
+  if (rest.length && (data.incoming.length || flying.length || posts.length)) {
+    items.push({
+      key: 'label:following',
+      type: 'label',
+      text: flying.length || posts.length ? 'Coming up' : 'Following',
+    });
   }
   for (const p of rest) items.push({ key: `following:${p.userId}`, type: 'following', person: p });
   for (const r of data.asked) items.push({ key: `pending:${r.id}`, type: 'pending', request: r, kind: 'follow' });
@@ -335,7 +349,7 @@ export function People() {
       />
     );
     if (tab === 'following') {
-      items = followingItems(data, flying.length > 0, feed ?? []);
+      items = followingItems(data, flying, feed ?? []);
       footer = (
         <>
           <RedeemInviteLink />
@@ -675,7 +689,10 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
   const actions = () =>
     router.push({ pathname: '/person/[id]', params: { id: person.userId } });
 
-  const live = person.live;
+  // A live pass only while its deadline is ahead. The card arrives with the
+  // query and the query is reactive to data, not to time, so without this it
+  // would sit on the page after the trip stopped being live.
+  const live = person.live && onHomeScreen(person.live.session, now) ? person.live : null;
   if (live) {
     return (
       <LivePass
