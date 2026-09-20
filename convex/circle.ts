@@ -50,7 +50,9 @@ export async function personCard(ctx: QueryCtx | MutationCtx, userId: string) {
   const profile = await profileFor(ctx, userId);
   return {
     userId,
-    name: profile?.name ?? 'A traveler',
+    // `||`, not `??`: a profile written before its owner gave a name holds
+    // an empty string, and an empty name renders as a gap.
+    name: profile?.name || 'A traveler',
     imageUrl: safeAvatar(profile?.imageUrl ?? null),
     pro: await isPro(ctx, userId),
   };

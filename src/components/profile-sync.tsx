@@ -15,7 +15,11 @@ export function ProfileSync() {
   const imageUrl = user?.hasImage ? user.imageUrl : null;
 
   useEffect(() => {
-    if (!isAuthenticated || !name) return;
+    // Runs with an empty name too: the row itself is what makes somebody
+    // findable and followable, and a person who signed in with an email and
+    // no name needs one as much as anybody (users.syncMyProfile keeps any
+    // name it already holds).
+    if (!isAuthenticated) return;
     sync({ name: name.slice(0, 100), imageUrl }).catch(() => {});
   }, [isAuthenticated, name, imageUrl, sync]);
 

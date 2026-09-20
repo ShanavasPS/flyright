@@ -320,3 +320,36 @@ describe('timeAloftComparison', () => {
     expect(timeAloftComparison(24 * 30.44 * 14.2)).toBe('14 months in the air');
   });
 });
+
+describe('a flight in the air', () => {
+  const flying = new Date('2026-08-20T09:00:00Z');
+
+  it('gets its own Live heading until it lands, not until it leaves', () => {
+    // Took off an hour ago, lands in ninety minutes. The journal used to
+    // file this under last year's trips the moment the wheels left.
+    const inTheAir = row({
+      scheduledDeparture: '2026-08-20T08:00:00Z',
+      scheduledArrival: '2026-08-20T10:35:00Z',
+    });
+    const sections = groupJourneys([inTheAir], flying);
+    expect(sections[0]!.title).toBe('Live');
+  });
+
+  it('moves to its year once it has landed', () => {
+    const landed = row({
+      scheduledDeparture: '2026-08-20T04:00:00Z',
+      scheduledArrival: '2026-08-20T06:30:00Z',
+    });
+    expect(groupJourneys([landed], flying)[0]!.title).toBe('2026');
+  });
+
+  it('will not hold an old trip up on a nonsense arrival', () => {
+    // A hand-typed row whose arrival is years out must not sit in Upcoming
+    // for those years: no flight is longer than a day.
+    const wrong = row({
+      scheduledDeparture: '2016-06-15T08:00:00Z',
+      scheduledArrival: '2026-12-24T08:00:00Z',
+    });
+    expect(groupJourneys([wrong], flying)[0]!.title).toBe('2016');
+  });
+});

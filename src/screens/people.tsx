@@ -19,13 +19,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
 import { CIRCLE_FULL, FREE_CIRCLE_LABEL } from '../../convex/circleShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
-import { FeedCard, type FeedPost } from '@/components/feed-card';
-import { FollowingRail } from '@/components/following-rail';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
 import { LivePass } from '@/components/live-pass';
 import { RouteLeg } from '@/components/route-leg';
@@ -69,9 +66,8 @@ type Item =
   | { key: string; type: 'pending'; request: Outgoing; kind: 'invite' | 'follow' }
   | { key: string; type: 'note'; count: number }
   | { key: string; type: 'empty'; title: string; detail: string }
-  | { key: string; type: 'invite'; locked: boolean }
-  | { key: string; type: 'rail' }
-  | { key: string; type: 'post'; post: FeedPost };
+  | { key: string; type: 'invite'; locked: boolean };
+
 
 /** Whose trips I follow. Invitations to follow someone answer at the top,
  * because someone is waiting on it; then the people, live trips first; then
@@ -84,29 +80,23 @@ function followingItems(
    * instead approximated it, and the two disagreed the moment a live card
    * outlived its window: the person fell off the rail but kept their pass,
    * which then rendered a finished trip under "Coming up". */
-  flying: { ownerId: string }[],
-  posts: FeedPost[],
 ): Item[] {
-  const onRail = new Set(flying.map((entry) => entry.ownerId));
   const items: Item[] = [];
   if (data.incoming.length) {
     items.push({ key: 'label:invitations', type: 'label', text: 'Invitations' });
     for (const r of data.incoming) items.push({ key: `request:${r.id}`, type: 'request', request: r });
   }
-  // Who is in the air, then what they have been posting, then everyone
-  // else by their next flight. Somebody on the rail is not listed again.
-  if (flying.length) items.push({ key: 'rail', type: 'rail' });
-  if (posts.length) {
-    items.push({ key: 'label:posts', type: 'label', text: 'Latest from trips' });
-    for (const post of posts) items.push({ key: `post:${post.updateId}`, type: 'post', post });
-  }
-  const rest = data.following.filter((p) => !onRail.has(p.userId));
-  if (rest.length && (data.incoming.length || flying.length || posts.length)) {
-    items.push({
-      key: 'label:following',
-      type: 'label',
-      text: flying.length || posts.length ? 'Coming up' : 'Following',
-    });
+  // Everyone I follow, in one list, live trips first — a person in the air
+  // gets their own pass (FollowingRow draws LivePass), which is the fuller
+  // view of a trip than a face on a rail.
+  //
+  // Neither the rail nor what they have posted is here any more: Home leads
+  // with both, and the same thing on two tabs is one screen shown twice —
+  // the thing this rework set out to stop. This tab is the circle itself:
+  // who is in it, who is asking, and when each of them next flies.
+  const rest = data.following;
+  if (rest.length && data.incoming.length) {
+    items.push({ key: 'label:following', type: 'label', text: 'Following' });
   }
   for (const p of rest) items.push({ key: `following:${p.userId}`, type: 'following', person: p });
   for (const r of data.asked) items.push({ key: `pending:${r.id}`, type: 'pending', request: r, kind: 'follow' });
@@ -236,11 +226,6 @@ export function People() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
-  const liveEntries = useQuery(api.live.following, isSignedIn ? {} : 'skip');
-  const feed = useQuery(api.updates.feed, isSignedIn ? {} : 'skip');
-  const react = useMutation(api.updates.react);
-  const now = useNow();
-  const flying = liveEntries?.filter(({ session }) => onHomeScreen(session, now)) ?? [];
   const invite = useInvite(!!data?.full);
   const proLocked = useProLocked();
   const focused = useIsFocused();
@@ -349,7 +334,7 @@ export function People() {
       />
     );
     if (tab === 'following') {
-      items = followingItems(data, flying, feed ?? []);
+      items = followingItems(data);
       footer = (
         <>
           <RedeemInviteLink />
@@ -399,39 +384,6 @@ export function People() {
         return <EmptyTab title={item.title} detail={item.detail} />;
       case 'invite':
         return <InviteRow locked={item.locked} onInvite={invite} />;
-      case 'rail':
-        return <FollowingRail title="Flying now" entries={flying} now={now} />;
-      case 'post':
-        return (
-          <FeedCard
-            post={item.post}
-            now={now}
-            onOpenPerson={() => router.push({ pathname: '/person/[id]', params: { id: item.post.owner.userId } })}
-            onOpenPhoto={() =>
-              router.push({
-                pathname: '/update-viewer',
-                params: {
-                  ownerId: item.post.owner.userId,
-                  journeyId: item.post.trip.journeyId,
-                  updateId: item.post.updateId,
-                  name: item.post.owner.name,
-                },
-              })
-            }
-            onReact={() => void react({ updateId: item.post.updateId as Id<'tripUpdates'> })}
-            onReport={() =>
-              Alert.alert('Report this update?', 'Tell us what is wrong with it. The person who posted it will not know.', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Report',
-                  style: 'destructive',
-                  onPress: () =>
-                    router.push({ pathname: '/report', params: { name: item.post.owner.name, updateId: item.post.updateId } }),
-                },
-              ])
-            }
-          />
-        );
     }
   };
 

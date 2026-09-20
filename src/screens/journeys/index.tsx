@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddFlightButton } from '@/components/add-flight-button';
 import { DataErrorCard } from '@/components/data-state';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { TripRow, timerLabel } from '@/components/trip-row';
@@ -25,7 +26,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FlashToast } from '@/components/flash-toast';
 import { JournalSkeleton } from '@/components/journal-skeleton';
-import { HomeHero, useHeroTrip } from '@/components/travel-day-banner';
+import { HomeHero, LiveDot, useHeroTrip } from '@/components/travel-day-banner';
 import {
   COBALT,
   MiniContrail,
@@ -42,7 +43,7 @@ import type { Money } from '@/rules/types';
 import { requestTrackingConsent } from '@/services/analytics';
 import { useClaims, type ClaimRow } from '@/services/claims';
 import { airportZone } from '@/services/airports';
-import { countdown, flightDay, localDateString } from '@/services/dates';
+import { countdown, flightDay, flightInstant, localDateString } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
 import { canPromptForPush } from '@/services/notifications';
@@ -166,16 +167,18 @@ export function Journeys() {
     });
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const now = new Date();
-  // The hero is that trip's row for the day: listing it again under
-  // "Upcoming" showed the same flight twice, ticketed times against the
-  // airline's moved ones and "in 2h" against "Flight in 3h".
+  // One instant per render, memoised so the grouping below is not rebuilt on
+  // every frame for a Date that means the same thing.
+  const now = useMemo(() => new Date(), [journeys]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Today's flight is listed here like any other. It used to be left out,
+  // because the live card sat on this screen and the row under "Upcoming"
+  // said the same thing twice. The card lives on Home now, so leaving it out
+  // meant the journal simply had no trip on the day you were flying — the
+  // one day you are most likely to look. The row carries its own countdown
+  // and its own progress (TripRow), which is the compact way this app shows
+  // a flight in the air anyway.
   const hero = useHeroTrip(journeys ?? [], now);
-  const heroId = hero?.journey.id ?? null;
-  const sections = useMemo(
-    () => groupJourneys((journeys ?? []).filter((j) => j.id !== heroId), now),
-    [journeys, heroId], // eslint-disable-line react-hooks/exhaustive-deps
-  );
+  const sections = useMemo(() => groupJourneys(journeys ?? [], now), [journeys, now]);
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
   const connections = useMemo(() => connectionsInto(journeys ?? []), [journeys]);
   const claimByJourney = useMemo(() => {
@@ -228,7 +231,7 @@ export function Journeys() {
   const detailId = twoPane
     ? journeys!.some((j) => j.id === selectedId)
       ? selectedId
-      : (heroId ?? sections[0]?.data[0]?.id ?? null)
+      : (hero?.journey.id ?? sections[0]?.data[0]?.id ?? null)
     : null;
 
   const listPane = (
@@ -283,11 +286,19 @@ export function Journeys() {
                 {!tabletopHinge && <TravelStatsHeader stats={stats} />}
               </>
             }
-            renderSectionHeader={({ section }) => (
-              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-                {section.title}
-              </ThemedText>
-            )}
+            renderSectionHeader={({ section }) =>
+              // The flight in the air gets the live card's own marker rather
+              // than a grey word: same heartbeat, same green, same meaning.
+              section.key === 'live' ? (
+                <View style={styles.liveHeading}>
+                  <LiveDot />
+                </View>
+              ) : (
+                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+                  {section.title}
+                </ThemedText>
+              )
+            }
             renderItem={({ item, index, section }) => {
               // Two legs of one itinerary sit next to each other; the joint
               // between them says so, and how long the wait is.
@@ -298,6 +309,7 @@ export function Journeys() {
                   <JourneyItem
                     row={item}
                     now={now}
+                    live={section.key === 'live'}
                     claim={claimByJourney.get(item.id)}
                     owed={owedByJourney.get(item.id)}
                     onSelect={twoPane ? () => setSelectedId(item.id) : undefined}
@@ -458,39 +470,6 @@ function MessagesButton() {
   );
 }
 
-/** Header-style "+" on the title row's right edge — the standard list-screen
- * add affordance, same placement on every platform. Liquid Glass where the OS
- * supports it; an elevated brand-tint circle everywhere else. */
-function AddFlightButton({ onPress }: { onPress: () => void }) {
-  const theme = useTheme();
-  const glass = isLiquidGlassAvailable();
-
-  const icon = (
-    <SymbolView
-      name={{ ios: 'plus', android: 'add', web: 'add' }}
-      size={20}
-      weight="semibold"
-      tintColor={glass ? theme.tint : '#ffffff'}
-    />
-  );
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Add a flight, past or future"
-      onPress={onPress}>
-      {glass ? (
-        <GlassView glassEffectStyle="regular" isInteractive style={styles.addCircle}>
-          {icon}
-        </GlassView>
-      ) : (
-        <View style={[styles.addCircle, styles.addFallback, { backgroundColor: theme.tint }]}>
-          {icon}
-        </View>
-      )}
-    </Pressable>
-  );
-}
 
 /** Money-moment marker on a journey row: a compact pill in the meta line's
  * right slot — amount in payout green on the page background, so it pops off
@@ -528,9 +507,21 @@ function MoneyBadge({ claim, owed, now }: { claim?: ClaimRow; owed?: Money; now:
   );
 }
 
+/** How far along its own schedule a leg is, 0–1. The journal has no live
+ * facts to hand — those belong to the travel-day surfaces — so this is the
+ * timetable's own answer, which is what the plane on a row has always been
+ * drawn from. */
+function legProgress(row: JourneyRow, now: Date): number {
+  const from = flightInstant(row.scheduledDeparture, airportZone(row.fromCode));
+  const to = flightInstant(row.scheduledArrival, airportZone(row.toCode));
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return 0;
+  return Math.min(1, Math.max(0, (now.getTime() - from) / (to - from)));
+}
+
 function JourneyItem({
   row,
   now,
+  live,
   claim,
   owed,
   onSelect,
@@ -538,6 +529,9 @@ function JourneyItem({
 }: {
   row: JourneyRow;
   now: Date;
+  /** This flight is in the air: the row runs its light and counts down to
+   * the landing (see TripRow). */
+  live?: boolean;
   claim?: ClaimRow;
   owed?: Money;
   /** Two-pane mode: select into the detail pane instead of pushing a route. */
@@ -549,6 +543,10 @@ function JourneyItem({
       <TripRow
         trip={row}
         now={now}
+        live={live}
+        // Where it is along the route, so the plane sits where the flight is
+        // rather than in the middle of the line.
+        progress={live ? legProgress(row, now) : undefined}
         selected={selected}
         // One right slot on the meta line: the money moment outranks the
         // countdown the row would otherwise put there.
@@ -673,6 +671,7 @@ const styles = StyleSheet.create({
     // Breathing room past the auto tab-bar inset when scrolled to the end.
     paddingBottom: Spacing.three,
   },
+  liveHeading: { paddingTop: Spacing.three, paddingBottom: Spacing.two },
   sectionTitle: {
     textTransform: 'uppercase',
     letterSpacing: 1,

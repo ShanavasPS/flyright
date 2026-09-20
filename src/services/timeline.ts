@@ -1,6 +1,6 @@
 /** Pure grouping/stats helpers for the My travels timeline — UI-free, testable. */
 
-import { chainLegs, instantWith, itineraryPending } from '../../convex/itineraryShared';
+import { chainLegs, instantWith, itineraryPending, type Instant } from '../../convex/itineraryShared';
 
 import { airportZone, getAirport } from '@/services/airports';
 import { pinToZone } from '@/services/dates';
@@ -23,18 +23,49 @@ const instant = instantWith(airportZone);
  * leg has departed — so a journey whose first leg has landed and second leg
  * leaves in two hours is still one upcoming trip, not a flown flight above
  * an upcoming one. A past itinerary files under the year of its first leg. */
+/** No scheduled flight is longer than this. The bound matters because an
+ * arrival is only as trustworthy as whoever typed it: without it, one row
+ * with a nonsense arrival would sit in Upcoming for years. */
+const LONGEST_FLIGHT_MS = 24 * 60 * 60 * 1000;
+
+/** The last leg has left but not landed — the couple of hours a journal
+ * would otherwise call the past while the traveller is still on board. */
+function stillFlying(chain: JourneyRow[], now: number, instant: Instant): boolean {
+  const last = chain[chain.length - 1];
+  if (!last) return false;
+  const departure = instant(last.scheduledDeparture, last.fromCode);
+  const arrival = instant(last.scheduledArrival, last.toCode);
+  if (!Number.isFinite(departure) || !Number.isFinite(arrival)) return false;
+  // Strictly after departure: a flight leaving this very second is still
+  // Upcoming, which is the boundary the journal has always drawn.
+  return departure < now && now <= arrival && now - departure <= LONGEST_FLIGHT_MS;
+}
+
 export function groupJourneys(rows: JourneyRow[], now: Date): TimelineSection[] {
   const cutoff = now.getTime();
   const start = (chain: JourneyRow[]) => instant(chain[0]!.scheduledDeparture, chain[0]!.fromCode);
+  const live: JourneyRow[][] = [];
   const upcoming: JourneyRow[][] = [];
   const past: JourneyRow[][] = [];
   for (const chain of chainLegs(rows, instant)) {
-    (itineraryPending(chain, cutoff, instant) ? upcoming : past).push(chain);
+    // A flight that has taken off has not been taken yet: it is still
+    // happening. itineraryPending asks only whether the last leg has left,
+    // which filed a trip in the air under last year's trips — invisible
+    // while the live card stood in for today's row, plainly wrong now that
+    // the row is the only one there is. And "Upcoming" is not true of it
+    // either, so it gets its own heading.
+    if (stillFlying(chain, cutoff, instant)) live.push(chain);
+    else if (itineraryPending(chain, cutoff, instant)) upcoming.push(chain);
+    else past.push(chain);
   }
+  live.sort((a, b) => start(a) - start(b));
   upcoming.sort((a, b) => start(a) - start(b));
   past.sort((a, b) => start(b) - start(a));
 
   const sections: TimelineSection[] = [];
+  if (live.length) {
+    sections.push({ key: 'live', title: 'Live', data: live.flat() });
+  }
   if (upcoming.length) {
     sections.push({ key: 'upcoming', title: 'Upcoming', data: upcoming.flat() });
   }

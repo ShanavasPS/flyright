@@ -3,7 +3,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -145,13 +145,23 @@ export function AddPerson() {
     }
   };
 
+  // The share sheet holds the app while it is open, and a deep link (a push,
+  // an invite, the assistant) can take this screen off the stack behind it.
+  // Backing out then has nowhere to go — "GO_BACK was not handled" — and the
+  // sheet used to sit there, exactly as import-document found. Land on Home
+  // instead, which is where closing this always meant.
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  }, [router]);
+
   const onShareLink = async () => {
     setBusy('link');
     setError(null);
     try {
       const { token } = await createInvite({});
       await shareInvite(token, user?.firstName);
-      router.back();
+      close();
     } catch (e) {
       setError(
         e instanceof ConvexError && e.data === CIRCLE_FULL
@@ -235,7 +245,7 @@ export function AddPerson() {
         <ThemedText type="subtitle" themeColor="heading">
           Add someone
         </ThemedText>
-        <Pressable accessibilityRole="button" onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" onPress={close}>
           <ThemedText type="link">Done</ThemedText>
         </Pressable>
       </View>

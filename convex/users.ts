@@ -223,11 +223,21 @@ export const syncMyProfile = mutation({
     if (!identity) return;
     bounded(name, 100, 'Name');
     const trimmed = name.trim();
-    if (!trimmed) return;
     const existing = await ctx.db
       .query('profiles')
       .withIndex('by_user', (q) => q.eq('userId', identity.subject))
       .unique();
+    // Somebody who signed in with an email and never gave a name still needs
+    // a row. Without one they are not merely nameless: `profileFor` finds
+    // nothing, so they cannot be searched for and cannot be followed at all
+    // — requestFollow and askToFollow both throw "No such person". Write the
+    // row, and never blank out a name that is already there.
+    if (!trimmed) {
+      if (existing) return;
+      await limit(ctx, `profile:${identity.subject}`, 30, HOUR);
+      await writeProfile(ctx, identity.subject, '', imageUrl, null);
+      return;
+    }
     // Nothing to write — including the search keys, which rows synced before
     // "add someone" existed are missing and get backfilled by this call.
     if (

@@ -441,8 +441,10 @@ function RoutePath({ progress, delayed }: { progress: number; delayed: boolean }
   );
 }
 
-/** Pulsing "live" marker — the quiet heartbeat that says this card updates. */
-function LiveDot() {
+/** Pulsing "live" marker — the quiet heartbeat that says this card updates.
+ * Exported because the journal's "Live" heading wears the same one: a flight
+ * in the air should look the same wherever the app draws it. */
+export function LiveDot() {
   const reduceMotion = useReducedMotion();
   const pulse = useSharedValue(1);
   useEffect(() => {

@@ -2,9 +2,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { RouteLeg } from '@/components/route-leg';
+import { BORDER_WIDTH, RunningBorder } from '@/components/running-border';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { countdown, flightInstant, formatDayLabel } from '@/services/dates';
@@ -52,6 +54,7 @@ export function TripRow({
   eyebrow,
   eyebrowTone = 'tint',
   progress,
+  live = false,
 }: {
   trip: RowTrip;
   now: Date;
@@ -73,6 +76,9 @@ export function TripRow({
    * origin, then rides the line. Omitted, the plane sits mid-line as the
    * journal has always drawn it. */
   progress?: number;
+  /** In the air right now: the row wears the live card's running light and
+   * counts down to the landing instead of saying how long ago it left. */
+  live?: boolean;
 }) {
   const theme = useTheme();
   const eyebrowColor = eyebrowTone === 'heading' ? theme.heading : theme.tint;
@@ -82,7 +88,17 @@ export function TripRow({
   const upcoming = departs >= now.getTime();
 
   return (
-    <SheenCard style={[styles.card, selected && { borderWidth: 1, borderColor: theme.tint }]}>
+    <SheenCard
+      style={[
+        styles.card,
+        live && styles.liveCard,
+        live && { borderWidth: BORDER_WIDTH, borderColor: `${theme.tint}59` },
+        selected && { borderWidth: 1, borderColor: theme.tint },
+      ]}>
+      {/* The same light that runs around the live card, at the row's radius:
+          one flight, one language, wherever it is drawn. It overlays, so the
+          row keeps the height and width of every other row. */}
+      {live && <RunningBorder color={theme.tint} radius={Spacing.four} running />}
       <AirlineLogo number={trip.number} carrier={trip.carrier} />
       <View style={styles.body}>
         {eyebrow && (
@@ -110,13 +126,25 @@ export function TripRow({
             {trip.number || trip.carrier}
           </ThemedText>
           {badge ??
-            (!old &&
+            (live ? (
+              // "2h ago" is the wrong fact while the flight is still in the
+              // air, and "in 3h" is too coarse to look alive: the row runs
+              // the live card's own clock, at the meta line's size.
+              <LandingClock
+                departure={trip.scheduledDeparture}
+                fromCode={trip.fromCode}
+                arrival={trip.scheduledArrival}
+                toCode={trip.toCode}
+              />
+            ) : (
+              !old &&
               !eyebrow && (
-              <ThemedText
-                type={upcoming ? 'smallBold' : 'small'}
-                themeColor={upcoming ? 'heading' : 'textSecondary'}>
-                {timerLabel(countdown(trip.scheduledDeparture, now, departureZone))}
-              </ThemedText>
+                <ThemedText
+                  type={upcoming ? 'smallBold' : 'small'}
+                  themeColor={upcoming ? 'heading' : 'textSecondary'}>
+                  {timerLabel(countdown(trip.scheduledDeparture, now, departureZone))}
+                </ThemedText>
+              )
             ))}
         </View>
         <RouteLeg
@@ -149,6 +177,46 @@ export function TripRow({
 /** "in 3h" / "26h ago" / "in 5d" / "now" — compact enough to live on the
  * row's right edge without squeezing the flight details, and borrowed by the
  * journal's header so "Next trip in 5d" is worded like the row it points at. */
+/** The live card's countdown, at a row's size: hours, minutes and seconds to
+ * the landing, ticking on its own so the journal does not have to re-render
+ * the whole list every second. Holds at 0:00:00 once the time is up — the
+ * flight is down, and the row will move out of Live on the next read. */
+function LandingClock({
+  departure,
+  fromCode,
+  arrival,
+  toCode,
+}: {
+  departure: string;
+  fromCode: string;
+  arrival: string;
+  toCode: string;
+}) {
+  const theme = useTheme();
+  const now = useNow(1000);
+  // Named the way the live card names it, and for the same reason: a bare
+  // number does not say what it is counting to.
+  const leaving = flightInstant(departure, airportZone(fromCode)) > now.getTime();
+  const target = leaving
+    ? flightInstant(departure, airportZone(fromCode))
+    : flightInstant(arrival, airportZone(toCode));
+  const total = Math.floor(Math.max(0, target - now.getTime()) / 1000);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    <View style={styles.clockBlock}>
+      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.clockLabel}>
+        {leaving ? 'Departs in' : 'Lands in'}
+      </ThemedText>
+      <ThemedText type="smallBold" style={[styles.clock, { color: theme.success }]}>
+        {hours}:{pad(minutes)}:{pad(seconds)}
+      </ThemedText>
+    </View>
+  );
+}
+
 export function timerLabel(timer: { value: number; unit: string }): string {
   if (timer.unit === 'now') return 'now';
   const short = timer.unit.startsWith('hours') ? 'h' : 'd';
@@ -161,6 +229,11 @@ function firstLine(notes: string): string {
 }
 
 const styles = StyleSheet.create({
+  clock: { fontVariant: ['tabular-nums'] },
+  clockBlock: { alignItems: 'flex-end', gap: 1 },
+  clockLabel: { fontSize: 10, lineHeight: 13, textTransform: 'uppercase', letterSpacing: 1 },
+  // A flight in the air earns a little more room than a row in a list.
+  liveCard: { paddingVertical: Spacing.three + Spacing.one },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

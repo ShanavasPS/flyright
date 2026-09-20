@@ -80,7 +80,50 @@ export function GhostTravelDay() {
   );
 }
 
+/** A post drawn as shapes — a face, a line of words, the photo under them.
+ * For the slot that holds friends' updates before anyone has posted one: it
+ * shows what will arrive without inventing somebody's trip. Drawn on a light
+ * card, tinted rather than grey: grey shapes on white read as a screen still
+ * loading. It stays light on purpose — the live card above it is the subject
+ * of the screen, and the empty slot beneath must not outweigh it. */
+export function GhostPost() {
+  return (
+    <View
+      style={styles.post}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
+      <View style={styles.postHead}>
+        <View style={styles.postFace} />
+        <View style={styles.postLines}>
+          <View style={[styles.postBar, { width: '38%' }]} />
+          <View style={[styles.postBar, { width: '58%', opacity: 0.6 }]} />
+        </View>
+      </View>
+      <View style={styles.postPhoto} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  post: { gap: Spacing.two },
+  postHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  postFace: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(30,107,224,0.35)',
+    backgroundColor: 'rgba(30,107,224,0.08)',
+  },
+  postLines: { flex: 1, gap: Spacing.one + Spacing.half },
+  postBar: { height: 7, borderRadius: 4, backgroundColor: 'rgba(30,107,224,0.16)' },
+  postPhoto: {
+    height: 76,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    borderColor: 'rgba(30,107,224,0.18)',
+    backgroundColor: 'rgba(30,107,224,0.06)',
+  },
   day: { gap: Spacing.two },
   faces: { flexDirection: 'row', gap: Spacing.two },
   face: {

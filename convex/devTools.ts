@@ -4,6 +4,8 @@ import { internal } from './_generated/api';
 import { internalAction, internalMutation } from './_generated/server';
 import { armHeadsUp, createSession, materializeCircleFollows } from './liveHelpers';
 import { sendFollowerPush } from './onesignal';
+import { safeAvatar } from './profileShared';
+import { firstNameKey, searchKey } from './circleShared';
 
 /**
  * Dev-only knobs, callable from the CLI alone (internal functions never
@@ -346,5 +348,110 @@ export const pushToFollowers = internalAction({
       `https://getflyright.com/t/${targets.token}`,
     );
     return { sent: targets.externalIds.length, heading: title, body };
+  },
+});
+
+/** Give a profile row to anybody in somebody's circle who has none.
+ *
+ * A person who signed in with an email and never set a name used to get no
+ * row at all (users.syncMyProfile bailed on an empty name), which left them
+ * nameless, unsearchable and impossible to follow — requestFollow and
+ * askToFollow both throw "No such person" without one. The client writes its
+ * own row now; this catches the accounts that predate that.
+ *
+ * Reports what it found, so a run that changes nothing says so. */
+export const backfillMissingProfiles = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const ids = new Set<string>();
+    for (const row of await ctx.db.query('circle').collect()) {
+      ids.add(row.ownerId);
+      ids.add(row.memberId);
+    }
+    for (const row of await ctx.db.query('follows').collect()) {
+      ids.add(row.followerId);
+      ids.add(row.ownerId);
+    }
+    for (const row of await ctx.db.query('circleRequests').collect()) {
+      ids.add(row.fromUserId);
+      ids.add(row.toUserId);
+    }
+    let written = 0;
+    for (const userId of ids) {
+      const existing = await ctx.db
+        .query('profiles')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .unique();
+      if (existing) continue;
+      await ctx.db.insert('profiles', {
+        userId,
+        name: '',
+        imageUrl: null,
+        email: null,
+        emailVerified: false,
+        searchName: '',
+        searchFirst: '',
+        updatedAt: new Date().toISOString(),
+      });
+      written += 1;
+    }
+    return { seen: ids.size, written };
+  },
+});
+
+/** Give a test account a real name and face.
+ *
+ * The simulators sign in with email-only Clerk users that carry no name, so
+ * every one of them renders as "A traveler" with the same initials and the
+ * same avatar hue — three identical faces in a row, impossible to tell
+ * apart while checking a follower surface. Writes the profile directly;
+ * the client will not overwrite it, because a signed-in account with no
+ * Clerk name leaves an existing row alone (users.syncMyProfile). */
+export const nameTestUser = internalMutation({
+  args: { userId: v.string(), name: v.string(), imageUrl: v.union(v.string(), v.null()) },
+  handler: async (ctx, { userId, name, imageUrl }) => {
+    const existing = await ctx.db
+      .query('profiles')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique();
+    const fields = {
+      name,
+      imageUrl: safeAvatar(imageUrl),
+      searchName: searchKey(name),
+      searchFirst: firstNameKey(name),
+      updatedAt: new Date().toISOString(),
+    };
+    if (existing) {
+      await ctx.db.patch(existing._id, fields);
+      return { updated: existing.userId };
+    }
+    await ctx.db.insert('profiles', {
+      userId,
+      email: null,
+      emailVerified: false,
+      ...fields,
+    });
+    return { inserted: userId };
+  },
+});
+
+/** Who is in the circles, for pointing nameTestUser at the right account. */
+export const listCircleUsers = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const ids = new Set<string>();
+    for (const row of await ctx.db.query('circle').collect()) {
+      ids.add(row.ownerId);
+      ids.add(row.memberId);
+    }
+    const out = [];
+    for (const userId of ids) {
+      const profile = await ctx.db
+        .query('profiles')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .unique();
+      out.push({ userId, name: profile?.name ?? null });
+    }
+    return out;
   },
 });
