@@ -226,7 +226,7 @@ export function People() {
   const feed = useQuery(api.updates.feed, isSignedIn ? {} : 'skip');
   const react = useMutation(api.updates.react);
   const now = useNow();
-  const flying = liveEntries?.filter(({ session, onward }) => onHomeScreen(session, now, onward)) ?? [];
+  const flying = liveEntries?.filter(({ session }) => onHomeScreen(session, now)) ?? [];
   const invite = useInvite(!!data?.full);
   const proLocked = useProLocked();
   const focused = useIsFocused();

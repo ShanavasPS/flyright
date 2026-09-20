@@ -607,7 +607,7 @@ async function liveCard(
     .collect();
   return {
     token: session.shareToken,
-    session: toPublicSession(session, name, follows.length),
+    session: toPublicSession(session, name, follows.length, onward),
     onward,
     /** The traveller's latest word from this leg, for the pass. */
     update: await latestUpdate(

@@ -8,6 +8,7 @@ import {
   nextPollDelayMs,
   sessionExpiryFor,
   shouldStartActivity,
+  liveUntil,
   preferredSession,
   stillLive,
   type LiveLeadInput,
@@ -230,6 +231,51 @@ describe('shouldStartActivity (server push-to-start)', () => {
     const s = fresh({ activityStartedAt: attempted });
     expect(shouldStartActivity(s, dep - 3 * 3_600_000)).toBe(false);
     expect(shouldStartActivity(s, dep - 4 * 3_600_000 + ACTIVITY_LIFETIME_MS)).toBe(true);
+  });
+});
+
+describe('liveUntil', () => {
+  // The same rule stillLive applies, as the deadline the client is handed —
+  // so the policy lives here and the client only watches the clock.
+  const at = (iso: string) => Date.parse(iso);
+
+  it('is twelve hours past a recorded landing', () => {
+    const landed = session({ currentStage: 'landed', stageTimes: { landed: '2026-09-09T03:30:00.000Z' } });
+    expect(liveUntil(landed)).toBe(at('2026-09-09T15:30:00.000Z'));
+  });
+
+  it("falls back to the airline's arrival, then the timetable's", () => {
+    const reported = session({ currentStage: 'landed', stageTimes: {}, actualArrival: '2026-09-09T03:00:00.000Z' });
+    expect(liveUntil(reported)).toBe(at('2026-09-09T15:00:00.000Z'));
+    // Nothing recorded at all: due 06:05 in Doha = 03:05Z.
+    expect(liveUntil(session())).toBe(at('2026-09-09T03:05:00.000Z') + 12 * 3_600_000);
+  });
+
+  it('holds while a connecting leg is still to leave', () => {
+    const onward = [{ scheduledDeparture: '2026-09-09T18:00:00.000Z', fromCode: 'DOH' }];
+    expect(liveUntil(session(), onward)).toBe(at('2026-09-09T18:00:00.000Z'));
+    // ...but never shortens the landing window when the leg leaves sooner.
+    expect(liveUntil(session(), [{ scheduledDeparture: '2026-09-09T05:00:00.000Z', fromCode: 'DOH' }])).toBe(
+      at('2026-09-09T15:05:00.000Z'),
+    );
+  });
+
+  it('never outlives the session itself', () => {
+    // A take-off with no landing behind it never reads as flown, so only the
+    // session's own expiry ends it.
+    const aloft = session({ currentStage: 'departed', stageTimes: { departed: '2026-09-09T00:00:00.000Z' } });
+    expect(liveUntil(aloft)).toBe(at('2026-09-11T06:05:00.000Z'));
+    // And a distant onward leg cannot push past it either.
+    expect(liveUntil(session(), [{ scheduledDeparture: '2026-09-20T00:00:00.000Z', fromCode: 'DOH' }])).toBe(
+      at('2026-09-11T06:05:00.000Z'),
+    );
+  });
+
+  it('agrees with stillLive on either side of the deadline', () => {
+    const landed = session({ currentStage: 'landed', stageTimes: { landed: '2026-09-09T03:30:00.000Z' } });
+    const deadline = liveUntil(landed);
+    expect(stillLive(landed, deadline - 60_000)).toBe(true);
+    expect(stillLive(landed, deadline + 60_000)).toBe(false);
   });
 });
 

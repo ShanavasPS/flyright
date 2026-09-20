@@ -151,35 +151,23 @@ describe('movedClocks', () => {
 });
 
 describe('onHomeScreen', () => {
+  // The rule itself is the server's (liveUntil, tested in live-shared.test).
+  // All this does is watch the clock against the deadline it was handed, so
+  // a trip that expires while the app is open leaves on the next tick rather
+  // than waiting for something to invalidate the query.
   const at = (iso: string) => new Date(iso);
-  const stamped = { ...base, stageTimes: {} as Record<string, string> };
-  it('keeps a trip on the home screen until it lands', () => {
-    expect(onHomeScreen(stamped, now)).toBe(true);
-    expect(onHomeScreen({ ...stamped, currentStage: 'departed' }, at('2026-09-09T20:00:00Z'))).toBe(true);
+  const until = Date.parse('2026-09-09T17:00:00Z');
+
+  it('keeps the trip until the deadline passes', () => {
+    expect(onHomeScreen({ liveUntil: until }, at('2026-09-09T16:59:00Z'))).toBe(true);
+    expect(onHomeScreen({ liveUntil: until }, at('2026-09-09T17:01:00Z'))).toBe(false);
   });
-  it('lets a landed trip go twelve hours after the landing stamp', () => {
-    const landed = { ...stamped, currentStage: 'landed', stageTimes: { landed: '2026-09-09T05:00:00Z' } };
-    expect(onHomeScreen(landed, at('2026-09-09T16:59:00Z'))).toBe(true);
-    expect(onHomeScreen(landed, at('2026-09-09T17:01:00Z'))).toBe(false);
-  });
-  it("falls back to the airline's actual arrival, and stays when neither is known", () => {
-    expect(
-      onHomeScreen(
-        { ...stamped, currentStage: 'landed', actualArrival: '2026-09-09T05:00:00Z' },
-        at('2026-09-09T18:00:00Z'),
-      ),
-    ).toBe(false);
-    expect(onHomeScreen({ ...stamped, currentStage: 'landed' }, now)).toBe(true);
-  });
-  it('lets a trip nobody recorded landing go twelve hours after the timetable arrival', () => {
-    // Scheduled arrival 09:15Z with no stage at all.
-    expect(onHomeScreen(stamped, at('2026-09-09T21:00:00Z'))).toBe(true);
-    expect(onHomeScreen(stamped, at('2026-09-09T21:20:00Z'))).toBe(false);
-    // ...unless a connecting leg is still to leave.
-    expect(
-      onHomeScreen(stamped, at('2026-09-09T21:20:00Z'), [
-        { scheduledDeparture: '2026-09-09T23:00:00Z', fromCode: 'LHR' },
-      ]),
-    ).toBe(true);
+
+  it('trusts the gate that returned it when no deadline came', () => {
+    // A payload from a server older than the field: the server already
+    // applied stillLive, so hiding it here would be the client second-guessing
+    // a rule it no longer carries.
+    expect(onHomeScreen({}, at('2026-09-20T00:00:00Z'))).toBe(true);
   });
 });
+

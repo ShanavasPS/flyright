@@ -437,6 +437,7 @@ export const following = query({
           session,
           await travelerName(ctx, session.userId),
           await followerCount(ctx, session._id),
+          onward,
         ),
         onward,
         // The trip behind the session, so a follower can open it in the

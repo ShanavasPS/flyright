@@ -45,8 +45,9 @@ export function FollowingSection({
   const posted = useQuery(api.updates.mine, sharing ? { journeyKey: sharing.id } : 'skip');
 
   // The session lives 48h past arrival so late stamps still find it; the
-  // home screen lets a landed trip go two hours after the landing.
-  const live = entries?.filter(({ session, onward }) => onHomeScreen(session, now, onward)) ?? [];
+  // server decided how long it leads and sent the deadline with it, so this
+  // only watches the clock tick past it.
+  const live = entries?.filter(({ session }) => onHomeScreen(session, now)) ?? [];
   if (!live.length && !sharing) return null;
   const latest = posted?.[0] ?? null;
   const hearts = (posted ?? []).reduce((sum, u) => sum + u.reactedBy.length, 0);

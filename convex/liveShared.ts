@@ -191,6 +191,55 @@ export function stillLive(
   return now - landedAt < LIVE_AFTER_LANDING_MS;
 }
 
+/** The instant a session stops being a live card, as a timestamp the client
+ * can simply watch the clock against.
+ *
+ * `stillLive` is the rule; this is the same rule expressed as a deadline, and
+ * it exists because a Convex query is reactive to DATA, not to time. The
+ * server answers `stillLive` when the query runs and never again until
+ * something it reads changes, so a trip that crosses its expiry while the app
+ * is open would sit on screen. Sending the deadline lets the client's ticking
+ * clock drop the row at the right moment without carrying a copy of the
+ * policy — which is what pinned the window to the installed binary and let an
+ * old build disagree with the server about what a follower should see.
+ *
+ * Bounded by the session's own expiry: past that it is not returned at all.
+ * `heldOnGround` is deliberately not modelled — it can only extend liveness by
+ * up to FRESH_STATUS_MS, and only for a flight still at the gate long after it
+ * should have landed. The server's gate runs first either way, so the client
+ * only ever asks "has it expired since that answer", never "should it be
+ * here at all". */
+export function liveUntil(
+  s: {
+    toCode: string;
+    currentStage: string | null;
+    stageTimes: Record<string, string>;
+    scheduledArrival: string;
+    estimatedArrival: string | null;
+    actualArrival: string | null;
+    expiresAt: string;
+  },
+  onward: { scheduledDeparture: string; fromCode: string }[] = [],
+): number {
+  const arrival = flightInstant(s.actualArrival ?? s.estimatedArrival ?? s.scheduledArrival, s.toCode);
+  const landedAt = landedOrLater(s.currentStage)
+    ? Date.parse(s.stageTimes.landed ?? s.actualArrival ?? '')
+    : arrival;
+  // A recorded take-off with no landing behind it never reads as flown (see
+  // presumedFlightStage), so nothing but the session's own expiry ends it.
+  const stuckAloft = s.currentStage === 'departed';
+  const base =
+    stuckAloft || Number.isNaN(landedAt) ? Infinity : landedAt + LIVE_AFTER_LANDING_MS;
+  // A connecting leg still to leave keeps the journey live; the card becomes
+  // that leg when it does.
+  const onwardUntil = onward.reduce(
+    (latest, leg) => Math.max(latest, flightInstant(leg.scheduledDeparture, leg.fromCode) || -Infinity),
+    -Infinity,
+  );
+  const closes = Date.parse(s.expiresAt);
+  return Math.min(Math.max(base, onwardUntil), Number.isNaN(closes) ? Infinity : closes);
+}
+
 /** A session lives until 48 h past scheduled arrival; after that the trip is
  * history rather than a travel day. Both the expiry stamp and the "is this
  * still worth a session" check read this, so they can't drift apart. */
@@ -743,6 +792,11 @@ export interface PublicSession {
   /** When the server last read the flight's live status — a fresh read with
    * no take-off holds the flight at the gate (heldOnGround). */
   lastCheckedAt?: string | null;
+  /** When this stops being a live card (see liveUntil) — epoch ms, so the
+   * client watches the clock against it instead of re-deriving the rule.
+   * Absent on a payload from a server that predates the field; treat that as
+   * live, since the server's own gate already let it through. */
+  liveUntil?: number;
 }
 
 /** The ONLY way session data leaves the server for non-owners: a whitelist.
@@ -751,6 +805,9 @@ export function toPublicSession(
   s: Doc<'liveSessions'>,
   travelerName: string | null,
   followerCount: number,
+  /** The same onward legs the caller gated on, so the deadline agrees with
+   * the gate. Omitted where there is no journey context (a push payload). */
+  onward: { scheduledDeparture: string; fromCode: string }[] = [],
 ): PublicSession {
   return {
     status: s.status,
@@ -775,5 +832,6 @@ export function toPublicSession(
     estimatedArrival: s.estimatedArrival,
     actualArrival: s.actualArrival,
     lastCheckedAt: s.lastCheckedAt,
+    liveUntil: liveUntil(s, onward),
   };
 }

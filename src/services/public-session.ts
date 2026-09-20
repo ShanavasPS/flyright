@@ -1,9 +1,7 @@
-import {
-  LIVE_AFTER_LANDING_MS,
-  heldOnGround, presumedFlightStage,
-  stillLive,
-  type PublicSession,
-} from '../../convex/liveShared';
+// No landing window here on purpose: how long a trip leads is the server's
+// rule now (liveUntil), and a copy compiled into the app is what let an old
+// build disagree with it.
+import { heldOnGround, presumedFlightStage, type PublicSession } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { flightInstant, formatTime } from '@/services/dates';
@@ -262,20 +260,20 @@ export function spanLabel(ms: number): string {
   return `${Math.round(ms / 86_400_000)}d`;
 }
 
-/** How long a landed trip stays a live card — see LIVE_AFTER_LANDING_MS. */
-export const HOME_AFTER_LANDING_MS = LIVE_AFTER_LANDING_MS;
-
-/** Whether a followed live trip still belongs on the home screen — the
- * server's stillLive rule, which also decides what the People tab and the
- * person's page lead with, so the three surfaces let go together. */
-export function onHomeScreen(
-  s: Pick<PublicSession, 'stageTimes'> & Parameters<typeof presumedStage>[0],
-  now: Date,
-  /** Connecting legs still to leave keep the journey on the home screen:
-   * the row simply becomes the next leg. */
-  onward: { scheduledDeparture: string; fromCode: string }[] = [],
-): boolean {
-  return stillLive(s, now.getTime(), onward);
+/** Whether a followed live trip still belongs on the home screen.
+ *
+ * The server already applied the rule (stillLive) before returning this
+ * session, and sent the instant it stops being a live card with it. All that
+ * is left for the client is the clock: a Convex query re-runs when its data
+ * changes, not when time passes, so without this a trip that expires while
+ * the app is open would stay on screen until something else invalidated the
+ * query. Deciding the rule here too is what let an installed build disagree
+ * with the server about what a follower should see — so it doesn't any more.
+ *
+ * No deadline (a server older than the field) means trust the gate that
+ * returned it. */
+export function onHomeScreen(s: Pick<PublicSession, 'liveUntil'>, now: Date): boolean {
+  return s.liveUntil === undefined || now.getTime() < s.liveUntil;
 }
 
 /** "Sam is flying" / "Sam has landed" — the eyebrow over a follower's trip.
