@@ -23,6 +23,7 @@ import {
   flightProgress,
   hasLanded,
   heldByLiveData,
+  landingDue,
   stageIndex,
   type FlightFacts,
   type TravelDayState,
@@ -90,6 +91,9 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
   const departureMs = flightInstant(facts.estimatedDeparture ?? row.scheduledDeparture, departureZone);
   const arrivalMs = flightInstant(facts.estimatedArrival ?? row.scheduledArrival, arrivalZone);
   const held = heldByLiveData(row, state, facts, now);
+  // Past the arrival the clocks and a late take-off reckon, with nothing
+  // reporting a landing. Some airports never do — see landingDue.
+  const overdue = landingDue(row, state, facts, now);
   const presumed = timed ? presumedFlightStage(state.stage, departureMs, arrivalMs, t, held) : null;
   const landed = hasLanded(state.stage) || presumed === 'landed';
   const airborne = !landed && (state.stage === 'departed' || presumed === 'departed');
@@ -243,7 +247,11 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
         ];
 
   let footnote: string | null = null;
-  if (!over && !tracked) {
+  if (overdue) {
+    // The same ask the live card and the Lock Screen make at this moment.
+    // The step is right below this card, in Trip progress.
+    footnote = 'Landed? Mark it in Trip progress — some airports never report it.';
+  } else if (!over && !tracked) {
     footnote = timed
       ? 'Times are from your ticket. Tap a box to add what you know.'
       : 'Tap a box to add what you know.';

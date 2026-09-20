@@ -253,11 +253,31 @@ export interface StageRules {
  * estimate if there is one, else the timetable, as an instant (manual rows
  * carry bare wall clocks, so pin them to the arrival airport first). */
 function reckonedArrival(
-  j: Pick<TravelJourney, 'scheduledArrival' | 'toCode'>,
+  j: Pick<TravelJourney, 'scheduledDeparture' | 'scheduledArrival' | 'fromCode' | 'toCode'>,
   facts: FlightFacts,
+  state: TravelDayState,
 ): string | null {
-  const at = flightInstant(facts.estimatedArrival ?? j.scheduledArrival, airportZone(j.toCode));
-  return Number.isNaN(at) ? null : new Date(at).toISOString();
+  const scheduledArrival = flightInstant(j.scheduledArrival, airportZone(j.toCode));
+  const scheduledDeparture = flightInstant(j.scheduledDeparture, airportZone(j.fromCode));
+  const estimate = flightInstant(facts.estimatedArrival ?? j.scheduledArrival, airportZone(j.toCode));
+  // The LATEST of everything that bears on it, never the earliest: this
+  // decides when the app stops believing the flight is still coming, and
+  // being early about that is how you ask a traveller to confirm a landing
+  // while they are in the air.
+  const candidates = [estimate];
+  // A flight that left late lands late unless the airline says otherwise.
+  // QR516 pushed back 26 minutes on 2026-09-19 with its arrival estimate
+  // untouched at the scheduled minute — reading that estimate alone would
+  // have called it down before it was.
+  const left = flightInstant(facts.actualDeparture ?? state.stamps.departed ?? '', airportZone(j.fromCode));
+  const block = scheduledArrival - scheduledDeparture;
+  if (!Number.isNaN(left) && block > 0) candidates.push(left + block);
+  // And a delay the airline posted, in case it moved that instead.
+  if (facts.delayMinutes != null && !Number.isNaN(scheduledArrival)) {
+    candidates.push(scheduledArrival + Math.max(0, facts.delayMinutes) * 60_000);
+  }
+  const at = Math.max(...candidates.filter((ms) => !Number.isNaN(ms)));
+  return Number.isFinite(at) ? new Date(at).toISOString() : null;
 }
 
 /** Off the ground: the take-off is recorded, by the airline or by the
@@ -282,13 +302,13 @@ export const LANDING_OVERDUE_MS = 30 * 60_000;
  * reads only what was recorded); it decides when the app stops saying the
  * landing will fill itself in and starts asking for it. */
 export function landingDue(
-  j: Pick<TravelJourney, 'scheduledArrival' | 'toCode'>,
+  j: Pick<TravelJourney, 'scheduledDeparture' | 'scheduledArrival' | 'fromCode' | 'toCode'>,
   state: TravelDayState,
   facts: FlightFacts,
   now: Date,
 ): boolean {
   if (hasLanded(state.stage) || !isAirborne(state, facts)) return false;
-  const at = reckonedArrival(j, facts);
+  const at = reckonedArrival(j, facts, state);
   return at !== null && now.getTime() >= Date.parse(at) + LANDING_OVERDUE_MS;
 }
 
@@ -296,7 +316,7 @@ export function landingDue(
  * builds its rules here, so the timeline, the trip screen and the live
  * surfaces never disagree about what is tappable. */
 export function stageRules(
-  j: Pick<TravelJourney, 'source' | 'scheduledArrival' | 'toCode'>,
+  j: Pick<TravelJourney, 'source' | 'scheduledDeparture' | 'scheduledArrival' | 'fromCode' | 'toCode'>,
   state: TravelDayState,
   facts: FlightFacts,
   now: Date,
@@ -305,7 +325,7 @@ export function stageRules(
   // Once the wheels are up the landing belongs to the traveller — until the
   // airline reports one, which outranks any tap and can't be taken back.
   const mayStampLanding = isAirborne(state, facts) && !facts.actualArrival;
-  const reckoned = reckonedArrival(j, facts);
+  const reckoned = reckonedArrival(j, facts, state);
   return {
     manualTrip: j.source === 'manual',
     plan,

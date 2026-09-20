@@ -778,7 +778,10 @@ describe('a landing the traveller calls themselves', () => {
     // Late: they are off the plane long before they tap, so the estimate is
     // the better answer than 23:10.
     const late = advance(airborne, 'landed', new Date('2026-09-19T23:10Z'), rulesAt('2026-09-19T23:10Z'));
-    expect(late.stamps.landed).toBe('2026-09-19T21:29:00.000Z');
+    // 17:06 take-off plus the 4h35m the timetable allows — NOT the 21:29
+    // estimate, which the airline never moved off the scheduled minute even
+    // though the flight pushed back 26 minutes late.
+    expect(late.stamps.landed).toBe('2026-09-19T21:41:00.000Z');
   });
 
   it('records the landing when the traveller taps straight to passport control', () => {
@@ -788,7 +791,7 @@ describe('a landing the traveller calls themselves', () => {
     expect(through.stamps.arrival_immigration).toBe('2026-09-19T23:10:00.000Z');
     // Nobody clears passport control without landing — the row must not read
     // "Skipped".
-    expect(through.stamps.landed).toBe('2026-09-19T21:29:00.000Z');
+    expect(through.stamps.landed).toBe('2026-09-19T21:41:00.000Z');
   });
 
   it('lets them take back a landing they stamped, but not one the airline sent', () => {
@@ -812,6 +815,20 @@ describe('a landing the traveller calls themselves', () => {
       plan,
     );
     expect(undoLast(tapped, reported)).toBe(tapped);
+  });
+
+  it('counts a late take-off against the landing, not the stale estimate', () => {
+    // The whole point: the estimate said 21:29 all evening while the flight
+    // sat at the gate. Asking "landed?" 30 minutes after THAT would have
+    // caught the plane still in the air.
+    expect(landingDue(leg, airborne, aloft, new Date('2026-09-19T21:59Z'))).toBe(false);
+    expect(landingDue(leg, airborne, aloft, new Date('2026-09-19T22:12Z'))).toBe(true);
+    // A delay the airline posted counts the same way when it moved that
+    // instead of the estimate.
+    const posted = facts({ estimatedArrival: '2026-09-19T21:15Z', delayMinutes: 40 });
+    const onlyDelay: TravelDayState = { stage: 'departed', stamps: {} };
+    expect(landingDue(leg, onlyDelay, posted, new Date('2026-09-19T22:10Z'))).toBe(false);
+    expect(landingDue(leg, onlyDelay, posted, new Date('2026-09-19T22:30Z'))).toBe(true);
   });
 
   it('only ASKS for the landing once it is plainly overdue', () => {

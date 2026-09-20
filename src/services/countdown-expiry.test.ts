@@ -69,6 +69,27 @@ describe('the clock reaches zero', () => {
     });
   });
 
+  describe('overdue, with nothing reporting a landing', () => {
+    // QR516 DOH→COK, 2026-09-19: left 26 minutes late, Kochi never reported
+    // an arrival. The clock ran out and stayed out.
+    const state: TravelDayState = { stage: 'departed', stamps: { departed: '2026-09-20T08:05Z' } };
+    const facts = { ...EMPTY_FACTS, actualDeparture: '2026-09-20T08:05Z' };
+
+    it('waits out the late take-off before asking', () => {
+      // Scheduled 08:00→11:10 is 3h10m of block; airborne at 08:05, so the
+      // landing is reckoned at 11:15, and the ask comes 30 minutes after it.
+      const soon = new Date('2026-09-20T11:40Z');
+      expect(card(state, facts, soon).footnote).toBeNull();
+      expect(liveContent(leg, state, facts, soon).subtitle).toBe('In the air');
+    });
+
+    it('then asks on the trip page and the live card together', () => {
+      const late = new Date('2026-09-20T11:50Z');
+      expect(liveContent(leg, state, facts, late).subtitle).toBe('Landed? Tap to confirm');
+      expect(card(state, facts, late).footnote).toMatch(/^Landed\?/);
+    });
+  });
+
   describe('still at the gate, past the departure it was counting to', () => {
     const state: TravelDayState = { stage: 'boarded', stamps: { boarded: '2026-09-20T07:40Z' } };
     const now = new Date('2026-09-20T08:20Z'); // twenty minutes past
