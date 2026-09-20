@@ -130,7 +130,22 @@ export const purge = internalMutation({
       await ctx.db.delete(p._id);
     }
     for (const u of updates) {
+      // The replies under it go with it: nobody should be able to read a
+      // thread whose post is gone.
+      for (const c of await ctx.db
+        .query('updateComments')
+        .withIndex('by_update', (q) => q.eq('updateId', u._id))
+        .collect()) {
+        await ctx.db.delete(c._id);
+      }
       await ctx.db.delete(u._id);
+    }
+    // And the replies they left under other people's posts.
+    for (const c of await ctx.db
+      .query('updateComments')
+      .withIndex('by_author', (q) => q.eq('authorId', userId))
+      .collect()) {
+      await ctx.db.delete(c._id);
     }
     const owned = await ctx.db.query('ownedFiles').withIndex('by_user', q => q.eq('userId', userId)).collect();
     for (const file of owned) await deleteOwnedFile(ctx, userId, file.storageId);

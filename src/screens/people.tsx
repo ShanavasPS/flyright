@@ -407,10 +407,15 @@ export function People() {
             post={item.post}
             now={now}
             onOpenPerson={() => router.push({ pathname: '/person/[id]', params: { id: item.post.owner.userId } })}
-            onOpenTrip={() =>
+            onOpenPhoto={() =>
               router.push({
-                pathname: '/person/[id]/trip/[journeyId]',
-                params: { id: item.post.owner.userId, journeyId: item.post.trip.journeyId, focus: 'posts' },
+                pathname: '/update-viewer',
+                params: {
+                  ownerId: item.post.owner.userId,
+                  journeyKey: item.post.trip.journeyId,
+                  updateId: item.post.updateId,
+                  name: item.post.owner.name,
+                },
               })
             }
             onReact={() => void react({ updateId: item.post.updateId as Id<'tripUpdates'> })}

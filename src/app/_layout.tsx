@@ -329,6 +329,17 @@ function RootLayout() {
                   animation: "fade",
                 }}
               />
+              {/* A shared photo, with its heart and its thread — the journal
+                  viewer above is the traveller's own picture, this one is
+                  somebody's post about a trip. */}
+              <Stack.Screen
+                name="update-viewer"
+                options={{
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                  animation: "fade",
+                }}
+              />
               <Stack.Screen
                 name="paywall"
                 options={{

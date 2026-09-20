@@ -57,6 +57,7 @@ import type * as securityMaintenance from "../securityMaintenance.js";
 import type * as support from "../support.js";
 import type * as supportShared from "../supportShared.js";
 import type * as updates from "../updates.js";
+import type * as updatesInternal from "../updatesInternal.js";
 import type * as updatesShared from "../updatesShared.js";
 import type * as uploadShared from "../uploadShared.js";
 import type * as uploads from "../uploads.js";
@@ -119,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   support: typeof support;
   supportShared: typeof supportShared;
   updates: typeof updates;
+  updatesInternal: typeof updatesInternal;
   updatesShared: typeof updatesShared;
   uploadShared: typeof uploadShared;
   uploads: typeof uploads;

@@ -22,15 +22,15 @@ export function FeedCard({
   post,
   now,
   onOpenPerson,
-  onOpenTrip,
+  onOpenPhoto,
   onReact,
   onReport,
 }: {
   post: FeedPost;
   now: Date;
   onOpenPerson: () => void;
-  /** The photo opens the trip it came from, scrolled to what they shared. */
-  onOpenTrip: () => void;
+  /** The photo opens full screen, where it can be liked and replied to. */
+  onOpenPhoto: () => void;
   onReact: () => void;
   onReport: () => void;
 }) {
@@ -91,7 +91,7 @@ export function FeedCard({
         <Pressable
           accessibilityRole="imagebutton"
           accessibilityLabel="Open this trip"
-          onPress={onOpenTrip}
+          onPress={onOpenPhoto}
           onLongPress={onReport}
           delayLongPress={400}
           style={({ pressed }) => pressed && styles.pressed}>

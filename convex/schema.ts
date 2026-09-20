@@ -322,6 +322,22 @@ export default defineSchema({
     .index('by_thread', ['threadId', 'createdAt'])
     .index('by_delivered', ['deliveredAt']),
 
+  /** A reply under somebody's trip update. Same audience as the update it
+   * hangs on (updates.maySeeUpdate → the trip's own privacy mode), so a
+   * close-circle trip's comments stay in the close circle and a private trip
+   * has none. `ownerId` is the post's author, denormalised: a purge by user
+   * and the notification both need it without reading the post again. */
+  updateComments: defineTable({
+    updateId: v.id('tripUpdates'),
+    ownerId: v.string(),
+    authorId: v.string(),
+    text: v.string(),
+    createdAt: v.string(),
+  })
+    .index('by_update', ['updateId'])
+    .index('by_author', ['authorId'])
+    .index('by_owner', ['ownerId']),
+
   profiles: defineTable({
     userId: v.string(),
     name: v.string(),

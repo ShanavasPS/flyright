@@ -84,6 +84,8 @@ export function FollowingSection({
         <MyUpdatesSheet
           visible={mineOpen && !!posted?.length}
           tripLine={[sharing.number, `${sharing.fromCode} → ${sharing.toCode}`].filter(Boolean).join(' · ')}
+          ownerId={user?.id}
+          journeyKey={sharing.id}
           updates={posted ?? []}
           now={now}
           onRemove={(updateId) => void remove({ updateId: updateId as Id<'tripUpdates'> })}

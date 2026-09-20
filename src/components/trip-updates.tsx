@@ -34,6 +34,7 @@ export function UpdatesCard({
   onReact,
   onReport,
   onRemove,
+  onOpenPhoto,
   action,
   emptyText,
   testID,
@@ -47,6 +48,8 @@ export function UpdatesCard({
   onReport?: (updateId: string) => void;
   /** The owner's take-down; its presence makes this the owner's view. */
   onRemove?: (updateId: string) => void;
+  /** Tapping the picture opens it full screen, with its heart and thread. */
+  onOpenPhoto?: (updateId: string) => void;
   /** The owner's "Share an update" row, above the list. */
   action?: React.ReactNode;
   /** Shown under the action when there is nothing yet. */
@@ -69,7 +72,14 @@ export function UpdatesCard({
       {updates.map((update, i) => (
         <Fragment key={update.updateId}>
           {(i > 0 || action) && <View style={[styles.divider, { backgroundColor: theme.hairline }]} />}
-          <UpdateRow update={update} now={now} onReact={onReact} onReport={onReport} onRemove={onRemove} />
+          <UpdateRow
+            update={update}
+            now={now}
+            onReact={onReact}
+            onReport={onReport}
+            onRemove={onRemove}
+            onOpenPhoto={onOpenPhoto}
+          />
         </Fragment>
       ))}
     </Card>
@@ -82,6 +92,7 @@ function UpdateRow({
   onReact,
   onReport,
   onRemove,
+  onOpenPhoto,
 }: {
   update: TripUpdate | OwnUpdate;
   now: Date;
@@ -89,6 +100,7 @@ function UpdateRow({
   /** Someone else's update: long press offers to report it. */
   onReport?: (updateId: string) => void;
   onRemove?: (updateId: string) => void;
+  onOpenPhoto?: (updateId: string) => void;
 }) {
   const theme = useTheme();
   const context = updateContext(update);
@@ -119,14 +131,22 @@ function UpdateRow({
       delayLongPress={400}
       style={({ pressed }) => [styles.row, pressed && longPressable && styles.pressed]}>
       {update.photoUrl && (
-        <Image
-          source={{ uri: update.photoUrl }}
-          recyclingKey={update.updateId}
-          contentFit="cover"
-          transition={200}
-          accessibilityIgnoresInvertColors
-          style={[styles.photo, { aspectRatio: photoAspect(update), backgroundColor: theme.field }]}
-        />
+        <Pressable
+          accessibilityRole="imagebutton"
+          accessibilityLabel="Open this photo full screen"
+          disabled={!onOpenPhoto}
+          onPress={() => onOpenPhoto?.(update.updateId)}
+          onLongPress={onLongPress}
+          delayLongPress={400}>
+          <Image
+            source={{ uri: update.photoUrl }}
+            recyclingKey={update.updateId}
+            contentFit="cover"
+            transition={200}
+            accessibilityIgnoresInvertColors
+            style={[styles.photo, { aspectRatio: photoAspect(update), backgroundColor: theme.field }]}
+          />
+        </Pressable>
       )}
       {update.text ? <ThemedText selectable>{update.text}</ThemedText> : null}
       <View style={styles.metaRow}>

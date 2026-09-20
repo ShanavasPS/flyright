@@ -1,4 +1,5 @@
-import { limit, HOUR } from './abuse';
+import { bounded, limit, HOUR } from './abuse';
+import { internal } from './_generated/api';
 import { requireFileOwner, deleteOwnedFile, ownedFileUrl } from './fileOwnership';
 import { ConvexError, v } from 'convex/values';
 
@@ -35,6 +36,12 @@ async function publicUpdate(ctx: QueryCtx | MutationCtx, row: Doc<'tripUpdates'>
     createdAt: row.createdAt,
     reactions: row.reactedBy.length,
     reacted: viewerId ? row.reactedBy.includes(viewerId) : false,
+    comments: (
+      await ctx.db
+        .query('updateComments')
+        .withIndex('by_update', (q) => q.eq('updateId', row._id))
+        .collect()
+    ).length,
   };
 }
 
@@ -226,6 +233,13 @@ export const remove = mutation({
     if (row.storageId && !(await storageInUse(ctx, row.storageId, { update: row._id }))) {
       await deleteOwnedFile(ctx, identity.subject, row.storageId);
     }
+    // The thread under it goes too — a reply has no life of its own.
+    for (const c of await ctx.db
+      .query('updateComments')
+      .withIndex('by_update', (q) => q.eq('updateId', row._id))
+      .collect()) {
+      await ctx.db.delete(c._id);
+    }
     await ctx.db.delete(row._id);
   },
 });
@@ -250,7 +264,7 @@ export const react = mutation({
   },
 });
 
-async function maySeeUpdate(ctx: MutationCtx, row: Doc<'tripUpdates'>, viewerId: string) {
+async function maySeeUpdate(ctx: QueryCtx | MutationCtx, row: Doc<'tripUpdates'>, viewerId: string) {
   if (await blockedBetween(ctx, row.userId, viewerId)) return false;
   const journey = await journeyForKey(ctx, row.userId, row.journeyKey);
   if (!journey) return false;
@@ -328,5 +342,128 @@ export const feed = query({
     }
     out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return out.slice(0, FEED_MAX);
+  },
+});
+
+/** ANYONE THE TRIP IS SHOWN TO — every update on one trip, oldest first, for
+ * the full-screen viewer to page through. The owner's own trip too.
+ *
+ * Audience per row through maySeeUpdate, the same rule the heart and the
+ * replies use, so a close-circle trip's photos stay in the close circle. */
+export const forTrip = query({
+  args: { ownerId: v.string(), journeyKey: v.string() },
+  handler: async (ctx, { ownerId, journeyKey }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const me = identity.subject;
+    const rows = await rowsFor(ctx, ownerId, journeyKey);
+    const out = [];
+    for (const row of rows) {
+      if (row.userId !== me && !(await maySeeUpdate(ctx, row, me))) continue;
+      out.push(await publicUpdate(ctx, row, me));
+    }
+    out.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return out;
+  },
+});
+
+/** The longest a reply may be. Shorter than a post: this is a remark under
+ * someone else's moment, not a post of one's own. */
+export const COMMENT_TEXT_MAX = 300;
+
+/** ANYONE THE POST IS SHOWN TO — the replies under one update, oldest first.
+ *
+ * Same audience as the update itself: maySeeUpdate reads the trip's own
+ * privacy mode (a close-circle trip admits only close members, an "Only me"
+ * trip nobody) and honours a block in either direction. There is no separate
+ * comment permission to get out of step with it. */
+export const comments = query({
+  args: { updateId: v.id('tripUpdates') },
+  handler: async (ctx, { updateId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const me = identity.subject;
+    const post = await ctx.db.get(updateId);
+    if (!post) return null;
+    if (post.userId !== me && !(await maySeeUpdate(ctx, post, me))) return null;
+    const rows = await ctx.db
+      .query('updateComments')
+      .withIndex('by_update', (q) => q.eq('updateId', updateId))
+      .collect();
+    rows.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const out = [];
+    for (const row of rows) {
+      // Someone the viewer has blocked since (or who blocked them) drops out
+      // of the thread, the way they drop out of the feed.
+      if (row.authorId !== me && (await blockedBetween(ctx, row.authorId, me))) continue;
+      const who = await profileFor(ctx, row.authorId);
+      out.push({
+        commentId: row._id,
+        authorId: row.authorId,
+        name: who?.name ?? 'Someone',
+        imageUrl: safeAvatar(who?.imageUrl ?? null),
+        text: row.text,
+        createdAt: row.createdAt,
+        /** Theirs to delete, or the post owner's to take off their own post. */
+        mine: row.authorId === me || post.userId === me,
+      });
+    }
+    return out;
+  },
+});
+
+export interface PublicComment {
+  commentId: Id<'updateComments'>;
+  authorId: string;
+  name: string;
+  imageUrl: string | null;
+  text: string;
+  createdAt: string;
+  /** Theirs to delete, or the post owner's to take off their own post. */
+  mine: boolean;
+}
+
+/** ANYONE THE POST IS SHOWN TO — leave a reply. The traveller is told, every
+ * time: a comment is somebody speaking to them, unlike a heart. */
+export const comment = mutation({
+  args: { updateId: v.id('tripUpdates'), text: v.string() },
+  handler: async (ctx, { updateId, text }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+    const me = identity.subject;
+    bounded(text, COMMENT_TEXT_MAX * 2);
+    const body = text.trim().slice(0, COMMENT_TEXT_MAX);
+    if (!body) throw new ConvexError('Nothing to say');
+    const post = await ctx.db.get(updateId);
+    if (!post) throw new ConvexError('That post is gone');
+    if (post.userId !== me && !(await maySeeUpdate(ctx, post, me))) {
+      throw new ConvexError('That post is gone');
+    }
+    await limit(ctx, `update-comment:${me}`, 60, HOUR);
+    const commentId = await ctx.db.insert('updateComments', {
+      updateId,
+      ownerId: post.userId,
+      authorId: me,
+      text: body,
+      createdAt: new Date().toISOString(),
+    });
+    if (post.userId !== me) {
+      await ctx.scheduler.runAfter(0, internal.updatesInternal.notifyComment, { commentId });
+    }
+    return commentId;
+  },
+});
+
+/** The author's to withdraw, and the post owner's to take off their post. */
+export const removeComment = mutation({
+  args: { commentId: v.id('updateComments') },
+  handler: async (ctx, { commentId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+    const me = identity.subject;
+    const row = await ctx.db.get(commentId);
+    if (!row) return;
+    if (row.authorId !== me && row.ownerId !== me) return;
+    await ctx.db.delete(row._id);
   },
 });

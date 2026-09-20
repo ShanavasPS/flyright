@@ -332,6 +332,8 @@ export function YouTile({
 export function MyUpdatesSheet({
   visible,
   tripLine,
+  ownerId,
+  journeyKey,
   updates,
   now,
   onRemove,
@@ -341,6 +343,9 @@ export function MyUpdatesSheet({
   visible: boolean;
   /** "AY1337 · HEL → LHR" */
   tripLine: string;
+  /** Who and which trip, so a photo can open full screen from here too. */
+  ownerId?: string;
+  journeyKey?: string;
   updates: OwnUpdate[];
   now: Date;
   onRemove: (updateId: string) => void;
@@ -348,6 +353,7 @@ export function MyUpdatesSheet({
   onClose: () => void;
 }) {
   const theme = useTheme();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
@@ -380,7 +386,21 @@ export function MyUpdatesSheet({
               </Pressable>
             </View>
             <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
-              <UpdatesCard eyebrow={`Posted · ${updates.length}`} updates={updates} now={now} onRemove={onRemove} />
+              <UpdatesCard
+                eyebrow={`Posted · ${updates.length}`}
+                updates={updates}
+                now={now}
+                onRemove={onRemove}
+                onOpenPhoto={
+                  ownerId && journeyKey
+                    ? (updateId) =>
+                        router.push({
+                          pathname: '/update-viewer',
+                          params: { ownerId, journeyKey, updateId, name: 'You' },
+                        })
+                    : undefined
+                }
+              />
             </ScrollView>
             <PrimaryButton label="Share another" onPress={onCompose} />
           </Animated.View>
@@ -566,7 +586,18 @@ function SheetBody({
                   onReact={isSignedIn ? () => void react({ updateId: u.updateId as Id<'tripUpdates'> }) : undefined}
                   onReport={() => report(u.updateId)}
                   onOpenPhoto={
-                    entry.journeyId ? () => onOpenTrip(entry.ownerId, entry.journeyId as string) : undefined
+                    entry.journeyId
+                      ? () =>
+                          router.push({
+                            pathname: '/update-viewer',
+                            params: {
+                              ownerId: entry.ownerId,
+                              journeyKey: entry.journeyId as string,
+                              updateId: u.updateId,
+                              name: entry.owner.name,
+                            },
+                          })
+                      : undefined
                   }
                 />
               ))}
@@ -635,7 +666,7 @@ function PostCard({
       {update.photoUrl && (
         <Pressable
           accessibilityRole="imagebutton"
-          accessibilityLabel="Open this trip"
+          accessibilityLabel="Open this photo full screen"
           disabled={!onOpenPhoto}
           onPress={onOpenPhoto}
           onLongPress={onReport}
