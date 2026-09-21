@@ -15,6 +15,7 @@ import { FeedCard } from '@/components/feed-card';
 import { GhostPost } from '@/components/ghost-trips';
 import { FollowingSection } from '@/components/following-section';
 import { FirstSteps } from '@/components/first-steps';
+import { HomeSkeleton } from '@/components/home-skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { HomeHero, useHeroTrip } from '@/components/travel-day-banner';
@@ -22,6 +23,7 @@ import { CONVEX_URL } from '@/constants/config';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppVersion } from '@/hooks/use-app-version';
 import { useNow } from '@/hooks/use-now';
+import { useAuthSettled, useSettled } from '@/hooks/use-settled';
 import { useTheme } from '@/hooks/use-theme';
 import { useJourneys } from '@/services/journeys';
 import { onHomeScreen } from '@/services/public-session';
@@ -40,7 +42,7 @@ import { travelStats } from '@/services/timeline';
  * and everyone else gets the quietest true thing there is to say. */
 export function Home() {
   const router = useRouter();
-  const { userId, isSignedIn } = useAuth();
+  const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
   const { user } = useUser();
   const now = useNow(60_000);
   const { data: journeys } = useJourneys(userId);
@@ -94,6 +96,17 @@ export function Home() {
   const inTheAir = !!hero || flying.length > 0;
   const bare = !inTheAir && !posts.length;
 
+  // Every answer above reads "not back yet" as "nothing": a cold start used
+  // to show Sign in (Clerk still restoring), then Add a flight (the reads
+  // still in flight), then the postcards. Hold one skeleton until the
+  // session, the journal and the three reads are in — capped, so a network
+  // that never answers still gets the screen.
+  const authSettled = useAuthSettled(authLoaded);
+  const reading =
+    live && !!isSignedIn && (feed === undefined || entries === undefined || circle === undefined);
+  const readsSettled = useSettled(!reading, READS_SETTLE_CAP_MS);
+  const loading = !authSettled || journeys == null || !readsSettled;
+
   return (
     <ThemedView style={styles.fill}>
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
@@ -102,117 +115,132 @@ export function Home() {
             and adding a flight on the right, where every list screen puts it. */}
         <View style={styles.titleRow}>
           <ProfileButton
+            loading={!authSettled}
             imageUrl={user?.imageUrl ?? null}
             name={user?.fullName ?? user?.firstName ?? null}
             onPress={() => router.push('/settings')}
           />
-          <ThemedText themeColor="heading" numberOfLines={1} style={styles.greeting}>
-            {greeting(now, user?.firstName ?? user?.fullName?.split(' ')[0] ?? null)}
-          </ThemedText>
+          {/* Not "Good morning" and then ", Eve" a beat later: the name is
+              part of the greeting, so the greeting waits for it. */}
+          {authSettled ? (
+            <ThemedText themeColor="heading" numberOfLines={1} style={styles.greeting}>
+              {greeting(now, user?.firstName ?? user?.fullName?.split(' ')[0] ?? null)}
+            </ThemedText>
+          ) : (
+            <View style={styles.greeting}>
+              <ThemedView type="backgroundSelected" style={styles.greetingBar} />
+            </View>
+          )}
           <AddFlightButton onPress={() => router.push('/add')} />
         </View>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}>
-          {/* The faces of anyone you follow who is in the air, above your
-              own card — one row however many are flying. */}
-          {live && <FollowingSection own={hero} />}
+          {loading ? (
+            <HomeSkeleton />
+          ) : (
+            <>
+              {/* The faces of anyone you follow who is in the air, above your
+                  own card — one row however many are flying. */}
+              {live && <FollowingSection own={hero} />}
 
-          {/* Your travel day, or — when there isn't one — the quietest true
-              thing Home can say. Never the all-time card: that is Flights'. */}
-          <HomeHero
-            journeys={journeys ?? []}
-            stats={stats}
-            // The live card alone: the all-time summary is the Flights tab's,
-            // and the two sit next to each other.
-            variant="glance"
-            fallback={null}
-          />
+              {/* Your travel day, or — when there isn't one — the quietest true
+                  thing Home can say. Never the all-time card: that is Flights'. */}
+              <HomeHero
+                journeys={journeys ?? []}
+                stats={stats}
+                // The live card alone: the all-time summary is the Flights tab's,
+                // and the two sit next to each other.
+                variant="glance"
+                fallback={null}
+              />
 
-          {bare && (
-            <FirstSteps
-              signedIn={!!isSignedIn}
-              pending={pending}
-              following={following.map((p) => ({
-                userId: p.userId,
-                name: p.name,
-                imageUrl: p.imageUrl,
-                next: p.next
-                  ? {
-                      toCode: p.next.toCode,
-                      fromCode: p.next.fromCode,
-                      scheduledDeparture: p.next.scheduledDeparture,
-                    }
-                  : null,
-              }))}
-              followers={followers.map((p) => ({
-                userId: p.userId,
-                name: p.name,
-                imageUrl: p.imageUrl,
-              }))}
-              onOpenPerson={(id) => router.push({ pathname: '/person/[id]', params: { id } })}
-              me={{ name: user?.fullName ?? user?.firstName ?? 'You', imageUrl: user?.imageUrl ?? null }}
-              onAnswer={(requestId, accept) =>
-                void respond({ requestId: requestId as Id<'circleRequests'>, accept })
-              }
-              // Swallowing this hid a real failure for an afternoon: the ask
-              // threw "No such person" and the card sat there looking fine.
-              onFollowBack={(id) =>
-                void followBack({ userId: id }).catch(() =>
-                  Alert.alert(
-                    "That didn't go through",
-                    'Check your connection and try again, or open Friends to follow them there.',
-                  ),
-                )
-              }
-            />
+              {bare && (
+                <FirstSteps
+                  signedIn={!!isSignedIn}
+                  pending={pending}
+                  following={following.map((p) => ({
+                    userId: p.userId,
+                    name: p.name,
+                    imageUrl: p.imageUrl,
+                    next: p.next
+                      ? {
+                          toCode: p.next.toCode,
+                          fromCode: p.next.fromCode,
+                          scheduledDeparture: p.next.scheduledDeparture,
+                        }
+                      : null,
+                  }))}
+                  followers={followers.map((p) => ({
+                    userId: p.userId,
+                    name: p.name,
+                    imageUrl: p.imageUrl,
+                  }))}
+                  onOpenPerson={(id) => router.push({ pathname: '/person/[id]', params: { id } })}
+                  me={{ name: user?.fullName ?? user?.firstName ?? 'You', imageUrl: user?.imageUrl ?? null }}
+                  onAnswer={(requestId, accept) =>
+                    void respond({ requestId: requestId as Id<'circleRequests'>, accept })
+                  }
+                  // Swallowing this hid a real failure for an afternoon: the ask
+                  // threw "No such person" and the card sat there looking fine.
+                  onFollowBack={(id) =>
+                    void followBack({ userId: id }).catch(() =>
+                      Alert.alert(
+                        "That didn't go through",
+                        'Check your connection and try again, or open Friends to follow them there.',
+                      ),
+                    )
+                  }
+                />
+              )}
+
+              {/* Something is happening, but nobody has said anything about it.
+                  A line, not a card: the live card above is the screen's subject
+                  and this only accounts for the space under it. */}
+              {inTheAir && !posts.length && (
+                <NothingPosted
+                  following={following.length > 0}
+                  mine={!!hero}
+                  onFind={() => router.push('/people')}
+                />
+              )}
+
+              {/* "Postcards": sent to you by someone else, so it cannot be misread as
+                  your own trips (as "Latest from trips" was).
+                  The posts are a section of this screen, not a continuation of
+                  the card above them. */}
+              {!!posts.length && (
+                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.noteLabel}>
+                  POSTCARDS
+                </ThemedText>
+              )}
+
+              {posts.map((post) => (
+                <FeedCard
+                  key={post.updateId}
+                  post={post}
+                  now={now}
+                  onOpenPerson={() =>
+                    router.push({ pathname: '/person/[id]', params: { id: post.owner.userId } })
+                  }
+                  onOpenPhoto={() =>
+                    router.push({
+                      pathname: '/update-viewer',
+                      params: {
+                        ownerId: post.owner.userId,
+                        journeyId: post.trip.journeyId,
+                        updateId: post.updateId,
+                        name: post.owner.name,
+                      },
+                    })
+                  }
+                  onReact={() => {}}
+                  onReport={() => {}}
+                />
+              ))}
+            </>
           )}
-
-          {/* Something is happening, but nobody has said anything about it.
-              A line, not a card: the live card above is the screen's subject
-              and this only accounts for the space under it. */}
-          {inTheAir && !posts.length && (
-            <NothingPosted
-              following={following.length > 0}
-              mine={!!hero}
-              onFind={() => router.push('/people')}
-            />
-          )}
-
-          {/* "Postcards": sent to you by someone else, so it cannot be misread as
-              your own trips (as "Latest from trips" was).
-              The posts are a section of this screen, not a continuation of
-              the card above them. */}
-          {!!posts.length && (
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.noteLabel}>
-              POSTCARDS
-            </ThemedText>
-          )}
-
-          {posts.map((post) => (
-            <FeedCard
-              key={post.updateId}
-              post={post}
-              now={now}
-              onOpenPerson={() =>
-                router.push({ pathname: '/person/[id]', params: { id: post.owner.userId } })
-              }
-              onOpenPhoto={() =>
-                router.push({
-                  pathname: '/update-viewer',
-                  params: {
-                    ownerId: post.owner.userId,
-                    journeyId: post.trip.journeyId,
-                    updateId: post.updateId,
-                    name: post.owner.name,
-                  },
-                })
-              }
-              onReact={() => {}}
-              onReport={() => {}}
-            />
-          ))}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -234,10 +262,14 @@ function greeting(now: Date, firstName: string | null): string {
 }
 
 function ProfileButton({
+  loading,
   imageUrl,
   name,
   onPress,
 }: {
+  /** The session is still being restored: a plain disc, not the signed-out
+   * glyph that would then turn into your face. */
+  loading: boolean;
   imageUrl: string | null;
   name: string | null;
   onPress: () => void;
@@ -257,7 +289,14 @@ function ProfileButton({
       hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [styles.avatarTap, pressed && styles.pressed]}>
-      {name ? (
+      {loading ? (
+        <View
+          style={[
+            styles.avatarBlank,
+            { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, backgroundColor: theme.backgroundSelected },
+          ]}
+        />
+      ) : name ? (
         <Avatar name={name} imageUrl={imageUrl} size={AVATAR} />
       ) : (
         <SymbolView
@@ -330,10 +369,17 @@ function NothingPosted({
 
 const AVATAR = 32;
 
+/** How long Home holds its skeleton for the feed, the rail and the circle
+ * once signed in. The reads normally land in well under a second; past this
+ * the screen shows what it has rather than hang on a network that won't
+ * answer. */
+const READS_SETTLE_CAP_MS = 6000;
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   safeArea: { flex: 1, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   greeting: { flex: 1, fontSize: 20, lineHeight: 26, fontWeight: 600 },
+  greetingBar: { width: '55%', height: 14, borderRadius: 7 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',

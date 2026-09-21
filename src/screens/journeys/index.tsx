@@ -37,6 +37,7 @@ import {
 } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing, TwoPaneMinWidth } from '@/constants/theme';
 import { JourneyDetail } from '@/screens/journey-detail';
+import { useAuthSettled } from '@/hooks/use-settled';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
 import type { Money } from '@/rules/types';
@@ -63,23 +64,6 @@ import { useFoldState } from '../../../modules/flyright-fold';
  * card padding) and how far each card behind it peeks out. */
 const GHOST_CARD_HEIGHT = 40 + 2 * Spacing.three;
 const GHOST_PEEK = 10;
-
-/** How long the home screen waits for Clerk to restore the session before
- * reading the journal as whoever it can see. Session restore is a cache
- * read (well under a second); the cap only matters when the client can't
- * reach Clerk at all. */
-const AUTH_SETTLE_CAP_MS = 4000;
-
-/** True once Clerk reports loaded, or once the cap has passed without it. */
-function useAuthSettled(authLoaded: boolean) {
-  const [capped, setCapped] = useState(false);
-  useEffect(() => {
-    if (authLoaded) return;
-    const timer = setTimeout(() => setCapped(true), AUTH_SETTLE_CAP_MS);
-    return () => clearTimeout(timer);
-  }, [authLoaded]);
-  return authLoaded || capped;
-}
 
 /** The context line above the title — the next departure when one is booked
  * (the thing a traveller actually wants at a glance), today's date otherwise.
