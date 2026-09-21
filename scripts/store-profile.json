@@ -1,0 +1,114 @@
+{
+  "comment": "The store-screenshot profile on the DEV deployment. The viewer is a real Clerk dev user (OTP 424242) whose name and photo live in Clerk; the friends are synthetic store_demo_* people that exist only as Convex rows. Times are hours from the moment scripts/seed-store-profile.mjs runs. Photos are Unsplash, the avatar allow-list's only stock host.",
+  "viewer": {
+    "clerkUserId": "user_3Jcxjaw6q6sNkwjAQ3Ug48qDnmQ",
+    "email": "maja+clerk_test@example.com",
+    "name": "Maja Lindqvist",
+    "photo": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=512&h=512&fit=crop&crop=faces&q=80"
+  },
+  "people": [
+    {
+      "userId": "store_demo_noah",
+      "name": "Noah Berg",
+      "imageUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=480&h=480&fit=crop&crop=faces&q=80",
+      "relation": "mutual",
+      "trip": {
+        "carrier": "Finnair",
+        "carrierCountry": "FI",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "fromCountry": "FI",
+        "toCode": "JFK",
+        "toCountry": "US",
+        "distanceKm": 6617,
+        "departsInHours": -2.5,
+        "durationHours": 8.9,
+        "stage": "departed",
+        "gate": "52",
+        "terminal": "2",
+        "manual": true,
+        "posts": [
+          {
+            "text": "Window seat, somewhere over the Atlantic",
+            "minutesAgo": 50,
+            "photo": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&h=800&fit=crop&q=80",
+            "width": 1200,
+            "height": 800,
+            "stage": "departed",
+            "hearts": [
+              "viewer"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "userId": "store_demo_clara",
+      "name": "Clara Nyström",
+      "imageUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=480&h=480&fit=crop&crop=faces&q=80",
+      "relation": "mutual",
+      "close": true,
+      "trip": {
+        "carrier": "Finnair",
+        "carrierCountry": "FI",
+        "number": "AY1571",
+        "fromCode": "HEL",
+        "fromCountry": "FI",
+        "toCode": "CDG",
+        "toCountry": "FR",
+        "distanceKm": 1910,
+        "departsInHours": 1.2,
+        "durationHours": 3.1,
+        "stage": "security",
+        "gate": "31",
+        "terminal": "2",
+        "manual": true,
+        "posts": [
+          {
+            "text": "Through security with time for a coffee. Paris by lunch.",
+            "minutesAgo": 12,
+            "stage": "security",
+            "place": "Helsinki",
+            "hearts": []
+          }
+        ]
+      }
+    },
+    {
+      "userId": "store_demo_tomas",
+      "name": "Tomas Ek",
+      "imageUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=480&h=480&fit=crop&crop=faces&q=80",
+      "relation": "mutual",
+      "trip": {
+        "carrier": "Finnair",
+        "carrierCountry": "FI",
+        "number": "AY61",
+        "fromCode": "HEL",
+        "fromCountry": "FI",
+        "toCode": "HND",
+        "toCountry": "JP",
+        "distanceKm": 7839,
+        "departsInHours": -16,
+        "durationHours": 13,
+        "stage": "landed",
+        "baggageBelt": "12",
+        "manual": true,
+        "posts": [
+          {
+            "text": "Landed in Tokyo and straight into the neon",
+            "minutesAgo": 95,
+            "photo": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&h=800&fit=crop&q=80",
+            "width": 1200,
+            "height": 800,
+            "stage": "landed",
+            "place": "Tokyo",
+            "hearts": [
+              "viewer",
+              "store_demo_clara"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

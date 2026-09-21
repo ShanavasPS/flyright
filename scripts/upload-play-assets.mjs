@@ -12,9 +12,10 @@ const LANGUAGE = 'en-US';
 const API = 'https://androidpublisher.googleapis.com/androidpublisher/v3';
 const UPLOAD = 'https://androidpublisher.googleapis.com/upload/androidpublisher/v3';
 
-/** All six panels the generator produces — the listing carries the whole set,
- *  so a shorter list here would silently drop the last two on every upload. */
-const PANELS = [1, 2, 3, 4, 5, 6];
+/** All seven panels the generator produces — the listing carries the whole
+ *  set, so a shorter list here would silently drop the last ones on every
+ *  upload. Play takes up to eight per type. */
+const PANELS = [1, 2, 3, 4, 5, 6, 7];
 const IMAGE_SETS = {
   phoneScreenshots: PANELS.map((n) => `phone-0${n}.png`),
   sevenInchScreenshots: PANELS.map((n) => `tablet7-0${n}.png`),

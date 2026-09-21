@@ -181,6 +181,27 @@ export const seedDemoCircle = internalMutation({
             terminal: v.optional(v.string()),
             delayMinutes: v.optional(v.number()),
             baggageBelt: v.optional(v.string()),
+            /** Written as a hand-added trip, so no poll is scheduled: a real
+             * flight number would otherwise be looked up (quota) and the
+             * provider's times would overwrite the staged ones. */
+            manual: v.optional(v.boolean()),
+            /** Postcards on this trip, for the viewer's Home feed. A photo is
+             * a file stored and owned first (storeDemoPhoto). */
+            posts: v.optional(
+              v.array(
+                v.object({
+                  text: v.string(),
+                  minutesAgo: v.number(),
+                  storageId: v.optional(v.id('_storage')),
+                  width: v.optional(v.number()),
+                  height: v.optional(v.number()),
+                  stage: v.optional(v.string()),
+                  place: v.optional(v.string()),
+                  /** Who gave it a heart (the viewer's id fills yours in). */
+                  hearts: v.optional(v.array(v.string())),
+                }),
+              ),
+            ),
           }),
         ),
       }),
@@ -259,7 +280,7 @@ export const seedDemoCircle = internalMutation({
           scheduledArrival: arr.toISOString(),
           ticketPriceAmount: null,
           ticketPriceCurrency: null,
-          source: 'lookup',
+          source: trip.manual ? 'manual' : 'lookup',
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
@@ -267,7 +288,32 @@ export const seedDemoCircle = internalMutation({
         journey = await ctx.db.get(id);
         out.push(`journey ${person.userId} ${naturalKey}`);
       }
-      if (!journey || !trip.stage) continue;
+      if (!journey) continue;
+
+      for (const post of trip.posts ?? []) {
+        const existing = await ctx.db
+          .query('tripUpdates')
+          .withIndex('by_user_key', (q) => q.eq('userId', person.userId).eq('journeyKey', naturalKey))
+          .collect();
+        if (existing.some((row) => row.text === post.text)) continue;
+        const at = new Date(nowMs - post.minutesAgo * 60_000).toISOString();
+        await ctx.db.insert('tripUpdates', {
+          userId: person.userId,
+          journeyKey: naturalKey,
+          text: post.text,
+          storageId: post.storageId ?? null,
+          photoId: null,
+          width: post.width ?? null,
+          height: post.height ?? null,
+          stage: post.stage ?? null,
+          place: post.place ?? null,
+          reactedBy: post.hearts ?? [],
+          reactedAt: Object.fromEntries((post.hearts ?? []).map((id) => [id, at])),
+          createdAt: at,
+        });
+        out.push(`post ${person.userId} ${naturalKey} "${post.text.slice(0, 24)}"`);
+      }
+      if (!trip.stage) continue;
 
       const active = await ctx.db
         .query('liveSessions')
@@ -300,6 +346,85 @@ export const seedDemoCircle = internalMutation({
       const session = await ctx.db.get(sessionId);
       if (session) await materializeCircleFollows(ctx, session);
       out.push(`session ${person.userId} ${naturalKey} @ ${trip.stage}`);
+    }
+    return out;
+  },
+});
+
+/** Synthetic people made for store screenshots carry this prefix, and only
+ * they can be reset or given files — so these tools can never touch a real
+ * account's trips, posts or photos. */
+const STORE_DEMO_PREFIX = 'store_demo_';
+
+function assertStoreDemo(userId: string) {
+  if (!userId.startsWith(STORE_DEMO_PREFIX)) throw new Error(`${userId} is not a ${STORE_DEMO_PREFIX}* person`);
+}
+
+/** Stores a stock photo (images.unsplash.com only) as a file owned by a
+ * store-demo person, for a postcard — `npx convex run
+ * devTools:storeDemoPhoto '{"userId":"store_demo_…","url":"https://images.unsplash.com/…"}'`.
+ * Returns the storage id to pass in seedDemoCircle's posts. */
+export const storeDemoPhoto = internalAction({
+  args: { userId: v.string(), url: v.string() },
+  handler: async (ctx, { userId, url }): Promise<string> => {
+    assertStoreDemo(userId);
+    if (new URL(url).hostname !== 'images.unsplash.com') throw new Error('Stock photos come from images.unsplash.com');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url} → ${res.status}`);
+    const blob = await res.blob();
+    const storageId = await ctx.storage.store(blob);
+    await ctx.runMutation(internal.devTools.ownDemoFile, { userId, storageId, size: blob.size });
+    return storageId;
+  },
+});
+
+export const ownDemoFile = internalMutation({
+  args: { userId: v.string(), storageId: v.id('_storage'), size: v.number() },
+  handler: async (ctx, { userId, storageId, size }) => {
+    assertStoreDemo(userId);
+    await ctx.db.insert('ownedFiles', { userId, storageId, size, createdAt: Date.now() });
+  },
+});
+
+/** Clears what a store-screenshot run left behind, so the next run starts
+ * from nothing and anchors every time to its own "now": the store-demo
+ * people's trips, live sessions (and the follows they made), postcards and
+ * their files, and the viewer's own `demo-*` journal rows (the local seed's
+ * ids — a real account's keys are "AY1331-2026-09-21"), which would
+ * otherwise sync back over a fresh seed with older times. Profiles and
+ * circle rows stay: they are the saved profile. */
+export const resetStoreDemo = internalMutation({
+  args: { demoUserId: v.string(), people: v.array(v.string()) },
+  handler: async (ctx, { demoUserId, people }) => {
+    const out: string[] = [];
+    for (const userId of people) {
+      assertStoreDemo(userId);
+      for (const session of await ctx.db.query('liveSessions').withIndex('by_user', (q) => q.eq('userId', userId)).collect()) {
+        for (const f of await ctx.db.query('follows').withIndex('by_session', (q) => q.eq('sessionId', session._id)).collect()) {
+          await ctx.db.delete(f._id);
+        }
+        await ctx.db.delete(session._id);
+        out.push(`session ${userId} ${session.naturalKey}`);
+      }
+      for (const row of await ctx.db.query('tripUpdates').withIndex('by_user', (q) => q.eq('userId', userId)).collect()) {
+        if (row.storageId) {
+          for (const owned of await ctx.db.query('ownedFiles').withIndex('by_storage', (q) => q.eq('storageId', row.storageId!)).collect()) {
+            await ctx.db.delete(owned._id);
+          }
+          await ctx.storage.delete(row.storageId);
+        }
+        await ctx.db.delete(row._id);
+        out.push(`post ${userId}`);
+      }
+      for (const journey of await ctx.db.query('journeys').withIndex('by_user', (q) => q.eq('userId', userId)).collect()) {
+        await ctx.db.delete(journey._id);
+        out.push(`journey ${userId} ${journey.naturalKey}`);
+      }
+    }
+    for (const journey of await ctx.db.query('journeys').withIndex('by_user', (q) => q.eq('userId', demoUserId)).collect()) {
+      if (!journey.naturalKey.startsWith('demo-')) continue;
+      await ctx.db.delete(journey._id);
+      out.push(`viewer journey ${journey.naturalKey}`);
     }
     return out;
   },

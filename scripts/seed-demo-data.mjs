@@ -10,8 +10,9 @@
  *
  * Pass --travel-day to move the upcoming flight to ~1h out and stamp it
  * through security, which is the state the Travel Day panel is captured in.
- * Without it the upcoming flight sits ~12h out, which is what the My travels,
- * World, stats and verdict panels want.
+ * Without it the upcoming flight sits ~12h out, which is what the Flights,
+ * World, stats and verdict panels want. It also marks onboarding done and
+ * turns the globe to studio light, so every device matches the listing.
  *
  * Everything is anchored to the moment the script runs, so the relative labels
  * ("in 12h", "3d ago") always read correctly no matter when it is re-seeded.
@@ -129,6 +130,18 @@ const PASS = {
   },
 };
 
+/** The airport record each trip keeps (journeys.terminal … actual_arrival,
+ *  migration 0014), so the trip card shows a full set of facts rather than
+ *  "+ Add" in every box. Offsets are minutes from the scheduled departure /
+ *  arrival; the Madrid flight lands 195 minutes late, the verdict's delay. */
+const RECORD = {
+  'demo-upcoming': { terminal: '2', checkIn: 'Area 2', gate: '22', boardingMin: -40 },
+  'demo-mad': { terminal: '2', checkIn: 'Area 1', gate: '31', boardingMin: -40, belt: '7', depMin: 188, arrMin: 195, seat: '21C', booking: 'QW4T7M' },
+  'demo-arn': { terminal: '2', checkIn: 'Area 2', gate: '27', boardingMin: -35, belt: '4', depMin: 4, arrMin: -3 },
+  'demo-jfk': { terminal: '2', checkIn: 'Area 3', gate: '51', boardingMin: -50, belt: '6', depMin: 9, arrMin: -12 },
+  'demo-dxb': { terminal: '3', checkIn: 'Zone C', gate: 'A12', boardingMin: -60, belt: '12', depMin: 11, arrMin: -20 },
+};
+
 function seed(dbPath) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA foreign_keys = OFF');
@@ -151,12 +164,15 @@ function seed(dbPath) {
     notes, notes_updated_at, rating, booking_reference, seat,
     pass_code, pass_format, pass_captured_at,
     aircraft_model, aircraft_reg,
+    terminal, check_in_desk, gate, boarding_time, baggage_belt, actual_departure, actual_arrival,
     source, created_at, updated_at, deleted_at, synced_at
-  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
   for (const [id, carrier, carrierCountry, number, from, to, departs, hours] of TRIPS) {
     const j = id === JOURNAL.id ? JOURNAL : id === PASS.id ? PASS : {};
     const pass = id === PASS.id ? PASS : null;
+    const r = RECORD[id] ?? {};
+    const arrives = departs + hours * HOUR;
     insert.run(
       id,
       null,
@@ -176,13 +192,20 @@ function seed(dbPath) {
       j.notes ?? null,
       j.notes ? iso(departs + DAY) : null,
       j.rating ?? null,
-      j.bookingReference ?? null,
-      j.seat ?? null,
+      j.bookingReference ?? r.booking ?? null,
+      j.seat ?? r.seat ?? null,
       pass ? pass.code() : null,
       pass ? pass.format : null,
       pass ? iso(now - 2 * HOUR) : null,
       AIRCRAFT[id]?.[0] ?? null,
       AIRCRAFT[id]?.[1] ?? null,
+      r.terminal ?? null,
+      r.checkIn ?? null,
+      r.gate ?? null,
+      r.boardingMin != null ? iso(departs + r.boardingMin * 60_000) : null,
+      r.belt ?? null,
+      r.depMin != null ? iso(departs + r.depMin * 60_000) : null,
+      r.arrMin != null ? iso(arrives + r.arrMin * 60_000) : null,
       'manual',
       iso(departs),
       iso(departs),
@@ -231,6 +254,18 @@ function seed(dbPath) {
   );
 }
 
+/** The app's key-value settings for a demo device: onboarding done, and the
+ *  globe in the studio light the listing panels were shot in (the real-sun
+ *  default puts half the World panel in night, depending on the hour). */
+function demoSettings(storagePath) {
+  const db = new DatabaseSync(storagePath);
+  db.exec('CREATE TABLE IF NOT EXISTS storage (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)');
+  const put = db.prepare('INSERT OR REPLACE INTO storage (key, value) VALUES (?, ?)');
+  put.run('onboarding-seen', iso(now));
+  put.run('globe-daylight', 'off');
+  db.close();
+}
+
 /** The simulator keeps the database inside the app's data container. */
 function iosDbPath(udid) {
   const container = execFileSync('xcrun', ['simctl', 'get_app_container', udid, PACKAGE, 'data'])
@@ -260,7 +295,22 @@ function android() {
   ]);
   execFileSync('sh', ['-c', `adb shell rm -f /data/local/tmp/flyright.db`]);
   rmSync(local, { force: true });
-  console.log('pushed seeded database back to the emulator');
+
+  const settings = join(tmpdir(), `flyright-settings-${Date.now()}.db`);
+  const remoteSettings = `/data/data/${PACKAGE}/files/SQLite/ExpoSQLiteStorage`;
+  execFileSync('sh', ['-c', `adb exec-out run-as ${PACKAGE} cat ${remoteSettings} > ${settings} || true`]);
+  for (const suffix of ['-wal', '-shm']) {
+    execFileSync('sh', ['-c', `adb shell run-as ${PACKAGE} rm -f ${remoteSettings}${suffix} || true`]);
+  }
+  demoSettings(settings);
+  execFileSync('sh', ['-c', `adb push ${settings} /data/local/tmp/flyright-settings.db`]);
+  execFileSync('sh', [
+    '-c',
+    `adb shell run-as ${PACKAGE} cp /data/local/tmp/flyright-settings.db files/SQLite/ExpoSQLiteStorage`,
+  ]);
+  execFileSync('sh', ['-c', `adb shell rm -f /data/local/tmp/flyright-settings.db`]);
+  rmSync(settings, { force: true });
+  console.log('pushed seeded database and demo settings back to the emulator');
 }
 
 if (flag('android')) {
@@ -281,5 +331,8 @@ if (flag('android')) {
   for (const suffix of ['-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
   copyFileSync(path, `${path}.bak`);
   seed(path);
-  console.log(`seeded ${path}`);
+  const settings = join(path, '../ExpoSQLiteStorage');
+  for (const suffix of ['-wal', '-shm']) rmSync(`${settings}${suffix}`, { force: true });
+  demoSettings(settings);
+  console.log(`seeded ${path} and its demo settings`);
 }

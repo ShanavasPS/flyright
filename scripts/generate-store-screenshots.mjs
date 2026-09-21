@@ -23,8 +23,15 @@ const WHITE = '#FFFFFF';
 const SUB = '#B9C8DE';
 const FONT = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 
-/** Ordered store set: travel journal first (product vision), money second. */
+/** Ordered store set: Home first — the screen the app opens on, your people
+ * in the air (travel buddy first, the product vision) — then the journal,
+ * then money. */
 const SHOTS = [
+  {
+    raw: 'phone-00-home.png',
+    headline: 'Your people, in the air',
+    sub: 'Who is flying, where they are, and the postcards they send',
+  },
   {
     raw: 'phone-01-journeys.png',
     headline: 'Every flight, remembered',
@@ -33,7 +40,7 @@ const SHOTS = [
   {
     raw: 'phone-05-travel-day.png',
     headline: 'Your travel day, live',
-    sub: 'Every step from the airport to the gate, ticked off',
+    sub: 'Countdown, gate and seat — all in one live card',
   },
   {
     raw: 'phone-03-verdict.png',
@@ -181,7 +188,8 @@ await mkdir(IPHONE_DIR, { recursive: true });
 await mkdir(IPAD_DIR, { recursive: true });
 // The iPad set is NOT mirrored from framed tablet panels anymore: App Review
 // requires real iPad captures, so store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129
-// holds the ipad-shot-* files uploaded to ASC on 2026-08-28. Leave it alone.
+// holds the ipad-shot-* files (Home, journal, trip detail; reshot for 1.1.0
+// on 2026-09-21 as the store profile). Leave it alone.
 for (let i = 1; i <= SHOTS.length; i++) {
   await copyFile(`store-assets/appstore-65-0${i}.png`, `${IPHONE_DIR}/appstore-65-0${i}.png`);
 }
