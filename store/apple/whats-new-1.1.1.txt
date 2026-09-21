@@ -1,0 +1,6 @@
+• The app opens on Flights, your journal: your own flight comes first, with its live card at the top on the day you fly, and FlyRight welcomes you by name. Your picture there opens Settings.
+• A flight in the air stays in your journal with a live row that counts down to the landing.
+• New Updates tab: the friends who are in the air and the postcards they send — with a heart and replies under each one. A request to follow you shows at the top until you answer it.
+• The postcards you sent stay under "You" on Updates for as long as your friends can still see them.
+• Friends is your circle: whoever is flying gets a live card with their gate and delays, and a follower can be followed back in a tap.
+• People who signed in without a name can be found and followed again.

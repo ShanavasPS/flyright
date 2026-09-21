@@ -15,6 +15,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.1',
+    date: '2026-09-21',
+    notes: [
+      'The app opens on Flights again: your own flight comes first, with its live card at the top on the day you fly, and FlyRight welcomes you by name.',
+      'Home is now Updates — the friends who are in the air and the postcards they send. A request to follow you shows at the top until you answer it.',
+      'Postcards show the flight and where they were in full, with the heart and a reply button under each one. Words-only postcards can be answered too.',
+      'The postcards you sent stay under “You” on Updates for as long as your friends can still see them, hearts and all.',
+      'Friends shows each live flight on its own, and the tab titles are a little smaller.',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-09-21',
     notes: [

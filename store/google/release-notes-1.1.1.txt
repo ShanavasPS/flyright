@@ -1,0 +1,5 @@
+• The app opens on Flights again: your own flight first, its live card on travel day, and a welcome by name.
+• Home is now Updates: friends in the air and the postcards they send. A follow request waits at the top.
+• Postcards show the whole trip line, with a heart and replies under each one.
+• Your own postcards stay under "You" while friends can still see them.
+• Friends shows each live flight on its own.

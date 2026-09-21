@@ -1,0 +1,11 @@
+FlyRight 1.1.1 replaces 1.1.0, which was withdrawn from review before approval. It reorganises the app's navigation. Nothing is removed; the same screens are reached differently.
+
+Flights is the first tab and the screen the app opens on. At the top: the profile picture (it opens Settings, titled "Profile"), a support-messages button and the + button to add a flight; under them a greeting ("Welcome, <first name>" the first time after sign-in, "Welcome back" afterwards, the time of day when signed out) and the next departure. On the day of a flight its live card leads the list; below it are the all-time summary and every flight, past and upcoming.
+
+Updates (second tab) is for the people the traveller follows: a row of faces for whoever is flying, and the photos and short notes ("postcards") they share from their trips, each with a heart and a reply button. The traveller's own postcards are under the "You" face for as long as followers can still see them. Signed out, this tab explains postcards and offers "Sign in and invite friends".
+
+Friends shows the circle: who follows the traveller, who they follow, invitations, and a live card for anyone currently flying. World and Claims are unchanged.
+
+Settings is not a tab. It is reached from the profile picture at the top left of Flights; every screen inside it is unchanged, and existing links to it still work.
+
+To review: sign in with the configured reviewer account (enter the demo email, then choose Use another method and Sign in with your password). The app opens on Flights. Tap Updates for postcards, Friends for the circle, and the picture at the top left of Flights for Settings. Adding a flight by hand with a departure a few hours from now shows its live card at the top of Flights. No purchase is required. Existing account and trip data are retained on update.

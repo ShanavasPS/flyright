@@ -17,6 +17,21 @@ For the physical iPhone, use Apple's `devicectl` and the native [XCTest tab suit
 - Run `eas build:version:get -p all` before scheduling and put current + 1 into `app.json`. Failed builds still consume remote numbers. After scheduling or retrying, read EAS again and align `app.json` with the numbers actually assigned before the final native prebuilds.
 - If Node/EAS requests fail with an empty TLS reason on this machine's VPN, use `NODE_OPTIONS="--dns-result-order=ipv4first --no-network-family-autoselection"` for those commands. Both flags were needed; do not change VPN or system network settings.
 
+## Builds: iOS local, Android on EAS
+
+Since 1.1.0 (2026-09-21) the two platforms build differently, and this is deliberate — do not "fix" it back to two cloud builds:
+
+- **iOS: `eas build --local` on this Mac**, then `eas submit -p ios --path <ipa>`. The app links the iOS 27 SDK with the scene lifecycle (`ios.enableSceneSupport`); only the local Xcode 27 provides that, and Apple processed such a build VALID (1.1.0 / 60). EAS Build has no Xcode 27 image yet, and its iOS 26 SDK has never shipped a scene-enabled build. Remote credentials and remote build numbers still apply. Needs ~15 GB free on the data volume — clear the npm cache (`npm cache clean --force`) and `android/app/build` if short. Switch back to the cloud command when EAS lists an Xcode 27 image.
+- **Android: EAS cloud**, `eas build -p android --profile production --non-interactive --no-wait --auto-submit`, exactly as before. (A local Android build is possible — see 1.1.0 in release-state.md for the R8 heap fix — but has no reason to be.)
+
+### Replacing a version that is still in App Review
+
+A new build cannot be submitted while the previous version sits in `WAITING_FOR_REVIEW`, and ASC will not create a second editable version beside it. When the new release supersedes the one in review (1.1.1 replaced 1.1.0 on 2026-09-21):
+
+1. Cancel the waiting review submission: `PATCH /v1/reviewSubmissions/<id>` with `attributes: { canceled: true }`. The version returns to an editable state (`DEVELOPER_REJECTED`/`PREPARE_FOR_SUBMISSION`).
+2. `PATCH /v1/appStoreVersions/<id>` with the new `versionString`, then attach the new build, update What's New and the review notes, and submit a new review submission as usual.
+3. The withdrawn version never reaches the App Store, so iOS users jump from the last approved version to the new one: What's New must cover both releases (keep it in `store/apple/whats-new-<version>.txt`). Play is unaffected — its production track already carries the earlier version.
+
 ## Credential locations and API access
 
 Use existing credentials in place. This public repository records locations and non-secret identifiers only; never copy private keys, session tokens, passwords, or pulled environment values into tracked files or tool output.
