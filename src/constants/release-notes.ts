@@ -16,12 +16,12 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: '1.1.0',
-    date: '2026-09-20',
+    date: '2026-09-21',
     notes: [
       'The app opens on Home: your travel day, the people you follow who are in the air, and what they have posted — instead of a list of flights you have already taken.',
       'Flights is the journal, and today’s flight stays in it. While you are in the air the row runs a live light, shows where the plane is, and counts down to the landing.',
       'Friends is the circle: whoever is flying gets their full live card again, with their gate, their delays and where they are.',
-      'Settings moved to your picture in the top corner, and the ＋ for a new flight sits beside it.',
+      'Home greets you by name: your picture opens Settings, and the ＋ for a new flight sits across from it.',
       'A follower can see your travel days without you seeing theirs — Home now says so, and follows them back in a tap.',
       'People who signed in without a name can be found and followed again.',
     ],

@@ -6,8 +6,8 @@ Flights (the first tab in 1.0.39) keeps the journal: every flight taken, the all
 
 Friends shows the circle: who follows the traveller, who they follow, invitations, and a live card for anyone currently flying.
 
-Settings is no longer a tab. It is reached from the profile picture in Home's top-right corner and is titled "Profile"; every screen inside it is unchanged, and existing links to it still work.
+Settings is no longer a tab. It is reached from the profile picture at the top left of Home, beside the greeting, and is titled "Profile"; every screen inside it is unchanged, and existing links to it still work.
 
 Fix: a traveller who signed up with an email address and never entered a name had no searchable profile, so other people could not find or follow them. Those accounts now work.
 
-To review: sign in with the configured reviewer account (enter the demo email, then choose Use another method and Sign in with your password). The app opens on Home. Tap Flights for the journal and the + button, Friends for the circle, and the picture in Home's top-right corner for Settings. Adding a flight by hand with a departure a few hours from now shows the live card on Home and the live row on Flights. No purchase is required. Existing account and trip data are retained on update.
+To review: sign in with the configured reviewer account (enter the demo email, then choose Use another method and Sign in with your password). The app opens on Home. Tap Flights for the journal and the + button, Friends for the circle, and the picture at the top left of Home for Settings. Adding a flight by hand with a departure a few hours from now shows the live card on Home and the live row on Flights. No purchase is required. Existing account and trip data are retained on update.
