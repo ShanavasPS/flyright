@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddFlightButton } from '@/components/add-flight-button';
 import { DataErrorCard } from '@/components/data-state';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
-import { TripRow, timerLabel } from '@/components/trip-row';
+import { TripRow } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { LayoverMark } from '@/components/layover-mark';
@@ -57,6 +57,7 @@ import {
 } from '@/services/onboarding';
 import { connectionBetween, connectionLabel, connectionsInto } from '@/services/connections';
 import { hasLanded } from '@/services/travel-day';
+import { welcomeFor } from '@/services/welcome';
 import { groupJourneys, travelStats } from '@/services/timeline';
 
 import { useFoldState } from '../../../modules/flyright-fold';
@@ -100,7 +101,10 @@ function headerEyebrow(
     const timer = countdown(next.scheduledDeparture, now, airportZone(next.fromCode));
     // Once it's happening, the trip isn't "next" any more — lead with the moment.
     if (timer.unit === 'now') return 'Boarding soon';
-    return `Next trip ${timerLabel(timer)}`;
+    // Words, not the rows' "3d": the header has the room, and in its
+    // uppercase letters "3d" read as "3D".
+    const unit = timer.unit.startsWith('hours') ? 'hour' : 'day';
+    return `Next trip in ${timer.value} ${unit}${timer.value === 1 ? '' : 's'}`;
   }
   return now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 }
@@ -109,6 +113,9 @@ export function Journeys() {
   const router = useRouter();
   const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
   const { user } = useUser();
+  const firstName = user?.firstName ?? user?.fullName?.split(' ')[0] ?? null;
+  // Decided once per account per launch, so it can't flip mid-session.
+  const welcome = useMemo(() => (userId ? welcomeFor(userId) : null), [userId]);
   // The greeting's clock: "Good morning" turns to afternoon while the app
   // stays open, which the memoised `now` below would not notice.
   const clock = useNow(60_000);
@@ -249,6 +256,16 @@ export function Journeys() {
           </View>
         </View>
         <View style={styles.titleBlock}>
+          {/* Not "Good morning" and then "Welcome back, Eve" a beat later:
+              the greeting waits for the session. Signed in it is personal —
+              "Welcome, Eve" the first time on this phone, "Welcome back"
+              after that; signed out, the time of day. */}
+          {authSettled ? (
+            <Greeting text={welcome ? `${welcome}${firstName ? `, ${firstName}` : ''}` : greeting(clock, null)} />
+          ) : (
+            <ThemedView type="backgroundSelected" style={styles.greetingBar} />
+          )}
+          {/* The day under the greeting: hello first, then what is next. */}
           <ThemedText
             type="smallBold"
             themeColor="textSecondary"
@@ -256,21 +273,6 @@ export function Journeys() {
             numberOfLines={1}>
             {headerEyebrow(sections, hero, now)}
           </ThemedText>
-          {/* Not "Good morning" and then ", Eve" a beat later: the name is
-              part of the greeting, so the greeting waits for it. One line,
-              shrinking a little for a long first name before it truncates. */}
-          {authSettled ? (
-            <ThemedText
-              themeColor="heading"
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
-              style={styles.greeting}>
-              {greeting(clock, user?.firstName ?? user?.fullName?.split(' ')[0] ?? null)}
-            </ThemedText>
-          ) : (
-            <ThemedView type="backgroundSelected" style={styles.greetingBar} />
-          )}
         </View>
 
         {journalError ? (
@@ -300,14 +302,6 @@ export function Journeys() {
                     on Updates. */}
                 {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
               </>
-            }
-            // Signed out with a journal: one quiet line at the very end, not a
-            // card over the trips — the journal works without an account,
-            // and this only says what one adds.
-            ListFooterComponent={
-              authSettled && !isSignedIn ? (
-                <SignInLine onSignIn={() => router.push({ pathname: '/sign-in', params: { next: '/' } })} />
-              ) : null
             }
             renderSectionHeader={({ section }) =>
               // The flight in the air gets the live card's own marker rather
@@ -392,6 +386,26 @@ export function Journeys() {
   );
 }
 
+/** "Good afternoon, Maximilian" on one line. The size steps down by length
+ * first, the same on both platforms; iOS then fine-tunes to the exact width,
+ * never below 75%. Android does not: it ignores minimumFontScale (its
+ * TextLayoutManager reads an undocumented minimumFontSize instead) and would
+ * shrink a very long name toward 4pt, so there the stepped size stands and
+ * anything still too long ends in "…". */
+function Greeting({ text }: { text: string }) {
+  const fontSize = text.length <= 24 ? 28 : text.length <= 30 ? 24 : 21;
+  return (
+    <ThemedText
+      themeColor="heading"
+      numberOfLines={1}
+      adjustsFontSizeToFit={Platform.OS === 'ios'}
+      minimumFontScale={0.75}
+      style={[styles.greeting, { fontSize, lineHeight: Math.round(fontSize * 1.2) }]}>
+      {text}
+    </ThemedText>
+  );
+}
+
 /** The empty journal's hero: the night-sky card of the travel-day pass with a
  * deck of ghost trip cards where the journal's rows will stack up — the same
  * silhouette as the real rows below, in skeleton form, no labels.
@@ -442,25 +456,6 @@ function JournalHero({
         </Pressable>
       )}
     </PassCard>
-  );
-}
-
-/** Signed out with trips on the phone: what an account adds, once, at the
- * foot of the journal. */
-function SignInLine({ onSignIn }: { onSignIn: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onSignIn}
-      style={({ pressed }) => [styles.signInLine, pressed && styles.pressedDim]}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.signInText}>
-        Your trips are on this phone only.{' '}
-        <ThemedText type="small" themeColor="tint">
-          Sign in
-        </ThemedText>{' '}
-        to back them up and let friends follow your flights.
-      </ThemedText>
-    </Pressable>
   );
 }
 
@@ -842,8 +837,6 @@ const styles = StyleSheet.create({
   heroSecondary: { alignItems: 'center', paddingVertical: Spacing.one },
   heroSecondaryLabel: { color: WHITE_DIM, fontSize: 15, lineHeight: 20, fontWeight: '600' },
   pressedDim: { opacity: 0.6 },
-  signInLine: { paddingHorizontal: Spacing.two, paddingTop: Spacing.three },
-  signInText: { textAlign: 'center' },
   heroCopy: {
     gap: Spacing.two,
   },

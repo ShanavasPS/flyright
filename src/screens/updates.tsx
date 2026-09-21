@@ -288,12 +288,16 @@ const READS_SETTLE_CAP_MS = 6000;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   safeArea: { flex: 1, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  // Friends' header, measured: its row is as tall as the 40pt invite button
+  // and the content starts Spacing.three under it. Without the same numbers
+  // the two tabs' content started at different heights.
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    minHeight: 40,
     paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.two,
+    paddingBottom: Spacing.three,
   },
   list: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.six, gap: Spacing.three },
   noteLabel: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },

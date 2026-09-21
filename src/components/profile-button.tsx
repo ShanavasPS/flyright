@@ -6,7 +6,8 @@ import { Spacing } from '@/constants/theme';
 import { useAppVersion } from '@/hooks/use-app-version';
 import { useTheme } from '@/hooks/use-theme';
 
-/** "Good evening, Ada" by the phone's own clock; no name when signed out. */
+/** "Good evening" by the phone's own clock — the signed-out greeting. (Signed
+ * in, Flights says "Welcome" / "Welcome back" instead: services/welcome.) */
 export function greeting(now: Date, firstName: string | null): string {
   const hour = now.getHours();
   const part = hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : 'evening';
