@@ -93,14 +93,15 @@ export function HomeHero({
   /** What stands here on an ordinary day. The journal's answer is the navy
    * all-time card; Home's is its own, because the two tabs sit next to each
    * other and the same summary on both would read as one screen shown
-   * twice. */
+   * twice. Only a missing prop means the all-time card: `null` is Home
+   * saying "nothing here", and `??` would read it as missing. */
   fallback?: ReactNode;
 }) {
   const router = useRouter();
   const theme = useTheme();
   const now = useNow(60_000);
   const hero = useHeroTrip(journeys, now);
-  if (!hero) return <>{fallback ?? <TravelStatsHeader stats={stats} />}</>;
+  if (!hero) return <>{fallback === undefined ? <TravelStatsHeader stats={stats} /> : fallback}</>;
   const { journey: active, phase, state, plan } = hero;
 
   const facts = factsFor(active);

@@ -14,7 +14,7 @@ export interface FeedPost extends TripUpdate {
 }
 
 /**
- * One post in the Friends tab's "Latest from trips": who, the flight it came
+ * One of Home's postcards: who, the flight it came
  * from and where they were, the photo at full width, their words, and the
  * heart. The header opens their page; a long press reports the post.
  */

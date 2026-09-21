@@ -97,18 +97,19 @@ export function Home() {
   return (
     <ThemedView style={styles.fill}>
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        {/* No title: the tab bar already says Home. You, greeted, on the left
+            — Flights has the date in this place, so Home says whose it is —
+            and adding a flight on the right, where every list screen puts it. */}
         <View style={styles.titleRow}>
-          <ThemedText type="title">Home</ThemedText>
-          <View style={styles.titleActions}>
-            {/* Adding a flight is a thing you do from anywhere, so it sits
-                where every list screen puts it — and to the left of you. */}
-            <AddFlightButton onPress={() => router.push('/add')} />
-            <ProfileButton
-              imageUrl={user?.imageUrl ?? null}
-              name={user?.fullName ?? user?.firstName ?? null}
-              onPress={() => router.push('/settings')}
-            />
-          </View>
+          <ProfileButton
+            imageUrl={user?.imageUrl ?? null}
+            name={user?.fullName ?? user?.firstName ?? null}
+            onPress={() => router.push('/settings')}
+          />
+          <ThemedText themeColor="heading" numberOfLines={1} style={styles.greeting}>
+            {greeting(now, user?.firstName ?? user?.fullName?.split(' ')[0] ?? null)}
+          </ThemedText>
+          <AddFlightButton onPress={() => router.push('/add')} />
         </View>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
@@ -179,12 +180,13 @@ export function Home() {
             />
           )}
 
-          {/* The same heading the Friends tab puts over its feed: the posts
-              are a section of this screen, not a continuation of the card
-              above them. */}
+          {/* "Postcards": sent to you by someone else, so it cannot be misread as
+              your own trips (as "Latest from trips" was).
+              The posts are a section of this screen, not a continuation of
+              the card above them. */}
           {!!posts.length && (
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.noteLabel}>
-              LATEST FROM TRIPS
+              POSTCARDS
             </ThemedText>
           )}
 
@@ -224,6 +226,13 @@ export function Home() {
  *
  * A blue dot, never a red count: red on this app means a person is waiting
  * for an answer, and that lives on Friends. */
+/** "Good evening, Ada" by the phone's own clock; no name when signed out. */
+function greeting(now: Date, firstName: string | null): string {
+  const hour = now.getHours();
+  const part = hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : 'evening';
+  return firstName ? `Good ${part}, ${firstName}` : `Good ${part}`;
+}
+
 function ProfileButton({
   imageUrl,
   name,
@@ -289,7 +298,7 @@ function NothingPosted({
     <View style={[styles.noteCard, { borderColor: theme.hairline }]}>
       <View style={styles.noteTop}>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.noteLabel}>
-          LATEST FROM TRIPS
+          POSTCARDS
         </ThemedText>
       </View>
       <GhostPost />
@@ -324,11 +333,11 @@ const AVATAR = 32;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   safeArea: { flex: 1, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
-  titleActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  greeting: { flex: 1, fontSize: 20, lineHeight: 26, fontWeight: 600 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.two,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
   },
