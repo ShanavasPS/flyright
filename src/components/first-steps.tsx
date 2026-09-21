@@ -309,7 +309,11 @@ function Quiet({
             )}
           </View>
           <ThemedText type="small" themeColor="textSecondary" style={styles.stripLine}>
-            Nobody is flying right now
+            {/* One friend is a person, not a crowd: "Nobody" over a single
+                face reads oddly, so name them. */}
+            {people.length === 1
+              ? `${people[0].name.split(' ')[0]} isn’t flying right now`
+              : 'Nobody is flying right now'}
           </ThemedText>
         </View>
 

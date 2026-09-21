@@ -3,7 +3,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { SymbolView } from 'expo-symbols';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
@@ -12,13 +12,14 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { Avatar } from '@/components/avatar';
 import { AddFlightButton } from '@/components/add-flight-button';
 import { FeedCard } from '@/components/feed-card';
-import { GhostPost } from '@/components/ghost-trips';
 import { FollowingSection } from '@/components/following-section';
 import { FirstSteps } from '@/components/first-steps';
 import { HomeSkeleton } from '@/components/home-skeleton';
+import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { HomeHero, useHeroTrip } from '@/components/travel-day-banner';
+import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { CONVEX_URL } from '@/constants/config';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppVersion } from '@/hooks/use-app-version';
@@ -318,10 +319,10 @@ function ProfileButton({
   );
 }
 
-/** Nothing posted while something is in the air. Shows the shape of the
- * thing that is missing rather than a sentence about it, and stays light:
- * the live card above is the screen's subject, and a second heavy card would
- * bury the thing the person opened the app for. */
+/** Nothing posted while something is in the air. The same navy card as
+ * "Quiet skies today", so an empty feed reads as a thing Home is telling
+ * you rather than a feed still loading (the tinted post shapes it used to
+ * draw were indistinguishable from the skeleton). */
 function NothingPosted({
   following,
   mine,
@@ -332,38 +333,35 @@ function NothingPosted({
   mine: boolean;
   onFind: () => void;
 }) {
-  const theme = useTheme();
   return (
-    <View style={[styles.noteCard, { borderColor: theme.hairline }]}>
-      <View style={styles.noteTop}>
-        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.noteLabel}>
-          POSTCARDS
-        </ThemedText>
+    <PassCard>
+      <View style={styles.passTop}>
+        <MicroLabel>Postcards</MicroLabel>
+        <MiniContrail />
       </View>
-      <GhostPost />
-      <View style={styles.noteCopy}>
-        <ThemedText themeColor="heading" style={styles.noteHead}>
+      <View style={styles.passCopy}>
+        <Text style={styles.passHeadline}>
           {following ? 'Nothing posted yet.' : 'Nobody to hear from yet.'}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        </Text>
+        <Text style={styles.passPitch}>
           {following
             ? mine
               ? 'A photo or a line from anyone you follow lands here, and stays for a week.'
               : 'Photos and lines from the trips you follow land here, and stay for a week.'
             : 'Follow someone and their photos land here while they travel.'}
-        </ThemedText>
-        {!following && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onFind}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <ThemedText type="smallBold" style={{ color: theme.tint }}>
-              Follow someone
-            </ThemedText>
-          </Pressable>
-        )}
+        </Text>
       </View>
-    </View>
+      {!following && (
+        <>
+          <PassDivider />
+          <PassAction
+            label="Follow someone"
+            onPress={onFind}
+            icon={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }}
+          />
+        </>
+      )}
+    </PassCard>
   );
 }
 
@@ -380,6 +378,11 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   greeting: { flex: 1, fontSize: 20, lineHeight: 26, fontWeight: 600 },
   greetingBar: { width: '55%', height: 14, borderRadius: 7 },
+  // FirstSteps' "Quiet skies today" card, so the two empty days match.
+  passTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  passCopy: { gap: Spacing.two },
+  passHeadline: { color: WHITE, fontSize: 26, lineHeight: 32, fontWeight: '700' },
+  passPitch: { color: WHITE_DIM, fontSize: 15, lineHeight: 22, fontWeight: '500' },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -400,14 +403,5 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 2,
   },
-  noteTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   noteLabel: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
-  noteCard: {
-    gap: Spacing.three,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.four,
-    padding: Spacing.three,
-  },
-  noteCopy: { gap: Spacing.one },
-  noteHead: { fontSize: 20, lineHeight: 26, fontWeight: '700' },
 });
