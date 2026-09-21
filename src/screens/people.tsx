@@ -392,7 +392,7 @@ export function People() {
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <View style={styles.titleRow}>
           <View style={styles.titleBlock}>
-            <ThemedText type="title" themeColor="heading">
+            <ThemedText type="tabTitle" themeColor="heading">
               Friends
             </ThemedText>
           </View>
@@ -656,7 +656,6 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
         person={person}
         session={live.session}
         onward={live.onward ?? []}
-        update={live.update}
         now={now}
         onPress={actions}
       />

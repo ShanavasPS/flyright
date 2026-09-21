@@ -242,7 +242,7 @@ export function UpdateViewer() {
 
 /** The thread under one photo. Everyone the post is shown to may reply — the
  * server checks the trip's own privacy mode, not a separate rule. */
-function CommentSheet({
+export function CommentSheet({
   visible,
   updateId,
   onClose,

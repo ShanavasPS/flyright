@@ -52,18 +52,21 @@ export default function TabsLayout() {
       indicatorColor={colors.backgroundSelected}
       iconColor={{ default: colors.textSecondary, selected: colors.tint }}
       labelStyle={{ color: colors.textSecondary, selected: { color: colors.tint } }}>
-      <NativeTabs.Trigger name="(home)">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="(journeys)">
         <NativeTabs.Trigger.Label>Flights</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/journeys.png')}
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+
+      {/* What the people you follow are up to: the faces of whoever is
+          flying and what they have posted. Second, not first — testers
+          opened the app for their own flight and found the feed instead. */}
+      <NativeTabs.Trigger name="(updates)">
+        <NativeTabs.Trigger.Label>Updates</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/updates.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>

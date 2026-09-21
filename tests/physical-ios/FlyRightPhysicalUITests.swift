@@ -47,6 +47,16 @@ final class FlyRightPhysicalUITests: XCTestCase {
         return friends.waitForExistence(timeout: 5) ? friends : app.tabBars.buttons["People"]
     }
 
+    /// Settings is pushed from the ringed avatar at the top of Flights.
+    private func openSettings() {
+        tapTab("Flights")
+        let avatar = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH 'You and settings' OR label == 'Settings and sign in'"
+        )).firstMatch
+        XCTAssertTrue(avatar.waitForExistence(timeout: 30), "No profile button on Flights")
+        avatar.tap()
+    }
+
     private func tapTab(_ title: String) {
         let button = tabButton(title)
         XCTAssertTrue(button.waitForExistence(timeout: 15), "Missing tab: \(title)")
@@ -192,9 +202,7 @@ final class FlyRightPhysicalUITests: XCTestCase {
     /// Signs the phone's current account out and a Clerk test account in
     /// (OTP 424242). Used by the demo captures and `testSwitchAccount`.
     private func switchAccount(to email: String) {
-        let settings = app.tabBars.buttons["Settings"]
-        XCTAssertTrue(settings.waitForExistence(timeout: 30))
-        settings.tap()
+        openSettings()
         let accountRow = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS '@'")).firstMatch
         if accountRow.waitForExistence(timeout: 10) {
             accountRow.tap()
@@ -410,6 +418,11 @@ final class FlyRightPhysicalUITests: XCTestCase {
             assertHealthy()
             capture("pass-\(pass)-travels")
 
+            tapTab("Updates")
+            waitForContent("Updates")
+            assertHealthy()
+            capture("pass-\(pass)-updates")
+
             tapTab("World")
             waitForContent("Showing .*|Your world map awaits")
             Thread.sleep(forTimeInterval: 3)
@@ -426,7 +439,9 @@ final class FlyRightPhysicalUITests: XCTestCase {
             assertHealthy()
             capture("pass-\(pass)-claims")
 
-            tapTab("Settings")
+            // Settings has no tab: it opens from the avatar on Flights.
+            tapTab("Flights")
+            openSettings()
             waitForContent("Appearance")
             assertHealthy()
             capture("pass-\(pass)-settings")

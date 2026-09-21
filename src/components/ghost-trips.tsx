@@ -43,38 +43,41 @@ export function GhostTrips() {
   );
 }
 
-/** What Home has when it is full, drawn as shapes: the faces of whoever you
- * follow who is flying, over the live card of your own travel day. It is
- * deliberately NOT the journal's deck of rows — that belongs to Flights, and
- * the two tabs sit next to each other, so their empty screens must not look
- * like the same screen twice. Hidden from screen readers. */
-export function GhostTravelDay() {
+/** What Updates holds when it is full, drawn as shapes: the faces of whoever
+ * you follow who is travelling, over one of their postcards. Not the
+ * journal's deck of rows — that is Flights' empty screen, next door — and
+ * not a live flight card, which lives on Flights too. Hidden from screen
+ * readers. */
+export function GhostUpdates() {
   return (
     <View
       style={styles.day}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
       <View style={styles.faces}>
-        <View style={styles.face} />
+        <View style={styles.face}>
+          <View style={styles.badge}>
+            <SymbolView
+              name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
+              size={9}
+              tintColor="#FFFFFF"
+              style={Platform.OS === 'ios' ? undefined : styles.rotated}
+            />
+          </View>
+        </View>
         <View style={[styles.face, styles.faceDim]} />
         <View style={[styles.face, styles.faceDimmer]} />
       </View>
       <View style={styles.live}>
-        <View style={styles.spacedRow}>
-          <View style={styles.logo} />
-          <View style={styles.chip} />
+        <View style={styles.postHead}>
+          <View style={styles.postFace} />
+          <View style={styles.body}>
+            <View style={[styles.bar, styles.barMeta]} />
+            <View style={[styles.bar, styles.barRoute, styles.barThin]} />
+          </View>
         </View>
-        <View style={[styles.bar, styles.clock]} />
-        <View style={styles.route}>
-          <View style={styles.dot} />
-          <View style={styles.rail} />
-          <SymbolView
-            name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-            size={14}
-            tintColor={COBALT}
-            style={Platform.OS === 'ios' ? undefined : styles.rotated}
-          />
-        </View>
+        <View style={styles.photo} />
+        <View style={[styles.bar, styles.barText]} />
       </View>
     </View>
   );
@@ -101,10 +104,22 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(242,246,251,0.18)',
     backgroundColor: '#22395F',
   },
-  clock: { width: '52%', height: 18, borderRadius: 6, backgroundColor: 'rgba(242,246,251,0.30)' },
-  route: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  rail: { flex: 1, height: 2, borderRadius: 1, backgroundColor: 'rgba(242,246,251,0.22)' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(127,177,242,0.8)' },
+  badge: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COBALT,
+  },
+  postHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  postFace: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(242,246,251,0.16)' },
+  photo: { height: 64, borderRadius: Spacing.two, backgroundColor: 'rgba(242,246,251,0.10)' },
+  barThin: { height: 6, width: '60%' },
+  barText: { width: '70%' },
   deck: { height: GHOST_CARD_HEIGHT + 2 * GHOST_PEEK, marginTop: Spacing.one },
   card: {
     position: 'absolute',

@@ -60,7 +60,7 @@ export function Claims() {
             numberOfLines={1}>
             {claimsEyebrow(open, closed)}
           </ThemedText>
-          <ThemedText type="title" themeColor="heading">
+          <ThemedText type="tabTitle" themeColor="heading">
             Claims
           </ThemedText>
         </View>

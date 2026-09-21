@@ -1,4 +1,4 @@
-import { useAuth } from '@clerk/expo';
+import { useAuth, useUser } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -26,17 +26,18 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FlashToast } from '@/components/flash-toast';
 import { JournalSkeleton } from '@/components/journal-skeleton';
+import { greeting, ProfileButton } from '@/components/profile-button';
 import { HomeHero, LiveDot, useHeroTrip } from '@/components/travel-day-banner';
 import {
   COBALT,
   MiniContrail,
-  TravelStatsHeader,
   WHITE,
   WHITE_DIM,
   WHITE_FAINT,
 } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing, TwoPaneMinWidth } from '@/constants/theme';
 import { JourneyDetail } from '@/screens/journey-detail';
+import { useNow } from '@/hooks/use-now';
 import { useAuthSettled } from '@/hooks/use-settled';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
@@ -106,7 +107,11 @@ function headerEyebrow(
 
 export function Journeys() {
   const router = useRouter();
-  const { userId, isLoaded: authLoaded } = useAuth();
+  const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { user } = useUser();
+  // The greeting's clock: "Good morning" turns to afternoon while the app
+  // stays open, which the memoised `now` below would not notice.
+  const clock = useNow(60_000);
   const { data: journeys, error: journalError } = useJourneys(userId);
   const { data: claimRows } = useClaims(userId);
   const { data: disruptionRows } = useDisruptions();
@@ -154,15 +159,16 @@ export function Journeys() {
   // One instant per render, memoised so the grouping below is not rebuilt on
   // every frame for a Date that means the same thing.
   const now = useMemo(() => new Date(), [journeys]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Today's flight is listed here like any other. It used to be left out,
-  // because the live card sat on this screen and the row under "Upcoming"
-  // said the same thing twice. The card lives on Home now, so leaving it out
-  // meant the journal simply had no trip on the day you were flying — the
-  // one day you are most likely to look. The row carries its own countdown
-  // and its own progress (TripRow), which is the compact way this app shows
-  // a flight in the air anyway.
+  // The live card at the top is that trip's row for the day: listing it
+  // again under "Upcoming" said the same thing twice. (While the card lived
+  // on Home, the row stayed so this tab had today's trip at all; it is back
+  // here, so the row steps aside again.)
   const hero = useHeroTrip(journeys ?? [], now);
-  const sections = useMemo(() => groupJourneys(journeys ?? [], now), [journeys, now]);
+  const heroId = hero?.journey.id ?? null;
+  const sections = useMemo(
+    () => groupJourneys((journeys ?? []).filter((j) => j.id !== heroId), now),
+    [journeys, heroId, now],
+  );
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
   const connections = useMemo(() => connectionsInto(journeys ?? []), [journeys]);
   const claimByJourney = useMemo(() => {
@@ -225,22 +231,46 @@ export function Journeys() {
       <SafeAreaView
         edges={tabletopHinge ? ['left', 'right'] : ['top', 'left', 'right']}
         style={[styles.safeArea, !!tabletopHinge && styles.belowHinge]}>
+        {/* Two rows, the way a home screen with actions does it: buttons
+            only on top — you on the left, a message and a flight on the
+            right — and the greeting under them with the full width to
+            itself. Squeezed between the buttons, "Good morning, Alexander"
+            had room for "Good morning, Al…". */}
         <View style={styles.titleRow}>
-          <View style={styles.titleBlock}>
-            {/* The day line alone: the tab already says Flights, and a
-                large title under it only pushed the live card down. */}
-            <ThemedText
-              type="smallBold"
-              themeColor="textSecondary"
-              style={styles.eyebrow}
-              numberOfLines={1}>
-              {headerEyebrow(sections, hero, now)}
-            </ThemedText>
-          </View>
+          <ProfileButton
+            loading={!authSettled}
+            imageUrl={user?.imageUrl ?? null}
+            name={user?.fullName ?? user?.firstName ?? null}
+            onPress={() => router.push('/settings')}
+          />
           <View style={styles.titleActions}>
             <MessagesButton />
             <AddFlightButton onPress={() => router.push('/add')} />
           </View>
+        </View>
+        <View style={styles.titleBlock}>
+          <ThemedText
+            type="smallBold"
+            themeColor="textSecondary"
+            style={styles.eyebrow}
+            numberOfLines={1}>
+            {headerEyebrow(sections, hero, now)}
+          </ThemedText>
+          {/* Not "Good morning" and then ", Eve" a beat later: the name is
+              part of the greeting, so the greeting waits for it. One line,
+              shrinking a little for a long first name before it truncates. */}
+          {authSettled ? (
+            <ThemedText
+              themeColor="heading"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              style={styles.greeting}>
+              {greeting(clock, user?.firstName ?? user?.fullName?.split(' ')[0] ?? null)}
+            </ThemedText>
+          ) : (
+            <ThemedView type="backgroundSelected" style={styles.greetingBar} />
+          )}
         </View>
 
         {journalError ? (
@@ -263,12 +293,21 @@ export function Journeys() {
             // share a single navy card; otherwise the stats card stands alone.
             ListHeaderComponent={
               <>
-                <SignedOutNoticeCard next="/flights" />
-                {/* The live card and the faces of whoever is flying moved to
-                    Home. This tab is the journal: every flight, and the
-                    all-time card over it. */}
-                {!tabletopHinge && <TravelStatsHeader stats={stats} />}
+                <SignedOutNoticeCard next="/" />
+                {/* Your travel day leads: the live card, with the all-time
+                    strip under it; any other day, the all-time card alone.
+                    The faces of whoever you follow and what they post are
+                    on Updates. */}
+                {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
               </>
+            }
+            // Signed out with a journal: one quiet line at the very end, not a
+            // card over the trips — the journal works without an account,
+            // and this only says what one adds.
+            ListFooterComponent={
+              authSettled && !isSignedIn ? (
+                <SignInLine onSignIn={() => router.push({ pathname: '/sign-in', params: { next: '/' } })} />
+              ) : null
             }
             renderSectionHeader={({ section }) =>
               // The flight in the air gets the live card's own marker rather
@@ -308,10 +347,14 @@ export function Journeys() {
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
-            <SignedOutNoticeCard next="/flights" />
+            <SignedOutNoticeCard next="/" />
             {/* Someone who only follows others has no journal — and no
-                reason to be sold one here. Their people are on Home. */}
-            <JournalHero onAdd={() => router.push('/add')} />
+                reason to be sold one here. Their people are on Updates. */}
+            <JournalHero
+              signedIn={!!isSignedIn}
+              onAdd={() => router.push('/add')}
+              onSignIn={() => router.push({ pathname: '/sign-in', params: { next: '/' } })}
+            />
           </ScrollView>
         )}
       </SafeAreaView>
@@ -322,9 +365,9 @@ export function Journeys() {
     <ThemedView style={styles.container}>
       {tabletopHinge && (
         <View style={[styles.topPane, { height: tabletopHinge.top }]}>
-          {/* The fold's top pane is still the live card: the tabletop layout
-              is written per screen, and Home has no fold pane yet. Until it
-              does, this is the one place the card outlives its move. */}
+          {/* The fold's top pane is the live card by itself: the half-screen
+              has no room for the all-time strip, so the list below skips
+              the hero altogether. */}
           <SafeAreaView edges={['top', 'left', 'right']} style={styles.topPaneSafe}>
             <HomeHero journeys={journeys ?? []} stats={stats} variant="glance" />
           </SafeAreaView>
@@ -351,31 +394,73 @@ export function Journeys() {
 
 /** The empty journal's hero: the night-sky card of the travel-day pass with a
  * deck of ghost trip cards where the journal's rows will stack up — the same
- * silhouette as the real rows below (logo, date · flight, cities, times), in
- * skeleton form, no labels. Pure travel-journal pitch; claims live in their
- * own tab. */
-function JournalHero({ onAdd }: { onAdd: () => void }) {
+ * silhouette as the real rows below, in skeleton form, no labels.
+ *
+ * Signed in or not says different things. Signed out, it is a first screen:
+ * what the journal is, the flight to add, and — for somebody who already has
+ * an account on another phone — the way to bring their trips back. Signed
+ * in, the account is there; the card only asks for the first flight and
+ * says who will see it on the day. Claims live in their own tab. */
+function JournalHero({
+  signedIn,
+  onAdd,
+  onSignIn,
+}: {
+  signedIn: boolean;
+  onAdd: () => void;
+  onSignIn: () => void;
+}) {
   return (
     <PassCard>
       <View style={styles.spacedRow}>
-        <MicroLabel>Your travel journal</MicroLabel>
+        <MicroLabel>{signedIn ? 'Your travel journal' : 'Welcome to FlyRight'}</MicroLabel>
         <MiniContrail />
       </View>
       <GhostTrips />
       <View style={styles.heroCopy}>
-        <Text style={styles.heroHeadline}>Where have you flown?</Text>
+        <Text style={styles.heroHeadline}>
+          {signedIn ? 'Add your first flight.' : 'Where have you flown?'}
+        </Text>
         <Text style={styles.heroPitch}>
-          Next month&apos;s trip or one from years back — distance, countries and airlines add
-          up here.
+          {signedIn
+            ? 'On the day, it runs live here — gate, delays, landing — and the friends who follow you see it too.'
+            : 'Next month\u2019s trip or one from years back — your travel day runs live here, and distance, countries and airlines add up.'}
         </Text>
       </View>
       <PassDivider />
       <PassAction
-        label="Add your first flight"
+        label={signedIn ? 'Add a flight' : 'Add your first flight'}
         onPress={onAdd}
         icon={{ ios: 'plus', android: 'add', web: 'add' }}
       />
+      {!signedIn && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onSignIn}
+          style={({ pressed }) => [styles.heroSecondary, pressed && styles.pressedDim]}>
+          <Text style={styles.heroSecondaryLabel}>I have an account — sign in</Text>
+        </Pressable>
+      )}
     </PassCard>
+  );
+}
+
+/** Signed out with trips on the phone: what an account adds, once, at the
+ * foot of the journal. */
+function SignInLine({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onSignIn}
+      style={({ pressed }) => [styles.signInLine, pressed && styles.pressedDim]}>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.signInText}>
+        Your trips are on this phone only.{' '}
+        <ThemedText type="small" themeColor="tint">
+          Sign in
+        </ThemedText>{' '}
+        to back them up and let friends follow your flights.
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -602,19 +687,19 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    // The day line sits on the row's floor, not its middle. The row is as
-    // tall as the buttons (40pt touch targets) and the line is 16, so
-    // centring it left 12pt of nothing between the line and the faces
-    // directly beneath it. Bottom-aligned, the two read as one block.
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
   },
   titleBlock: {
-    flex: 1,
     gap: Spacing.half,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
   },
+  greeting: { fontSize: 28, lineHeight: 34, fontWeight: 700 },
+  greetingBar: { width: '60%', height: 20, borderRadius: 10, marginVertical: 7 },
   eyebrow: {
     fontSize: 12,
     lineHeight: 16,
@@ -754,6 +839,11 @@ const styles = StyleSheet.create({
   rotated: {
     transform: [{ rotate: '90deg' }],
   },
+  heroSecondary: { alignItems: 'center', paddingVertical: Spacing.one },
+  heroSecondaryLabel: { color: WHITE_DIM, fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  pressedDim: { opacity: 0.6 },
+  signInLine: { paddingHorizontal: Spacing.two, paddingTop: Spacing.three },
+  signInText: { textAlign: 'center' },
   heroCopy: {
     gap: Spacing.two,
   },

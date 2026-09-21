@@ -3,7 +3,7 @@ import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { GhostTravelDay } from '@/components/ghost-trips';
+import { GhostUpdates } from '@/components/ghost-trips';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
 import { ThemedText } from '@/components/themed-text';
 import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
@@ -13,17 +13,13 @@ import { airportZone } from '@/services/airports';
 import { formatDayLabel } from '@/services/dates';
 import { cityOf } from '@/services/timeline';
 
-/** The two steps Home opens on until both are done: sign in, then follow
- * somebody. Nothing else belongs here — adding a flight lives on Flights,
- * and a delay is not something a person can go and complete.
- *
- * Drawn as one unmade connection rather than a checklist. A two-item list
- * looks trivial; a link with one end missing does the asking by itself, so
- * the words underneath stay few. A follow genuinely needs both ends: the
- * circle is signed-in only (convex/circle.ts requires an identity to invite,
- * accept or be asked), which is what step 1 is for. */
+/** The pieces Updates stands in with when it has no postcards to show:
+ * signed out, a first follow, a request, a quiet day. Updates decides which
+ * (screens/updates.tsx). Every one of them is about other people — your own
+ * flights, and the button that adds one, are on Flights. */
+
 /** Somebody on one of these cards, and the page their face opens. */
-type Person = {
+export type Person = {
   userId: string;
   name: string;
   imageUrl: string | null;
@@ -31,127 +27,31 @@ type Person = {
   next?: { fromCode: string; toCode: string; scheduledDeparture: string } | null;
 };
 
-export function FirstSteps({
-  signedIn,
-  pending,
-  following,
-  followers,
-  me,
-  onAnswer,
-  onOpenPerson,
-  onFollowBack,
-}: {
-  signedIn: boolean;
-  /** A follow half made and waiting on somebody — an invitation either way
-   * round, or a request to follow. Null when there is none, which is the
-   * ordinary empty Home. */
-  pending: {
-    id: string;
-    name: string;
-    imageUrl: string | null;
-    waitingOnMe: boolean;
-    follow: boolean;
-  } | null;
-  /** People you follow, and people who follow you. Either one changes what
-   * an empty Home should say. */
-  following: Person[];
-  followers: Person[];
-  /** The viewer, for the near end of the link. */
-  me: { name: string; imageUrl: string | null };
-  onAnswer: (requestId: string, accept: boolean) => void;
-  /** Their page — the same one the rail's faces open. */
-  onOpenPerson: (userId: string) => void;
-  /** Ask to follow somebody who already follows you. */
-  onFollowBack: (userId: string) => void;
-}) {
-  const router = useRouter();
-  // Nobody has signed in yet, so this is the first screen of the app. A
-  // stranger is owed a hello and a plain sentence about what it does —
-  // not a diagram of a follow, which only means something once there is
-  // one to wait for.
-  if (!signedIn) return <Welcome onSignIn={() => router.push('/sign-in')} />;
-  // Somebody to show comes before somebody waiting. A request is already
-  // carried by the red count on the Friends tab, which is where it is
-  // answered; repeating it here would take the screen away from the people
-  // this person already has. It only leads when there is nothing else at all
-  // — then it is the one true thing Home can say.
-  if (following.length)
-    return (
-      <Quiet
-        people={following}
-        onOpenPerson={onOpenPerson}
-        onOpenFriends={() => router.push('/people')}
-      />
-    );
-  // Somebody follows you and you have nothing for them yet. That is worth
-  // saying out loud — it is the thing that just changed.
-  if (followers.length)
-    return (
-      <HasFollower
-        people={followers}
-        onOpenPerson={onOpenPerson}
-        onFollowBack={onFollowBack}
-        onOpenFriends={() => router.push('/people')}
-      />
-    );
-  if (pending) return <PendingFollow {...pending} me={me} onAnswer={onAnswer} />;
-  return (
-    <GetStarted
-      onAddFlight={() => router.push('/add')}
-      onFindPeople={() => router.push('/people')}
-    />
-  );
-}
-
-/** Signed in, and Home has nothing to put on itself: no trip of your own and
- * nobody to follow. Both are worth saying, because either one fills it —
- * a traveller wants the first, somebody who came to watch a friend wants the
- * second, and neither should have to guess which this app wants from them.
- *
- * On the navy pass, over a ghost of what Home holds when it is full — the
- * faces of whoever is flying and a live card. Deliberately not the journal's
- * deck of rows: that is the Flights tab's empty screen, and the two sit next
- * to each other, so the same picture on both would read as one screen shown
- * twice. The shapes say what will stand here without inventing a flight. */
-function GetStarted({
-  onAddFlight,
-  onFindPeople,
-}: {
-  onAddFlight: () => void;
-  onFindPeople: () => void;
-}) {
+/** Signed in, following nobody and followed by nobody. Updates is where
+ * other people's flights run, so the one thing that fills it is a follow —
+ * the pass shows what it will hold (faces over a postcard) and asks for
+ * exactly that. Adding a flight is not offered: it fills Flights, not this. */
+export function GetStarted({ onFindPeople }: { onFindPeople: () => void }) {
   return (
     <PassCard>
       <View style={styles.welcomeTop}>
-        <MicroLabel>Nothing in the air</MicroLabel>
+        <MicroLabel>Your friends</MicroLabel>
         <MiniContrail />
       </View>
-      <GhostTravelDay />
+      <GhostUpdates />
       <View style={styles.welcomeCopy}>
-        <Text style={styles.welcomeHeadline}>This fills up on flight day.</Text>
+        <Text style={styles.welcomeHeadline}>Follow a friend’s flights.</Text>
         <Text style={styles.welcomePitch}>
-          Your own travel day runs here — and so does everyone you follow, the moment they post or
-          take off.
+          Their gate, take-off and landing show up here as they happen, with the postcards they
+          send on the way.
         </Text>
       </View>
       <PassDivider />
-      {/* Two ways in, drawn the same — the pass's white pill, twice. Either
-          one fills this screen and the app has no opinion on which: a
-          traveller takes the first, somebody who installed this to watch a
-          friend land takes the second. Stacked rather than side by side, so
-          neither has to shrink or wrap to fit half a card. */}
-      <View style={styles.pair}>
-        <PassAction
-          label="Add a flight"
-          onPress={onAddFlight}
-          icon={{ ios: 'plus', android: 'add', web: 'add' }}
-        />
-        <PassAction
-          label="Follow someone"
-          onPress={onFindPeople}
-          icon={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }}
-        />
-      </View>
+      <PassAction
+        label="Find or invite a friend"
+        onPress={onFindPeople}
+        icon={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }}
+      />
     </PassCard>
   );
 }
@@ -163,7 +63,7 @@ function GetStarted({
  * have. And when it is YOUR move it is answered here instead of pointing at
  * another tab; the mutation is the one Friends already calls. When the move
  * is theirs there is nothing to press, so nothing pretends to be pressable. */
-function PendingFollow({
+export function PendingFollow({
   id,
   name,
   imageUrl,
@@ -192,6 +92,8 @@ function PendingFollow({
       ? 'They will see your gate, your delays and your landing. Nothing else.'
       : 'Say yes and their travel days show up here.'
     : 'You will know the moment they say yes.';
+  // Shown over everything else on Updates while it waits on you, so it is
+  // answered where the circle's news is — not only when the tab is empty.
 
   return (
     <PassCard>
@@ -238,13 +140,10 @@ function PendingFollow({
   );
 }
 
-/** The ordinary day, as the spec draws it: the people you follow in a strip
- * that says plainly that none of them is up, and a quiet card under it.
- *
- * Two pieces rather than one card because they answer different questions —
- * "who am I watching" and "what is happening" — and on the day something IS
- * happening the strip stays put while the card is replaced by the live one. */
-function Quiet({
+/** The ordinary day: the people you follow in a strip that says plainly
+ * that none of them is up, and who leaves next. The postcards' placeholder
+ * goes under it (EmptyPostcards). */
+export function FriendsStrip({
   people,
   onOpenPerson,
   onOpenFriends,
@@ -334,19 +233,6 @@ function Quiet({
         )}
       </View>
 
-      <PassCard>
-        <View style={styles.welcomeTop}>
-          <MicroLabel>Quiet skies today</MicroLabel>
-          <MiniContrail />
-        </View>
-        <View style={styles.welcomeCopy}>
-          <Text style={styles.welcomeHeadline}>Nothing in the air.</Text>
-          <Text style={styles.welcomePitch}>
-            The next time you fly — or one of them does — the gate, the delays and the landing run
-            here, live.
-          </Text>
-        </View>
-      </PassCard>
     </>
   );
 }
@@ -356,7 +242,7 @@ function Quiet({
  * say — they can see your days, you cannot see theirs — and saying it about
  * these particular people beats stating the rule at them. With one follower
  * it is also a thing to do, right here. */
-function HasFollower({
+export function HasFollower({
   people,
   onOpenPerson,
   onFollowBack,
@@ -461,27 +347,57 @@ function Face({
 
 const RING = 56;
 
-/** The app's own pass, holding its introduction: what it does on the day you
- * fly, then the one thing an account adds. Claims are not mentioned — the
- * intro pages already sell those twice, and the travel day is the headline
- * the product leads on. */
-function Welcome({ onSignIn }: { onSignIn: () => void }) {
+/** Signed out, on Updates. The tab is the postcards friends send from their
+ * trips, and both reading and sending them need an account (the circle is
+ * signed-in only), so the pass shows a postcard and asks for the sign-in. Your own flights need none of it — they
+ * are on Flights, on this phone. */
+export function UpdatesWelcome({ onSignIn }: { onSignIn: () => void }) {
   return (
     <PassCard>
       <View style={styles.welcomeTop}>
-        <MicroLabel>Welcome to FlyRight</MicroLabel>
+        <MicroLabel>Postcards</MicroLabel>
         <MiniContrail />
       </View>
+      <GhostUpdates />
       <View style={styles.welcomeCopy}>
-        <Text style={styles.welcomeHeadline}>Your travel day, live.</Text>
+        <Text style={styles.welcomeHeadline}>Postcards from your friends.</Text>
         <Text style={styles.welcomePitch}>
-          Gates, delays and boarding as they happen. Sign in and your friends can follow along —
-          and you can follow theirs.
+          A photo from the gate, a line from the window seat, the first evening away — sent as
+          they travel. Sign in to invite your friends, see theirs and send your own.
         </Text>
       </View>
       <PassDivider />
-      <PassAction label="Sign in" onPress={onSignIn} />
+      {/* Says what the sign-in is for: the invite comes straight after it. */}
+      <PassAction
+        label="Sign in and invite friends"
+        onPress={onSignIn}
+        icon={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }}
+      />
     </PassCard>
+  );
+}
+
+/** No postcards to show: a light, dashed postcard shape where they will land.
+ * Deliberately not another navy pass — those ask for something; this only
+ * marks the space, so it reads as a place rather than a prompt. */
+export function EmptyPostcards({ line }: { line: string }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.emptyPost, { borderColor: theme.hairline }]}>
+      <View
+        style={styles.emptyHead}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants">
+        <View style={[styles.emptyFace, { backgroundColor: theme.backgroundSelected }]} />
+        <View style={styles.emptyBars}>
+          <View style={[styles.emptyBar, { width: '40%', backgroundColor: theme.backgroundSelected }]} />
+          <View style={[styles.emptyBar, { width: '65%', backgroundColor: theme.backgroundElement }]} />
+        </View>
+      </View>
+      <ThemedText type="small" themeColor="textSecondary">
+        {line}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -557,4 +473,15 @@ const styles = StyleSheet.create({
   line: { flex: 1, borderTopWidth: 2, marginBottom: Spacing.four },
   dashed: { borderStyle: 'dashed' },
   pressed: { opacity: 0.7 },
+  emptyPost: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: Spacing.three + 2,
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
+  emptyHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 2 },
+  emptyFace: { width: 32, height: 32, borderRadius: 16 },
+  emptyBars: { flex: 1, gap: Spacing.one + Spacing.half },
+  emptyBar: { height: 8, borderRadius: 4 },
 });

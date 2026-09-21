@@ -90,6 +90,39 @@ export const insertJourney = internalMutation({
   },
 });
 
+/** Put a text postcard on a real dev user's trip, backdated — so the "You"
+ * tile on Updates can be seen after a trip stops taking posts without
+ * waiting a day for one to close. `npx convex run devTools:insertUpdate
+ * '{"userId":"user_x","journeyKey":"AY1337-2026-09-21","text":"…","minutesAgo":90,"stage":"landed","place":"LHR"}'`
+ * Dev only; never callable by a client. */
+export const insertUpdate = internalMutation({
+  args: {
+    userId: v.string(),
+    journeyKey: v.string(),
+    text: v.string(),
+    minutesAgo: v.number(),
+    stage: v.optional(v.string()),
+    place: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const at = new Date(Date.now() - args.minutesAgo * 60_000).toISOString();
+    return await ctx.db.insert('tripUpdates', {
+      userId: args.userId,
+      journeyKey: args.journeyKey,
+      text: args.text,
+      storageId: null,
+      photoId: null,
+      width: null,
+      height: null,
+      stage: args.stage ?? null,
+      place: args.place ?? null,
+      reactedBy: [],
+      reactedAt: {},
+      createdAt: at,
+    });
+  },
+});
+
 /** Patch a dev journey — move a seeded connecting leg into the next hours so
  * the "under way" block can be screenshotted. Dev only. */
 export const patchJourney = internalMutation({

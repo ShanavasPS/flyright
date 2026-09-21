@@ -330,7 +330,7 @@ export function WorldCanvas({
             </ThemedText>
             <View style={styles.titleRow} pointerEvents="box-none">
               <ThemedText
-                type="title"
+                type="tabTitle"
                 themeColor="heading"
                 style={styles.flex}
                 pointerEvents="none"

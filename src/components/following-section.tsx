@@ -14,9 +14,13 @@ import type { TravelDayState } from '@/services/travel-day';
 import { updateWindowOpen } from '@/services/trip-updates';
 import { visibilityOf } from '@/services/trip-visibility';
 
-/** The rail at the top of My travels: your own tile while your trip takes
- * updates, then the people you follow who are travelling. Nothing at all
- * on a day neither is true. The query is reactive, so stages and posts land
+/** The rail at the top of Updates: your own tile, then the people you
+ * follow who are travelling. Nothing at all on a day neither is true.
+ *
+ * Your tile is there while your trip takes postcards (tap to post), and
+ * after that for as long as your followers can still see what you posted —
+ * the feed keeps a postcard two days. Tapped then, it shows them the way it
+ * did during the trip, with the hearts, just without "Share another". The query is reactive, so stages and posts land
  * here without any refresh. Render only under CloudSync (Convex
  * configured). */
 export function FollowingSection({
@@ -43,14 +47,25 @@ export function FollowingSection({
       ? own.journey
       : null;
   const posted = useQuery(api.updates.mine, sharing ? { journeyKey: sharing.id } : 'skip');
+  // What followers can still see from earlier trips (and this one).
+  const recent = useQuery(api.updates.mineRecent, isSignedIn ? {} : 'skip');
+  // One section per trip, the one that still takes posts first.
+  const sections = [
+    ...(sharing && posted?.length
+      ? [{ journeyKey: sharing.id, number: sharing.number, fromCode: sharing.fromCode, toCode: sharing.toCode, updates: posted }]
+      : []),
+    ...(recent ?? []).filter((trip) => trip.journeyKey !== sharing?.id),
+  ];
+  const all = sections.flatMap((trip) => trip.updates);
 
   // The session lives 48h past arrival so late stamps still find it; the
   // server decided how long it leads and sent the deadline with it, so this
   // only watches the clock tick past it.
   const live = entries?.filter(({ session }) => onHomeScreen(session, now)) ?? [];
-  if (!live.length && !sharing) return null;
-  const latest = posted?.[0] ?? null;
-  const hearts = (posted ?? []).reduce((sum, u) => sum + u.reactedBy.length, 0);
+  const showYou = !!sharing || all.length > 0;
+  if (!live.length && !showYou) return null;
+  const latest = [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
+  const hearts = all.reduce((sum, u) => sum + u.reactedBy.length, 0);
   const compose = () => {
     setMineOpen(false);
     if (sharing) router.push({ pathname: '/trip-update', params: { journeyId: sharing.id } });
@@ -62,15 +77,17 @@ export function FollowingSection({
         entries={live}
         now={now}
         leading={
-          sharing && (
+          showYou && (
             <YouTile
               name={user?.fullName || user?.firstName || 'You'}
               imageUrl={user?.imageUrl ?? null}
               latest={latest}
               hearts={hearts}
+              canPost={!!sharing}
               // Nothing posted yet: straight to the composer. After that, what
-              // you shared and who hearted it, with "Share another" under it.
-              onPress={posted?.length ? () => setMineOpen(true) : compose}
+              // you shared and who hearted it — with "Share another" under it
+              // only while the trip still takes posts.
+              onPress={all.length ? () => setMineOpen(true) : compose}
             />
           )
         }
@@ -80,16 +97,25 @@ export function FollowingSection({
             : undefined
         }
       />
-      {sharing && (
+      {showYou && (
         <MyUpdatesSheet
-          visible={mineOpen && !!posted?.length}
-          tripLine={[sharing.number, `${sharing.fromCode} → ${sharing.toCode}`].filter(Boolean).join(' · ')}
+          visible={mineOpen && all.length > 0}
+          trips={sections.map((trip) => ({
+            journeyKey: trip.journeyKey,
+            tripLine: [trip.number, `${trip.fromCode} → ${trip.toCode}`].filter(Boolean).join(' · '),
+            updates: trip.updates,
+          }))}
           ownerId={user?.id}
-          journeyKey={sharing.id}
-          updates={posted ?? []}
           now={now}
           onRemove={(updateId) => void remove({ updateId: updateId as Id<'tripUpdates'> })}
-          onCompose={compose}
+          onCompose={sharing ? compose : undefined}
+          // Today's trip has nothing yet, so the button would post somewhere
+          // other than the trip listed above it: say which.
+          composeLabel={
+            sharing && !posted?.length
+              ? `Share from ${sharing.number || `${sharing.fromCode} → ${sharing.toCode}`}`
+              : undefined
+          }
           onClose={() => setMineOpen(false)}
         />
       )}

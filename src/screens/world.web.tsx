@@ -214,7 +214,7 @@ export function World() {
         <SafeAreaView style={styles.overlay} edges={['top']} pointerEvents="box-none">
           <View style={styles.header} pointerEvents="box-none">
             <View pointerEvents="none">
-              <ThemedText type="title" themeColor="heading">
+              <ThemedText type="tabTitle" themeColor="heading">
                 {focusedRow ? `${focusedRow.fromCode} → ${focusedRow.toCode}` : 'World'}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">

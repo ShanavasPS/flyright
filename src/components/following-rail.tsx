@@ -279,28 +279,38 @@ export function YouTile({
   imageUrl,
   latest,
   hearts,
+  canPost,
   onPress,
 }: {
   name: string;
   imageUrl: string | null;
   latest: TripUpdate | null;
   hearts: number;
+  /** The trip still takes posts. After it, the tile only shows what you
+   * posted, so the + comes off. */
+  canPost: boolean;
   onPress: () => void;
 }) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={latest ? `Your updates, ${hearts} hearts. Share another` : 'Share an update from your trip'}
+      accessibilityLabel={
+        latest
+          ? `Your updates, ${hearts} hearts${canPost ? '. Share another' : ''}`
+          : 'Share an update from your trip'
+      }
       testID="following-you"
       onPress={onPress}
       style={({ pressed }) => [styles.face, pressed && styles.pressed]}>
       <View style={styles.ringBox}>
         <Ring fill={1} color={theme.tint} dashed={!latest} />
         <Avatar name={name} imageUrl={imageUrl} size={FACE} />
-        <View style={[styles.badge, { backgroundColor: theme.tint, borderColor: theme.background }]}>
-          <SymbolView name={{ ios: 'plus', android: 'add', web: 'add' }} size={11} weight="bold" tintColor="#FFFFFF" />
-        </View>
+        {canPost && (
+          <View style={[styles.badge, { backgroundColor: theme.tint, borderColor: theme.background }]}>
+            <SymbolView name={{ ios: 'plus', android: 'add', web: 'add' }} size={11} weight="bold" tintColor="#FFFFFF" />
+          </View>
+        )}
         {latest && <UpdateMark update={latest} fresh={false} />}
       </View>
       <ThemedText type="smallBold" style={styles.name} numberOfLines={1}>
@@ -325,36 +335,41 @@ export function YouTile({
 }
 
 /**
- * Your own posts from today's trip, from the rail's You tile: each with who
- * has hearted it (a tap lists them; a long press takes it down), and the
- * way to share another. The traveller's side of what their followers see.
+ * Your own posts, from the rail's You tile: every one your followers can
+ * still see, trip by trip, each with who has hearted it (a tap lists them;
+ * a long press takes it down), and the way to share another while the trip
+ * still takes posts. The traveller's side of what their followers see.
  */
 export function MyUpdatesSheet({
   visible,
-  tripLine,
+  trips,
   ownerId,
-  journeyKey,
-  updates,
   now,
   onRemove,
   onCompose,
+  composeLabel = 'Share another',
   onClose,
 }: {
   visible: boolean;
-  /** "AY1337 · HEL → LHR" */
-  tripLine: string;
-  /** Who and which trip, so a photo can open full screen from here too. */
+  /** Newest trip first; usually one. `tripLine` is "AY1337 · HEL → LHR". */
+  trips: { journeyKey: string; tripLine: string; updates: OwnUpdate[] }[];
+  /** Who, so a photo can open full screen from here too. */
   ownerId?: string;
-  journeyKey?: string;
-  updates: OwnUpdate[];
   now: Date;
   onRemove: (updateId: string) => void;
-  onCompose: () => void;
+  /** Only while the trip still takes posts. Afterwards the sheet is the
+   * same record of what you shared, without the button. */
+  onCompose?: () => void;
+  /** Names the trip when it isn't one of those listed. */
+  composeLabel?: string;
   onClose: () => void;
 }) {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const count = trips.reduce((sum, trip) => sum + trip.updates.length, 0);
+  // One trip names itself in the header; several name themselves each.
+  const single = trips.length === 1 ? trips[0]! : null;
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.sheet}>
@@ -368,9 +383,11 @@ export function MyUpdatesSheet({
             ]}>
             <View style={styles.sheetHeader}>
               <View style={styles.sheetTitle}>
-                <ThemedText type="smallBold" themeColor="textSecondary" numberOfLines={1}>
-                  {tripLine}
-                </ThemedText>
+                {single && (
+                  <ThemedText type="smallBold" themeColor="textSecondary" numberOfLines={1}>
+                    {single.tripLine}
+                  </ThemedText>
+                )}
                 <ThemedText themeColor="heading" style={styles.headline}>
                   Your updates
                 </ThemedText>
@@ -386,23 +403,33 @@ export function MyUpdatesSheet({
               </Pressable>
             </View>
             <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
-              <UpdatesCard
-                eyebrow={`Posted · ${updates.length}`}
-                updates={updates}
-                now={now}
-                onRemove={onRemove}
-                onOpenPhoto={
-                  ownerId && journeyKey
-                    ? (updateId) =>
-                        router.push({
-                          pathname: '/update-viewer',
-                          params: { ownerId, journeyKey, updateId, name: 'You' },
-                        })
-                    : undefined
-                }
-              />
+              {trips.map((trip) => (
+                <UpdatesCard
+                  key={trip.journeyKey}
+                  eyebrow={single ? `Posted · ${count}` : `${trip.tripLine} · ${trip.updates.length}`}
+                  updates={trip.updates}
+                  now={now}
+                  onRemove={onRemove}
+                  onOpenPhoto={
+                    ownerId
+                      ? (updateId) =>
+                          router.push({
+                            pathname: '/update-viewer',
+                            params: { ownerId, journeyKey: trip.journeyKey, updateId, name: 'You' },
+                          })
+                      : undefined
+                  }
+                />
+              ))}
             </ScrollView>
-            <PrimaryButton label="Share another" onPress={onCompose} />
+            {onCompose ? (
+              <PrimaryButton label={composeLabel} onPress={onCompose} />
+            ) : (
+              // Why there is no button, in the place the button would be.
+              <ThemedText type="small" themeColor="textSecondary" style={styles.sheetNote}>
+                Your followers see these for two days after you post them.
+              </ThemedText>
+            )}
           </Animated.View>
         )}
       </View>
@@ -886,6 +913,7 @@ const styles = StyleSheet.create({
   sheetScroll: {
     flexGrow: 0,
   },
+  sheetNote: { textAlign: 'center' },
   sheetContent: {
     gap: Spacing.three,
   },

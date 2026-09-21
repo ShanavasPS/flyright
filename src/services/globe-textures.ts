@@ -1,6 +1,6 @@
 import { AlphaType, ColorType, Skia, useImage, type SkImage } from '@shopify/react-native-skia';
 import { useEffect, useState } from 'react';
-import { Image, InteractionManager } from 'react-native';
+import { Image } from 'react-native';
 
 /**
  * The globe's textures (see scripts/generate-globe-texture.mjs): every one
@@ -114,14 +114,18 @@ export function useGlobeTextures(wanted = true): GlobeTextures {
   useEffect(() => {
     if (!wanted) return;
     let live = true;
-    const task = InteractionManager.runAfterInteractions(() => {
+    // Once the JS thread is idle — after the tab switch or push that
+    // mounted the globe has settled. (InteractionManager did this before;
+    // React Native deprecated it for requestIdleCallback and warned on every
+    // globe mount.)
+    const task = requestIdleCallback(() => {
       void loadDetail().then((loaded) => {
         if (live) setDetail(loaded);
       });
     });
     return () => {
       live = false;
-      task.cancel();
+      cancelIdleCallback(task);
     };
   }, [wanted]);
   return { base, detail: detail.detail, borders: detail.borders };

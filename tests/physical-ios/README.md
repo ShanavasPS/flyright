@@ -2,7 +2,7 @@
 
 This standalone XCTest UI target uses only Xcode, XCTest and CoreDevice. It launches the **already installed** `com.shanavasshaji.flyright` by bundle identifier. Building this project builds a separate test helper, not FlyRight. It does not reinstall FlyRight, clear its data, sign in/out, seed trips, submit claims or change settings. Normal app effects from opening tabs still apply, such as marking People notifications seen.
 
-The test performs two cold starts, each with a 30-second startup observation, then physically taps **Flights (formerly My travels), World, Friends (formerly People), Claims and Settings** and returns to Flights. Each tab must be tappable and selected, destination content must load, the app must remain in the foreground, and common app/backend error messages must be absent. Screenshots and accessibility hierarchies are attached for every tab on both passes, plus a final-state capture on success or failure.
+The test performs two cold starts, each with a 30-second startup observation, then physically taps **Flights (formerly My travels), Updates (formerly Home), World, Friends (formerly People) and Claims**, opens Settings from the avatar on Flights, and returns to Flights. Each tab must be tappable and selected, destination content must load, the app must remain in the foreground, and common app/backend error messages must be absent. Screenshots and accessibility hierarchies are attached for every tab on both passes, plus a final-state capture on success or failure.
 
 ## Run
 

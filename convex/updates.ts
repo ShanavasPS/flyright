@@ -129,42 +129,85 @@ export const mine = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const me = identity.subject;
-    const rows = await rowsFor(ctx, me, journeyKey);
-    const people = new Map<string, Omit<Liker, 'at'>>();
-    const personFor = async (userId: string) => {
-      const known = people.get(userId);
-      if (known) return known;
-      const profile = await profileFor(ctx, userId);
-      const seat = await ctx.db
-        .query('circle')
-        .withIndex('by_owner_member', (q) => q.eq('ownerId', me).eq('memberId', userId))
-        .unique();
-      const theirs = await ctx.db
-        .query('circle')
-        .withIndex('by_owner_member', (q) => q.eq('ownerId', userId).eq('memberId', me))
-        .unique();
-      const person = {
-        userId,
-        name: profile?.name ?? 'Someone',
-        imageUrl: safeAvatar(profile?.imageUrl ?? null),
-        relation: likerRelation(seat, !!theirs),
-      };
-      people.set(userId, person);
-      return person;
+    return ownView(ctx, me, await rowsFor(ctx, me, journeyKey));
+  },
+});
+
+/** My updates as I read them: each with who hearted it, as people. */
+async function ownView(ctx: QueryCtx, me: string, rows: Doc<'tripUpdates'>[]) {
+  const people = new Map<string, Omit<Liker, 'at'>>();
+  const personFor = async (userId: string) => {
+    const known = people.get(userId);
+    if (known) return known;
+    const profile = await profileFor(ctx, userId);
+    const seat = await ctx.db
+      .query('circle')
+      .withIndex('by_owner_member', (q) => q.eq('ownerId', me).eq('memberId', userId))
+      .unique();
+    const theirs = await ctx.db
+      .query('circle')
+      .withIndex('by_owner_member', (q) => q.eq('ownerId', userId).eq('memberId', me))
+      .unique();
+    const person = {
+      userId,
+      name: profile?.name ?? 'Someone',
+      imageUrl: safeAvatar(profile?.imageUrl ?? null),
+      relation: likerRelation(seat, !!theirs),
     };
-    const out = [];
-    for (const row of rows) {
-      const likers: Liker[] = [];
-      for (const userId of row.reactedBy) {
-        likers.push({ ...(await personFor(userId)), at: row.reactedAt?.[userId] ?? null });
-      }
-      out.push({
-        ...(await publicUpdate(ctx, row, me)),
-        reactedBy: likers.map((l) => l.name),
-        likers: sortLikers(likers),
+    people.set(userId, person);
+    return person;
+  };
+  const out = [];
+  for (const row of rows) {
+    const likers: Liker[] = [];
+    for (const userId of row.reactedBy) {
+      likers.push({ ...(await personFor(userId)), at: row.reactedAt?.[userId] ?? null });
+    }
+    out.push({
+      ...(await publicUpdate(ctx, row, me)),
+      reactedBy: likers.map((l) => l.name),
+      likers: sortLikers(likers),
+    });
+  }
+  return out;
+}
+
+/** OWNER — my postcards that are still in my followers' feeds, trip by trip,
+ * newest trip first. The feed keeps a post for FEED_MS, so this is exactly
+ * what the people I share with can still see: once the trip stops taking
+ * posts, the "You" tile on Updates keeps showing them from here until the
+ * last one leaves the feed. A trip only I can see is left out — nobody is
+ * looking at those. */
+export const mineRecent = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const me = identity.subject;
+    const cutoff = new Date(Date.now() - FEED_MS).toISOString();
+    const rows = (
+      await ctx.db
+        .query('tripUpdates')
+        .withIndex('by_user', (q) => q.eq('userId', me))
+        .collect()
+    ).filter((row) => row.createdAt >= cutoff);
+    const byKey = new Map<string, Doc<'tripUpdates'>[]>();
+    for (const row of rows) byKey.set(row.journeyKey, [...(byKey.get(row.journeyKey) ?? []), row]);
+    const trips = [];
+    for (const [journeyKey, posts] of byKey) {
+      const journey = await journeyForKey(ctx, me, journeyKey);
+      if (!journey || !maySee(journey, true)) continue;
+      posts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      trips.push({
+        journeyKey,
+        number: journey.number,
+        fromCode: journey.fromCode,
+        toCode: journey.toCode,
+        updates: await ownView(ctx, me, posts),
       });
     }
-    return out;
+    trips.sort((a, b) => b.updates[0]!.createdAt.localeCompare(a.updates[0]!.createdAt));
+    return trips;
   },
 });
 

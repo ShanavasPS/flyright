@@ -8,6 +8,7 @@ export type ThemedTextProps = TextProps & {
     | 'default'
     | 'display'
     | 'title'
+    | 'tabTitle'
     | 'small'
     | 'smallBold'
     | 'subtitle'
@@ -30,6 +31,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'default' && styles.default,
         type === 'display' && styles.display,
         type === 'title' && styles.title,
+        type === 'tabTitle' && styles.tabTitle,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
         type === 'subtitle' && styles.subtitle,
@@ -70,6 +72,14 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: 700,
     lineHeight: 41,
+  },
+  /** A tab's own name at its top (Updates, Friends, World, Claims): the
+   * size of the greeting on Flights, so the five tabs read as one set — the
+   * 34pt large title outweighed the content under it. */
+  tabTitle: {
+    fontSize: 28,
+    fontWeight: 700,
+    lineHeight: 34,
   },
   subtitle: {
     fontSize: 32,
