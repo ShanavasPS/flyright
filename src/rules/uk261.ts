@@ -24,9 +24,13 @@ export function evaluateUK261(journey: Journey, disruption: Disruption): Verdict
   }
 
   // Same tests as EU261; substitute the statutory GBP amounts and UK escalation path.
+  // The proxy's departure is set to IE, so the €400 cap for flights within
+  // the regulation's territory must come from the real route: under UK261
+  // that is a flight within the UK, not one into the EU.
   const proxy = evaluateEU261(
     { ...journey, from: { ...journey.from, country: 'IE' } },
     disruption,
+    { intraCommunity: isUK(journey.from.country) && isUK(journey.to.country) },
   );
 
   return {

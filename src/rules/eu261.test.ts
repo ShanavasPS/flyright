@@ -53,6 +53,61 @@ describe('EU261 delays', () => {
     expect(v.compensation).toEqual({ amount: 600, currency: 'EUR' });
   });
 
+  it('caps intra-EU flights over 3,500 km at €400 (Art 7(1)(b))', () => {
+    // Helsinki–Tenerife, ~4,700 km, both ends in the EU.
+    const v = evaluate(
+      flight({ distanceKm: 4700, to: { code: 'TFS', country: 'ES' } }),
+      delay(300),
+    );
+    expect(v.compensation).toEqual({ amount: 400, currency: 'EUR' });
+  });
+
+  it('does not halve the intra-EU €400 for a 3–4h delay', () => {
+    const v = evaluate(
+      flight({ distanceKm: 4700, to: { code: 'TFS', country: 'ES' } }),
+      delay(200),
+    );
+    expect(v.compensation).toEqual({ amount: 400, currency: 'EUR' });
+  });
+
+  it('counts the outermost regions as EU territory (Paris–Réunion)', () => {
+    const out = evaluate(
+      flight({ carrierCountry: 'FR', from: { code: 'CDG', country: 'FR' }, to: { code: 'RUN', country: 'RE' }, distanceKm: 9360 }),
+      delay(300),
+    );
+    expect(out.compensation).toEqual({ amount: 400, currency: 'EUR' });
+    const back = evaluate(
+      flight({ carrierCountry: 'FR', from: { code: 'RUN', country: 'RE' }, to: { code: 'ORY', country: 'FR' }, distanceKm: 9360 }),
+      delay(300),
+    );
+    expect(back.compensation).toEqual({ amount: 400, currency: 'EUR' });
+  });
+
+  it('counts the EEA as EU territory (Oslo–Gran Canaria)', () => {
+    const v = evaluate(
+      flight({ from: { code: 'OSL', country: 'NO' }, to: { code: 'LPA', country: 'ES' }, distanceKm: 4000 }),
+      delay(300),
+    );
+    expect(v.compensation).toEqual({ amount: 400, currency: 'EUR' });
+  });
+
+  it('still pays €600 when a long flight leaves the EU', () => {
+    const v = evaluate(
+      flight({ distanceKm: 4700, to: { code: 'DXB', country: 'AE' } }),
+      delay(300),
+    );
+    expect(v.compensation).toEqual({ amount: 600, currency: 'EUR' });
+  });
+
+  it('caps intra-EU denied boarding and short-notice cancellation at €400 too', () => {
+    const j = flight({ distanceKm: 4700, to: { code: 'TFS', country: 'ES' } });
+    expect(evaluate(j, { type: 'denied_boarding' }).compensation).toEqual({ amount: 400, currency: 'EUR' });
+    expect(evaluate(j, { type: 'cancellation', noticeDays: 3, delayMinutes: 300 }).compensation).toEqual({
+      amount: 400,
+      currency: 'EUR',
+    });
+  });
+
   it('marks extraordinary circumstances ineligible but contestable', () => {
     const v = evaluate(flight(), delay(300, { extraordinaryCircumstances: true }));
     expect(v.eligible).toBe(false);
@@ -98,6 +153,15 @@ describe('UK261', () => {
   it('pays GBP bands for UK departures', () => {
     const v = evaluate(
       flight({ from: { code: 'LHR', country: 'GB' }, to: { code: 'JFK', country: 'US' }, carrierCountry: 'GB', distanceKm: 5500 }),
+      delay(300),
+    );
+    expect(v.regulation).toBe('UK261');
+    expect(v.compensation).toEqual({ amount: 520, currency: 'GBP' });
+  });
+
+  it('keeps £520 on a long UK flight into the EU (only flights within the UK are capped)', () => {
+    const v = evaluate(
+      flight({ from: { code: 'LGW', country: 'GB' }, to: { code: 'LPA', country: 'ES' }, carrierCountry: 'GB', distanceKm: 3600 }),
       delay(300),
     );
     expect(v.regulation).toBe('UK261');

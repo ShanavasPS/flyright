@@ -1,4 +1,4 @@
-import { isEU } from './regions';
+import { isEU, isIntraEU } from './regions';
 import type { Disruption, Journey, Verdict } from './types';
 
 const NOT_APPLICABLE: Verdict = {
@@ -19,15 +19,27 @@ export function appliesEU261(journey: Journey): boolean {
   return isEU(journey.to.country) && isEU(journey.carrierCountry);
 }
 
-/** Distance bands per Article 7. Long-haul halves to 50% when delay < 4h (Art 7(2)(c)). */
-function compensationAmount(distanceKm: number, delayMinutes: number): number {
+/** Distance bands per Article 7. Art 7(1)(b) puts EVERY intra-Community
+ * flight over 1,500 km in the €400 band, however long — only flights leaving
+ * or entering the EU reach €600. Long-haul halves to 50% when the delay is
+ * under 4h (Art 7(2)(c)); that reduction belongs to the €600 band alone. */
+function compensationAmount(distanceKm: number, delayMinutes: number, intraCommunity: boolean): number {
   if (distanceKm <= 1500) return 250;
-  if (distanceKm <= 3500) return 400;
+  if (distanceKm <= 3500 || intraCommunity) return 400;
   return delayMinutes < 240 ? 300 : 600;
 }
 
-export function evaluateEU261(journey: Journey, disruption: Disruption): Verdict {
+export interface Eu261Options {
+  /** Override for whether the flight stays inside the regulation's own
+   * territory. UK261 passes "within the UK" here, since it evaluates UK
+   * departures through an EU proxy. Defaults to both ends in the EU/EEA. */
+  intraCommunity?: boolean;
+}
+
+export function evaluateEU261(journey: Journey, disruption: Disruption, options: Eu261Options = {}): Verdict {
   if (!appliesEU261(journey)) return NOT_APPLICABLE;
+  const intra = options.intraCommunity ?? isIntraEU(journey.from.country, journey.to.country);
+  const amountFor = (delayMinutes: number) => compensationAmount(journey.distanceKm, delayMinutes, intra);
 
   const base = {
     regulation: 'EU261' as const,
@@ -56,7 +68,7 @@ export function evaluateEU261(journey: Journey, disruption: Disruption): Verdict
           reason: `Arrival delay of ${delay} min is under the 3-hour EU261 threshold.`,
         };
       }
-      const amount = compensationAmount(journey.distanceKm, delay);
+      const amount = amountFor(delay);
       return {
         ...base,
         eligible: true,
@@ -74,7 +86,7 @@ export function evaluateEU261(journey: Journey, disruption: Disruption): Verdict
           reason: 'Cancellation was notified 14+ days before departure — no compensation, but you are owed a full refund or rerouting.',
         };
       }
-      const amount = compensationAmount(journey.distanceKm, delay);
+      const amount = amountFor(delay);
       return {
         ...base,
         eligible: true,
@@ -84,7 +96,7 @@ export function evaluateEU261(journey: Journey, disruption: Disruption): Verdict
     }
 
     case 'denied_boarding': {
-      const amount = compensationAmount(journey.distanceKm, Number.MAX_SAFE_INTEGER);
+      const amount = amountFor(Number.MAX_SAFE_INTEGER);
       return {
         ...base,
         eligible: true,
