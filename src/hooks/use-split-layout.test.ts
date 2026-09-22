@@ -1,4 +1,4 @@
-import { paneWidth } from '@/constants/theme';
+import { paneShare, paneWidth } from '@/constants/theme';
 import { WIDE_LAYOUT_DEFAULTS } from '@/constants/wide-layouts';
 
 import type { FoldState } from '../../modules/flyright-fold';
@@ -54,10 +54,16 @@ describe('splitLayoutFor — every device class', () => {
     expect(layout).toMatchObject({ split: true, order: 'primary-left', primaryWidth: 400, duoOpen: false });
   });
 
-  it('shrinks a fixed pane on the narrowest wide windows (paneWidth)', () => {
-    expect(paneWidth(400)(744)).toBe(335);
+  it('never makes a pane narrower than a small phone', () => {
+    expect(paneWidth(400)(744)).toBe(375);
     expect(paneWidth(400)(1024)).toBe(400);
-    expect(splitLayoutFor(input({ isPad: true, width: 744, primaryWidth: paneWidth(400) })).primaryWidth).toBe(335);
+    expect(paneShare(0.42)(744)).toBe(375);
+    expect(paneShare(0.42)(1024)).toBe(430);
+    // Both panes at least phone-sized at the narrowest split (744 - 375 = 369).
+    for (const w of [744, 820, 832, 834, 951, 1024, 1180, 1366]) {
+      expect(w - paneShare(0.42)(w)).toBeGreaterThanOrEqual(369);
+      expect(w - paneWidth(400)(w)).toBeGreaterThanOrEqual(369);
+    }
   });
 
   it('takes the primary width from a function of the window', () => {

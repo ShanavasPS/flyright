@@ -36,7 +36,7 @@ import {
   WHITE_DIM,
   WHITE_FAINT,
 } from '@/components/travel-stats-header';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, paneShare } from '@/constants/theme';
 import { JourneyDetail } from '@/screens/journey-detail';
 import { useNow } from '@/hooks/use-now';
 import { useSplitLayout } from '@/hooks/use-split-layout';
@@ -222,7 +222,7 @@ export function Journeys() {
   // (a fold rotated to a horizontal hinge is a tabletop, not a book). The
   // rules live in useSplitLayout, shared with the other tabs.
   const layout = useSplitLayout('flights', {
-    primaryWidth: (width) => width * 0.42,
+    primaryWidth: paneShare(0.42),
     allowWeb: true,
   });
   // Split once the journal is in: a trip's detail beside the list, or — with

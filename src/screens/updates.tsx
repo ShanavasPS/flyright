@@ -26,7 +26,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useHeroTrip } from '@/components/travel-day-banner';
 import { CONVEX_URL } from '@/constants/config';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, paneShare } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useAuthSettled, useSettled } from '@/hooks/use-settled';
 import { useSplitLayout } from '@/hooks/use-split-layout';
@@ -137,7 +137,9 @@ export function Updates() {
   // and who is travelling moves into a panel beside it — the live faces, or
   // on a quiet day everyone's next trip. Nothing is selected here. Split once
   // the screen knows what to say; the skeleton stays single-column.
-  const layout = useSplitLayout('updates', { primaryWidth: (width) => width * 0.58 });
+  // The feed takes the larger share; the panel beside it never drops below
+  // a small phone's width (paneShare).
+  const layout = useSplitLayout('updates', { primaryWidth: (width) => width - paneShare(0.42)(width) });
   const split = layout.split && !loading;
   // Everyone you follow's next trip, as the phone's quiet-day strip shows it;
   // on a wide window it stands in the panel whenever you follow someone.

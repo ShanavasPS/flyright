@@ -101,7 +101,17 @@ export const WideWindowMinWidth = 600;
  * Was 840 (Android's expanded breakpoint) until 2026-09-22. */
 export const TwoPaneMinWidth = 740;
 
-/** A pane's fixed width on a wide window, shrunk on the narrowest ones so
- * the other pane keeps at least 55% (an iPad mini: 335 | 409). */
+/** The narrowest a pane may get: a small phone (iPhone SE). Every screen in
+ * the app already lays out at this width, so a pane never gets narrower
+ * than a layout that was designed for it. */
+export const MinPaneWidth = 375;
+
+/** A pane's fixed width on a wide window, shrunk on the narrowest ones to
+ * about half the window but never below MinPaneWidth (an iPad mini at 744:
+ * 375 | 369). */
 export const paneWidth = (fixed: number) => (windowWidth: number) =>
-  Math.min(fixed, Math.round(windowWidth * 0.45));
+  Math.min(fixed, Math.max(MinPaneWidth, Math.round(windowWidth / 2)));
+
+/** A pane that takes a share of the window, never below MinPaneWidth. */
+export const paneShare = (share: number) => (windowWidth: number) =>
+  Math.max(MinPaneWidth, Math.round(windowWidth * share));
