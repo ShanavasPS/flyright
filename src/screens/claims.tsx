@@ -1,6 +1,6 @@
 import { useAuth } from '@clerk/expo';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -67,6 +67,18 @@ export function Claims() {
     split && rows?.length
       ? keepOrFallback(selectedId, ids, () => pickClaim(rows.map((row) => row.claims), now))
       : null;
+  // Pin what the pane shows. The default pick is a starting point, not a
+  // rule the pane keeps following: recording a response on the overdue claim
+  // makes it no longer overdue, and without this the pane jumped to another
+  // claim under the thumb that had just answered. Only a claim that is gone
+  // falls back (keepOrFallback), and then the fallback is pinned in turn.
+  useEffect(() => {
+    // In an effect, not during render: this screen renders inside a tab that
+    // may not have mounted yet, and a render-time update there is an error.
+    // Guarded, so it settles after one extra render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (detailId != null && detailId !== selectedId) setSelectedId(detailId);
+  }, [detailId, selectedId]);
   const detailRow = detailId ? rows?.find((row) => row.claims.id === detailId) : undefined;
   const select = split ? (id: string) => setSelectedId(id) : undefined;
 

@@ -286,6 +286,16 @@ export function People() {
     return { ids, pick: () => pickPerson(data.following, data.followers, flying, clock.getTime()) };
   }, [data, clock]);
   const detailId = split && people ? keepOrFallback(selectedId, people.ids, people.pick) : null;
+  // Pin what the pane shows (see Claims): whoever was in the air when the
+  // page opened stays open after they land, until someone else is tapped or
+  // they leave the circle.
+  useEffect(() => {
+    // In an effect, not during render: this screen renders inside a tab that
+    // may not have mounted yet, and a render-time update there is an error.
+    // Guarded, so it settles after one extra render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (detailId != null && detailId !== selectedId) setSelectedId(detailId);
+  }, [detailId, selectedId]);
   const pane = useMemo(
     () => (split ? { selectedId: detailId, open: (userId: string) => setSelectedId(userId) } : null),
     [split, detailId],
