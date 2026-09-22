@@ -238,8 +238,12 @@ the route list), the Duo reversed order (switch off). Code freeze here.
   the iPad tab-bar clearance is 24 pt.
 
 **Known, not fixed (not regressions):**
-- Android: unfolding scrolls the Flights list back to the top. The
-  selection and screen state survive (no remount); folding keeps the scroll.
+- ~~Android: unfolding scrolls the Flights list back to the top.~~ **Resolved
+  (checked 2026-09-22 on the Pixel Fold emulator, main at 312ccf4):** in both
+  orders — scroll folded then unfold, and scroll unfolded → fold → unfold —
+  the list keeps its position; logging showed no remount and no jump to 0.
+  Most likely removed by the unsplit column fix (e39d697), which stopped the
+  list keeping a stale width across a fold.
 - Dev only: fast refresh sometimes misses newly added files — force-reload
   before trusting a check. Maestro cannot find elements in iPad landscape
   (test iPad in portrait; the 13" still splits) and on iOS it can attach to
