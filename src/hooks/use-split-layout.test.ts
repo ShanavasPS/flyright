@@ -7,6 +7,7 @@ const NO_FOLD: FoldState = { posture: 'none', orientation: null, isSeparating: f
 
 const input = (over: Partial<SplitInput>): SplitInput => ({
   width: 390,
+  fontScale: 1,
   os: 'ios',
   isPad: false,
   fold: NO_FOLD,
@@ -87,6 +88,13 @@ describe('splitLayoutFor — Android postures and switches', () => {
   it('treats a separating horizontal hinge with no bounds as flat, like Flights does', () => {
     const fold: FoldState = { posture: 'halfOpened', orientation: 'horizontal', isSeparating: true, hingeBounds: null };
     expect(splitLayoutFor(input({ os: 'android', width: 841, fold }))).toMatchObject({ split: true, tabletop: false });
+  });
+
+  it('keeps one column at the accessibility text sizes', () => {
+    expect(splitLayoutFor(input({ isPad: true, width: 1180, fontScale: 1.35 })).split).toBe(true);
+    expect(splitLayoutFor(input({ isPad: true, width: 1180, fontScale: 1.5 })).split).toBe(true);
+    expect(splitLayoutFor(input({ isPad: true, width: 1180, fontScale: 1.8 })).split).toBe(false);
+    expect(splitLayoutFor(input({ os: 'android', width: 841, fontScale: 2 })).split).toBe(false);
   });
 
   it('honours a surface switched off', () => {

@@ -26,8 +26,14 @@ export interface SplitLayout {
 
 export type SplitSurface = Exclude<WideLayoutKey, 'duoMirror'>;
 
+/** Above this text scale the window stays one column. The standard sizes
+ * (up to xxxLarge, about 1.35×) split; the accessibility sizes do not. */
+export const MaxSplitFontScale = 1.5;
+
 export interface SplitInput {
   width: number;
+  /** The text size multiplier (Dynamic Type / Android font scale). */
+  fontScale: number;
   os: typeof Platform.OS;
   isPad: boolean;
   fold: FoldState;
@@ -56,7 +62,7 @@ export interface SplitInput {
  * and no 27.1 SDK: this reads only the window size.
  */
 export function splitLayoutFor(input: SplitInput): SplitLayout {
-  const { width, os, isPad, fold, switches, surface, primaryWidth, allowWeb } = input;
+  const { width, fontScale, os, isPad, fold, switches, surface, primaryWidth, allowWeb } = input;
   // Same test as the Flights tabletop layout: a horizontal hinge that splits
   // the screen and whose bounds are known.
   const tabletop =
@@ -65,7 +71,10 @@ export function splitLayoutFor(input: SplitInput): SplitLayout {
     !!fold.hingeBounds;
   const wide = width >= TwoPaneMinWidth;
   const duoOpen = os === 'ios' && !isPad && wide;
-  const split = wide && !tabletop && switches[surface] && (os !== 'web' || allowWeb);
+  // At the accessibility text sizes a 400 pt column cannot hold its own
+  // headings; the screen keeps one column so the text gets the full width.
+  const readable = fontScale <= MaxSplitFontScale;
+  const split = wide && readable && !tabletop && switches[surface] && (os !== 'web' || allowWeb);
 
   const bookHinge =
     fold.orientation === 'vertical' && fold.isSeparating ? fold.hingeBounds : null;
@@ -94,11 +103,12 @@ export function useSplitLayout(
     allowWeb?: boolean;
   },
 ): SplitLayout {
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const fold = useFoldState();
   const switches = useWideLayouts();
   return splitLayoutFor({
     width,
+    fontScale,
     os: Platform.OS,
     isPad: Platform.OS === 'ios' && Platform.isPad,
     fold,
