@@ -24,6 +24,7 @@ import { api } from '@/../convex/_generated/api';
 import type { Id } from '@/../convex/_generated/dataModel';
 import { Avatar } from '@/components/avatar';
 import { useNow } from '@/hooks/use-now';
+import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { tapLight } from '@/services/haptics';
 import { agoLabel, updateContext } from '@/services/trip-updates';
 
@@ -90,7 +91,7 @@ export function UpdateViewer({
         ? { journeyKey }
         : 'skip',
   );
-  const react = useMutation(api.updates.react);
+  const react = useReactToUpdate();
   // Your own post: the server refuses a heart on it, so this counts rather
   // than offers. Who gave them is on the trip's own "Your updates" sheet.
   const { userId: me } = useAuth();

@@ -28,6 +28,7 @@ import { useHeroTrip } from '@/components/travel-day-banner';
 import { CONVEX_URL } from '@/constants/config';
 import { MaxContentWidth, Spacing, paneShare } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { useAuthSettled, useSettled } from '@/hooks/use-settled';
 import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useJourneys } from '@/services/journeys';
@@ -61,7 +62,7 @@ export function Updates() {
   const circle = useQuery(api.circle.list, live && isSignedIn ? {} : 'skip');
   const respond = useMutation(api.circle.respondToRequest);
   const followBack = useMutation(api.circle.requestFollow);
-  const react = useMutation(api.updates.react);
+  const react = useReactToUpdate();
   // "Sign in and invite friends": once the sign-in actually completes, the
   // invite sheet opens. A cancelled sign-in never flips isSignedIn, so it
   // opens nothing. (Chaining it through sign-in's `next` would open the

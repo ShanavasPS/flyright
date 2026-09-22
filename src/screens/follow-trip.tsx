@@ -21,6 +21,7 @@ import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { UpdatesCard } from '@/components/trip-updates';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
@@ -46,7 +47,7 @@ export function FollowTrip({ token, sessionId }: { token?: string; sessionId?: I
   const result = sessionId ? followedResult : tokenResult;
   const tripPath = sessionId ? `/following/${sessionId}` : `/t/${token}`;
   const follow = useMutation(api.live.follow);
-  const react = useMutation(api.updates.react);
+  const react = useReactToUpdate();
   const now = useNow();
   const theme = useTheme();
   const [followed, setFollowed] = useState(false);

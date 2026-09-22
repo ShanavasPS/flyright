@@ -14,6 +14,7 @@ Deployed on the user's request, between releases; the stores keep 1.1.1. Checked
 | Stores | Untouched. App Store serves 1.1.1 (so 1.1.1 cleared review). The physical Pixel 9a still runs Play 1.0.39 |
 | Hosting (2nd) | `/flights` redirect-loop fix (`b3841b9`, web only): deployment `0hkv8urz6d` promoted; `flyright.expo.app` serves `entry-a00d1c626f2e3ba45923468fc66b9255.js`; `https://getflyright.com/flights` and the Expo URL now load the front page (was "Something went wrong" / max update depth). Env file pulled and removed again |
 | Hosting (3rd) | EU261 outermost-regions applicability (`b481c11`) for the web checker: deployment `gn4yaafjkq` promoted; `flyright.expo.app` serves `entry-059544051e3155186d10c15026d6fd89.js` = local export; `/`, `/flights`, `/check` load; `/api/app-version` unchanged. Env file pulled and removed |
+| Backend (2nd) | Follow page photos open full screen (`a09b8ca`): `live.byToken` (signed in) and `live.byFollow` gain an additive `photos: { ownerId, trips }` field — older apps ignore it. `release:deploy-backend`: production and development, **67** client functions on both; `release:preflight` passed (Jest **1095 tests**). The app side reaches phones with the next build |
 
 ## 2026-09-21 — 1.1.1 (Flights first again, Updates tab) replaced 1.1.0 in App Review; Play production live
 

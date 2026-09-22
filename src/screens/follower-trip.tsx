@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
@@ -18,6 +18,7 @@ import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { UpdatesCard } from '@/components/trip-updates';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { airportZone, getAirport } from '@/services/airports';
 import { flightInstant, formatTime, tripDateTitle } from '@/services/dates';
 import { useFlightPath } from '@/services/flight-path';
@@ -56,7 +57,7 @@ export function FollowerTrip({
     ownerId,
     journeyId: journeyId as Id<'journeys'>,
   });
-  const react = useMutation(api.updates.react);
+  const react = useReactToUpdate();
   const scrollRef = useRef<ScrollView>(null);
   // Where the posts sit, and whether the page still owes the reader that
   // scroll: the map and timeline above them settle their heights after the

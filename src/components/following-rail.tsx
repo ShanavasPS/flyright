@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/expo';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { Image } from 'expo-image';
 import { useRouter, type Href } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
@@ -22,6 +22,7 @@ import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { UpdatesCard } from '@/components/trip-updates';
 import { Spacing } from '@/constants/theme';
 import { UpdateViewerModal, type UpdateViewerSource } from '@/screens/update-viewer';
+import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { compactLiveView } from '@/services/connections';
@@ -526,7 +527,7 @@ function SheetBody({
   const { isSignedIn } = useAuth();
   const { session, onward, owner } = entry;
   const detailQuery = useQuery(api.live.byFollow, isSignedIn ? { sessionId: entry.sessionId as Id<'liveSessions'> } : 'skip');
-  const react = useMutation(api.updates.react);
+  const react = useReactToUpdate();
   const view = compactLiveView(session, onward, now);
   const detail = [view.detail, view.layover].filter(Boolean).join(' · ') || null;
   const { journey, state, facts, plan } = adaptPublicSession(session);

@@ -25,6 +25,7 @@ import { PersonTravel, Stat } from '@/components/person-travel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
@@ -66,7 +67,7 @@ export function Person({
   const shareBack = useMutation(api.circle.shareBack);
   const askToFollow = useMutation(api.circle.askToFollow);
   const cancelRequest = useMutation(api.circle.cancelRequest);
-  const react = useMutation(api.updates.react);
+  const react = useReactToUpdate();
   const block = useMutation(api.safety.block);
   const proLocked = useProLocked();
   const [busy, setBusy] = useState<'theirs' | 'mine' | null>(null);
