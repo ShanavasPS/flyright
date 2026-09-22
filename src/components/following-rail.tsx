@@ -5,7 +5,7 @@ import { useRouter, type Href } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { SlideInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -16,6 +16,7 @@ import { Avatar } from '@/components/avatar';
 import { FlightFactsStrip } from '@/components/flight-facts';
 import { PrimaryButton } from '@/components/primary-button';
 import { RouteLeg } from '@/components/route-leg';
+import { SHEET_ENTERING } from '@/components/sheet-entering';
 import { ThemedText } from '@/components/themed-text';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { UpdatesCard } from '@/components/trip-updates';
@@ -28,7 +29,6 @@ import { railStatus, type RailStatus } from '@/services/following-rail';
 import { adaptPublicSession, movedClocks, tripDone } from '@/services/public-session';
 import { markUpdatesSeen, useIsUnseen } from '@/services/seen-updates';
 import { agoLabel, captionOf, updateContext, type OwnUpdate, type TripUpdate } from '@/services/trip-updates';
-
 /** One followed trip as `live.following` returns it. */
 export type FollowingEntry = NonNullable<
   ReturnType<typeof useQuery<typeof api.live.following>>
@@ -374,13 +374,17 @@ export function MyUpdatesSheet({
   const [viewing, setViewing] = useState<UpdateViewerSource | null>(null);
   // One trip names itself in the header; several name themselves each.
   const single = trips.length === 1 ? trips[0]! : null;
+  // navigationBarTranslucent (both rail sheets): on Android the Modal is its
+  // own window; without it the window stopped above the navigation-bar area
+  // on first open and the tab bar showed through a gap under the sheet. The
+  // card pads itself by insets.bottom, so its button still clears the bar.
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <View style={styles.sheet}>
         <Pressable accessibilityLabel="Close" onPress={onClose} style={styles.backdrop} />
         {visible && (
           <Animated.View
-            entering={SlideInDown.duration(260)}
+            entering={SHEET_ENTERING}
             style={[
               styles.card,
               { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) },
@@ -468,14 +472,14 @@ function TripSheet({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={!!entry} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={!!entry} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       {/* Backdrop and card are siblings (see menu-sheet): a card inside a
           Pressable can't scroll on Android. */}
       <View style={styles.sheet}>
         <Pressable accessibilityLabel="Close" onPress={onClose} style={styles.backdrop} />
         {entry && (
           <Animated.View
-            entering={SlideInDown.duration(260)}
+            entering={SHEET_ENTERING}
             style={[
               styles.card,
               { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) },

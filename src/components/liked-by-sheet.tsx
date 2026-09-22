@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { SlideInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
+import { SHEET_ENTERING } from '@/components/sheet-entering';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
@@ -52,7 +53,7 @@ export function LikedBySheet({
         <Pressable accessibilityLabel="Close" onPress={onClose} style={styles.backdrop} />
         {open && update && (
           <Animated.View
-            entering={SlideInDown.duration(260)}
+            entering={SHEET_ENTERING}
             style={[
               styles.card,
               { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) },

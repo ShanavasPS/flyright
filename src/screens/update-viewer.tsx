@@ -277,7 +277,7 @@ export function UpdateViewerModal({
   onLeave: (href: Href) => void;
 }) {
   return (
-    <Modal visible={!!source} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={!!source} animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       {source && <UpdateViewer source={source} onClose={onClose} onLeave={onLeave} />}
     </Modal>
   );
