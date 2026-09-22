@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card';
 import { DataErrorCard } from '@/components/data-state';
 import { GlobeView, globePalette } from '@/components/globe-view';
+import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { ThemedText } from '@/components/themed-text';
 import { useHeroTrip } from '@/components/travel-day-banner';
@@ -16,6 +17,7 @@ import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useLivePlane } from '@/hooks/use-live-plane';
 import { useNow } from '@/hooks/use-now';
+import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
@@ -79,6 +81,7 @@ export function World() {
       eyebrow="Everywhere you’ve been"
       title="World"
       emptyCard={error ? <DataErrorCard error={error} /> : <EmptyCard />}
+      allowSplit
     />
   );
 }
@@ -100,6 +103,7 @@ export function WorldCanvas({
   emptyCard,
   onBack,
   shareable = false,
+  allowSplit = false,
 }: {
   /** Every journey the globe may draw. The canvas narrows it itself: to the
    * focused trip while there is one, otherwise to the chosen period. */
@@ -121,6 +125,10 @@ export function WorldCanvas({
   /** Offers the share poster. Only for the traveller's own globe — somebody
    * else's travel is theirs to post, not the viewer's. */
   shareable?: boolean;
+  /** The World tab only: on a wide window the cards docked under the globe
+   * move into a panel beside it, with the route list (docs/wide-layouts-plan.md
+   * §8). A friend's full-bleed world stays one column. */
+  allowSplit?: boolean;
 }) {
   const router = useRouter();
   const dark = useColorScheme() === 'dark';
@@ -155,6 +163,11 @@ export function WorldCanvas({
 
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
+  // Wide window: the globe keeps its pane (with its header), and the cards
+  // that dock under it on a phone move into a panel beside it.
+  const layout = useSplitLayout('world', { primaryWidth: (width) => width - 380 });
+  const split = allowSplit && layout.split && loaded;
+
   // The header fade and the stats card cover the globe's top and bottom.
   // Their heights are derived, not measured, so the fit lands in the strip
   // between them from the first frame.
@@ -168,7 +181,8 @@ export function WorldCanvas({
   const strip = {
     top: insets.top + HEADER_HEIGHT,
     // Keep room for the recenter control so showing it doesn't shift the fit.
-    bottom: footerInset + STATS_CARD_HEIGHT + RECENTER_CONTROL_HEIGHT,
+    // Split, the cards live in the panel and only the control stays below.
+    bottom: footerInset + (split ? 0 : STATS_CARD_HEIGHT) + RECENTER_CONTROL_HEIGHT,
   };
 
   // A plain return to World starts from the chosen period's overview,
@@ -268,7 +282,37 @@ export function WorldCanvas({
     router.push('/share-world');
   };
 
-  return (
+  // What docks under the globe: the empty card, the period chooser, a
+  // tapped route, the empty period or the stats. The panel beside the globe
+  // on a wide window, the footer over it everywhere else.
+  const cards = empty ? (
+    emptyCard
+  ) : choosing ? (
+    <PeriodCard
+      rows={rows}
+      period={period}
+      recap={recap}
+      onChange={choosePeriod}
+      onClose={() => setChoosing(false)}
+    />
+  ) : selected ? (
+    <RouteCard
+      route={selected.route}
+      plane={selected.plane}
+      onClose={() => setSelectedKey(null)}
+    />
+  ) : emptyPeriod ? (
+    <EmptyPeriodCard period={period} onReset={() => choosePeriod(ALL_TIME)} />
+  ) : recap.trips > 0 ? (
+    <Card style={styles.stats}>
+      <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
+      <Stat value={recap.airports} label={recap.airports === 1 ? 'airport' : 'airports'} />
+      <Stat value={recap.countries} label={recap.countries === 1 ? 'country' : 'countries'} />
+      <Stat value={formatKm(recap.totalKm)} label="km" />
+    </Card>
+  ) : null;
+
+  const globe = (
     <View
       style={styles.flex}
       onLayout={(e) => {
@@ -362,34 +406,67 @@ export function WorldCanvas({
         {!choosing && !empty && !emptyPeriod && moved && (
           <RecenterButton onPress={recenter} />
         )}
-        {empty ? (
-          emptyCard
-        ) : choosing ? (
-          <PeriodCard
-            rows={rows}
-            period={period}
-            recap={recap}
-            onChange={choosePeriod}
-            onClose={() => setChoosing(false)}
-          />
-        ) : selected ? (
-          <RouteCard
-            route={selected.route}
-            plane={selected.plane}
-            onClose={() => setSelectedKey(null)}
-          />
-        ) : emptyPeriod ? (
-          <EmptyPeriodCard period={period} onReset={() => choosePeriod(ALL_TIME)} />
-        ) : recap.trips > 0 ? (
-          <Card style={styles.stats}>
-            <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
-            <Stat value={recap.airports} label={recap.airports === 1 ? 'airport' : 'airports'} />
-            <Stat value={recap.countries} label={recap.countries === 1 ? 'country' : 'countries'} />
-            <Stat value={formatKm(recap.totalKm)} label="km" />
-          </Card>
-        ) : null}
+        {!split && cards}
       </View>
     </View>
+  );
+
+  // A friend's world never splits: return its one column exactly as before.
+  if (!allowSplit) return globe;
+
+  const routes = !empty && !emptyPeriod && !focusedRow ? data.routes : [];
+  return (
+    <SplitPanes
+      layout={{ ...layout, split }}
+      primary={globe}
+      secondary={
+        <SafeAreaView edges={['top', 'right']} style={styles.flex}>
+          <ScrollView
+            // The SafeAreaView pads the top; "automatic" would add it twice.
+            contentInsetAdjustmentBehavior="never"
+            contentContainerStyle={styles.panel}
+            showsVerticalScrollIndicator={false}>
+            {cards}
+            {routes.length > 1 && (
+              <View style={styles.routeList}>
+                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
+                  Routes
+                </ThemedText>
+                {routes.map((route) => {
+                  const on = route.key === selectedKey;
+                  return (
+                    <Pressable
+                      key={route.key}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      onPress={() => {
+                        setChoosing(false);
+                        setSelectedKey(on ? null : route.key);
+                      }}
+                      style={({ pressed }) => [
+                        styles.routeRow,
+                        on && { backgroundColor: theme.backgroundSelected },
+                        pressed && styles.routePressed,
+                      ]}>
+                      <View style={[styles.routeDot, { backgroundColor: theme.tint, opacity: on ? 1 : 0.45 }]} />
+                      <View style={styles.flex}>
+                        <ThemedText type="smallBold">
+                          {route.from.iata} → {route.to.iata}
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                          {route.from.city} → {route.to.city} · {route.count}{' '}
+                          {route.count === 1 ? 'flight' : 'flights'}
+                        </ThemedText>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      }
+    />
   );
 }
 
@@ -677,6 +754,32 @@ function RecenterButton({ onPress }: { onPress: () => void }) {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  // Wide window: the panel beside the globe, clear of iPadOS's floating tab bar.
+  panel: {
+    gap: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four + PadTabBarClearance,
+    paddingBottom: Spacing.six,
+  },
+  routeList: {
+    gap: Spacing.one,
+  },
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  routeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  routePressed: {
+    opacity: 0.7,
   },
   overlay: {
     position: 'absolute',
