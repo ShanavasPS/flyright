@@ -331,6 +331,15 @@ export function Person({
             onOpenTrip={openTrip}
             onReact={(updateId) => void react({ updateId: updateId as Id<'tripUpdates'> })}
             onReport={onReport}
+            onOpenPhoto={
+              p.updatesJourneyId
+                ? (updateId) =>
+                    router.push({
+                      pathname: '/update-viewer',
+                      params: { ownerId: userId, journeyId: p.updatesJourneyId!, updateId, name: p.name },
+                    })
+                : undefined
+            }
           />
         )}
       </>

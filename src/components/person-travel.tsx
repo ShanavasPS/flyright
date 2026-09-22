@@ -106,6 +106,7 @@ export function PersonTravel({
   onOpenTrip,
   onReact,
   onReport,
+  onOpenPhoto,
   badgeFor,
   dimFor,
   afterUpcoming,
@@ -123,6 +124,8 @@ export function PersonTravel({
   onReact?: (updateId: string) => void;
   /** Long-press on one of their updates → the report sheet. */
   onReport?: (updateId: string) => void;
+  /** Tapping one of their photos: it full screen, with its heart and thread. */
+  onOpenPhoto?: (updateId: string) => void;
   badgeFor?: (journeyId: string) => React.ReactNode;
   /** Rows to fade — the preview's "this member isn't shown this one". */
   dimFor?: (journeyId: string) => boolean;
@@ -289,7 +292,14 @@ export function PersonTravel({
           voice follows; or, the morning after, in place of the pass that
           has already let the trip go. */}
       {p.updates && p.updates.length > 0 && (
-        <UpdatesCard eyebrow={`From ${name}`} updates={p.updates} now={now} onReact={onReact} onReport={onReport} />
+        <UpdatesCard
+          eyebrow={`From ${name}`}
+          updates={p.updates}
+          now={now}
+          onReact={onReact}
+          onReport={onReport}
+          onOpenPhoto={onOpenPhoto}
+        />
       )}
 
       {/* The trip under way IS their upcoming trip until it lands: with

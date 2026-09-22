@@ -35,7 +35,7 @@ export function OwnUpdatesCard({
 }) {
   const router = useRouter();
   const theme = useTheme();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
   const updates = useQuery(api.updates.mine, isSignedIn ? { journeyKey: row.id } : 'skip');
   const remove = useMutation(api.updates.remove);
 
@@ -88,6 +88,15 @@ export function OwnUpdatesCard({
       updates={posted}
       now={now}
       onRemove={(updateId) => void remove({ updateId: updateId as Id<'tripUpdates'> })}
+      onOpenPhoto={
+        userId
+          ? (updateId) =>
+              router.push({
+                pathname: '/update-viewer',
+                params: { ownerId: userId, journeyKey: row.id, updateId, name: 'You' },
+              })
+          : undefined
+      }
       action={action}
     />
   );

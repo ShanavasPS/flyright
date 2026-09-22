@@ -186,6 +186,12 @@ export function FollowerTrip({
               onReport={(updateId) =>
                 router.push({ pathname: '/report', params: { userId: ownerId, name: owner.name, updateId } })
               }
+              onOpenPhoto={(updateId) =>
+                router.push({
+                  pathname: '/update-viewer',
+                  params: { ownerId, journeyId, updateId, name: owner.name },
+                })
+              }
             />
           </View>
         )}
