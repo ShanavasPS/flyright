@@ -92,8 +92,16 @@ export const MaxContentWidth = 800;
  * Android canonical medium-breakpoint. */
 export const WideWindowMinWidth = 600;
 
-/** Windows at least this wide (dp) get list+detail two-pane layouts —
- * unfolded foldables in landscape, large tablets. Matches the Android
- * canonical expanded-breakpoint, so a portrait unfolded foldable (~700dp)
- * stays single-pane. */
-export const TwoPaneMinWidth = 840;
+/** Windows at least this wide (pt/dp) get list+detail two-pane layouts:
+ * every iPad in portrait (mini 744, Air 11 820, 11-inch 834) and landscape,
+ * Galaxy/Pixel Folds unfolded in landscape (~832/841), tablets, an iPhone Duo
+ * opened flat (951). Everything phone-shaped stays one column: iPhones are
+ * portrait-only (≤ 440), Android phones and Flip/Fold cover screens ≤ ~480,
+ * a Fold held open in portrait ~707, the Duo's inner display upright 669.
+ * Was 840 (Android's expanded breakpoint) until 2026-09-22. */
+export const TwoPaneMinWidth = 740;
+
+/** A pane's fixed width on a wide window, shrunk on the narrowest ones so
+ * the other pane keeps at least 55% (an iPad mini: 335 | 409). */
+export const paneWidth = (fixed: number) => (windowWidth: number) =>
+  Math.min(fixed, Math.round(windowWidth * 0.45));

@@ -47,7 +47,7 @@ export interface SplitInput {
 /**
  * The one decision behind every wide-window split (docs/wide-layouts-plan.md).
  *
- * - Splits at TwoPaneMinWidth (840) — the Flights formula, unchanged — so
+ * - Splits at TwoPaneMinWidth (740) — was Flights' 840 — so
  *   every phone, both displays of a Flip, a foldable's cover and portrait
  *   inner screen and an iPad Split View half keep the phone layout.
  * - Never in tabletop posture: the screens that care have a layout for it.

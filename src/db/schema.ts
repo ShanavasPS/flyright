@@ -157,6 +157,11 @@ export const claims = sqliteTable('claims', {
    * email subject/cover note, the letter HTML, and who it addressed — so the
    * user can always re-read what actually went out. Null on old/draft rows. */
   sentSnapshot: text('sent_snapshot'),
+  /** JSON `[{ status, at }]`: each outcome recorded after sending, with when
+   * it was recorded (services/claim-history), so the claim's timeline can
+   * date "acknowledged", "paid" and the rest. Null on claims older than the
+   * column and on ones with no recorded outcome. */
+  statusHistory: text('status_history'),
   createdAt: text('created_at').notNull(),
 });
 

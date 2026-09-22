@@ -1,0 +1,1 @@
+ALTER TABLE `claims` ADD `status_history` text;

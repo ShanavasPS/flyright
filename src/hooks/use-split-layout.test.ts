@@ -1,3 +1,4 @@
+import { paneWidth } from '@/constants/theme';
 import { WIDE_LAYOUT_DEFAULTS } from '@/constants/wide-layouts';
 
 import type { FoldState } from '../../modules/flyright-fold';
@@ -26,10 +27,11 @@ describe('splitLayoutFor — every device class', () => {
     ['Galaxy Flip main', { os: 'android' as const, width: 360 }],
     ['Galaxy Fold cover', { os: 'android' as const, width: 344 }],
     ['Galaxy Fold inner, portrait', { os: 'android' as const, width: 707 }],
-    ['Galaxy Fold inner, landscape', { os: 'android' as const, width: 832 }],
-    ['iPad mini, portrait', { isPad: true, width: 744 }],
-    ['iPad 11-inch, portrait', { isPad: true, width: 834 }],
+    ['iPhone Pro Max, widest phone', { width: 440 }],
+    ['Android large phone', { os: 'android' as const, width: 480 }],
+    ['Pixel Fold inner, portrait', { os: 'android' as const, width: 674 }],
     ['iPad Split View half', { isPad: true, width: 590 }],
+    ['iPad mini Split View two-thirds', { isPad: true, width: 694 }],
     ['iPhone Duo cover', { width: 466 }],
     ['iPhone Duo inner, upright', { width: 669 }],
   ])('%s stays single-column', (_name, over) => {
@@ -43,9 +45,19 @@ describe('splitLayoutFor — every device class', () => {
     ['iPad 13-inch, portrait', { isPad: true, width: 1032 }],
     ['Pixel Fold, landscape', { os: 'android' as const, width: 841 }],
     ['Android tablet', { os: 'android' as const, width: 1280 }],
+    ['iPad 11-inch, portrait', { isPad: true, width: 834 }],
+    ['iPad Air 11, portrait', { isPad: true, width: 820 }],
+    ['iPad mini, portrait', { isPad: true, width: 744 }],
+    ['Galaxy Fold inner, landscape', { os: 'android' as const, width: 832 }],
   ])('%s splits with the primary pane on the left', (_name, over) => {
     const layout = splitLayoutFor(input(over));
     expect(layout).toMatchObject({ split: true, order: 'primary-left', primaryWidth: 400, duoOpen: false });
+  });
+
+  it('shrinks a fixed pane on the narrowest wide windows (paneWidth)', () => {
+    expect(paneWidth(400)(744)).toBe(335);
+    expect(paneWidth(400)(1024)).toBe(400);
+    expect(splitLayoutFor(input({ isPad: true, width: 744, primaryWidth: paneWidth(400) })).primaryWidth).toBe(335);
   });
 
   it('takes the primary width from a function of the window', () => {

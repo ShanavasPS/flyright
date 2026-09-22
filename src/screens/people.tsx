@@ -38,7 +38,7 @@ import {
   WHITE_DIM,
   WHITE_FAINT,
 } from '@/components/travel-stats-header';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, paneWidth } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useTheme } from '@/hooks/use-theme';
@@ -271,7 +271,7 @@ export function People() {
   // by default whoever is in the air, else the next to depart, else the
   // first row. Split once there is something to show (signed out, or the
   // circle has loaded); the spinner stays single-column.
-  const layout = useSplitLayout('friends', { primaryWidth: 400 });
+  const layout = useSplitLayout('friends', { primaryWidth: paneWidth(400) });
   const split = layout.split && (!isSignedIn || data != null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Minute ticks: who is in the air (and so the default pick) can change

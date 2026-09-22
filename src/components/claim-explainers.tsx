@@ -1,10 +1,17 @@
-import { StyleSheet, View } from 'react-native';
+import { useAuth } from '@clerk/expo';
+import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { explainAmount, recentFlights } from '@/services/claim-explain';
 import type { SummaryItem } from '@/services/claim-status';
+import type { ClaimWithJourney } from '@/services/claims';
+import { useDisruption, useDisruptions } from '@/services/disruptions';
+import { toDomainJourney, useJourneys } from '@/services/journeys';
 
 /**
  * What a wide window's Claims tab shows beside or over its claims
@@ -170,8 +177,134 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingVertical: Spacing.three,
   },
+  whyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  whyReason: {
+    maxWidth: '50%',
+    textAlign: 'right',
+  },
+  statusChip: {
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  statusText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
   bandAmount: {
     fontSize: 22,
     lineHeight: 28,
   },
 });
+
+/** "Why €400": the facts behind a claim's amount — distance and its band,
+ * the recorded arrival delay (or that none was recorded), and why the
+ * regulation covers the route (services/claim-explain). */
+export function WhyAmountCard({ row }: { row: ClaimWithJourney }) {
+  const theme = useTheme();
+  const { claims: claim, journeys: journey } = row;
+  const disruption = useDisruption(journey.id);
+  const rows = explainAmount({
+    regulation: claim.regulation,
+    distanceKm: journey.distanceKm,
+    fromCountry: journey.fromCountry,
+    toCountry: journey.toCountry,
+    carrierCountry: journey.carrierCountry,
+    delayMinutes: disruption?.delayMinutes ?? null,
+  });
+  if (!rows.length) return null;
+  const symbol = claim.currency === 'GBP' ? '£' : claim.currency === 'EUR' ? '€' : '';
+  return (
+    <Card>
+      <ThemedText type="smallBold" themeColor="heading" style={styles.bandsTitle}>
+        Why {symbol ? `${symbol}${claim.amount}` : `${claim.amount} ${claim.currency}`}
+      </ThemedText>
+      {rows.map((r, i) => (
+        <View
+          key={r.label}
+          style={[styles.whyRow, i > 0 && { borderTopColor: theme.hairline, borderTopWidth: StyleSheet.hairlineWidth }]}>
+          <View style={styles.stepCopy}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {r.label}
+            </ThemedText>
+            <ThemedText type="smallBold">{r.value}</ThemedText>
+          </View>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.whyReason}>
+            {r.why}
+          </ThemedText>
+        </View>
+      ))}
+    </Card>
+  );
+}
+
+/** "Recent flights": the latest flown trips with what the app knows about
+ * their arrival — the recorded delay, money owed, or "Not checked" for one it
+ * never saw land. Rows open the trip. Nothing when there is no flown trip. */
+export function RecentFlightsCard({ claimedJourneyIds }: { claimedJourneyIds: ReadonlySet<string> }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const { userId } = useAuth();
+  const { data: journeys } = useJourneys(userId);
+  const { data: disruptionRows } = useDisruptions();
+  const [now] = useState(() => Date.now());
+  const flights = useMemo(() => {
+    const delays = new Map<string, number>();
+    for (const d of disruptionRows ?? []) if (d.delayMinutes != null) delays.set(d.journeyId, d.delayMinutes);
+    return recentFlights(
+      (journeys ?? []).map((row) => ({
+        id: row.id,
+        journey: toDomainJourney(row),
+        scheduledArrival: row.scheduledArrival,
+        delayMinutes: delays.get(row.id) ?? null,
+      })),
+      claimedJourneyIds,
+      now,
+    );
+  }, [journeys, disruptionRows, claimedJourneyIds, now]);
+  if (!flights.length) return null;
+  return (
+    <View style={styles.block}>
+      <View style={styles.bandsHead}>
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.label}>
+          Recent flights
+        </ThemedText>
+      </View>
+      {flights.map((f, i) => (
+        <Pressable
+          key={f.id}
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: '/journey/[id]', params: { id: f.id } })}
+          style={({ pressed }) => [
+            styles.band,
+            i > 0 && { borderTopColor: theme.hairline, borderTopWidth: StyleSheet.hairlineWidth },
+            pressed && styles.pressed,
+          ]}>
+          <View style={styles.stepCopy}>
+            <ThemedText type="smallBold">{f.title}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {f.route}
+              {f.claimed ? ' · claim above' : ''}
+            </ThemedText>
+          </View>
+          <View style={[styles.statusChip, { backgroundColor: `${f.owed ? theme.success : theme.textSecondary}22` }]}>
+            <ThemedText type="smallBold" style={[styles.statusText, { color: f.owed ? theme.success : theme.textSecondary }]}>
+              {f.owed ?? f.status}
+            </ThemedText>
+          </View>
+        </Pressable>
+      ))}
+      <ThemedText type="small" themeColor="textSecondary">
+        Under 3 hours late pays nothing under EU261. Flights the app never saw land read “Not checked”.
+      </ThemedText>
+    </View>
+  );
+}

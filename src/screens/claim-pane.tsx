@@ -4,52 +4,54 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Card } from '@/components/card';
+import { WhyAmountCard } from '@/components/claim-explainers';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { PadTabBarClearance } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
-import { NEXT_STATUSES, letterExcerpt, parseSentSnapshot } from '@/services/claim-status';
+import { parseHistory } from '@/services/claim-history';
+import { NEXT_STATUSES, letterExcerpt, parseSentSnapshot, type ClaimStatus } from '@/services/claim-status';
 import type { ClaimWithJourney } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
 
 type Step = { label: string; when: string | null; state: 'done' | 'due' | 'late' | 'bad' };
 
-/** What happened to a claim, in order, from what the row records. Only
- * sending and the reply deadline carry dates (the claim row stores no date
- * for an acknowledgement, a payment or a rejection), so later steps are
- * named without one. */
+const OUTCOME_STEP: Partial<Record<ClaimStatus, { label: string; state: Step['state'] }>> = {
+  acknowledged: { label: 'The airline acknowledged it', state: 'done' },
+  escalated: { label: 'Escalated to the enforcement body', state: 'done' },
+  paid: { label: 'Compensation paid', state: 'done' },
+  rejected: { label: 'The airline rejected it', state: 'bad' },
+};
+
+/** What happened to a claim, in order, from what the row records: sending,
+ * then each recorded outcome with its date (claims.status_history), then —
+ * while the airline has not answered — when its reply is due. A claim whose
+ * outcome was recorded before the history column existed still shows that
+ * outcome, undated. */
 function claimSteps(row: ClaimWithJourney, now: number): Step[] {
   const { claims: claim, journeys: journey } = row;
   const day = (iso: string) => formatDayLabelWithYear(iso, null);
   const steps: Step[] = [];
   if (claim.sentAt) steps.push({ label: `Sent to ${journey.carrier}`, when: day(claim.sentAt), state: 'done' });
-  switch (claim.status) {
-    case 'sent':
-      if (claim.responseDeadline) {
-        const late = isOverdue(claim, now);
-        steps.push({
-          label: late ? 'Airline reply was due' : 'Airline reply due',
-          when: day(claim.responseDeadline),
-          state: late ? 'late' : 'due',
-        });
-      }
-      break;
-    case 'acknowledged':
-      steps.push({ label: 'The airline acknowledged it', when: null, state: 'done' });
-      break;
-    case 'escalated':
-      steps.push({ label: 'Escalated to the enforcement body', when: null, state: 'done' });
-      break;
-    case 'paid':
-      steps.push({ label: 'Compensation paid', when: null, state: 'done' });
-      break;
-    case 'rejected':
-      steps.push({ label: 'The airline rejected it', when: null, state: 'bad' });
-      break;
-    case 'draft':
-      break;
+  const history = parseHistory(claim.statusHistory);
+  for (const entry of history) {
+    const step = OUTCOME_STEP[entry.status];
+    if (step) steps.push({ ...step, when: day(entry.at) });
+  }
+  if (claim.status === 'sent') {
+    if (claim.responseDeadline) {
+      const late = isOverdue(claim, now);
+      steps.push({
+        label: late ? 'Airline reply was due' : 'Airline reply due',
+        when: day(claim.responseDeadline),
+        state: late ? 'late' : 'due',
+      });
+    }
+  } else if (!history.some((e) => e.status === claim.status)) {
+    const step = OUTCOME_STEP[claim.status];
+    if (step) steps.push({ ...step, when: null });
   }
   return steps;
 }
@@ -106,7 +108,7 @@ export function ClaimPane({ row, now }: { row: ClaimWithJourney; now: number }) 
           {steps.length > 0 && (
             <View style={styles.steps}>
               {steps.map((step, i) => (
-                <View key={step.label} style={styles.step}>
+                <View key={`${i}-${step.label}`} style={styles.step}>
                   <View style={styles.rail}>
                     <View
                       style={[
@@ -142,6 +144,8 @@ export function ClaimPane({ row, now }: { row: ClaimWithJourney; now: number }) 
             </Pressable>
           )}
         </Card>
+
+        <WhyAmountCard row={row} />
 
         {snapshot && (
           <Card>

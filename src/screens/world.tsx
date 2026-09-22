@@ -13,7 +13,7 @@ import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { ThemedText } from '@/components/themed-text';
 import { useHeroTrip } from '@/components/travel-day-banner';
 import { EmptyPeriodCard, PeriodButton, PeriodCard } from '@/components/world-period-card';
-import { Spacing } from '@/constants/theme';
+import { Spacing, paneWidth } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useLivePlane } from '@/hooks/use-live-plane';
 import { useNow } from '@/hooks/use-now';
@@ -165,7 +165,7 @@ export function WorldCanvas({
 
   // Wide window: the globe keeps its pane (with its header), and the cards
   // that dock under it on a phone move into a panel beside it.
-  const layout = useSplitLayout('world', { primaryWidth: (width) => width - 380 });
+  const layout = useSplitLayout('world', { primaryWidth: (width) => width - paneWidth(380)(width) });
   const split = allowSplit && layout.split && loaded;
 
   // The header fade and the stats card cover the globe's top and bottom.

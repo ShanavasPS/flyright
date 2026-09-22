@@ -5,6 +5,7 @@ import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
 import type { Verdict } from '@/rules/types';
 import { useLiveRow, useLiveRows } from '@/services/live-rows';
+import { appendHistory } from '@/services/claim-history';
 import { canTransition, type ClaimStatus, type SentSnapshot } from '@/services/claim-status';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 
@@ -116,6 +117,9 @@ export async function saveClaim(opts: {
 export async function recordOutcome(id: string, next: ClaimStatus): Promise<void> {
   const [existing] = await db.select().from(claims).where(eq(claims.id, id));
   if (!existing || !canTransition(existing.status, next)) return;
-  await db.update(claims).set({ status: next }).where(eq(claims.id, id));
+  await db
+    .update(claims)
+    .set({ status: next, statusHistory: appendHistory(existing.statusHistory, next, new Date()) })
+    .where(eq(claims.id, id));
   void reconcileNotifications();
 }

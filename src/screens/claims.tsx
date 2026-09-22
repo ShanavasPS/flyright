@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ClaimsSummaryCard, Eu261Bands, HowClaimsWork } from '@/components/claim-explainers';
+import { ClaimsSummaryCard, Eu261Bands, HowClaimsWork, RecentFlightsCard } from '@/components/claim-explainers';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { DataErrorCard, LoadingState } from '@/components/data-state';
 import { DashedNote, PaneOutline } from '@/components/pane-placeholders';
@@ -14,7 +14,7 @@ import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, paneWidth } from '@/constants/theme';
 import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
@@ -59,7 +59,7 @@ export function Claims() {
   // and the chosen claim — by default the one that needs you — opens beside
   // it. Split once there is something to say: the claims, or why they could
   // not be read. Loading stays single-column.
-  const layout = useSplitLayout('claims', { primaryWidth: 400 });
+  const layout = useSplitLayout('claims', { primaryWidth: paneWidth(400) });
   const split = layout.split && (!!error || !!rows);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const ids = useMemo(() => new Set((rows ?? []).map((row) => row.claims.id)), [rows]);
@@ -81,6 +81,7 @@ export function Claims() {
   }, [detailId, selectedId]);
   const detailRow = detailId ? rows?.find((row) => row.claims.id === detailId) : undefined;
   const select = split ? (id: string) => setSelectedId(id) : undefined;
+  const claimedIds = useMemo(() => new Set((rows ?? []).map((row) => row.journeys.id)), [rows]);
 
   const listPane = (
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
@@ -137,6 +138,9 @@ export function Claims() {
                 selected={row.claims.id === detailId}
               />
             ))}
+            {/* Wide only, and only when nothing is in progress: the list
+                answers "is anything owed right now?" to the bottom. */}
+            {split && open.length === 0 && <RecentFlightsCard claimedJourneyIds={claimedIds} />}
           </ScrollView>
         ) : (
           <ScrollView
@@ -171,6 +175,8 @@ export function Claims() {
   );
 }
 
+const NO_CLAIMS: ReadonlySet<string> = new Set();
+
 /** Wide window, no claims: say so in one small card, then how a claim works
  * and what the regulation pays — no claim-shaped silhouette, since the steps
  * already say what will appear here. */
@@ -186,6 +192,7 @@ function NoClaimsPane() {
           title="No active claims"
           detail="When a flight qualifies, its claim and every step with the airline open here."
         />
+        <RecentFlightsCard claimedJourneyIds={NO_CLAIMS} />
         <HowClaimsWork />
         <Eu261Bands />
       </ScrollView>
