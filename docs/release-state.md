@@ -2,6 +2,17 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-22 — backend + hosting only (no app release)
+
+Deployed on the user's request, between releases; the stores keep 1.1.1. Checked first that neither changes what the 1.1.1 apps get: the only backend change is internal (`devTools:importDemoJourneys`, screenshot accounts), and the only server-route change is `/api/app-version` gaining an optional `layouts` field, sent only when `WIDE_LAYOUTS` is set (it is not). Release notes and the flight routes are unchanged.
+
+| Item | Observed result |
+| --- | --- |
+| Code | `main` at `0c9040e`: wide layouts (merged), EU261 intra-EU €400 cap (`fae36ce`), landing copy "From three hours late … up to €600" (`0c9040e`) — the app-side changes reach phones only with the next build |
+| Backend | `release:deploy-backend`: production and development, **67** client functions on both. `release:preflight` exit 0: tsc, contract tests, Jest **91 suites / 1066 tests** (exits on its own now) |
+| Hosting | Deployment `tq3gt88h2o` promoted; `https://flyright.expo.app` serves `entry-24d78964ebdce78b5ef0ba60ba773d7a.js` = local export, which carries the new landing line. `/api/app-version` for 1.1.1: no `layouts` field; Play `latest` 1.1.1; App Store `latest` 1.1.1 released 2026-09-21T20:27:59Z (first request after the deploy returned `latest: null`, the route's fail-soft retry; answered on retry). `.env.production.local` pulled and removed (none pre-existed) |
+| Stores | Untouched. App Store serves 1.1.1 (so 1.1.1 cleared review). The physical Pixel 9a still runs Play 1.0.39 |
+
 ## 2026-09-21 — 1.1.1 (Flights first again, Updates tab) replaced 1.1.0 in App Review; Play production live
 
 TestFlight feedback on 1.1.0 (it led with other people's status, not the traveller's own flight) → Flights is the first tab again with the traveller's live card, Home became **Updates** (friends rail + postcards), a welcome greeting by name, postcard/You-tile/empty-state work. Version `1.1.1`, iOS build `61`, Android versionCode `58`. **1.1.0 never reached the App Store**: its review was withdrawn and the same version record renamed to 1.1.1 (recipe now in release-workflow.md → Builds). **Physical-device checks and the signed-in candidate check were skipped at the user's request.**
