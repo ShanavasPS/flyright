@@ -247,3 +247,40 @@ the route list), the Duo reversed order (switch off). Code freeze here.
 - The Duo simulator's inner display cannot be opened from scripts (Device
   Hub only), so the Duo is covered by the unit tests, the iPad override
   check and, on 2026-10-23, the device itself before `duoMirror` goes on.
+
+## 13. Day 5 (2026-09-22) — test passes 1–4
+
+**Pass 1 (static):** no native/config files, no debug leftovers; the only
+`router.back()` left are the pushed-page paths (`!embedded`, `onGone ??`).
+tsc, lint and 91 suites / 1059 tests green, exiting on their own.
+
+**Pass 2 (phone width, main vs branch):**
+- iPhone (signed in): Flights (live-card border only), Updates, Friends,
+  Claims, person page — identical.
+- Fold cover and Galaxy Flip (Android, `scripts/wide-layouts/ab-android.sh`):
+  Flights, Updates, Friends, Claims identical; World differs only by the
+  globe's live sun/animation.
+- Web (desktop width): Claims, Friends, Updates identical once the page has
+  finished loading.
+
+**Pass 3 (wide behaviour)** — found and fixed:
+- *The pane followed the default pick after an action* (Fold): recording a
+  response on the overdue claim made the pane jump to another claim. The
+  shown item is now pinned; only a vanished item falls back. Same in Friends.
+- *Accessibility text sizes* (iPad, AX-XXXL): a 400 pt column broke
+  "Friends" over two lines and crushed the live pass. Above 1.5× text scale
+  the window stays one column.
+- Passed: Remove trip from the Flights pane (no back navigation, pane falls
+  back to the next trip); record outcome in the Claims pane; mute/unmute in
+  the embedded person page (sheet opens over the pane, stays in place);
+  dark mode.
+
+**Pass 4 (transitions):** Fold fold/unfold with a claim selected (selection
+kept); iPad portrait→landscape with Clara selected (kept); deep link to a
+person while split (pushes the full page, back returns to the split with the
+default pick); Duo simulator cover (single column, no crash).
+
+**Dev-only noise seen, not app bugs:** a LogBox "state update on a component
+that hasn't mounted yet" from expo-router's `useLinking` when the dev client
+opens via URL (present on main too), and Maestro's iOS driver losing the
+iPad after rotations (reboot the simulator).
