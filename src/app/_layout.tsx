@@ -49,6 +49,7 @@ import {
 } from "@/services/notification-lifecycle";
 import { initNotifications } from "@/services/notifications";
 import { reconcileTravelDay } from "@/services/travel-day-lifecycle";
+import { repairIntraEuClaims } from "@/services/claims-repair";
 import { FollowerActivitySync } from "@/components/follower-activity-sync";
 import { initPurchases } from "@/services/purchases";
 import { applyStoredTheme } from "@/services/theme";
@@ -180,7 +181,10 @@ function RootLayout() {
   // migration 0004 introduces — running it before migrations finish would
   // warn "no such table" on every cold start of an upgraded install.
   useEffect(() => {
-    if (dbReady) void reconcileTravelDay();
+    if (!dbReady) return;
+    void reconcileTravelDay();
+    // Once per install: claims saved at the old intra-EU 600 EUR amount.
+    void repairIntraEuClaims();
   }, [dbReady]);
 
   if (dbError) {
