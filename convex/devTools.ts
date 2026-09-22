@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import type { Doc } from './_generated/dataModel';
 import { internalAction, internalMutation } from './_generated/server';
 import { armHeadsUp, createSession, materializeCircleFollows } from './liveHelpers';
 import { sendFollowerPush } from './onesignal';
@@ -389,9 +390,51 @@ export const seedDemoCircle = internalMutation({
  * account's trips, posts or photos. */
 const STORE_DEMO_PREFIX = 'store_demo_';
 
+/** The production twin of the store profile (scripts/store-profile.json →
+ * `prod`): four real Clerk accounts of Shanavas's, given over to screenshots
+ * on 2026-09-21 so the profile can be shot from the App Store build — the
+ * viewer and the three friends; nobody else is linked to them. Resetting
+ * clears ALL of a friend's trips and postcards, so an id goes in here only
+ * for an account that holds nothing else. */
+const SCREENSHOT_ACCOUNTS = new Set([
+  'user_3JKe1vlXldeZXFBDfZFWT38iB2U', // viewer (Maja)
+  'user_3JKeCs5sEnomDdsnhFAwZXFOTap', // Noah
+  'user_3JKiGbwVQ1j7kphfyM935IofArl', // Clara
+  'user_3IVT71D76Z6UInrzIVv8tR7J5YN', // Tomas
+]);
+
 function assertStoreDemo(userId: string) {
-  if (!userId.startsWith(STORE_DEMO_PREFIX)) throw new Error(`${userId} is not a ${STORE_DEMO_PREFIX}* person`);
+  if (!userId.startsWith(STORE_DEMO_PREFIX) && !SCREENSHOT_ACCOUNTS.has(userId)) {
+    throw new Error(`${userId} is not a ${STORE_DEMO_PREFIX}* person or a screenshot account`);
+  }
 }
+
+/** Writes the store viewer's journal into the cloud under its `demo-*` keys
+ * (the local seed's ids), so a phone signed in to the production twin pulls
+ * the same nine trips a simulator gets from scripts/seed-demo-data.mjs. The
+ * rows are the dev viewer's synced journal, re-anchored to now by
+ * scripts/seed-store-profile.mjs. Replaces rows with the same key; heads-ups
+ * are never armed, so nobody is told about a trip that isn't real. */
+export const importDemoJourneys = internalMutation({
+  args: { userId: v.string(), rows: v.array(v.record(v.string(), v.any())) },
+  handler: async (ctx, { userId, rows }) => {
+    assertStoreDemo(userId);
+    const out: string[] = [];
+    for (const row of rows) {
+      const naturalKey = String(row.naturalKey);
+      if (!naturalKey.startsWith('demo-')) throw new Error(`${naturalKey} is not a demo-* journal row`);
+      const { _id, _creationTime, headsUpScheduledId, headsUpSentAt, ...fields } = row;
+      const existing = await ctx.db
+        .query('journeys')
+        .withIndex('by_user_key', (q) => q.eq('userId', userId).eq('naturalKey', naturalKey))
+        .unique();
+      if (existing) await ctx.db.delete(existing._id);
+      await ctx.db.insert('journeys', { ...(fields as Doc<'journeys'>), userId, naturalKey, deletedAt: null });
+      out.push(`journey ${naturalKey}`);
+    }
+    return out;
+  },
+});
 
 /** Stores a stock photo (images.unsplash.com only) as a file owned by a
  * store-demo person, for a postcard — `npx convex run

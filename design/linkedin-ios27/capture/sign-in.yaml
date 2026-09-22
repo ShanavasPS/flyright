@@ -1,0 +1,17 @@
+appId: com.shanavasshaji.flyright
+---
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Sign in or create account"
+    timeout: 20000
+- tapOn: "Sign in or create account"
+- runFlow:
+    file: ../../../.maestro/clerk-dev-sign-in.yaml
+    env:
+      EMAIL: maja+clerk_test@example.com
+- extendedWaitUntil:
+    visible: ".*Maja.*"
+    timeout: 30000
+- takeScreenshot: evidence/signed-in

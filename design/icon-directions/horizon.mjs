@@ -1,0 +1,29 @@
+// E: combines the P2a globe composition and P2c aircraft scale from the
+// user's reference, with the existing FlyRight identity palette.
+export function horizonSvg(size = 1024) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100">
+    <defs>
+      <clipPath id="horizon-tile"><rect width="100" height="100" rx="22"/></clipPath>
+      <linearGradient id="horizon-sky" x1="0" y1="1" x2=".9" y2="0">
+        <stop stop-color="#0b1d3e"/><stop offset="1" stop-color="#16345f"/>
+      </linearGradient>
+      <linearGradient id="horizon-earth" x1=".3" y1="0" x2=".7" y2="1">
+        <stop stop-color="#2e5c9e"/><stop offset=".7" stop-color="#16345f"/>
+        <stop offset="1" stop-color="#0b1d3e"/>
+      </linearGradient>
+      <linearGradient id="horizon-route" x1="24" y1="76" x2="55" y2="60" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#a9b8ce"/><stop offset="1" stop-color="#e6edf8"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#horizon-tile)">
+      <rect width="100" height="100" fill="url(#horizon-sky)"/>
+      <circle cx="50" cy="124" r="86" fill="url(#horizon-earth)"/>
+      <circle cx="50" cy="124" r="86" fill="none" stroke="#a9b8ce" stroke-width=".7" opacity=".65"/>
+      <path d="M24 76 Q35 66 55 60" fill="none" stroke="url(#horizon-route)" stroke-width="3.1" stroke-linecap="round"/>
+      <circle cx="24" cy="76" r="2.8" fill="#e6edf8"/>
+      <g transform="translate(64 51) rotate(52) scale(.64) translate(-50 -50)">
+        <path d="M50 20 C53 20 55 24 55 29 V42 L78 57 V64 L55 56 V70 L63 77 V82 L50 78 L37 82 V77 L45 70 V56 L22 64 V57 L45 42 V29 C45 24 47 20 50 20 Z" fill="#e6edf8"/>
+      </g>
+    </g>
+  </svg>`;
+}

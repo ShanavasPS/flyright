@@ -1,0 +1,11 @@
+{
+  "nodes": [
+    { "id": "intro", "type": "text", "x": 0, "y": 0, "width": 944, "height": 120, "text": "# FlyRight · Ready for iOS 27\nTwo editorial directions using real app imagery. Browser comparison: editorial.html. Draft caption: post-v2.md." },
+    { "id": "light", "type": "file", "file": "flyright-ios27-editorial-light.png", "x": 0, "y": 160, "width": 432, "height": 540 },
+    { "id": "night", "type": "file", "file": "flyright-ios27-editorial-night.png", "x": 512, "y": 160, "width": 432, "height": 540 },
+    { "id": "light-note", "type": "text", "x": 0, "y": 728, "width": 432, "height": 120, "text": "## A / Clear editorial\nWhite space, native typography and the current World screen. Sharper product imagery; straightforward announcement." },
+    { "id": "night-note", "type": "text", "x": 512, "y": 728, "width": 432, "height": 120, "text": "## B / Night world\nNavy, globe-led composition with Apple’s official dark iOS 27 icon. Source globe is enlarged from the dark web capture." },
+    { "id": "demo-status", "type": "text", "x": 0, "y": 884, "width": 944, "height": 130, "text": "## Demo video — capture pending\nNative capture helper built. Intended account: Maja, the store-screenshot profile. Tour: Flights → Updates → Friends → World → Claims, with measured scrolling and real tab transitions. Simulator service recovery is required before recording." }
+  ],
+  "edges": []
+}

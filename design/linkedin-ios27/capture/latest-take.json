@@ -1,0 +1,19 @@
+{
+  "sim": "AA6A8347-57FC-40E6-AA7B-27180F27DD47",
+  "work": "/var/folders/hn/g2zv5c7913x89k6xnmkz75hh0000gn/T/flyright-ios27-take-NFOtsj",
+  "raw": "/var/folders/hn/g2zv5c7913x89k6xnmkz75hh0000gn/T/flyright-ios27-take-NFOtsj/screen-recording.mp4",
+  "result": "/var/folders/hn/g2zv5c7913x89k6xnmkz75hh0000gn/T/flyright-ios27-take-NFOtsj/tour.xcresult",
+  "recordingStartedAt": 1789997866.197,
+  "marks": {
+    "READY": 1789997865.769332,
+    "FLIGHTS": 1789997870.7744641,
+    "UPDATES": 1789997878.626964,
+    "FRIENDS": 1789997889.235302,
+    "WORLD": 1789997900.070372,
+    "CLAIMS": 1789997907.643302,
+    "RETURN": 1789997913.401853,
+    "DONE": 1789997919.008383
+  },
+  "testExitCode": 0,
+  "complete": true
+}

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>FlyRight — Icon directions</title>
+  <style>
+    :root { --ink:#0c1b36; --navy:#16345f; --paper:#fff; --porcelain:#edf2f9; --line:#e3e8ef; --muted:#5a6a7e; --tint:#1e6be0; --night:#070f20; --silver:#e6edf8; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:500 14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; }
+    button,a,input { font:inherit; } button,a { -webkit-tap-highlight-color:transparent; }
+    button { cursor:pointer; } button:focus-visible,a:focus-visible,input:focus-visible { outline:3px solid var(--tint); outline-offset:4px; }
+    button { color:inherit; } a { color:var(--tint); }
+    .top { border-bottom:1px solid var(--line); padding:24px 48px; display:flex; align-items:center; justify-content:space-between; gap:24px; }
+    .wordmark { font-size:20px; font-weight:750; letter-spacing:-.7px; }
+    .meta { color:var(--muted); font:500 11px/1.5 ui-monospace,SFMono-Regular,monospace; letter-spacing:.06em; }
+    main { max-width:1600px; padding:48px; margin:auto; }
+    .intro { display:flex; justify-content:space-between; align-items:flex-end; gap:48px; margin-bottom:40px; }
+    .eyebrow { margin:0 0 12px; font-size:12px; letter-spacing:.06em; color:var(--muted); }
+    h1 { font-size:34px; line-height:1.2; letter-spacing:-1.2px; margin:0 0 16px; font-weight:700; }
+    .intro p:last-child { margin:0; max-width:640px; color:var(--muted); font-size:16px; }
+    .palette { display:flex; gap:8px; flex-shrink:0; align-items:center; padding-bottom:4px; }
+    .swatch { width:24px; height:24px; border-radius:50%; border:1px solid var(--line); }
+    .toolbar { display:flex; gap:24px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .controls { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .control-label { font-size:12px; color:var(--muted); }
+    .segmented { display:flex; padding:4px; gap:4px; background:#f2f5f9; border-radius:16px; }
+    .segmented button { border:0; background:transparent; border-radius:12px; padding:8px 16px; font-size:12px; font-weight:600; min-height:36px; }
+    .segmented button[aria-pressed="true"] { background:var(--ink); color:white; }
+    .board { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px; }
+    .concept { border:1px solid var(--line); border-radius:24px; overflow:hidden; background:white; }
+    .concept.selected { border-color:var(--ink); outline:1px solid var(--ink); }
+    .art { padding:32px 24px; background:var(--porcelain); display:flex; align-items:center; justify-content:center; min-height:290px; position:relative; }
+    .art > svg { width:200px; height:200px; max-width:100%; }
+    .art.light { background:#f2f5f9; } .art.mono { background:#f2f5f9; }
+    .art .number { position:absolute; top:16px; left:20px; font:500 11px ui-monospace,SFMono-Regular,monospace; color:var(--muted); }
+    .content { padding:24px; }
+    .category { color:var(--muted); font-size:11px; margin:0 0 4px; }
+    h2 { font-size:24px; line-height:1.2; margin:0 0 12px; letter-spacing:-.6px; font-weight:650; }
+    .summary { margin:0; color:var(--muted); min-height:64px; font-size:13px; line-height:1.65; }
+    .variant-row { display:flex; gap:16px; padding:20px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin:16px 0; }
+    figure { margin:0; } .variant-row figure { flex:1; }
+    .variant-row svg { display:block; width:44px; height:44px; }
+    figcaption { color:var(--muted); font-size:10px; margin-top:8px; }
+    .choose { width:100%; text-align:left; border:0; background:none; padding:4px 0; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+    .choose span:last-child { font-size:18px; }
+    .selected .choose { color:var(--tint); }
+    .recommend { margin:24px 0 40px; padding:16px 0; display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--line); }
+    .recommend strong { flex-shrink:0; font-size:13px; }
+    .recommend p { margin:0; color:var(--muted); font-size:13px; }
+    .review { display:grid; grid-template-columns:1fr 1.2fr; gap:48px; padding:32px; background:var(--porcelain); border-radius:24px; }
+    .review h2 { font-size:32px; margin-bottom:16px; }
+    .review p { font-size:14px; max-width:580px; color:var(--muted); }
+    .review .tag { display:inline-block; margin-bottom:16px; font:500 11px ui-monospace,SFMono-Regular,monospace; color:var(--muted); }
+    .review .tradeoff { border-left:2px solid var(--silver); padding-left:16px; }
+    .review .tradeoff b { display:block; color:var(--ink); font-size:12px; margin-bottom:4px; }
+    .size-panel { padding:24px; background:white; border:1px solid var(--line); border-radius:16px; }
+    .size-panel h3 { font-size:12px; font-weight:600; margin:0 0 24px; }
+    .sizes { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+    .sizes figure { text-align:center; min-width:32px; }
+    .sizes svg { display:block; margin:auto; }
+    .size-note { font-size:11px !important; margin-top:20px; margin-bottom:0; }
+    .compare { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--line); margin-top:24px; padding-top:24px; }
+    .compare figure { display:flex; align-items:center; gap:12px; }
+    .compare img { width:60px; height:60px; border-radius:14px; }
+    .compare figcaption { margin:0; font-size:11px; }
+    .compare svg { display:block; } .compare .arrow { color:var(--muted); }
+    .exports { display:flex; gap:16px; margin-top:24px; }
+    .exports a { font-size:12px; text-decoration:underline; text-underline-offset:4px; }
+    .foot { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-top:32px; padding-top:24px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+    .foot p { max-width:720px; margin:0; } .foot a { color:var(--muted); }
+    .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+    @media(min-width:1500px) { .art { min-height:320px; } .art > svg { width:224px; height:224px; } }
+    @media(max-width:1100px) { .board { grid-template-columns:repeat(2,minmax(0,1fr)); } .art { min-height:280px; } .summary { min-height:42px; } .review { grid-template-columns:1fr 1fr; gap:24px; } .sizes { gap:8px; } }
+    @media(max-width:700px) { .top { padding:20px 24px; } .top .meta { font-size:9px; } main { padding:32px 24px; } .intro { display:block; margin-bottom:32px; } .palette { margin-top:24px; } .board { gap:16px; } .art { min-height:200px; padding:32px 20px 20px; } .art > svg { width:136px; height:136px; } .content { padding:16px; } h2 { font-size:22px; } .summary { min-height:84px; } .category { min-height:32px; } .variant-row { gap:8px; } .variant-row svg { width:32px; height:32px; } .variant-row figcaption { font-size:9px; } .review { grid-template-columns:1fr; padding:24px; } .recommend { display:block; } .recommend p { margin-top:8px; } .foot { display:block; } .foot > span { display:block; margin-top:16px; } .controls { gap:8px; } .segmented button { padding:8px 12px; } }
+    @media(max-width:380px) { .board { grid-template-columns:1fr; } .summary,.category { min-height:0; } }
+    @media print { .toolbar,.choose,.exports { display:none; } main { padding:24px; } .top { padding:16px 24px; } .board { grid-template-columns:repeat(4,1fr); gap:12px; } .art { min-height:180px; } .art > svg { width:140px; height:140px; } .content { padding:16px; } .review { break-inside:avoid; } body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  </style>
+</head>
+<body>
+  <header class="top"><div class="wordmark">FlyRight</div><div class="meta">Identity study / 01 &nbsp; · &nbsp; 21 September 2026</div></header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">App icon directions</p><h1>A clearer mark. A more confident FlyRight.</h1><p>Four directions for the home screen. Each built around a strong silhouette, the existing navy palette, and the way an icon actually reads at small sizes.</p></div>
+      <div class="palette" aria-label="FlyRight brand colours"><span class="swatch" style="background:#0c1b36" title="Ink · #0c1b36"></span><span class="swatch" style="background:#16345f" title="Navy · #16345f"></span><span class="swatch" style="background:#a9b8ce" title="Silver · #a9b8ce"></span><span class="swatch" style="background:#e6edf8" title="Bright silver · #e6edf8"></span><span class="swatch" style="background:#edf2f9" title="Porcelain · #edf2f9"></span></div>
+    </section>
+    <div class="toolbar">
+      <div class="controls"><span class="control-label" id="appearance-label">Appearance</span><div class="segmented" role="group" aria-labelledby="appearance-label"><button data-mode="dark" aria-pressed="true">Navy</button><button data-mode="light" aria-pressed="false">Porcelain</button><button data-mode="mono" aria-pressed="false">One colour</button></div></div>
+      <div class="controls"><span class="control-label" id="mask-label">Preview mask</span><div class="segmented" role="group" aria-labelledby="mask-label"><button data-mask="rounded" aria-pressed="true">Rounded</button><button data-mask="circle" aria-pressed="false">Circle</button><button data-mask="square" aria-pressed="false">Square</button></div></div>
+    </div>
+    <section class="board" id="board" aria-label="Four app icon concepts"></section>
+    <aside class="recommend"><strong>My pick: A / Contrail</strong><p>The strongest balance of continuity and distinction. One recognisable shape keeps the original idea while giving it a calmer, more deliberate execution.</p></aside>
+    <section class="review" aria-labelledby="review-title">
+      <div><span class="tag" id="review-category"></span><h2 id="review-title"></h2><p id="review-rationale"></p><p class="tradeoff"><b>Consideration</b><span id="review-tradeoff"></span></p><p id="review-relationship" style="font-size:12px"></p><div class="exports"><a id="export-svg" download>Download vector</a><a id="export-png" download>Download 1024px PNG</a></div></div>
+      <div class="size-panel"><h3>Size check · displayed at actual CSS pixels</h3><div class="sizes" id="sizes"></div><p class="size-note">Solid geometry, with no gradient or shadow needed to carry the mark.</p><div class="compare"><figure><img src="data:image/png;base64,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" alt="Current FlyRight dotted contrail icon"><figcaption>Current<br>60 px</figcaption></figure><span class="arrow" aria-hidden="true">→</span><figure><div id="compare-icon"></div><figcaption id="compare-caption"></figcaption></figure></div></div>
+    </section>
+    <footer class="foot"><p>Concepts for review, not installed app assets. B–D deliberately explore alternatives to the existing contrail-check rule. Colours and voice follow the <a href="https://claude.ai/artifact/5V5zGwdsNjkjsk7C9Jmg7v" target="_blank" rel="noreferrer">FlyRight design system</a> (local snapshot synced 20 September). Masks are visual approximations; native production assets follow selection.</p><span>Editable vectors / no external dependencies</span></footer>
+    <p class="sr" id="announcement" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    // Review concepts only. Nothing in this folder is imported by the app.
+// Palette: the FlyRight design-system artifact, synced 2026-09-20, main@02c3dbd.
+const colors = {
+  ink: '#0c1b36', navy: '#16345f', navyDeep: '#0b1d3e',
+  silver: '#a9b8ce', silverBright: '#e6edf8', porcelain: '#edf2f9',
+  background: '#ffffff', dark: '#070f20', tint: '#1e6be0',
+};
+
+const concepts = [
+  {
+    id: 'a', name: 'Contrail', category: 'The brand, distilled',
+    summary: 'A single swept ribbon turns the check into a wing in ascent.',
+    rationale: 'Keeps the idea that belongs to FlyRight: departure and reassurance in one continuous shape. A broad leading edge and tapered tail give it presence without surface effects.',
+    tradeoff: 'More abstract than a literal aircraft. Best when recognition and a lasting identity matter most.',
+    relationship: 'Evolution of the existing contrail-check identity.',
+    recommendation: true,
+    // One closed silhouette: narrow trailing tip, rounded check heel, swept wing.
+    mark: '<path d="M24 53 L43 66 Q46 68 49 65 L77 30 Q79 27 81 29 L75 48 L85 52 Q86 53 84 54 L69 57 L52 76 Q47 82 41 76 Z"/>',
+  },
+  {
+    id: 'b', name: 'Wingform', category: 'A signature of our own',
+    summary: 'An italic F, built from the geometry of swept aircraft wings.',
+    rationale: 'A compact monogram gives FlyRight a distinct signature beyond the familiar plane symbol. The open cuts and forward lean create movement with very little detail.',
+    tradeoff: 'Reads as a brand before it reads as travel. Needs repeated use beside the FlyRight name.',
+    relationship: 'Exploration: replaces the contrail check with an F monogram.',
+    mark: '<path d="M29 76 L40 29 Q41 26 45 26 H81 L75 40 H52 L49 49 H70 L64 62 H46 L42 76 Z"/>',
+  },
+  {
+    id: 'c', name: 'Orbit', category: 'Your world in motion',
+    summary: 'One open orbit flows into an aircraft heading beyond the circle.',
+    rationale: 'Connects the icon to the World experience and a lifetime of flights. An open, tapered orbit gives the aircraft a purposeful route without adding a globe grid.',
+    tradeoff: 'The most descriptive option, but its orbit carries more detail at very small sizes.',
+    relationship: 'Exploration: a route-led identity in the existing navy palette.',
+    mark: '<path d="M71 35 C56 22 37 28 29 43 C18 65 36 84 56 80 C71 77 81 64 80 53 C73 69 60 76 47 71 C30 65 28 48 39 38 C47 30 59 30 67 37 Z"/><g transform="translate(72 32) rotate(42) scale(.48) translate(-50 -50)"><path d="M50 20 C53 20 55 24 55 29 V42 L78 57 V64 L55 56 V70 L63 77 V82 L50 78 L37 82 V77 L45 70 V56 L22 64 V57 L45 42 V29 C45 24 47 20 50 20 Z"/></g>',
+  },
+  {
+    id: 'd', name: 'Departure', category: 'Quiet aviation confidence',
+    summary: 'A custom aircraft silhouette with one crisp, diagonal attitude.',
+    rationale: 'Immediately recognisable as a flight app. A larger, optically centred aircraft, drawn specifically for this icon, replaces the stock plane and surrounding decoration.',
+    tradeoff: 'The quickest to understand, but the least distinctive in a category full of aircraft marks.',
+    relationship: 'Exploration: retains the aircraft, removes the check motif.',
+    mark: '<g transform="rotate(38 50 50)"><path d="M50 20 C53 20 55 24 55 29 V42 L78 57 V64 L55 56 V70 L63 77 V82 L50 78 L37 82 V77 L45 70 V56 L22 64 V57 L45 42 V29 C45 24 47 20 50 20 Z"/></g>',
+  },
+];
+
+function iconSvg(id, { mode = 'dark', mask = 'rounded', size = 256, label = true, uid = '' } = {}) {
+  const concept = concepts.find(c => c.id === id);
+  if (!concept) throw new Error(`Unknown concept: ${id}`);
+  const fill = mode === 'dark' ? colors.silverBright : colors.ink;
+  const background = mode === 'dark' ? colors.ink : mode === 'mono' ? colors.silverBright : colors.porcelain;
+  const clipId = `clip-${id}-${mode}-${mask}-${uid}`;
+  const shape = mask === 'circle'
+    ? '<circle cx="50" cy="50" r="50"/>'
+    : `<rect width="100" height="100" rx="${mask === 'square' ? 0 : 22}"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100" ${label ? `role="img" aria-label="FlyRight ${concept.name}, ${mode} concept"` : 'aria-hidden="true"'}><defs><clipPath id="${clipId}">${shape}</clipPath></defs><g clip-path="url(#${clipId})"><rect width="100" height="100" fill="${background}"/><g fill="${fill}">${concept.mark}</g></g></svg>`;
+}
+
+    let mode='dark', mask='rounded', selected='a', sequence=0;
+    const svg=(id,opts={})=>iconSvg(id,{mode,mask,uid:`web-${sequence++}`,...opts});
+    function renderBoard() {
+      document.getElementById('board').innerHTML=concepts.map(c=>`<article class="concept ${c.id===selected?'selected':''}" data-id="${c.id}"><div class="art ${mode}"><span class="number">${c.id.toUpperCase()} / 0${concepts.indexOf(c)+1}</span>${svg(c.id)}</div><div class="content"><p class="category">${c.category}</p><h2>${c.name}</h2><p class="summary">${c.summary}</p><div class="variant-row">${['light','dark','mono'].map((variant,i)=>`<figure>${svg(c.id,{mode:variant,size:44})}<figcaption>${['Porcelain','Navy','One colour'][i]}</figcaption></figure>`).join('')}</div><button class="choose" data-select="${c.id}" aria-pressed="${c.id===selected}" aria-label="Inspect ${c.name}"><span>${c.id===selected?'Inspecting this direction':'Inspect this direction'}</span><span aria-hidden="true">↗</span></button></div></article>`).join('');
+    }
+    function renderDetail() {
+      const c=concepts.find(c=>c.id===selected);
+      document.getElementById('review-category').textContent=`${c.id.toUpperCase()} / ${c.category}`;
+      document.getElementById('review-title').textContent=c.name;
+      document.getElementById('review-rationale').textContent=c.rationale;
+      document.getElementById('review-tradeoff').textContent=c.tradeoff;
+      document.getElementById('review-relationship').textContent=c.relationship;
+      document.getElementById('sizes').innerHTML=[80,60,40,24,16].map(size=>`<figure>${svg(c.id,{size})}<figcaption>${size} px</figcaption></figure>`).join('');
+      document.getElementById('compare-icon').innerHTML=svg(c.id,{size:60});
+      document.getElementById('compare-caption').innerHTML=`${c.name}<br>60 px`;
+      const vector=document.getElementById('export-svg');
+      vector.href='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(iconSvg(c.id,{mode,mask:'square',size:1024,uid:'export'}));
+      vector.download=`flyright-${c.name.toLowerCase()}-${mode}.svg`;
+      const png=document.getElementById('export-png');
+      png.href=`assets/${c.id}-${c.name.toLowerCase()}-${mode}.png`;
+      png.download=`flyright-${c.name.toLowerCase()}-${mode}.png`;
+    }
+    document.addEventListener('click',event=>{
+      const button=event.target.closest('button'); if(!button) return;
+      if(button.dataset.mode){mode=button.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));renderBoard();}
+      if(button.dataset.mask){mask=button.dataset.mask;document.querySelectorAll('[data-mask]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mask===mask)));renderBoard();}
+      if(button.dataset.select){selected=button.dataset.select;document.querySelectorAll('.concept').forEach(card=>{const active=card.dataset.id===selected;card.classList.toggle('selected',active);const choose=card.querySelector('.choose');choose.setAttribute('aria-pressed',String(active));choose.firstElementChild.textContent=active?'Inspecting this direction':'Inspect this direction';});}
+      renderDetail();document.getElementById('announcement').textContent=`${concepts.find(c=>c.id===selected).name}, ${mode} appearance, ${mask} mask.`;
+    });
+    renderBoard();renderDetail();
+  </script>
+</body>
+</html>

@@ -110,5 +110,26 @@
         ]
       }
     }
-  ]
+  ],
+  "prod": {
+    "comment": "The production twin (node scripts/seed-store-profile.mjs --prod): four real Clerk accounts of Shanavas's given over to screenshots, so the profile can be shot from the App Store build. Each store person maps to one; names and photos are set in Clerk to match. Listed in convex/devTools.ts SCREENSHOT_ACCOUNTS too. The reviewer account is deliberately not one of them.",
+    "viewer": {
+      "clerkUserId": "user_3JKe1vlXldeZXFBDfZFWT38iB2U",
+      "email": "shanavascruise.nest@gmail.com"
+    },
+    "people": {
+      "store_demo_noah": {
+        "clerkUserId": "user_3JKeCs5sEnomDdsnhFAwZXFOTap",
+        "email": "shanavascruise.usa@gmail.com"
+      },
+      "store_demo_clara": {
+        "clerkUserId": "user_3JKiGbwVQ1j7kphfyM935IofArl",
+        "email": "shanavasshajidev@gmail.com"
+      },
+      "store_demo_tomas": {
+        "clerkUserId": "user_3IVT71D76Z6UInrzIVv8tR7J5YN",
+        "email": "ar_user233@icloud.com"
+      }
+    }
+  }
 }

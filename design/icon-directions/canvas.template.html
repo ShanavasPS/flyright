@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>FlyRight — Icon directions</title>
+  <style>
+    :root { --ink:#0c1b36; --navy:#16345f; --paper:#fff; --porcelain:#edf2f9; --line:#e3e8ef; --muted:#5a6a7e; --tint:#1e6be0; --night:#070f20; --silver:#e6edf8; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:500 14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; }
+    button,a,input { font:inherit; } button,a { -webkit-tap-highlight-color:transparent; }
+    button { cursor:pointer; } button:focus-visible,a:focus-visible,input:focus-visible { outline:3px solid var(--tint); outline-offset:4px; }
+    button { color:inherit; } a { color:var(--tint); }
+    .top { border-bottom:1px solid var(--line); padding:24px 48px; display:flex; align-items:center; justify-content:space-between; gap:24px; }
+    .wordmark { font-size:20px; font-weight:750; letter-spacing:-.7px; }
+    .meta { color:var(--muted); font:500 11px/1.5 ui-monospace,SFMono-Regular,monospace; letter-spacing:.06em; }
+    main { max-width:1600px; padding:48px; margin:auto; }
+    .intro { display:flex; justify-content:space-between; align-items:flex-end; gap:48px; margin-bottom:40px; }
+    .eyebrow { margin:0 0 12px; font-size:12px; letter-spacing:.06em; color:var(--muted); }
+    h1 { font-size:34px; line-height:1.2; letter-spacing:-1.2px; margin:0 0 16px; font-weight:700; }
+    .intro p:last-child { margin:0; max-width:640px; color:var(--muted); font-size:16px; }
+    .palette { display:flex; gap:8px; flex-shrink:0; align-items:center; padding-bottom:4px; }
+    .swatch { width:24px; height:24px; border-radius:50%; border:1px solid var(--line); }
+    .toolbar { display:flex; gap:24px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .controls { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .control-label { font-size:12px; color:var(--muted); }
+    .segmented { display:flex; padding:4px; gap:4px; background:#f2f5f9; border-radius:16px; }
+    .segmented button { border:0; background:transparent; border-radius:12px; padding:8px 16px; font-size:12px; font-weight:600; min-height:36px; }
+    .segmented button[aria-pressed="true"] { background:var(--ink); color:white; }
+    .board { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px; }
+    .concept { border:1px solid var(--line); border-radius:24px; overflow:hidden; background:white; }
+    .concept.selected { border-color:var(--ink); outline:1px solid var(--ink); }
+    .art { padding:32px 24px; background:var(--porcelain); display:flex; align-items:center; justify-content:center; min-height:290px; position:relative; }
+    .art > svg { width:200px; height:200px; max-width:100%; }
+    .art.light { background:#f2f5f9; } .art.mono { background:#f2f5f9; }
+    .art .number { position:absolute; top:16px; left:20px; font:500 11px ui-monospace,SFMono-Regular,monospace; color:var(--muted); }
+    .content { padding:24px; }
+    .category { color:var(--muted); font-size:11px; margin:0 0 4px; }
+    h2 { font-size:24px; line-height:1.2; margin:0 0 12px; letter-spacing:-.6px; font-weight:650; }
+    .summary { margin:0; color:var(--muted); min-height:64px; font-size:13px; line-height:1.65; }
+    .variant-row { display:flex; gap:16px; padding:20px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin:16px 0; }
+    figure { margin:0; } .variant-row figure { flex:1; }
+    .variant-row svg { display:block; width:44px; height:44px; }
+    figcaption { color:var(--muted); font-size:10px; margin-top:8px; }
+    .choose { width:100%; text-align:left; border:0; background:none; padding:4px 0; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+    .choose span:last-child { font-size:18px; }
+    .selected .choose { color:var(--tint); }
+    .recommend { margin:24px 0 40px; padding:16px 0; display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--line); }
+    .recommend strong { flex-shrink:0; font-size:13px; }
+    .recommend p { margin:0; color:var(--muted); font-size:13px; }
+    .review { display:grid; grid-template-columns:1fr 1.2fr; gap:48px; padding:32px; background:var(--porcelain); border-radius:24px; }
+    .review h2 { font-size:32px; margin-bottom:16px; }
+    .review p { font-size:14px; max-width:580px; color:var(--muted); }
+    .review .tag { display:inline-block; margin-bottom:16px; font:500 11px ui-monospace,SFMono-Regular,monospace; color:var(--muted); }
+    .review .tradeoff { border-left:2px solid var(--silver); padding-left:16px; }
+    .review .tradeoff b { display:block; color:var(--ink); font-size:12px; margin-bottom:4px; }
+    .size-panel { padding:24px; background:white; border:1px solid var(--line); border-radius:16px; }
+    .size-panel h3 { font-size:12px; font-weight:600; margin:0 0 24px; }
+    .sizes { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+    .sizes figure { text-align:center; min-width:32px; }
+    .sizes svg { display:block; margin:auto; }
+    .size-note { font-size:11px !important; margin-top:20px; margin-bottom:0; }
+    .compare { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--line); margin-top:24px; padding-top:24px; }
+    .compare figure { display:flex; align-items:center; gap:12px; }
+    .compare img { width:60px; height:60px; border-radius:14px; }
+    .compare figcaption { margin:0; font-size:11px; }
+    .compare svg { display:block; } .compare .arrow { color:var(--muted); }
+    .exports { display:flex; gap:16px; margin-top:24px; }
+    .exports a { font-size:12px; text-decoration:underline; text-underline-offset:4px; }
+    .foot { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-top:32px; padding-top:24px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+    .foot p { max-width:720px; margin:0; } .foot a { color:var(--muted); }
+    .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+    @media(min-width:1500px) { .art { min-height:320px; } .art > svg { width:224px; height:224px; } }
+    @media(max-width:1100px) { .board { grid-template-columns:repeat(2,minmax(0,1fr)); } .art { min-height:280px; } .summary { min-height:42px; } .review { grid-template-columns:1fr 1fr; gap:24px; } .sizes { gap:8px; } }
+    @media(max-width:700px) { .top { padding:20px 24px; } .top .meta { font-size:9px; } main { padding:32px 24px; } .intro { display:block; margin-bottom:32px; } .palette { margin-top:24px; } .board { gap:16px; } .art { min-height:200px; padding:32px 20px 20px; } .art > svg { width:136px; height:136px; } .content { padding:16px; } h2 { font-size:22px; } .summary { min-height:84px; } .category { min-height:32px; } .variant-row { gap:8px; } .variant-row svg { width:32px; height:32px; } .variant-row figcaption { font-size:9px; } .review { grid-template-columns:1fr; padding:24px; } .recommend { display:block; } .recommend p { margin-top:8px; } .foot { display:block; } .foot > span { display:block; margin-top:16px; } .controls { gap:8px; } .segmented button { padding:8px 12px; } }
+    @media(max-width:380px) { .board { grid-template-columns:1fr; } .summary,.category { min-height:0; } }
+    @media print { .toolbar,.choose,.exports { display:none; } main { padding:24px; } .top { padding:16px 24px; } .board { grid-template-columns:repeat(4,1fr); gap:12px; } .art { min-height:180px; } .art > svg { width:140px; height:140px; } .content { padding:16px; } .review { break-inside:avoid; } body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  </style>
+</head>
+<body>
+  <header class="top"><div class="wordmark">FlyRight</div><div class="meta">Identity study / 01 &nbsp; · &nbsp; 21 September 2026</div></header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">App icon directions</p><h1>A clearer mark. A more confident FlyRight.</h1><p>Four directions for the home screen. Each built around a strong silhouette, the existing navy palette, and the way an icon actually reads at small sizes.</p></div>
+      <div class="palette" aria-label="FlyRight brand colours"><span class="swatch" style="background:#0c1b36" title="Ink · #0c1b36"></span><span class="swatch" style="background:#16345f" title="Navy · #16345f"></span><span class="swatch" style="background:#a9b8ce" title="Silver · #a9b8ce"></span><span class="swatch" style="background:#e6edf8" title="Bright silver · #e6edf8"></span><span class="swatch" style="background:#edf2f9" title="Porcelain · #edf2f9"></span></div>
+    </section>
+    <div class="toolbar">
+      <div class="controls"><span class="control-label" id="appearance-label">Appearance</span><div class="segmented" role="group" aria-labelledby="appearance-label"><button data-mode="dark" aria-pressed="true">Navy</button><button data-mode="light" aria-pressed="false">Porcelain</button><button data-mode="mono" aria-pressed="false">One colour</button></div></div>
+      <div class="controls"><span class="control-label" id="mask-label">Preview mask</span><div class="segmented" role="group" aria-labelledby="mask-label"><button data-mask="rounded" aria-pressed="true">Rounded</button><button data-mask="circle" aria-pressed="false">Circle</button><button data-mask="square" aria-pressed="false">Square</button></div></div>
+    </div>
+    <section class="board" id="board" aria-label="Four app icon concepts"></section>
+    <aside class="recommend"><strong>My pick: A / Contrail</strong><p>The strongest balance of continuity and distinction. One recognisable shape keeps the original idea while giving it a calmer, more deliberate execution.</p></aside>
+    <section class="review" aria-labelledby="review-title">
+      <div><span class="tag" id="review-category"></span><h2 id="review-title"></h2><p id="review-rationale"></p><p class="tradeoff"><b>Consideration</b><span id="review-tradeoff"></span></p><p id="review-relationship" style="font-size:12px"></p><div class="exports"><a id="export-svg" download>Download vector</a><a id="export-png" download>Download 1024px PNG</a></div></div>
+      <div class="size-panel"><h3>Size check · displayed at actual CSS pixels</h3><div class="sizes" id="sizes"></div><p class="size-note">Solid geometry, with no gradient or shadow needed to carry the mark.</p><div class="compare"><figure><img src="__CURRENT_ICON__" alt="Current FlyRight dotted contrail icon"><figcaption>Current<br>60 px</figcaption></figure><span class="arrow" aria-hidden="true">→</span><figure><div id="compare-icon"></div><figcaption id="compare-caption"></figcaption></figure></div></div>
+    </section>
+    <footer class="foot"><p>Concepts for review, not installed app assets. B–D deliberately explore alternatives to the existing contrail-check rule. Colours and voice follow the <a href="https://claude.ai/artifact/5V5zGwdsNjkjsk7C9Jmg7v" target="_blank" rel="noreferrer">FlyRight design system</a> (local snapshot synced 20 September). Masks are visual approximations; native production assets follow selection.</p><span>Editable vectors / no external dependencies</span></footer>
+    <p class="sr" id="announcement" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    __CONCEPT_SOURCE__
+    let mode='dark', mask='rounded', selected='a', sequence=0;
+    const svg=(id,opts={})=>iconSvg(id,{mode,mask,uid:`web-${sequence++}`,...opts});
+    function renderBoard() {
+      document.getElementById('board').innerHTML=concepts.map(c=>`<article class="concept ${c.id===selected?'selected':''}" data-id="${c.id}"><div class="art ${mode}"><span class="number">${c.id.toUpperCase()} / 0${concepts.indexOf(c)+1}</span>${svg(c.id)}</div><div class="content"><p class="category">${c.category}</p><h2>${c.name}</h2><p class="summary">${c.summary}</p><div class="variant-row">${['light','dark','mono'].map((variant,i)=>`<figure>${svg(c.id,{mode:variant,size:44})}<figcaption>${['Porcelain','Navy','One colour'][i]}</figcaption></figure>`).join('')}</div><button class="choose" data-select="${c.id}" aria-pressed="${c.id===selected}" aria-label="Inspect ${c.name}"><span>${c.id===selected?'Inspecting this direction':'Inspect this direction'}</span><span aria-hidden="true">↗</span></button></div></article>`).join('');
+    }
+    function renderDetail() {
+      const c=concepts.find(c=>c.id===selected);
+      document.getElementById('review-category').textContent=`${c.id.toUpperCase()} / ${c.category}`;
+      document.getElementById('review-title').textContent=c.name;
+      document.getElementById('review-rationale').textContent=c.rationale;
+      document.getElementById('review-tradeoff').textContent=c.tradeoff;
+      document.getElementById('review-relationship').textContent=c.relationship;
+      document.getElementById('sizes').innerHTML=[80,60,40,24,16].map(size=>`<figure>${svg(c.id,{size})}<figcaption>${size} px</figcaption></figure>`).join('');
+      document.getElementById('compare-icon').innerHTML=svg(c.id,{size:60});
+      document.getElementById('compare-caption').innerHTML=`${c.name}<br>60 px`;
+      const vector=document.getElementById('export-svg');
+      vector.href='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(iconSvg(c.id,{mode,mask:'square',size:1024,uid:'export'}));
+      vector.download=`flyright-${c.name.toLowerCase()}-${mode}.svg`;
+      const png=document.getElementById('export-png');
+      png.href=`assets/${c.id}-${c.name.toLowerCase()}-${mode}.png`;
+      png.download=`flyright-${c.name.toLowerCase()}-${mode}.png`;
+    }
+    document.addEventListener('click',event=>{
+      const button=event.target.closest('button'); if(!button) return;
+      if(button.dataset.mode){mode=button.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));renderBoard();}
+      if(button.dataset.mask){mask=button.dataset.mask;document.querySelectorAll('[data-mask]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mask===mask)));renderBoard();}
+      if(button.dataset.select){selected=button.dataset.select;document.querySelectorAll('.concept').forEach(card=>{const active=card.dataset.id===selected;card.classList.toggle('selected',active);const choose=card.querySelector('.choose');choose.setAttribute('aria-pressed',String(active));choose.firstElementChild.textContent=active?'Inspecting this direction':'Inspect this direction';});}
+      renderDetail();document.getElementById('announcement').textContent=`${concepts.find(c=>c.id===selected).name}, ${mode} appearance, ${mask} mask.`;
+    });
+    renderBoard();renderDetail();
+  </script>
+</body>
+</html>

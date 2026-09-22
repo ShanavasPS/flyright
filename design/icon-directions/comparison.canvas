@@ -1,0 +1,167 @@
+{
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "text",
+      "x": 0,
+      "y": -230,
+      "width": 1544,
+      "height": 170,
+      "text": "# FlyRight · Recommendations + original options\n\nNew E / Horizon combines the reference globe composition with a larger diagonal aircraft. The three reference icons are unchanged from your linked artifact. Original A–D are included below.\n\nOpen design/icon-directions/comparison.html for interactive size and grayscale checks."
+    },
+    {
+      "id": "image-e",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-e-board.png",
+      "x": 0,
+      "y": 0,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-e",
+      "type": "text",
+      "x": 0,
+      "y": 490,
+      "width": 360,
+      "height": 260,
+      "text": "## New E / Horizon\n\nCombines P2a’s curved globe with P2c’s aircraft scale and diagonal placement. A single silver route and one origin point carry the flight across the surface, using FlyRight’s existing navy palette.\n\n**Consideration:** A richer illustration than Contrail. The aircraft remains clear at small sizes; the route becomes a secondary detail."
+    },
+    {
+      "id": "image-ref-p2a",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-ref-p2a-board.png",
+      "x": 400,
+      "y": 0,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-ref-p2a",
+      "type": "text",
+      "x": 400,
+      "y": 490,
+      "width": 360,
+      "height": 260,
+      "text": "## Reference P2a / Bold\n\nMy preferred starting point from your reference. The curved horizon connects the identity to the World tab, while the solid route gives the flight a clear direction.\n\n**Consideration:** The radar rings, destination target and glow compete for attention as the icon gets smaller."
+    },
+    {
+      "id": "image-ref-p2c",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-ref-p2c-board.png",
+      "x": 800,
+      "y": 0,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-ref-p2c",
+      "type": "text",
+      "x": 800,
+      "y": 490,
+      "width": 360,
+      "height": 260,
+      "text": "## Reference P2c / Close-up\n\nThe strongest aircraft placement in the reference set. Its diagonal attitude and larger scale are the ideas carried into Horizon, with the globe grid and endpoint removed.\n\n**Consideration:** The globe grid and multiple route details add texture but contribute little at home-screen size."
+    },
+    {
+      "id": "image-ref-a",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-ref-a-board.png",
+      "x": 1200,
+      "y": 0,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-ref-a",
+      "type": "text",
+      "x": 1200,
+      "y": 490,
+      "width": 360,
+      "height": 260,
+      "text": "## Reference A / Glass contrail\n\nA familiar continuation of the contrail-check identity. The continuous trail is clearer than the current dotted check and connects directly to our simpler A / Contrail.\n\n**Consideration:** The bevel and highlights make the check visually heavy. This is a rendered visual, not a verified native glass asset."
+    },
+    {
+      "id": "image-a",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-a-board.png",
+      "x": 0,
+      "y": 790,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-a",
+      "type": "text",
+      "x": 0,
+      "y": 1280,
+      "width": 360,
+      "height": 260,
+      "text": "## Original A / Contrail\n\nKeeps the idea that belongs to FlyRight: departure and reassurance in one continuous shape. A broad leading edge and tapered tail give it presence without surface effects.\n\n**Consideration:** More abstract than a literal aircraft. Best when recognition and a lasting identity matter most."
+    },
+    {
+      "id": "image-b",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-b-board.png",
+      "x": 400,
+      "y": 790,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-b",
+      "type": "text",
+      "x": 400,
+      "y": 1280,
+      "width": 360,
+      "height": 260,
+      "text": "## Original B / Wingform\n\nA compact monogram gives FlyRight a distinct signature beyond the familiar plane symbol. The open cuts and forward lean create movement with very little detail.\n\n**Consideration:** Reads as a brand before it reads as travel. Needs repeated use beside the FlyRight name."
+    },
+    {
+      "id": "image-c",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-c-board.png",
+      "x": 800,
+      "y": 790,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-c",
+      "type": "text",
+      "x": 800,
+      "y": 1280,
+      "width": 360,
+      "height": 260,
+      "text": "## Original C / Orbit\n\nConnects the icon to the World experience and a lifetime of flights. An open, tapered orbit gives the aircraft a purposeful route without adding a globe grid.\n\n**Consideration:** The most descriptive option, but its orbit carries more detail at very small sizes."
+    },
+    {
+      "id": "image-d",
+      "type": "file",
+      "file": "design/icon-directions/assets/compare-d-board.png",
+      "x": 1200,
+      "y": 790,
+      "width": 360,
+      "height": 462
+    },
+    {
+      "id": "notes-d",
+      "type": "text",
+      "x": 1200,
+      "y": 1280,
+      "width": 360,
+      "height": 260,
+      "text": "## Original D / Departure\n\nImmediately recognisable as a flight app. A larger, optically centred aircraft, drawn specifically for this icon, replaces the stock plane and surrounding decoration.\n\n**Consideration:** The quickest to understand, but the least distinctive in a category full of aircraft marks."
+    },
+    {
+      "id": "source",
+      "type": "text",
+      "x": 0,
+      "y": 1590,
+      "width": 1560,
+      "height": 160,
+      "text": "## Source and scope\n\nReference: https://claude.ai/artifact/ELZJdh8ydFd5i6bgq93am4 (saved source reviewed 2026-09-21). P2a, P2c and A are reproduced unchanged; New E is our new interpretation. Original A–D remain as drawn in the first canvas.\n\nMy shortlist: E / Horizon for the globe direction; A / Contrail for a simpler graphic identity. No app assets have been installed or changed."
+    }
+  ],
+  "edges": []
+}
