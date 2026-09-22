@@ -7,6 +7,8 @@
 # (the dev store profile: Noah Berg, see scripts/seed-store-profile.mjs),
 # iPhone-sized simulator, dev build on Metro :8081. Taps by position because
 # the rail face and the feed postcard share the friend's name.
+# Start from a fresh launch: scripts/wide-layouts/regression.sh <udid> <out>
+# status-sheet-photo relaunches the dev client before the flow.
 appId: com.shanavasshaji.flyright
 tags:
   - updates
