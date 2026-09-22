@@ -1,6 +1,11 @@
 import { FlightLookupError, type FlightStatus } from '@/services/flight-lookup';
 import { importStatus, type ImportStatusInput } from './import-status';
 
+// flight-lookup imports @clerk/expo, whose native bundle opens a MessagePort
+// at import time; unmocked, that handle keeps Jest (and release:preflight)
+// from ever exiting. Same mock as flight-lookup.test.ts.
+jest.mock('@clerk/expo', () => ({ getClerkInstance: jest.fn() }));
+
 const flight = (over: Partial<FlightStatus> = {}): FlightStatus => ({
   flight: 'QR304', date: '2026-09-19', status: 'scheduled', landed: false, delayMinutes: null,
   distanceKm: 4397, carrier: { name: 'Qatar Airways', iata: 'QR' }, carrierCountry: 'QA',
