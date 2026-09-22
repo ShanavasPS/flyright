@@ -284,3 +284,24 @@ default pick); Duo simulator cover (single column, no crash).
 that hasn't mounted yet" from expo-router's `useLinking` when the dev client
 opens via URL (present on main too), and Maestro's iOS driver losing the
 iPad after rotations (reboot the simulator).
+
+## 14. Regression run after the merge (2026-09-22) — phones only
+
+`main` at 4327c6f vs 8f6c42f (before any wide-layout work), dev builds on an
+iPhone 17 Pro simulator (iOS 27, signed in as the dev store profile) and the
+FlyRight_Dev Android phone emulator (signed out, seeded with seed-wide.sql),
+run with `scripts/wide-layouts/regression.sh`:
+
+- iPhone: release-core (signed in, two cold starts), circle-preview,
+  journey-detail-map, trip-share, travel-stats, world-globe, world-period,
+  world-share, layout-bottom-edges — all pass.
+- Android: release-core (signed out), people-tab, travel-stats, world-globe,
+  world-period, world-share, layout-bottom-edges — all pass.
+- Six flows failed on the first pass (circle-preview, travel-stats and
+  world-period on iPhone; release-core, world-globe and world-period on
+  Android) and passed on both the old and the new code when re-run on the
+  same devices: first-cold-start timing, not regressions.
+- Not run: flows that write to the store profile (trip-notes, trip-journal,
+  claim-outcomes) and clear-state flows. Physical phones still carry store
+  builds (Pixel 9a: Play 1.0.39) and get the new code only with the next
+  release build.
