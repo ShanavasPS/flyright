@@ -77,6 +77,31 @@ export async function updatesFor(
   return Promise.all(rows.map((row) => publicUpdate(ctx, row, viewerId)));
 }
 
+/** Which trip each update the viewer may open full screen belongs to
+ * (updateId → journeys id), for pages that list a whole itinerary's updates
+ * — the follow page — while the viewer (forTrip) pages through one trip.
+ * Only updates forTrip would show this viewer are listed: someone following
+ * one leg by its link can see that leg's photos, not always the earlier
+ * legs' shown beside them. */
+export async function updateTrips(
+  ctx: QueryCtx | MutationCtx,
+  ownerId: string,
+  journeyKey: string | string[],
+  viewerId: string,
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  const trips = new Map<string, string | null>();
+  for (const row of await rowsFor(ctx, ownerId, journeyKey)) {
+    if (row.userId !== viewerId && !(await maySeeUpdate(ctx, row, viewerId))) continue;
+    if (!trips.has(row.journeyKey)) {
+      trips.set(row.journeyKey, (await journeyForKey(ctx, ownerId, row.journeyKey))?._id ?? null);
+    }
+    const trip = trips.get(row.journeyKey);
+    if (trip) out[row._id] = trip;
+  }
+  return out;
+}
+
 /** The newest update on one trip and how many there are — what the home
  * screen's pass shows beside the flight. */
 export async function latestUpdate(

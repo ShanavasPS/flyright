@@ -199,6 +199,21 @@ export function FollowTrip({ token, sessionId }: { token?: string; sessionId?: I
                 ? (updateId) => router.push({ pathname: '/report', params: { name: who, updateId } })
                 : undefined
             }
+            // Full screen needs an account; the server lists the photos this
+            // viewer may open (older servers send none, and the tap stays off).
+            onOpenPhoto={
+              Platform.OS !== 'web' && session.photos
+                ? (updateId) => {
+                    const journeyId = session.photos?.trips[updateId];
+                    if (!journeyId) return;
+                    router.push({
+                      pathname: '/update-viewer',
+                      params: { ownerId: session.photos!.ownerId, journeyId, updateId, name: who },
+                    });
+                  }
+                : undefined
+            }
+            canOpenPhoto={(updateId) => !!session.photos?.trips[updateId]}
           />
         )}
 

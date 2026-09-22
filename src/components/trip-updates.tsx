@@ -35,6 +35,7 @@ export function UpdatesCard({
   onReport,
   onRemove,
   onOpenPhoto,
+  canOpenPhoto,
   action,
   emptyText,
   testID,
@@ -50,6 +51,8 @@ export function UpdatesCard({
   onRemove?: (updateId: string) => void;
   /** Tapping the picture opens it full screen, with its heart and thread. */
   onOpenPhoto?: (updateId: string) => void;
+  /** Which photos onOpenPhoto takes; all of them when absent. */
+  canOpenPhoto?: (updateId: string) => boolean;
   /** The owner's "Share an update" row, above the list. */
   action?: React.ReactNode;
   /** Shown under the action when there is nothing yet. */
@@ -78,7 +81,7 @@ export function UpdatesCard({
             onReact={onReact}
             onReport={onReport}
             onRemove={onRemove}
-            onOpenPhoto={onOpenPhoto}
+            onOpenPhoto={!canOpenPhoto || canOpenPhoto(update.updateId) ? onOpenPhoto : undefined}
           />
         </Fragment>
       ))}

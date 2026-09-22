@@ -25,7 +25,7 @@ import {
   tripIsOver,
 } from './liveShared';
 import { blockedBetween } from './safetyHelpers';
-import { latestUpdate, updatesFor } from './updates';
+import { latestUpdate, updatesFor, updateTrips } from './updates';
 
 /** Travel-day live sessions: the traveler's device is the only writer of
  * stage state; followers and the public token page read reactively. All
@@ -307,6 +307,15 @@ export const byToken = query({
         .unique();
       viewerFollows = !!row || session.userId === identity.subject;
     }
+    // The journey so far, not just this leg: see itinerary.itineraryKeys.
+    const keys = await itineraryKeys(
+      ctx,
+      session.userId,
+      session,
+      !!identity &&
+        (identity.subject === session.userId ||
+          (await isCloseMember(ctx, session.userId, identity.subject))),
+    );
     return {
       ...toPublicSession(
         session,
@@ -315,20 +324,12 @@ export const byToken = query({
       ),
       viewerFollows,
       sessionId: viewerFollows && identity?.subject !== session.userId ? session._id : null,
-      // The journey so far, not just this leg: see itinerary.itineraryKeys.
-      updates: await updatesFor(
-        ctx,
-        session.userId,
-        await itineraryKeys(
-          ctx,
-          session.userId,
-          session,
-          !!identity &&
-            (identity.subject === session.userId ||
-              (await isCloseMember(ctx, session.userId, identity.subject))),
-        ),
-        identity?.subject ?? null,
-      ),
+      updates: await updatesFor(ctx, session.userId, keys, identity?.subject ?? null),
+      // Signed in: what a tap on a photo opens full screen (the viewer needs
+      // an account). Nobody else is told whose trips these are.
+      photos: identity
+        ? { ownerId: session.userId, trips: await updateTrips(ctx, session.userId, keys, identity.subject) }
+        : null,
     };
   },
 });
@@ -344,16 +345,13 @@ export const byFollow = query({
     const access = follow && await followerActivityAccess(ctx, follow);
     if (!access || access.session.status !== 'active') return { gone: true as const };
     const s = access.session;
+    const keys = await itineraryKeys(ctx, s.userId, s, await isCloseMember(ctx, s.userId, identity.subject));
     return {
       ...toPublicSession(s, await travelerName(ctx, s.userId), await followerCount(ctx, s._id)),
       viewerFollows: true,
       sessionId: s._id,
-      updates: await updatesFor(
-        ctx,
-        s.userId,
-        await itineraryKeys(ctx, s.userId, s, await isCloseMember(ctx, s.userId, identity.subject)),
-        identity.subject,
-      ),
+      updates: await updatesFor(ctx, s.userId, keys, identity.subject),
+      photos: { ownerId: s.userId, trips: await updateTrips(ctx, s.userId, keys, identity.subject) },
     };
   },
 });
