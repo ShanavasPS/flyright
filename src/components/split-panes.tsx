@@ -6,10 +6,11 @@ import { useTheme } from '@/hooks/use-theme';
 
 /** iPadOS floats its tab bar over the top of the window, centred, and the
  * safe area does not include it (docs/wide-layouts-plan.md §11). A second
- * pane that starts with text pads down by this much so its heading clears
- * the bar; the trip page's map is fine running under the glass. Zero
+ * pane that starts with text pads down by this much (on top of the safe
+ * area and its own Spacing.four) so its heading clears the bar and lines up
+ * with the list's eyebrow; the trip page's map is fine running under the glass. Zero
  * everywhere else: iPhones (the Duo included) keep the bar at the bottom. */
-export const PadTabBarClearance = Platform.OS === 'ios' && Platform.isPad ? 56 : 0;
+export const PadTabBarClearance = Platform.OS === 'ios' && Platform.isPad ? 24 : 0;
 
 /**
  * A screen's primary content with, on a wide window, a second pane beside it

@@ -74,7 +74,8 @@ export function ClaimPane({ row, now }: { row: ClaimWithJourney; now: number }) 
   return (
     <SafeAreaView edges={['top', 'right']} style={styles.fill}>
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
+        // The SafeAreaView already pads the top; "automatic" would add it twice.
+        contentInsetAdjustmentBehavior="never"
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
         <View style={styles.head}>

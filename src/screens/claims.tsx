@@ -166,7 +166,8 @@ function NoClaimsPane() {
   return (
     <SafeAreaView edges={['top', 'right']} style={styles.fill}>
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
+        // The SafeAreaView already pads the top; "automatic" would add it twice.
+        contentInsetAdjustmentBehavior="never"
         contentContainerStyle={styles.pane}
         showsVerticalScrollIndicator={false}>
         <DashedNote
