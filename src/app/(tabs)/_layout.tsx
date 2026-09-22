@@ -38,8 +38,11 @@ export default function TabsLayout() {
   // The website's front page renders at "/" on web (see (journeys)/index)
   // with its own header. The web tab view has no `hidden` and force-mounts
   // every tab's content, so the site's root skips the tabs altogether and
-  // renders just the matched route.
-  if (Platform.OS === 'web' && pathname === '/') return <Slot />;
+  // renders just the matched route. The old /flights link (flights.tsx
+  // redirects it to "/") takes the same path: under the tab view its
+  // redirect swapped this layout's whole tree mid-render, which re-mounted
+  // the redirect, and getflyright.com/flights died on "Maximum update depth".
+  if (Platform.OS === 'web' && (pathname === '/' || pathname === '/flights')) return <Slot />;
 
   return (
     <NativeTabs
