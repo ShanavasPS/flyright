@@ -1,22 +1,28 @@
 import { useAuth } from '@clerk/expo';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ClaimsSummaryCard, Eu261Bands, HowClaimsWork } from '@/components/claim-explainers';
 import { StatusChip, isOverdue, showOutcomeMenu, statusGuidance } from '@/components/claim-status';
 import { DataErrorCard, LoadingState } from '@/components/data-state';
+import { DashedNote, PaneOutline } from '@/components/pane-placeholders';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
+import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MiniContrail, WHITE, WHITE_DIM } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
-import { NEXT_STATUSES, isClosed, parseSentSnapshot } from '@/services/claim-status';
+import { ClaimPane } from '@/screens/claim-pane';
+import { NEXT_STATUSES, claimsSummary, isClosed, parseSentSnapshot } from '@/services/claim-status';
 import { useClaims, type ClaimWithJourney } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
+import { keepOrFallback, pickClaim } from '@/services/default-pick';
 
 // Payout green on the night sky — the same value the dark theme's `success`
 // and the People tab's live ring use, so money reads as money on navy.
@@ -49,8 +55,22 @@ export function Claims() {
   const open = rows?.filter((row) => !isClosed(row.claims.status)) ?? [];
   const closed = rows?.filter((row) => isClosed(row.claims.status)) ?? [];
 
-  return (
-    <ThemedView style={styles.container}>
+  // Wide windows (docs/wide-layouts-plan.md §6): the list keeps this column
+  // and the chosen claim — by default the one that needs you — opens beside
+  // it. Split once there is something to say: the claims, or why they could
+  // not be read. Loading stays single-column.
+  const layout = useSplitLayout('claims', { primaryWidth: 400 });
+  const split = layout.split && (!!error || !!rows);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const ids = useMemo(() => new Set((rows ?? []).map((row) => row.claims.id)), [rows]);
+  const detailId =
+    split && rows?.length
+      ? keepOrFallback(selectedId, ids, () => pickClaim(rows.map((row) => row.claims), now))
+      : null;
+  const detailRow = detailId ? rows?.find((row) => row.claims.id === detailId) : undefined;
+  const select = split ? (id: string) => setSelectedId(id) : undefined;
+
+  const listPane = (
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <View style={styles.titleBlock}>
           <ThemedText
@@ -78,13 +98,32 @@ export function Claims() {
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}>
-            {open.length > 0 && <SectionLabel>In progress</SectionLabel>}
+            {split && <ClaimsSummaryCard items={claimsSummary(rows.map((row) => row.claims))} />}
+            {(open.length > 0 || split) && <SectionLabel>In progress</SectionLabel>}
+            {/* Wide only: an empty "In progress" says so instead of leaving a gap. */}
+            {split && open.length === 0 && (
+              <DashedNote title="Nothing in progress" detail="No airline owes you a reply right now." />
+            )}
             {open.map((row, index) => (
-              <ClaimCard key={row.claims.id} row={row} now={now} index={index} />
+              <ClaimCard
+                key={row.claims.id}
+                row={row}
+                now={now}
+                index={index}
+                onSelect={select}
+                selected={row.claims.id === detailId}
+              />
             ))}
             {closed.length > 0 && <SectionLabel>Closed</SectionLabel>}
             {closed.map((row, index) => (
-              <ClaimCard key={row.claims.id} row={row} now={now} index={open.length + index} />
+              <ClaimCard
+                key={row.claims.id}
+                row={row}
+                now={now}
+                index={open.length + index}
+                onSelect={select}
+                selected={row.claims.id === detailId}
+              />
             ))}
           </ScrollView>
         ) : (
@@ -96,7 +135,48 @@ export function Claims() {
           </ScrollView>
         )}
       </SafeAreaView>
+  );
+
+  return (
+    <ThemedView style={styles.container}>
+      <SplitPanes
+        layout={{ ...layout, split }}
+        primary={listPane}
+        secondary={
+          error ? (
+            <SafeAreaView edges={['top', 'right']} style={styles.pane}>
+              <PaneOutline kind="claim" caption="Your claims appear here once FlyRight can reach them." />
+            </SafeAreaView>
+          ) : rows?.length ? (
+            // Keyed so another claim starts fresh instead of morphing.
+            detailRow && <ClaimPane key={detailRow.claims.id} row={detailRow} now={now} />
+          ) : (
+            <NoClaimsPane />
+          )
+        }
+      />
     </ThemedView>
+  );
+}
+
+/** Wide window, no claims: say so in one small card, then how a claim works
+ * and what the regulation pays — no claim-shaped silhouette, since the steps
+ * already say what will appear here. */
+function NoClaimsPane() {
+  return (
+    <SafeAreaView edges={['top', 'right']} style={styles.fill}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.pane}
+        showsVerticalScrollIndicator={false}>
+        <DashedNote
+          title="No active claims"
+          detail="When a flight qualifies, its claim and every step with the airline open here."
+        />
+        <HowClaimsWork />
+        <Eu261Bands />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -143,7 +223,20 @@ function SectionLabel({ children }: { children: string }) {
   );
 }
 
-function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; index: number }) {
+function ClaimCard({
+  row,
+  now,
+  index,
+  onSelect,
+  selected = false,
+}: {
+  row: ClaimWithJourney;
+  now: number;
+  index: number;
+  /** Wide window: open the claim in the pane beside the list, not a route. */
+  onSelect?: (claimId: string) => void;
+  selected?: boolean;
+}) {
   const router = useRouter();
   const theme = useTheme();
   const { claims: claim, journeys: journey } = row;
@@ -156,7 +249,9 @@ function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; in
     <Animated.View
       entering={FadeInDown.delay(Math.min(index, 8) * 40).duration(300)}
       layout={LinearTransition.springify().damping(18)}>
-      <ThemedView type="backgroundElement" style={styles.card}>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.card, selected && { borderWidth: 1, borderColor: theme.tint }]}>
         {/* Navigation and the record link stay SIBLINGS — an iOS Pressable
          * flattens its children into one a11y element and would swallow a
          * nested button (same trap as the timeline's Undo). */}
@@ -165,11 +260,14 @@ function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; in
          * rows' convention — VoiceOver and Maestro both get the content. */}
         <Pressable
           accessibilityRole="button"
+          accessibilityState={onSelect ? { selected } : undefined}
           onPress={() =>
-            router.push({
-              pathname: '/journey/[id]',
-              params: { id: journey.id, from: journey.fromCode, to: journey.toCode },
-            })
+            onSelect
+              ? onSelect(claim.id)
+              : router.push({
+                  pathname: '/journey/[id]',
+                  params: { id: journey.id, from: journey.fromCode, to: journey.toCode },
+                })
           }
           style={({ pressed }) => [styles.cardBody, pressed && styles.pressed]}>
           <View style={styles.chipRow}>
@@ -222,6 +320,17 @@ function ClaimCard({ row, now, index }: { row: ClaimWithJourney; now: number; in
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  fill: {
+    flex: 1,
+  },
+  // A wide window's second pane: clear of iPadOS's floating tab bar.
+  pane: {
+    flexGrow: 1,
+    gap: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four + PadTabBarClearance,
+    paddingBottom: Spacing.five,
   },
   safeArea: {
     flex: 1,

@@ -77,3 +77,57 @@ export function parseSentSnapshot(json: string | null | undefined): SentSnapshot
     return null;
   }
 }
+
+/** The first lines of a sent letter as plain text, for a preview beside the
+ * claim (the full letter stays on /claim-letter). Tags, styles and scripts go;
+ * the common entities are decoded; the cut lands on a word, with an ellipsis. */
+export function letterExcerpt(html: string, max = 180): string {
+  const text = html
+    .replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<br\s*\/?>|<\/(p|div|li|h[1-6])>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&euro;/g, '€')
+    .replace(/&pound;/g, '£')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.–—-]+$/, '')}…`;
+}
+
+export interface SummaryItem {
+  value: string;
+  label: string;
+  /** An amount — drawn in the money colour. */
+  money: boolean;
+}
+
+/** The figures over a wide window's claims list: what is in progress, what
+ * has been paid, and how many claims there are. Amounts only add up within
+ * one currency; mixed currencies count instead, like the Claims eyebrow. */
+export function claimsSummary(
+  claims: readonly { status: ClaimStatus; amount: number; currency: string }[],
+): SummaryItem[] {
+  const total = (rows: typeof claims, label: string): SummaryItem => {
+    const currency = rows[0].currency;
+    return rows.every((r) => r.currency === currency)
+      ? { value: `${rows.reduce((sum, r) => sum + r.amount, 0)} ${currency}`, label, money: true }
+      : { value: String(rows.length), label, money: false };
+  };
+  const open = claims.filter((c) => !isClosed(c.status));
+  const paid = claims.filter((c) => c.status === 'paid');
+  const rejected = claims.filter((c) => c.status === 'rejected');
+  const items: SummaryItem[] = [];
+  if (open.length) items.push(total(open, 'in progress'));
+  if (paid.length) items.push(total(paid, 'paid'));
+  if (!open.length && rejected.length) items.push({ value: String(rejected.length), label: 'rejected', money: false });
+  if (claims.length) items.push({ value: String(claims.length), label: claims.length === 1 ? 'claim' : 'claims', money: false });
+  return items.slice(0, 3);
+}
