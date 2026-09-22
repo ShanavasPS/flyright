@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.2',
+    date: '2026-09-22',
+    notes: [
+      'Return flights now sit together under a country flag and trip dates, with the days spent at each destination. Add another destination later and the groups adjust automatically.',
+      'Connections and stays are easier to tell apart, with clearer separators between separate trips.',
+      'On wider screens, browse flights, friends and claims beside their details, with more room to explore your world.',
+      'Compensation results explain the amount and show the flight date, with corrected EU261 amounts for longer flights within the EU and coverage for its outermost regions.',
+      'Open postcard photos full screen from a friend, trip or shared follow page, and see your heart appear as soon as you tap it.',
+      'Android sheets open at a comfortable height with room beneath the final button.',
+    ],
+  },
+  {
     version: '1.1.1',
     date: '2026-09-21',
     notes: [

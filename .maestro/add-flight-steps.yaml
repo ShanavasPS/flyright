@@ -12,7 +12,7 @@ appId: com.shanavasshaji.flyright
     clearState: true
     permissions:
       notifications: allow
-- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# Native Debug builds load Metro directly on launch; expo-dev-client is not installed.
 - runFlow:
     when:
       platform: iOS
@@ -85,11 +85,24 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Yesterday.*"
     timeout: 10000
-- tapOn: "Yesterday.*"
+- tapOn:
+    text: "Yesterday.*"
+    retryTapIfNoChange: true
+# Gboard can cover the newly focused airport field with its first-use tutorial.
+- runFlow:
+    when:
+      visible: "Try out your stylus"
+    commands:
+      - tapOn: "Cancel"
 - extendedWaitUntil:
     visible: "Trip details"
     timeout: 10000
 - assertVisible: "From · city or HEL"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - runFlow:
     when:
       platform: iOS

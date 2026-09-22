@@ -1,0 +1,77 @@
+{
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "text",
+      "x": 0,
+      "y": -240,
+      "width": 1420,
+      "height": 190,
+      "text": "# Simple trip grouping · Revised canvas\n\nOne treatment of the existing flight list: a country flag beside the destination title, dates aligned at the right, and a stay count. No nesting, parent trip cards or segment tabs. Three examples of the same design.\n\nOpen design/trip-grouping/canvas.html. Canvas only, no app implementation."
+    },
+    {
+      "id": "label-direct",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 440,
+      "height": 140,
+      "text": "## Direct return\n\nUS trip · 22 days in the US, between the two flights."
+    },
+    {
+      "id": "phone-direct",
+      "type": "file",
+      "file": "design/trip-grouping/previews/direct.png",
+      "x": 20,
+      "y": 180,
+      "width": 400,
+      "height": 1080
+    },
+    {
+      "id": "label-connections",
+      "type": "text",
+      "x": 480,
+      "y": 0,
+      "width": 440,
+      "height": 140,
+      "text": "## Connecting return\n\nUS trip · Stay count after the final outbound leg. Muted clock labels connect the London legs; a bed icon and short side lines mark the 22-day stay. Full-width lines separate independent trips only."
+    },
+    {
+      "id": "phone-connections",
+      "type": "file",
+      "file": "design/trip-grouping/previews/connections.png",
+      "x": 500,
+      "y": 180,
+      "width": 400,
+      "height": 1080
+    },
+    {
+      "id": "label-canada",
+      "type": "text",
+      "x": 960,
+      "y": 0,
+      "width": 440,
+      "height": 140,
+      "text": "## US → Canada → US continued · Selected\n\nUS: HEL → JFK. Canada: LGA → YYZ and YYZ → BOS. US trip continued: header, then the 9-day US stay, then BOS → HEL."
+    },
+    {
+      "id": "phone-canada",
+      "type": "file",
+      "file": "design/trip-grouping/previews/canada.png",
+      "x": 980,
+      "y": 180,
+      "width": 400,
+      "height": 1080
+    },
+    {
+      "id": "rules",
+      "type": "text",
+      "x": 0,
+      "y": 1320,
+      "width": 1420,
+      "height": 200,
+      "text": "## Only the small additions\n\nKeep existing flight cards. Connections use a muted clock and vertical dotted line; stays use a bed icon, explicit label, bold duration and short side lines. Full-width separators appear only between independent trips. No separator within US → Canada → US continued. Pair adjacent returns only. An intervening destination gets a separate group. Count local days from the last arrival to the next departure. If that departure is missing, omit the duration.\n\nThis board replaces the earlier nested-trip concepts."
+    }
+  ],
+  "edges": []
+}

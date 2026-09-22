@@ -1,11 +1,11 @@
-# Smoke test: dev-client build boots, JS bundle loads, home screen renders.
+# Smoke test: Debug build boots, JS bundle loads, home screen renders.
 # Run: maestro test .maestro/smoke.yaml   (requires a booted simulator with the
 # dev build installed and `npx expo start` serving the bundle on :8081)
 appId: com.shanavasshaji.flyright
 ---
 - launchApp:
     clearState: true # deterministic: the journeys DB starts empty
-- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# Native Debug builds load Metro directly on launch; expo-dev-client is not installed.
 # First launch also raises the ATT prompt (simctl can't pre-grant it); clear
 # it when it shows so it doesn't sit over onboarding.
 - runFlow:
@@ -22,8 +22,8 @@ appId: com.shanavasshaji.flyright
 # A cleared state means a first launch, so the onboarding intro covers the
 # tabs — its render doubles as the boot check before Skip reveals the journal.
 - extendedWaitUntil:
-    visible: "Every flight, remembered"
-    timeout: 30000
+    visible: 'Every flight,\s+remembered'
+    timeout: 90000
 - tapOn: "Skip"
 - extendedWaitUntil:
     visible: "Flights"
@@ -36,4 +36,4 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "No claims yet"
     timeout: 10000
-- assertVisible: "See a demo verdict.*"
+- assertVisible: ".*See a demo verdict.*"

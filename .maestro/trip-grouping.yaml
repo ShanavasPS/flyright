@@ -1,0 +1,79 @@
+# Display regression for the approved flat trip grouping. Seed ONLY a dedicated
+# test installation using scripts/seed-trip-grouping-test.py, then run this flow
+# with LAYOUT=simple|connections|multi and SHOTS=<absolute evidence directory>.
+# Preserves authentication and all unrelated rows. See docs/trip-grouping.md.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright://flights"
+- scrollUntilVisible:
+    element: "US trip"
+    direction: DOWN
+- assertNotVisible: "Something went wrong"
+- runFlow:
+    when:
+      true: ${LAYOUT === 'simple'}
+    commands:
+      - scrollUntilVisible:
+          element: "Stay: 22 days in the US"
+          direction: DOWN
+      - takeScreenshot: ${SHOTS}/simple-return
+      - scrollUntilVisible:
+          element: "Portugal trip"
+          direction: DOWN
+      - assertVisible:
+          id: "independent-trip-separator"
+      - takeScreenshot: ${SHOTS}/separate-trip
+      - scrollUntilVisible:
+          element: ".*AY8.*"
+          direction: UP
+- runFlow:
+    when:
+      true: ${LAYOUT === 'connections'}
+    commands:
+      - scrollUntilVisible:
+          element: "2h connection in London"
+          direction: DOWN
+      - takeScreenshot: ${SHOTS}/connection
+      - scrollUntilVisible:
+          element: "Stay: 22 days in the US"
+          direction: DOWN
+      - takeScreenshot: ${SHOTS}/connected-stay
+- runFlow:
+    when:
+      true: ${LAYOUT === 'multi'}
+    commands:
+      - scrollUntilVisible:
+          element: "Canada trip"
+          direction: DOWN
+      - scrollUntilVisible:
+          element: "Stay: 4 days in Canada"
+          direction: DOWN
+      - assertNotVisible:
+          id: "independent-trip-separator"
+      - takeScreenshot: ${SHOTS}/canada
+      - scrollUntilVisible:
+          element: "US trip continued"
+          direction: DOWN
+      - scrollUntilVisible:
+          element:
+            id: "trip-stay-grouping-canada-back:grouping-home"
+          direction: DOWN
+      - assertVisible: "US trip continued"
+      - assertNotVisible:
+          id: "independent-trip-separator"
+      - takeScreenshot: ${SHOTS}/continued-stay
+- scrollUntilVisible:
+    element: ".*AY8.*"
+    direction: DOWN
+    centerElement: true
+- tapOn: ".*AY8.*"
+- extendedWaitUntil:
+    visible: "Trip options"
+    timeout: 15000
+- assertNotVisible: "Something went wrong"
+- takeScreenshot: ${SHOTS}/return-detail

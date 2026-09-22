@@ -1,0 +1,9 @@
+Return flights now sit together under a country flag and trip dates, with the days spent at each destination. Add another destination later and the groups adjust automatically.
+
+Connections and stays have distinct markers, and clearer separators keep separate trips easy to scan.
+
+On wider screens, browse flights, friends and claims beside their details, with more room to explore your world.
+
+Compensation results explain the amount and show the flight date, with corrected EU261 amounts for longer flights within the EU and coverage for its outermost regions.
+
+Open postcard photos full screen from a friend, trip or shared follow page. Hearts appear as soon as you tap them, and Android sheets leave more room beneath the final button.

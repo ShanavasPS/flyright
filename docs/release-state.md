@@ -2,6 +2,39 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-22 — 1.1.2 preparation in progress
+
+The user requested new builds after regression testing and explicitly said
+**skip physical device tests**. Simulator/emulator native and production
+candidate checks remain required. Version is prepared as **1.1.2**; remote
+numbers were verified at iOS 61 / Android 58, so the planned candidates are
+**iOS 62 / Android 59**. No new build was scheduled at this preparation entry.
+
+- App Store 1.1.1 is `READY_FOR_SALE`; its processed build 61 is `VALID`.
+  The public Play listing also reports 1.1.1. EAS has no newer/in-progress build.
+- `release:deploy-backend` passed: **67** client functions on production and
+  development. `release:preflight` passed: **96 suites / 1,129 tests**, TypeScript,
+  backend-contract tests and production inventory. The isolated security
+  fixture suite also passes **24 checks** after updating two stale test
+  expectations; authentication/security implementation is unchanged.
+- The approved trip grouping and clearer independent-trip separator passed
+  the direct-return, connecting-return and US → Canada → US layout flows on
+  both platforms. Android's real-menu removal flow returned to a simple US
+  group. Existing smoke and add-flight navigation checks passed on both.
+- Fresh account creation is confirmed on both platforms. Android required native
+  keyboard input after Maestro timed out erasing the field; iOS sign-out hit a
+  network timeout and succeeded after retry/cold start. Core-screen and final
+  iOS airport-picker checks are ongoing. Final 1.1.2 preflight passed again. Evidence:
+  `.maestro/out/trip-grouping-20260922/`. Android's original `FlyRight_Dev` state
+  is preserved in snapshot `flyright-before-trip-grouping-tests-20260922`;
+  restore it before leaving the testing installation. Dedicated iOS test
+  simulator: `B0189F2E-087A-45B4-B596-B9D30574AC42`.
+- Existing production-candidate simulator `E2AC008A-1CA3-4D36-B2EE-832B01840550`
+  retains `release-retained-photo-20260914` and its photo, currently on Debug
+  1.1.1 (61). Preserve these for the Release upgrade check.
+- Release scratch directory: `/private/tmp/flyright-release-1.1.2/`.
+  EAS still has no Xcode 27 image; continue with the documented local iOS build.
+
 ## 2026-09-22 — backend + hosting only (no app release)
 
 Deployed on the user's request, between releases; the stores keep 1.1.1. Checked first that neither changes what the 1.1.1 apps get: the only backend change is internal (`devTools:importDemoJourneys`, screenshot accounts), and the only server-route change is `/api/app-version` gaining an optional `layouts` field, sent only when `WIDE_LAYOUTS` is set (it is not). Release notes and the flight routes are unchanged.

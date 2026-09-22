@@ -1,0 +1,5 @@
+This update adds destination grouping to the Flights journal: country flags, date ranges and time at each destination, with separate visual treatments for connections and stays. Groups are derived from existing flight records and adjust when flights are added, edited or removed. There are no new permissions or authentication requirements.
+
+It also includes layouts for wider iPad and foldable windows, clearer compensation results, corrected EU261 calculations and regional applicability, full-screen postcard photos, and interaction fixes.
+
+The existing review account and sign-in credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. No purchase is required to review the journal, map, friends, claims or these changes.

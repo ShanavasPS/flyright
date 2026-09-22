@@ -1,0 +1,43 @@
+# Run after the multi fixture in scripts/seed-trip-grouping-test.py.
+# Deletes only its two synthetic Canada rows through the real detail menu.
+# Verifies the mounted Flights list recomputes into a simple return.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright:///journey/grouping-canada-out"
+- extendedWaitUntil:
+    visible: "Trip options"
+    timeout: 15000
+- tapOn: "Trip options"
+- tapOn: "Remove from Flights"
+- tapOn: "Remove"
+- extendedWaitUntil:
+    notVisible: "Remove this trip?"
+    timeout: 10000
+- openLink: "flyright:///journey/grouping-canada-back"
+- extendedWaitUntil:
+    visible: "Trip options"
+    timeout: 15000
+- tapOn: "Trip options"
+- tapOn: "Remove from Flights"
+- tapOn: "Remove"
+- extendedWaitUntil:
+    notVisible: "Remove this trip?"
+    timeout: 10000
+- openLink: "flyright://flights"
+- scrollUntilVisible:
+    element: "US trip"
+    direction: DOWN
+- scrollUntilVisible:
+    element: "Stay: 22 days in the US"
+    direction: DOWN
+    centerElement: true
+- assertNotVisible: "Canada trip"
+- assertNotVisible: "US trip continued"
+- assertNotVisible:
+    id: "independent-trip-separator"
+- takeScreenshot: ${SHOTS}/regrouped-after-removal

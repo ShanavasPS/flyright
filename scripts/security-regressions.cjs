@@ -250,7 +250,10 @@ async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}
     const s = context();
     await s.ctx.db.insert('ownedFiles', { userId: 'victim', storageId: 'victim-file', size: 100, createdAt: 1 });
     await s.ctx.db.insert('tripPhotos', { ...photo, userId: 'victim' });
-    await assert.rejects(photos.push.handler(s.ctx, { rows: [photo] }), /Upload this photo again/);
+    // Invalid files are skipped so one stale row cannot block the rest of a
+    // traveller's photo batch. Assert the security boundary, not an old error.
+    await photos.push.handler(s.ctx, { rows: [photo] });
+    assert.equal(s.rows('tripPhotos').filter(row => row.userId === 'attacker').length, 0);
     await s.ctx.db.insert('tripPhotos', { ...photo, userId: 'attacker' }); // legacy poison
     assert.equal((await photos.list.handler(s.ctx))[0].url, null);
     await users.purge.handler(s.ctx, { userId: 'attacker' });
@@ -278,7 +281,7 @@ async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}
     assert.equal(await uploads.claim.handler(s.ctx, { token }), null);
     await uploads.finish.handler(s.ctx, { ticketId, storageId: 'new-file', size: 100 });
     assert.equal(s.rows('ownedFiles')[0].userId, 'attacker');
-    for (let i = 1; i < 30; i++) await photos.generateUploadUrl.handler(s.ctx, {});
+    for (let i = 1; i < 200; i++) await photos.generateUploadUrl.handler(s.ctx, {});
     await assert.rejects(photos.generateUploadUrl.handler(s.ctx, {}), /Too many requests/);
     const pending = s.rows('uploadTickets').find(t => t.state === 'pending');
     pending.expiresAt = 1;

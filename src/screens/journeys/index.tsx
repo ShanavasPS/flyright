@@ -20,7 +20,7 @@ import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass
 import { TripRow } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
-import { LayoverMark } from '@/components/layover-mark';
+import { IndependentTripSeparator, TripConnectionMark, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
 import { PaneOutline } from '@/components/pane-placeholders';
 import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
@@ -57,7 +57,7 @@ import {
   onboardingSeen,
   pushRemindDue,
 } from '@/services/onboarding';
-import { connectionBetween, connectionLabel, connectionsInto } from '@/services/connections';
+import { tripListSections } from '@/services/trip-groups';
 import { hasLanded } from '@/services/travel-day';
 import { welcomeFor } from '@/services/welcome';
 import { groupJourneys, travelStats } from '@/services/timeline';
@@ -179,7 +179,12 @@ export function Journeys() {
     [journeys, heroId, now],
   );
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
-  const connections = useMemo(() => connectionsInto(journeys ?? []), [journeys]);
+  // Group the full journal before hiding the hero's row, so its origin and
+  // destination still anchor the trip and any stay that follows it.
+  const tripSections = useMemo(
+    () => tripListSections(journeys ?? [], now, heroId),
+    [journeys, now, heroId],
+  );
   const claimByJourney = useMemo(() => {
     const map = new Map<string, ClaimRow>();
     for (const row of claimRows ?? []) map.set(row.claims.journeyId, row.claims);
@@ -293,8 +298,8 @@ export function Journeys() {
           <JournalSkeleton />
         ) : journeys.length ? (
           <SectionList
-            sections={sections}
-            keyExtractor={(row) => row.id}
+            sections={tripSections}
+            keyExtractor={(row) => row.key}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.list}
             stickySectionHeadersEnabled={false}
@@ -323,21 +328,22 @@ export function Journeys() {
                 </ThemedText>
               )
             }
-            renderItem={({ item, index, section }) => {
-              // Two legs of one itinerary sit next to each other; the joint
-              // between them says so, and how long the wait is.
-              const joint = connectionBetween(connections, section.data[index - 1], item);
+            renderItem={({ item }) => {
+              if (item.kind === 'header') return <TripGroupHeading group={item.group} dates={item.dates} />;
+              if (item.kind === 'stay') return <TripStayMark stay={item.stay} />;
+              if (item.kind === 'separator') return <IndependentTripSeparator />;
+              const row = item.journey;
               return (
                 <>
-                  {joint && <LayoverMark label={connectionLabel(joint)} />}
+                  {item.connection && <TripConnectionMark connection={item.connection} />}
                   <JourneyItem
-                    row={item}
+                    row={row}
                     now={now}
-                    live={section.key === 'live'}
-                    claim={claimByJourney.get(item.id)}
-                    owed={owedByJourney.get(item.id)}
-                    onSelect={twoPane ? () => setSelectedId(item.id) : undefined}
-                    selected={twoPane && detailId === item.id}
+                    live={item.live}
+                    claim={claimByJourney.get(row.id)}
+                    owed={owedByJourney.get(row.id)}
+                    onSelect={twoPane ? () => setSelectedId(row.id) : undefined}
+                    selected={twoPane && detailId === row.id}
                   />
                 </>
               );

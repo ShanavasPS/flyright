@@ -1,0 +1,43 @@
+{
+  "reviewed": "2026-09-22",
+  "scope": "Revised design canvas only; no app implementation",
+  "checks": [
+    {
+      "label": "No new segment tabs or nested trip groups",
+      "pass": true
+    },
+    {
+      "label": "Direct return has two flights and its stay between them",
+      "pass": true
+    },
+    {
+      "label": "Connected return preserves four legs and both layovers",
+      "pass": true
+    },
+    {
+      "label": "Stay follows the last outbound connection leg",
+      "pass": true
+    },
+    {
+      "label": "Selected example has US Canada and continued US headers",
+      "pass": true
+    },
+    {
+      "label": "Canada example shows every flight once and separate stay lengths",
+      "pass": true
+    },
+    {
+      "label": "No horizontal overflow at desktop size",
+      "pass": true
+    },
+    {
+      "label": "No horizontal overflow at mobile size",
+      "pass": true
+    },
+    {
+      "label": "No runtime errors",
+      "pass": true
+    }
+  ],
+  "runtimeErrors": []
+}

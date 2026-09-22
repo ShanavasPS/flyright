@@ -1,0 +1,4 @@
+Return flights now group under country flags and dates, with days spent at each destination and distinct connection and stay markers. Groups adjust when you add more flights.
+Wider screens show flights, friends and claims beside their details.
+Clearer compensation results and corrected EU261 amounts and regional coverage.
+Open postcard photos full screen, see hearts immediately, and enjoy roomier Android sheets.

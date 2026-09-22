@@ -20,7 +20,44 @@ tags:
 - tapOn: "Enter your email"
 - eraseText: 100
 - inputText: ${EMAIL}
-- tapOn: "Continue"
+# Some iOS 27 simulators report shifted SwiftUI bounds with the keyboard up.
+# A verified screenshot coordinate can be supplied as IOS_EMAIL_CONTINUE_POINT
+# for that simulator. Other targets keep the native accessibility identifier.
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - runFlow:
+          when:
+            true: ${typeof IOS_EMAIL_CONTINUE_POINT !== 'undefined'}
+          commands:
+            - tapOn:
+                point: ${IOS_EMAIL_CONTINUE_POINT}
+            - extendedWaitUntil:
+                visible: ".*Check your email.*"
+                timeout: 3000
+                optional: true
+            # The first tap can only settle the field's edit. Retry only if
+            # the same email form remains; the OTP assertion below is required.
+            - runFlow:
+                when:
+                  visible:
+                    id: "clerk.auth.start.continue"
+                commands:
+                  - tapOn:
+                      point: ${IOS_EMAIL_CONTINUE_POINT}
+      - runFlow:
+          when:
+            true: ${typeof IOS_EMAIL_CONTINUE_POINT === 'undefined'}
+          commands:
+            - tapOn:
+                id: "clerk.auth.start.continue"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "Continue"
 - extendedWaitUntil:
     visible: ".*Check your email.*"
     timeout: 20000

@@ -12,7 +12,7 @@ appId: com.shanavasshaji.flyright
     clearState: true
     permissions:
       notifications: allow
-- openLink: "flyright://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# Native Debug builds load Metro directly on launch; expo-dev-client is not installed.
 - runFlow:
     when:
       platform: iOS
@@ -58,7 +58,14 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Yesterday.*"
     timeout: 10000
-- tapOn: "Yesterday.*"
+- tapOn:
+    text: "Yesterday.*"
+    retryTapIfNoChange: true
+- runFlow:
+    when:
+      visible: "Try out your stylus"
+    commands:
+      - tapOn: "Cancel"
 - extendedWaitUntil:
     visible: "From · city or HEL"
     timeout: 10000
@@ -87,4 +94,6 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "London Heathrow Airport"
     timeout: 5000
-- assertVisible: "HEL → LHR"
+# The route preview uses separate airport labels around the flight path.
+- assertVisible: "HEL"
+- assertVisible: "LHR"
