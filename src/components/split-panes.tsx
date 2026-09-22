@@ -42,7 +42,7 @@ export function SplitPanes({
   const secondRight = split && order === 'primary-left';
 
   return (
-    <View style={styles.row}>
+    <View style={split ? styles.row : styles.single}>
       {secondLeft ? second : null}
       {secondLeft ? seam : null}
       <View style={split ? { width: primaryWidth } : styles.fill}>{primary}</View>
@@ -56,6 +56,15 @@ const styles = StyleSheet.create({
   row: {
     flex: 1,
     flexDirection: 'row',
+  },
+  // Unsplit, a column — the layout the screens had before this component:
+  // the primary pane's width is the window's by stretch, whatever its
+  // content measured. As a row the width was the pane's own flex size, and
+  // content sized from its last layout (the globe canvas, feed photos) held
+  // it there: after a fold the 488 pt feed stayed 488 on a 411 pt cover.
+  // Switching the direction keeps the children, so nothing remounts.
+  single: {
+    flex: 1,
   },
   fill: {
     flex: 1,
