@@ -2,63 +2,52 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
-## 2026-09-22 — 1.1.2 preparation in progress
+## 2026-09-22/23 — 1.1.2: grouped trips; iOS waiting for review, Play production accepted
 
-The user requested new builds after regression testing and explicitly said
-**skip physical device tests**. Simulator/emulator native and production
-candidate checks remain required. Version is prepared as **1.1.2**; remote
-numbers were verified at iOS 61 / Android 58, so the planned candidates are
-**iOS 62 / Android 59**. The initial observation below preceded build scheduling; see the build updates below.
+The approved display-only trip grouping is implemented: country flags, date
+ranges, distinct stay/connection marks and clearer separators between independent
+trips. Groups recompute as flights are added or removed; US → Canada → US stays
+flat, with YYZ → BOS in Canada and the subsequent US stay under **US trip
+continued**. See [trip grouping](trip-grouping.md). No schema or authentication
+implementation changed. The user explicitly requested **skip physical device
+tests**; simulator/emulator coverage below is not physical-phone coverage.
 
-- App Store 1.1.1 is `READY_FOR_SALE`; its processed build 61 is `VALID`.
-  The public Play listing also reports 1.1.1. EAS has no newer/in-progress build.
-- `release:deploy-backend` passed: **67** client functions on production and
-  development. `release:preflight` passed: **96 suites / 1,129 tests**, TypeScript,
-  backend-contract tests and production inventory. The isolated security
-  fixture suite also passes **24 checks** after updating two stale test
-  expectations; authentication/security implementation is unchanged.
-- The approved trip grouping and clearer independent-trip separator passed
-  the direct-return, connecting-return and US → Canada → US layout flows on
-  both platforms. Android's real-menu removal flow returned to a simple US
-  group. Existing smoke and add-flight navigation checks passed on both.
-- Fresh account creation is confirmed on both platforms. Android required native
-  keyboard input after Maestro timed out erasing the field; iOS sign-out hit a
-  network timeout and succeeded after retry/cold start. Core-screen and final
-  iOS airport-picker checks subsequently passed. Both signed-in core-screen
-  flows passed two cold starts on 1.1.2. Final 1.1.2 preflight passed again. Evidence:
-  `.maestro/out/trip-grouping-20260922/`. Android's original `FlyRight_Dev` state
-  is preserved in snapshot `flyright-before-trip-grouping-tests-20260922`;
-  restore it before leaving the testing installation. Dedicated iOS test
-  simulator: `B0189F2E-087A-45B4-B596-B9D30574AC42`.
-- Existing production-candidate simulator `E2AC008A-1CA3-4D36-B2EE-832B01840550`
-  retains `release-retained-photo-20260914` and its photo, currently on Debug
-  1.1.1 (61). Preserve these for the Release upgrade check.
-- Implementation/release commit `2f68294` is pushed. Hosting deployment
-  `e4xygqwivl` serves `entry-3777ba61aed595f4827a084b31cb6032.js`, matching the
-  isolated production export; production Convex and Clerk configuration verified.
-  Public listings still report 1.1.1, so the endpoint correctly announces no
-  1.1.2 notes yet. The root development env file was never changed.
-- ASC 1.1.2 version `823ca388-508b-4b14-bc47-b88648b0fe81` is
-  `PREPARE_FOR_SUBMISSION`, with updated release/reviewer notes and preserved
-  reviewer credentials. No build is attached or submitted yet.
-- iOS Debug 1.1.2 (62) built and installed on the dedicated simulator. Android
-  local Debug rebuilding needed 6 GB Java heap after the default 2 GB failed
-  in D8 dex merging; only generated `android/gradle.properties` was adjusted.
-- Native file/photo regressions **passed on both** installed 1.1.2 binaries:
-  iOS 62 (13 s), Android 59 (10 s), report
-  `.maestro/out/release/2026-09-22T19-38-58.142Z/report.json`.
-  Core-screen evidence: `ios/core-new` and `android/core-verified` under the
-  trip-grouping evidence folder; final iOS airport flow: `ios/airport-picker-final`.
-  Android needed a data-preserving reboot after its OS system process hung
-  during the native install. The known Expo development toast is now dismissed
-  explicitly by the core flow before tab taps. No authentication code changed.
-- Android EAS build `11c62cb4-e27c-4e4b-9f94-9265a03a6b10` (59) is scheduled,
-  auto-submission `1d85bf7a-84c2-4823-aa33-7bc7fd76d720` to internal.
-- The first local iOS attempt consumed **62** but failed before compilation
-  because `npm ci` lost a registry connection (`ECONNRESET`). No IPA/upload was
-  produced. The retry is synced to **63**, with npm retries/cache preference.
-- Release scratch directory: `/private/tmp/flyright-release-1.1.2/`.
-  EAS still has no Xcode 27 image; continue with the documented local iOS build.
+| Item | Observed result |
+| --- | --- |
+| Code/version | **1.1.2**, iOS **63**, Android **59**; remote counters independently verified. Implementation/release `2f68294`, regression records `de764b4`, iOS retry counter `4ada5e6`. Android was built from `de764b4`; iOS from `4ada5e6`, whose app difference is the iOS build number. |
+| Backend/preflight | `release:deploy-backend` passed on production and development: **67 client functions** on both. `release:preflight` passed TypeScript, backend-contract checks and **96 Jest suites / 1,129 tests**, including 28 grouping cases. The isolated security suite passed **24 checks** after two stale fixture expectations were corrected; security implementation is unchanged. |
+| Feature/UI regressions | Direct return, connecting return and US → Canada → US layouts passed on **both** platforms. Android's real-menu removal flow recomputed the simple return group. Existing smoke, add-flight navigation and airport-picker flows passed on both. Signed-in core screens passed two cold starts on both. Fresh sign-up was confirmed on both; Android used native keyboard input after a Maestro field timeout, and iOS sign-out required a network retry before restoring the test account. Evidence: `.maestro/out/trip-grouping-20260922/`. |
+| iOS build/upload | **Local EAS with Xcode 27.0**. The IPA reports `iphoneos27.0`, Xcode `2700`, the scene manifest, production Convex/Clerk values and no development Convex URL. Build **62** failed during `npm ci` with `ECONNRESET`, before compilation and without an IPA. Retry **63** succeeded. Submission `d4415586-7415-4309-9e32-59ab7c7b9183` **FINISHED**; ASC build `39a59073-8236-4988-aed4-1df57eaedc35` **VALID**. No iOS cloud build was used. |
+| Android build/upload | EAS cloud build `11c62cb4-e27c-4e4b-9f94-9265a03a6b10` **FINISHED**, versionCode **59**. Auto-submission `1d85bf7a-84c2-4823-aa33-7bc7fd76d720` **FINISHED** to internal before any Play publisher edit was opened. |
+| Production candidate gate | **Both passed**: iOS Release 1.1.2 (63), production configuration, on iPhone 18 Pro/iOS 27 (`E2AC008A`), **58 s**; Android store AAB converted to device-specific APKs with bundletool and re-signed with the existing local debug key, **2 m 35 s**. Dedicated reviewer account, two cold starts, backend/Friends, retained trip/photo and World; both photo and World screenshots inspected. Report: `.maestro/out/release/2026-09-22T20-33-44.028Z/report.json`. Android's test signature is local, not Play-installed coverage. |
+| App Store | Version `823ca388-508b-4b14-bc47-b88648b0fe81`, build **63** attached, updated What's New and reviewer notes, existing reviewer credentials preserved. Review submission `196b1579-0577-4c03-a53d-f4eb283afdfb` and version both **WAITING_FOR_REVIEW**, `AFTER_APPROVAL`. Final state verified on 2026-09-23 EEST. |
+| Google Play | Listing edit `14034949812127842585` committed first. Promotion edit `11603400444401024935` committed **1.1.2 (59)** to **production**, `status: completed`; a separate verification edit confirmed it and was deleted. Release notes are 416 characters. This is an accepted completed rollout; public review/propagation is separate. |
+| Hosting | Deployment **e4xygqwivl** serves `entry-3777ba61aed595f4827a084b31cb6032.js`, matching the isolated production export. Production Convex/Clerk configuration verified. Final `/api/app-version` still reports **1.1.1 on both stores**, so it correctly returns no 1.1.2 announcement yet. The server carries the new notes for when public listings advance. Root development env files were preserved; temporary production env and reviewer-credential files were removed. |
+| Store screenshots | Grouped Flights panels reshot on iPhone and Android from current **Release** builds using the development Maja store profile; all three iPad panels reshot for the wide layouts. The other six phone panels were carried forward because their pictured surfaces are unchanged. ASC iPhone **7/7**, iPad **3/3**, all **COMPLETE** before review submission. Play phone/7-inch/10-inch **7 each**, icon and regenerated feature graphic uploaded. Captures and generated assets are committed. |
+| Native photo regressions | Initial 1.1.2 Debug iOS 62 / Android 59 passed before production builds. After retrying iOS as 63 and restoring development apps, the final run passed **iOS 63 / Android 59**: real old-container file resolution/upload, recoverable HTTP failure, missing/empty-file rejection and valid retry. Final report `.maestro/out/release/2026-09-22T20-53-31.124Z/report.json` (**14 s / 1 m 14 s**). |
+| Local dev apps | **Debug 1.1.2 (63)** installed and verified on the original `A653D3AC` simulator (left running), dedicated grouping simulator `B0189F2E`, and retained candidate simulator `E2AC008A`. **Debug 1.1.2 (59)** restored on `FlyRight_Dev` / `emulator-5554`; Maja signed in and Flights visible, native version verified. Metro remains on 8081. Store iPhone/iPad simulators retain their current dev-backend Release capture apps. |
+| Physical phones | **SKIPPED at the user's explicit request**. Neither simulator nor emulator results are labelled physical-device passes. |
+
+**Retained data.** iOS kept its original three trips and the established
+`release-retained-photo-20260914` / `release-retained-photo-image-20260914`
+fixture. Android's original emulator snapshot contained 23 Maja trips and no
+reviewer photo; the existing private reviewer fixture was restored from the
+retained iOS database **before upgrading 1.1.1 (58)**. All **23 original Android
+journey IDs remain** in the final dev installation, along with three reviewer
+trips and four synthetic screenshot grouping rows (**30 total**, retained photo
+present). No app uninstall or data clear was used for the candidate upgrades.
+The original snapshot `flyright-before-trip-grouping-tests-20260922` remains
+available. Useful captures are copied to `~/Downloads/flyright-1.1.2-release/`.
+
+**Tooling recovery.** The local Android debug build needed 6 GB Gradle heap after
+the default 2 GB failed D8; only generated native configuration changed. A
+candidate-runner simulator container query timed out while another simulator was
+installing; sequential simulator use cleared it. Restoring Android's dev client
+later stalled its Metro download; a data-preserving emulator reboot and cold
+start resolved it, followed by the successful final native regression report
+above. No app fix or new production build was needed. Native versions and final
+account/data state were checked after restoration. Release scratch artifacts:
+`/private/tmp/flyright-release-1.1.2/`.
 
 ## 2026-09-22 — backend + hosting only (no app release)
 
