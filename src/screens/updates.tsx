@@ -19,6 +19,9 @@ import {
   UpdatesWelcome,
 } from '@/components/first-steps';
 import { HomeSkeleton } from '@/components/home-skeleton';
+import { LivePass } from '@/components/live-pass';
+import { PaneOutline } from '@/components/pane-placeholders';
+import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useHeroTrip } from '@/components/travel-day-banner';
@@ -26,6 +29,7 @@ import { CONVEX_URL } from '@/constants/config';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useAuthSettled, useSettled } from '@/hooks/use-settled';
+import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useJourneys } from '@/services/journeys';
 import { CommentSheet } from '@/screens/update-viewer';
 import { onHomeScreen } from '@/services/public-session';
@@ -129,8 +133,50 @@ export function Updates() {
   const readsSettled = useSettled(!reading, READS_SETTLE_CAP_MS);
   const loading = !authSettled || journeys == null || !readsSettled;
 
-  return (
-    <ThemedView style={styles.fill}>
+  // Wide windows (docs/wide-layouts-plan.md §7): the feed keeps its column
+  // and who is travelling moves into a panel beside it — the live faces, or
+  // on a quiet day everyone's next trip. Nothing is selected here. Split once
+  // the screen knows what to say; the skeleton stays single-column.
+  const layout = useSplitLayout('updates', { primaryWidth: (width) => width * 0.58 });
+  const split = layout.split && !loading;
+  // Everyone you follow's next trip, as the phone's quiet-day strip shows it;
+  // on a wide window it stands in the panel whenever you follow someone.
+  const stripPeople = following.map((p) => ({
+    userId: p.userId,
+    name: p.name,
+    imageUrl: p.imageUrl,
+    next: p.next
+      ? {
+          toCode: p.next.toCode,
+          fromCode: p.next.fromCode,
+          scheduledDeparture: p.next.scheduledDeparture,
+        }
+      : null,
+  }));
+  const friendsStrip =
+    following.length > 0 ? (
+      <FriendsStrip
+        people={stripPeople}
+        onOpenPerson={(id) => router.push({ pathname: '/person/[id]', params: { id } })}
+        onOpenFriends={() => router.push('/people')}
+      />
+    ) : null;
+  const quietStrip = empty === 'quiet' ? friendsStrip : null;
+  // The panel's pass for each friend in the air, the one Friends shows.
+  const inTheAir = split
+    ? following.filter((p) => p.live && onHomeScreen(p.live.session, now))
+    : [];
+  // The panel's own words while there is nobody to show in it.
+  const panelCaption =
+    !isSignedIn || empty === 'follow'
+      ? 'When friends fly, their live status shows here.'
+      : empty === 'asked' && pending
+        ? `Once ${pending.name.split(' ')[0]} says yes, their travel days show here.`
+        : empty === 'followers'
+          ? 'Follow someone back to see their travel days here.'
+          : null;
+
+  const feedColumn = (
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         {/* Titled like Friends: this tab is about other people. You, greeted,
             and the door to your settings are on Flights, the first tab. */}
@@ -169,8 +215,9 @@ export function Updates() {
               )}
 
               {/* The faces of anyone you follow who is in the air — and your
-                  own tile while your postcards are out. */}
-              {live && <FollowingSection own={hero} />}
+                  own tile while your postcards are out. On a wide window
+                  they are the panel beside the feed instead. */}
+              {live && !split && <FollowingSection own={hero} />}
 
               {empty === 'follow' && <GetStarted onFindPeople={() => router.push('/add-person')} />}
               {/* A follow you asked for and are waiting on. (One waiting on
@@ -199,24 +246,7 @@ export function Updates() {
                   onOpenFriends={() => router.push('/people')}
                 />
               )}
-              {empty === 'quiet' && (
-                <FriendsStrip
-                  people={following.map((p) => ({
-                    userId: p.userId,
-                    name: p.name,
-                    imageUrl: p.imageUrl,
-                    next: p.next
-                      ? {
-                          toCode: p.next.toCode,
-                          fromCode: p.next.fromCode,
-                          scheduledDeparture: p.next.scheduledDeparture,
-                        }
-                      : null,
-                  }))}
-                  onOpenPerson={(id) => router.push({ pathname: '/person/[id]', params: { id } })}
-                  onOpenFriends={() => router.push('/people')}
-                />
-              )}
+              {!split && quietStrip}
               {(empty === 'quiet' || empty === 'waiting') && (
                 <EmptyPostcards
                   line={
@@ -272,6 +302,51 @@ export function Updates() {
           )}
         </ScrollView>
       </SafeAreaView>
+  );
+
+  return (
+    <ThemedView style={styles.fill}>
+      <SplitPanes
+        layout={{ ...layout, split }}
+        primary={feedColumn}
+        secondary={
+          <SafeAreaView edges={['top', 'right']} style={styles.fill}>
+            <ScrollView
+              // The SafeAreaView pads the top; "automatic" would add it twice.
+              contentInsetAdjustmentBehavior="never"
+              contentContainerStyle={styles.panel}
+              showsVerticalScrollIndicator={false}>
+              {panelCaption ? (
+                <PaneOutline kind="people" caption={panelCaption} />
+              ) : (
+                <>
+                  {live && <FollowingSection own={hero} />}
+                  {inTheAir.map((p) => (
+                    <LivePass
+                      key={p.userId}
+                      person={p}
+                      session={p.live!.session}
+                      onward={p.live!.onward ?? []}
+                      now={now}
+                      onPress={() => router.push({ pathname: '/person/[id]', params: { id: p.userId } })}
+                    />
+                  ))}
+                  {/* The quiet-day card, minus its "Nobody is flying right now"
+                      line while anyone is in the air. */}
+                  {following.length > 0 && (
+                    <FriendsStrip
+                      people={stripPeople}
+                      onOpenPerson={(id) => router.push({ pathname: '/person/[id]', params: { id } })}
+                      onOpenFriends={() => router.push('/people')}
+                      someoneFlying={inTheAir.length > 0 || flying.length > 0}
+                    />
+                  )}
+                </>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        }
+      />
       {/* The same thread the full-screen photo opens, so a text-only
           postcard can be answered too. */}
       <CommentSheet visible={!!replying} updateId={replying ?? ''} onClose={() => setReplying(null)} />
@@ -300,5 +375,12 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.three,
   },
   list: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.six, gap: Spacing.three },
+  // A wide window's panel beside the feed, clear of iPadOS's floating tab bar.
+  panel: {
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four + PadTabBarClearance,
+    paddingBottom: Spacing.six,
+  },
   noteLabel: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
 });

@@ -147,10 +147,14 @@ export function FriendsStrip({
   people,
   onOpenPerson,
   onOpenFriends,
+  someoneFlying = false,
 }: {
   people: Person[];
   onOpenPerson: (userId: string) => void;
   onOpenFriends: () => void;
+  /** Someone you follow is in the air (the wide Updates panel shows their
+   * pass above this card): drop the "Nobody is flying right now" line. */
+  someoneFlying?: boolean;
 }) {
   const theme = useTheme();
   // Whoever leaves first, of everyone whose next trip this seat can see.
@@ -207,13 +211,15 @@ export function FriendsStrip({
               </View>
             )}
           </View>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.stripLine}>
-            {/* One friend is a person, not a crowd: "Nobody" over a single
-                face reads oddly, so name them. */}
-            {people.length === 1
-              ? `${people[0].name.split(' ')[0]} isn’t flying right now`
-              : 'Nobody is flying right now'}
-          </ThemedText>
+          {!someoneFlying && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.stripLine}>
+              {/* One friend is a person, not a crowd: "Nobody" over a single
+                  face reads oddly, so name them. */}
+              {people.length === 1
+                ? `${people[0].name.split(' ')[0]} isn’t flying right now`
+                : 'Nobody is flying right now'}
+            </ThemedText>
+          )}
         </View>
 
         {/* Not "nothing", then: the next one of them to leave, named. The
