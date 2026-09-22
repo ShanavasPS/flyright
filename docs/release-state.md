@@ -8,7 +8,7 @@ The user requested new builds after regression testing and explicitly said
 **skip physical device tests**. Simulator/emulator native and production
 candidate checks remain required. Version is prepared as **1.1.2**; remote
 numbers were verified at iOS 61 / Android 58, so the planned candidates are
-**iOS 62 / Android 59**. No new build was scheduled at this preparation entry.
+**iOS 62 / Android 59**. The initial observation below preceded build scheduling; see the build updates below.
 
 - App Store 1.1.1 is `READY_FOR_SALE`; its processed build 61 is `VALID`.
   The public Play listing also reports 1.1.1. EAS has no newer/in-progress build.
@@ -52,6 +52,11 @@ numbers were verified at iOS 61 / Android 58, so the planned candidates are
   Android needed a data-preserving reboot after its OS system process hung
   during the native install. The known Expo development toast is now dismissed
   explicitly by the core flow before tab taps. No authentication code changed.
+- Android EAS build `11c62cb4-e27c-4e4b-9f94-9265a03a6b10` (59) is scheduled,
+  auto-submission `1d85bf7a-84c2-4823-aa33-7bc7fd76d720` to internal.
+- The first local iOS attempt consumed **62** but failed before compilation
+  because `npm ci` lost a registry connection (`ECONNRESET`). No IPA/upload was
+  produced. The retry is synced to **63**, with npm retries/cache preference.
 - Release scratch directory: `/private/tmp/flyright-release-1.1.2/`.
   EAS still has no Xcode 27 image; continue with the documented local iOS build.
 
