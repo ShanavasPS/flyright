@@ -24,7 +24,8 @@ numbers were verified at iOS 61 / Android 58, so the planned candidates are
 - Fresh account creation is confirmed on both platforms. Android required native
   keyboard input after Maestro timed out erasing the field; iOS sign-out hit a
   network timeout and succeeded after retry/cold start. Core-screen and final
-  iOS airport-picker checks are ongoing. Final 1.1.2 preflight passed again. Evidence:
+  iOS airport-picker checks subsequently passed. Both signed-in core-screen
+  flows passed two cold starts on 1.1.2. Final 1.1.2 preflight passed again. Evidence:
   `.maestro/out/trip-grouping-20260922/`. Android's original `FlyRight_Dev` state
   is preserved in snapshot `flyright-before-trip-grouping-tests-20260922`;
   restore it before leaving the testing installation. Dedicated iOS test
@@ -32,6 +33,25 @@ numbers were verified at iOS 61 / Android 58, so the planned candidates are
 - Existing production-candidate simulator `E2AC008A-1CA3-4D36-B2EE-832B01840550`
   retains `release-retained-photo-20260914` and its photo, currently on Debug
   1.1.1 (61). Preserve these for the Release upgrade check.
+- Implementation/release commit `2f68294` is pushed. Hosting deployment
+  `e4xygqwivl` serves `entry-3777ba61aed595f4827a084b31cb6032.js`, matching the
+  isolated production export; production Convex and Clerk configuration verified.
+  Public listings still report 1.1.1, so the endpoint correctly announces no
+  1.1.2 notes yet. The root development env file was never changed.
+- ASC 1.1.2 version `823ca388-508b-4b14-bc47-b88648b0fe81` is
+  `PREPARE_FOR_SUBMISSION`, with updated release/reviewer notes and preserved
+  reviewer credentials. No build is attached or submitted yet.
+- iOS Debug 1.1.2 (62) built and installed on the dedicated simulator. Android
+  local Debug rebuilding needed 6 GB Java heap after the default 2 GB failed
+  in D8 dex merging; only generated `android/gradle.properties` was adjusted.
+- Native file/photo regressions **passed on both** installed 1.1.2 binaries:
+  iOS 62 (13 s), Android 59 (10 s), report
+  `.maestro/out/release/2026-09-22T19-38-58.142Z/report.json`.
+  Core-screen evidence: `ios/core-new` and `android/core-verified` under the
+  trip-grouping evidence folder; final iOS airport flow: `ios/airport-picker-final`.
+  Android needed a data-preserving reboot after its OS system process hung
+  during the native install. The known Expo development toast is now dismissed
+  explicitly by the core flow before tab taps. No authentication code changed.
 - Release scratch directory: `/private/tmp/flyright-release-1.1.2/`.
   EAS still has no Xcode 27 image; continue with the documented local iOS build.
 

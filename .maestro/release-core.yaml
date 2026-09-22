@@ -57,6 +57,15 @@ tags:
           when:
             platform: Android
           commands:
+            # Expo's documented development-only useLinking warning can cover
+            # the tab bar. Dismiss only that known toast; all screen/data
+            # assertions below still apply. Release builds have no LogBox.
+            - runFlow:
+                when:
+                  visible: "Can't perform a React state update.*"
+                commands:
+                  - tapOn:
+                      id: "logbox_dismiss_button_error"
             - tapOn: "Friends|People"
       - runFlow:
           when:

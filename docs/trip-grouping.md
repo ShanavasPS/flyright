@@ -85,3 +85,14 @@ ticket is refused. All 24 security checks pass without security-code changes.
 Verification evidence for this change is saved under
 `.maestro/out/trip-grouping-20260922/`. These are development simulator/emulator
 checks, not store-release or physical-phone certification.
+
+Fresh email-OTP sign-up was confirmed on both native platforms. iOS also
+restored its original test account; Android used native adb keyboard input
+after Maestro timed out erasing Clerk's email field. The original Android
+installation remains protected by its pre-test emulator snapshot.
+
+The Android core-screen flow dismisses only the previously documented
+expo-router development warning (“Can't perform a React state update…”),
+whose toast covers the tab bar. It still requires the signed-in account,
+loaded Friends data and World on both cold starts. Production candidate
+checks run separately without development LogBox overlays.
