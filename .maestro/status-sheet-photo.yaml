@@ -1,8 +1,9 @@
 # Regression (2026-09-22): open a friend's status sheet from the Updates rail,
-# open their postcard photo full screen, close it with X — the rail must still
-# open the sheet. Before the fix the viewer was pushed over the open sheet
-# (an RN Modal); iOS took the Modal off screen but it stayed `visible`, so no
-# face in the rail could open it again.
+# open their postcard photo full screen, close it with X — you are back on the
+# sheet (the photo opens over it, UpdateViewerModal), and after closing the
+# sheet the rail still opens it. Before the fix the viewer was a route pushed
+# over the open sheet (an RN Modal); iOS took the Modal off screen but it
+# stayed `visible`, so no face in the rail could open it again.
 # Needs: a signed-in account following someone in the air who posted a photo
 # (the dev store profile: Noah Berg, see scripts/seed-store-profile.mjs),
 # iPhone-sized simulator, dev build on Metro :8081. Taps by position because
@@ -30,14 +31,23 @@ tags:
       - extendedWaitUntil:
           visible: "See .* trips"
           timeout: 10000
+      # The photo, full screen over the sheet.
       - tapOn:
           point: 30%, 50%
       - waitForAnimationToEnd:
           timeout: 5000
+      - assertVisible: "Comments"
+      # X: back on the sheet, not on Updates.
       - tapOn:
           point: 6%, 9%
+      - extendedWaitUntil:
+          visible: "See .* trips"
+          timeout: 8000
+      # Close the sheet by its backdrop.
+      - tapOn:
+          point: 50%, 5%
       - waitForAnimationToEnd:
-          timeout: 5000
+          timeout: 4000
 - tapOn:
     point: 13%, 16%
 - extendedWaitUntil:

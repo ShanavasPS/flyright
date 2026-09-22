@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useMemo, useRef, useState } from 'react';
 import {
@@ -44,17 +44,41 @@ const COMMENT_MAX = 300;
  *
  * It pages sideways through every photo on the same trip, so a traveller who
  * posted four from one airport reads as four, not four separate errands. */
-export function UpdateViewer() {
-  const { ownerId, journeyId, journeyKey, updateId, name } = useLocalSearchParams<{
+export interface UpdateViewerSource {
+  ownerId?: string;
+  /** Somebody else's trip. */
+  journeyId?: string;
+  /** My own, which the device knows by its local id. */
+  journeyKey?: string;
+  updateId?: string;
+  name?: string;
+}
+
+export function UpdateViewer({
+  source,
+  onClose,
+  onLeave,
+}: {
+  /** What to show when opened over a sheet (UpdateViewerModal); as a route,
+   * the URL's params say it instead. */
+  source?: UpdateViewerSource;
+  /** Over a sheet: close just this layer. As a route: back. */
+  onClose?: () => void;
+  /** Over a sheet: Report and "Open trip" go to another screen, which the
+   * sheet has to get out of the way for first. As a route: a plain push. */
+  onLeave?: (href: Href) => void;
+} = {}) {
+  const params = useLocalSearchParams<{
     ownerId?: string;
-    /** Somebody else's trip. */
     journeyId?: string;
-    /** My own, which the device knows by its local id. */
     journeyKey?: string;
     updateId?: string;
     name?: string;
   }>();
+  const { ownerId, journeyId, journeyKey, updateId, name } = source ?? params;
   const router = useRouter();
+  const close = onClose ?? (() => router.back());
+  const leave = onLeave ?? ((href: Href) => router.push(href));
   const insets = useSafeAreaInsets();
   const now = useNow(60_000);
   const { width } = useWindowDimensions();
@@ -92,7 +116,7 @@ export function UpdateViewer() {
     return (
       <View style={[styles.screen, styles.centred]}>
         <Text style={styles.gone}>This photo is no longer shared.</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12}>
+        <Pressable accessibilityRole="button" onPress={close} hitSlop={12}>
           <Text style={styles.goneAction}>Close</Text>
         </Pressable>
       </View>
@@ -131,7 +155,7 @@ export function UpdateViewer() {
       />
 
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={12} onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={12} onPress={close}>
           <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={20} tintColor={WHITE} />
         </Pressable>
         <Avatar name={name ?? 'Traveller'} imageUrl={null} size={32} />
@@ -149,9 +173,7 @@ export function UpdateViewer() {
           accessibilityRole="button"
           accessibilityLabel="Report this photo"
           hitSlop={12}
-          onPress={() =>
-            router.push({ pathname: '/report', params: { name: name ?? '', updateId: current.updateId } })
-          }>
+          onPress={() => leave({ pathname: '/report', params: { name: name ?? '', updateId: current.updateId } })}>
           <SymbolView name={{ ios: 'ellipsis', android: 'more_vert', web: 'more_vert' }} size={20} tintColor={WHITE} />
         </Pressable>
       </View>
@@ -212,7 +234,7 @@ export function UpdateViewer() {
             accessibilityRole="button"
             style={styles.action}
             onPress={() =>
-              router.push(
+              leave(
                 journeyId
                   ? {
                       pathname: '/person/[id]/trip/[journeyId]',
@@ -237,6 +259,27 @@ export function UpdateViewer() {
         onClose={() => setTalking(false)}
       />
     </View>
+  );
+}
+
+/** The viewer opened over a sheet that is itself a Modal (the friends rail's
+ * status sheet, My updates): a second Modal on top of it, so closing the
+ * photo lands back on the sheet. A native full-screen route pushed from inside
+ * an open Modal took the Modal off screen while it stayed `visible`, and the
+ * rail never opened a sheet again. Mounted only while `source` is set. */
+export function UpdateViewerModal({
+  source,
+  onClose,
+  onLeave,
+}: {
+  source: UpdateViewerSource | null;
+  onClose: () => void;
+  onLeave: (href: Href) => void;
+}) {
+  return (
+    <Modal visible={!!source} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      {source && <UpdateViewer source={source} onClose={onClose} onLeave={onLeave} />}
+    </Modal>
   );
 }
 

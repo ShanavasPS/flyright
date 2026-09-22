@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -20,6 +20,7 @@ import { ThemedText } from '@/components/themed-text';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { UpdatesCard } from '@/components/trip-updates';
 import { Spacing } from '@/constants/theme';
+import { UpdateViewerModal, type UpdateViewerSource } from '@/screens/update-viewer';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { compactLiveView } from '@/services/connections';
@@ -368,6 +369,9 @@ export function MyUpdatesSheet({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const count = trips.reduce((sum, trip) => sum + trip.updates.length, 0);
+  // A photo opens over the sheet (UpdateViewerModal), so closing it lands
+  // back here.
+  const [viewing, setViewing] = useState<UpdateViewerSource | null>(null);
   // One trip names itself in the header; several name themselves each.
   const single = trips.length === 1 ? trips[0]! : null;
   return (
@@ -412,17 +416,7 @@ export function MyUpdatesSheet({
                   onRemove={onRemove}
                   onOpenPhoto={
                     ownerId
-                      ? (updateId) => {
-                          // Close first, like every other way out of the
-                          // sheet: presenting the full-screen viewer over an
-                          // open Modal leaves the Modal marked open but off
-                          // screen, and it never opens again.
-                          onClose();
-                          router.push({
-                            pathname: '/update-viewer',
-                            params: { ownerId, journeyKey: trip.journeyKey, updateId, name: 'You' },
-                          });
-                        }
+                      ? (updateId) => setViewing({ ownerId, journeyKey: trip.journeyKey, updateId, name: 'You' })
                       : undefined
                   }
                 />
@@ -439,6 +433,17 @@ export function MyUpdatesSheet({
           </Animated.View>
         )}
       </View>
+      <UpdateViewerModal
+        source={viewing}
+        onClose={() => setViewing(null)}
+        onLeave={(href: Href) => {
+          // Another screen: get both layers out of the way first, as the
+          // sheet's other ways out do.
+          setViewing(null);
+          onClose();
+          router.push(href);
+        }}
+      />
     </Modal>
   );
 }
@@ -511,6 +516,9 @@ function SheetBody({
   // brings it up once its height is known.
   const foldY = useRef(0);
   const revealTimeline = useRef(false);
+  // A photo opens over the sheet (UpdateViewerModal), so closing it lands
+  // back here; Report and "Open trip" close both first (leaveFromPhoto).
+  const [viewing, setViewing] = useState<UpdateViewerSource | null>(null);
   const { isSignedIn } = useAuth();
   const { session, onward, owner } = entry;
   const detailQuery = useQuery(api.live.byFollow, isSignedIn ? { sessionId: entry.sessionId as Id<'liveSessions'> } : 'skip');
@@ -620,22 +628,13 @@ function SheetBody({
                   onReport={() => report(u.updateId)}
                   onOpenPhoto={
                     entry.journeyId
-                      ? () => {
-                          // Close first (see MyUpdatesSheet): pushed over the
-                          // open sheet, the viewer left the whole rail dead —
-                          // the Modal stayed `visible` off screen, so no face
-                          // could open it again.
-                          onClose();
-                          router.push({
-                            pathname: '/update-viewer',
-                            params: {
-                              ownerId: entry.ownerId,
-                              journeyId: entry.journeyId as string,
-                              updateId: u.updateId,
-                              name: entry.owner.name,
-                            },
-                          });
-                        }
+                      ? () =>
+                          setViewing({
+                            ownerId: entry.ownerId,
+                            journeyId: entry.journeyId as string,
+                            updateId: u.updateId,
+                            name: entry.owner.name,
+                          })
                       : undefined
                   }
                 />
@@ -668,6 +667,17 @@ function SheetBody({
         )}
       </ScrollView>
       <PrimaryButton label={`See ${first}'s trips`} onPress={() => onOpenPerson(entry.ownerId)} />
+      <UpdateViewerModal
+        source={viewing}
+        onClose={() => setViewing(null)}
+        onLeave={(href: Href) => {
+          // Another screen: get both layers out of the way first, as the
+          // sheet's other ways out (person, trip, report) do.
+          setViewing(null);
+          onClose();
+          router.push(href);
+        }}
+      />
     </>
   );
 }
