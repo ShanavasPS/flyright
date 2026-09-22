@@ -108,6 +108,35 @@ describe('EU261 delays', () => {
     });
   });
 
+  it('covers departures from the outermost regions, on any carrier', () => {
+    // Réunion–Mauritius on Air Mauritius: leaves EU territory, so EU261.
+    const v = evaluate(
+      flight({ carrier: 'Air Mauritius', carrierCountry: 'MU', from: { code: 'RUN', country: 'RE' }, to: { code: 'MRU', country: 'MU' }, distanceKm: 230 }),
+      delay(200),
+    );
+    expect(v.regulation).toBe('EU261');
+    expect(v.compensation).toEqual({ amount: 250, currency: 'EUR' });
+    expect(v.escalationBody).toBe('National Enforcement Body of FR');
+  });
+
+  it('covers arrivals into an outermost region on an EU carrier only', () => {
+    const inbound = (carrierCountry: string) =>
+      evaluate(
+        flight({ carrierCountry, from: { code: 'MRU', country: 'MU' }, to: { code: 'RUN', country: 'RE' }, distanceKm: 230 }),
+        delay(200),
+      );
+    expect(inbound('FR').regulation).toBe('EU261');
+    expect(inbound('MU').eligible).toBe(false);
+  });
+
+  it('names the arrival state for a flight into the EU from outside', () => {
+    const v = evaluate(
+      flight({ from: { code: 'JFK', country: 'US' }, to: { code: 'FRA', country: 'DE' }, distanceKm: 6200 }),
+      delay(300),
+    );
+    expect(v.escalationBody).toBe('National Enforcement Body of DE');
+  });
+
   it('marks extraordinary circumstances ineligible but contestable', () => {
     const v = evaluate(flight(), delay(300, { extraordinaryCircumstances: true }));
     expect(v.eligible).toBe(false);

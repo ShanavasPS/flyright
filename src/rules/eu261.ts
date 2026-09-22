@@ -1,4 +1,4 @@
-import { isEU, isIntraEU } from './regions';
+import { enforcementState, isEU, isEUTerritory, isIntraEU } from './regions';
 import type { Disruption, Journey, Verdict } from './types';
 
 const NOT_APPLICABLE: Verdict = {
@@ -9,14 +9,15 @@ const NOT_APPLICABLE: Verdict = {
 };
 
 /**
- * Regulation (EC) No 261/2004.
- * Applies to any flight departing an EU/EEA airport, and to flights arriving
- * into the EU/EEA on an EU/EEA carrier.
+ * Regulation (EC) No 261/2004, Art. 3(1).
+ * Applies to any flight departing an airport in EU/EEA territory — the
+ * outermost regions (Réunion, Guadeloupe, …) included — and to flights
+ * arriving there from outside on an EU/EEA carrier.
  */
 export function appliesEU261(journey: Journey): boolean {
   if (journey.mode !== 'flight') return false;
-  if (isEU(journey.from.country)) return true;
-  return isEU(journey.to.country) && isEU(journey.carrierCountry);
+  if (isEUTerritory(journey.from.country)) return true;
+  return isEUTerritory(journey.to.country) && isEU(journey.carrierCountry);
 }
 
 /** Distance bands per Article 7. Art 7(1)(b) puts EVERY intra-Community
@@ -43,7 +44,11 @@ export function evaluateEU261(journey: Journey, disruption: Disruption, options:
 
   const base = {
     regulation: 'EU261' as const,
-    escalationBody: `National Enforcement Body of ${journey.from.country}`,
+    // The body of the state where the flight left from; for a flight into
+    // the EU from outside, the state it arrived in (Art. 16(1)).
+    escalationBody: `National Enforcement Body of ${enforcementState(
+      isEUTerritory(journey.from.country) ? journey.from.country : journey.to.country,
+    )}`,
   };
 
   if (disruption.extraordinaryCircumstances) {
