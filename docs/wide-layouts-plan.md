@@ -305,3 +305,23 @@ run with `scripts/wide-layouts/regression.sh`:
   claim-outcomes) and clear-state flows. Physical phones still carry store
   builds (Pixel 9a: Play 1.0.39) and get the new code only with the next
   release build.
+
+## 15. Follow-ups done on 2026-09-22 (branch wide-extras, merged)
+
+- **Outcome dates:** `claims.status_history` (migration 0015, one nullable
+  `ADD COLUMN`), written by `recordOutcome`; the claim pane dates each
+  recorded outcome. Earlier outcomes stay undated. Verified: the migration on
+  an upgraded Android install (app opens, 7 claims intact, column present),
+  and an outcome recorded through the UI stored its date.
+- **"Why €…" card** (claim pane) and **"Recent flights"** (wide Claims list
+  with nothing in progress; the no-claims pane), from
+  `services/claim-explain` — only facts the app holds; an unrecorded delay
+  reads "Delay not recorded" / "Not checked".
+- **Split from 740 pt** (`TwoPaneMinWidth`, was 840): every iPad in
+  portrait and Galaxy Folds in landscape. Panes never go below 375 pt
+  (`MinPaneWidth`, `paneWidth`, `paneShare`): the first iPad mini run showed
+  Flights' 312 pt list crushing the stats card.
+- **Checked:** iPad mini portrait (744) — all tabs; phone width pixel-
+  identical to main on the signed-in iPhone and the Android phone emulator
+  (a first Android run was spoiled by the dev-only expo-router LogBox and a
+  loading frame, clean on re-run). 94 suites / 1095 tests.
