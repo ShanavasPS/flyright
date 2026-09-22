@@ -5,7 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,10 +23,12 @@ import { CIRCLE_FULL, FREE_CIRCLE_LABEL } from '../../convex/circleShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
+import { PaneOutline } from '@/components/pane-placeholders';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
 import { LivePass } from '@/components/live-pass';
 import { RouteLeg } from '@/components/route-leg';
 import { SegmentTabs } from '@/components/segment-tabs';
+import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -38,13 +40,16 @@ import {
 } from '@/components/travel-stats-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
 import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
+import { keepOrFallback, pickPerson } from '@/services/default-pick';
 import { useProLocked } from '@/services/purchases';
 import { onHomeScreen, spanLabel } from '@/services/public-session';
+import { Person } from '@/screens/person';
 
 type CircleList = NonNullable<ReturnType<typeof useQuery<typeof api.circle.list>>>;
 type Following = CircleList['following'][number];
@@ -52,6 +57,13 @@ type Follower = CircleList['followers'][number];
 type Incoming = CircleList['incoming'][number];
 type Outgoing = CircleList['outgoing'][number];
 type Tab = 'following' | 'followers';
+
+/** Wide window only (docs/wide-layouts-plan.md §5): who is open in the pane
+ * beside the list, and how a row opens someone there instead of pushing
+ * their page. Absent on phones, so every row behaves as it always has. */
+const PersonPane = createContext<{ selectedId: string | null; open: (userId: string) => void } | null>(
+  null,
+);
 
 /** One row of a tab, as data: the tabs are FlatLists, so a circle of any
  * size mounts only the rows on screen. Section labels and the empty card
@@ -255,6 +267,30 @@ export function People() {
     if (data.unseen[side] > 0) void markSeen({ side });
   }, [focused, data, picked, markSeen]);
 
+  // Wide windows: the list keeps its column and a person opens beside it —
+  // by default whoever is in the air, else the next to depart, else the
+  // first row. Split once there is something to show (signed out, or the
+  // circle has loaded); the spinner stays single-column.
+  const layout = useSplitLayout('friends', { primaryWidth: 400 });
+  const split = layout.split && (!isSignedIn || data != null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Minute ticks: who is in the air (and so the default pick) can change
+  // while the page stays open; an explicit tap is never overridden.
+  const clock = useNow(60_000);
+  const people = useMemo(() => {
+    if (!data) return null;
+    const flying = new Set(
+      data.following.filter((p) => p.live && onHomeScreen(p.live.session, clock)).map((p) => p.userId),
+    );
+    const ids = new Set([...data.following, ...data.followers].map((p) => p.userId));
+    return { ids, pick: () => pickPerson(data.following, data.followers, flying, clock.getTime()) };
+  }, [data, clock]);
+  const detailId = split && people ? keepOrFallback(selectedId, people.ids, people.pick) : null;
+  const pane = useMemo(
+    () => (split ? { selectedId: detailId, open: (userId: string) => setSelectedId(userId) } : null),
+    [split, detailId],
+  );
+
   // The "New" marks for this visit: taken from the first data seen while
   // the page is on screen, and kept until it is left — the server's "seen"
   // stamp moves the moment the side is looked at, and a mark that vanished
@@ -387,8 +423,7 @@ export function People() {
     }
   };
 
-  return (
-    <ThemedView style={styles.container}>
+  const listPane = (
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <View style={styles.titleRow}>
           <View style={styles.titleBlock}>
@@ -422,8 +457,52 @@ export function People() {
           </ScrollView>
         )}
       </SafeAreaView>
+  );
+
+  return (
+    <ThemedView style={styles.container}>
+      <PersonPane.Provider value={pane}>
+        <SplitPanes
+          layout={{ ...layout, split }}
+          primary={listPane}
+          secondary={
+            detailId ? (
+              // Keyed: another person is another page, not this one morphing.
+              <Person key={detailId} userId={detailId} embedded onGone={() => setSelectedId(null)} />
+            ) : (
+              <SafeAreaView edges={['top', 'right']} style={styles.outlinePane}>
+                <PaneOutline
+                  kind="person"
+                  caption="The people you follow open here, with their flights as they happen."
+                />
+              </SafeAreaView>
+            )
+          }
+        />
+      </PersonPane.Provider>
     </ThemedView>
   );
+}
+
+/** On a wide window, a row opens its person in the pane beside the list;
+ * everywhere else it pushes their page, as it always has. */
+function useOpenPerson(userId: string) {
+  const router = useRouter();
+  const pane = useContext(PersonPane);
+  return {
+    open: pane
+      ? () => pane.open(userId)
+      : () => router.push({ pathname: '/person/[id]', params: { id: userId } }),
+    selected: pane?.selectedId === userId,
+  };
+}
+
+/** The tint outline a selected row wears in the wide layout, the way a
+ * selected trip does on Flights. Rows that are not selected render bare. */
+function Selected({ on, children }: { on: boolean; children: React.ReactNode }) {
+  const theme = useTheme();
+  if (!on) return <>{children}</>;
+  return <View style={[styles.selected, { borderColor: theme.tint }]}>{children}</View>;
 }
 
 function RowGap() {
@@ -643,8 +722,7 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
   // Tapping a name asks "where are they going?", which an action sheet could
   // never answer — and it put "stop following" one tap from a row anyone
   // might press by accident. Both decisions live on the page now.
-  const actions = () =>
-    router.push({ pathname: '/person/[id]', params: { id: person.userId } });
+  const { open: actions, selected } = useOpenPerson(person.userId);
 
   // A live pass only while its deadline is ahead. The card arrives with the
   // query and the query is reactive to data, not to time, so without this it
@@ -652,13 +730,15 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
   const live = person.live && onHomeScreen(person.live.session, now) ? person.live : null;
   if (live) {
     return (
-      <LivePass
-        person={person}
-        session={live.session}
-        onward={live.onward ?? []}
-        now={now}
-        onPress={actions}
-      />
+      <Selected on={selected}>
+        <LivePass
+          person={person}
+          session={live.session}
+          onward={live.onward ?? []}
+          now={now}
+          onPress={actions}
+        />
+      </Selected>
     );
   }
 
@@ -668,6 +748,7 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
   const nextMs = next ? Date.parse(next.scheduledDeparture) - now.getTime() : NaN;
   const nextTimer = next && nextMs > 60_000 ? `Departs in ${spanLabel(nextMs)}` : null;
   return (
+    <Selected on={selected}>
     <Pressable
       accessibilityRole="button"
       onPress={actions}
@@ -732,6 +813,7 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
         )}
       </SheenCard>
     </Pressable>
+    </Selected>
   );
 }
 
@@ -745,6 +827,7 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
 function FollowerRow({ person, fresh }: { person: Follower; fresh: boolean }) {
   const theme = useTheme();
   const router = useRouter();
+  const { open: openPerson, selected } = useOpenPerson(person.userId);
   const ask = useMutation(api.circle.askToFollow);
   const cancel = useMutation(api.circle.cancelRequest);
   const [busy, setBusy] = useState(false);
@@ -773,9 +856,10 @@ function FollowerRow({ person, fresh }: { person: Follower; fresh: boolean }) {
     ]);
 
   return (
+    <Selected on={selected}>
     <Pressable
       accessibilityRole="button"
-      onPress={() => router.push({ pathname: '/person/[id]', params: { id: person.userId } })}
+      onPress={openPerson}
       style={({ pressed }) => pressed && styles.pressed}>
       <SheenCard style={styles.rowCard}>
         <Avatar name={person.name} imageUrl={person.imageUrl} size={44} pro={person.pro} />
@@ -816,6 +900,7 @@ function FollowerRow({ person, fresh }: { person: Follower; fresh: boolean }) {
         )}
       </SheenCard>
     </Pressable>
+    </Selected>
   );
 }
 
@@ -1108,6 +1193,18 @@ function InviteRow({ locked, onInvite }: { locked: boolean; onInvite: () => void
 }
 
 const styles = StyleSheet.create({
+  // Wide window: a second pane with nobody to show yet, clear of iPadOS's
+  // floating tab bar.
+  outlinePane: {
+    flex: 1,
+    paddingTop: Spacing.four + PadTabBarClearance,
+    paddingHorizontal: Spacing.four,
+  },
+  selected: {
+    borderWidth: 1.5,
+    borderRadius: Spacing.four + 2,
+    padding: 1,
+  },
   container: {
     flex: 1,
   },

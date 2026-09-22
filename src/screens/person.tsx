@@ -19,6 +19,7 @@ import { CIRCLE_FULL } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
 import { Card } from '@/components/card';
+import { PadTabBarClearance } from '@/components/split-panes';
 import { useChoiceSheet } from '@/components/choice-sheet';
 import { PersonTravel, Stat } from '@/components/person-travel';
 import { ThemedText } from '@/components/themed-text';
@@ -40,8 +41,22 @@ import { useProLocked } from '@/services/purchases';
  * those buttons open, so nothing about the relationship sits under a year of
  * somebody else's flights any more. Below that, their travel, read-only.
  */
-export function Person({ userId }: { userId: string }) {
+export function Person({
+  userId,
+  embedded = false,
+  onGone,
+}: {
+  userId: string;
+  /** The second pane of a wide Friends tab (docs/wide-layouts-plan.md §5),
+   * not a pushed route: there is no navigation bar to carry the name, so the
+   * page shows it itself, and no screen of its own to go back from. */
+  embedded?: boolean;
+  /** After stopping, removing or blocking: a pushed page goes back; a pane
+   * lets the list choose someone else. */
+  onGone?: () => void;
+}) {
   const router = useRouter();
+  const leaveThePage = onGone ?? (() => router.back());
   const theme = useTheme();
   const data = useQuery(api.circle.person, { userId });
   const setMuted = useMutation(api.circle.setMuted);
@@ -120,7 +135,7 @@ export function Person({ userId }: { userId: string }) {
           destructive: true,
           onPress: () => {
             trackEvent('circle_left');
-            void leave({ ownerId: userId }).then(() => router.back());
+            void leave({ ownerId: userId }).then(leaveThePage);
           },
         },
       ]);
@@ -154,7 +169,7 @@ export function Person({ userId }: { userId: string }) {
           destructive: true,
           onPress: () => {
             trackEvent('circle_removed');
-            void remove({ memberId: userId }).then(() => router.back());
+            void remove({ memberId: userId }).then(leaveThePage);
           },
         },
       ]);
@@ -178,7 +193,7 @@ export function Person({ userId }: { userId: string }) {
             onPress: () => {
               trackEvent('person_blocked', { from: 'person' });
               void block({ userId })
-                .then(() => router.back())
+                .then(leaveThePage)
                 .catch(() => failed(`Couldn't block ${p.name}`));
             },
           },
@@ -200,6 +215,11 @@ export function Person({ userId }: { userId: string }) {
 
     body = (
       <>
+        {embedded && (
+          <ThemedText type="subtitle" themeColor="heading" style={styles.paneName} numberOfLines={2}>
+            {p.name}
+          </ThemedText>
+        )}
         <View style={styles.header}>
           <Avatar name={p.name} imageUrl={p.imageUrl} size={76} pro={p.pro} />
           <View style={styles.headerRight}>
@@ -324,12 +344,15 @@ export function Person({ userId }: { userId: string }) {
         a header — and once the page is scrolled there was nothing left
         saying whose trips these are. (Alta, Instagram and Digg all put the
         person there; the hero below no longer repeats it.) */}
-      <Stack.Screen options={{ title: data && !('gone' in data) ? data.name : '' }} />
-      <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
+      {!embedded && <Stack.Screen options={{ title: data && !('gone' in data) ? data.name : '' }} />}
+      {/* In a pane the top inset is this page's (no header owns it) and the
+          left edge belongs to the list; its SafeAreaView pads the top, so the
+          scroll view must not add it again. */}
+      <SafeAreaView edges={embedded ? ['top', 'right'] : ['bottom', 'left', 'right']} style={styles.safeArea}>
         <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
+          contentInsetAdjustmentBehavior={embedded ? 'never' : 'automatic'}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={[styles.scrollContent, embedded && styles.paneContent]}>
           {body}
         </ScrollView>
       </SafeAreaView>
@@ -406,6 +429,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   spinner: { marginTop: Spacing.six },
+  paneContent: { paddingTop: Spacing.four + PadTabBarClearance },
+  paneName: { fontSize: 26, lineHeight: 32 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
