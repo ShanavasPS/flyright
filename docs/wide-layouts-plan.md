@@ -168,3 +168,38 @@ Footnote: "For arrivals 3 h+ late, or cancellations with under 14 days' notice. 
 | — | 23 Oct | Duo on real hardware → turn `duoMirror` on from the server |
 
 This is dense. If a day slips, the order to drop is World → Updates → Duo reversed order (the switch stays off). Nothing reaches phones either way.
+
+## 11. Day-1 findings (2026-09-22)
+
+- **Done:** `use-split-layout` (+ tests for every device class), `split-panes`,
+  `default-pick` (+ tests), `pane-placeholders`, switches (local defaults +
+  `WIDE_LAYOUTS` on `/api/app-version`, + tests). No screen uses them yet.
+- **Baselines:** iPhone simulator, FlyRight_Dev (Android phone, 411 dp),
+  Galaxy_Flip_Test (360 dp), Galaxy_Fold_Test folded and unfolded (with seed
+  data), iPad Pro 13 landscape (with seed data). Copies in
+  `~/Downloads/wide-layouts-baseline-2026-09-22/`, with the seed SQL
+  (`seed-wide.sql`: 5 anonymous trips, 3 claims — overdue, sent, paid).
+  Re-shoot with `.maestro/wide/tabs-snapshot.yaml`. Live data (a friend in the
+  air) changes between runs, so the comparison is visual, not byte-exact.
+- **Fixed:** `jest --runInBand` never exited (an unmocked `@clerk/expo` in
+  `import-status.test.ts` left a MessagePort open), which means
+  `release:preflight` hung after passing. Now 91 suites / 1050 tests exit in ~20 s.
+- **iPad:** the floating tab bar is centred at the top and the safe area does
+  **not** include it. The existing Flights split is fine (the trip map runs
+  under the glass), but a second pane that starts with text (Claims, Friends)
+  needs its own top offset when split on iPad, or its heading sits under the bar.
+- **Web:** `Journeys` never renders on the web (`/` is the landing page), so
+  there is no Flights split to preserve there; `allowWeb` stays unused.
+  **Separate live bug:** `getflyright.com/flights` crashes (React #185, max
+  update depth). The old `/flights` route `<Redirect>`s to `/` from inside the
+  tabs layout, which swaps its whole tree for `/` on the web, so the redirect
+  repeats forever. Reported, not fixed here.
+- **Emulators:** the Fold and Flip AVDs had 1.0.x debug builds and are now on
+  the 1.1.1 debug APK (`install -r`, data kept). Pixel_9a holds a 1.0.38
+  release build (not usable with Metro); FlyRight_Dev is the Android phone
+  test device. Folding the Pixel Fold emulator locks the screen, so tests
+  must wake and swipe it after `adb emu fold`.
+- **Dev-only noise:** after a JS reload the Android dev build shows a LogBox
+  error from expo app-metrics ("Session.addMetric … shared object already
+  released"). It comes from the previous runtime's session, not from app code;
+  dismiss and continue.
