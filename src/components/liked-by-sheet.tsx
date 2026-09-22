@@ -5,7 +5,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
-import { SHEET_ENTERING } from '@/components/sheet-entering';
+import { SHEET_ENTERING, sheetBottomPadding } from '@/components/sheet-entering';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
@@ -56,7 +56,7 @@ export function LikedBySheet({
             entering={SHEET_ENTERING}
             style={[
               styles.card,
-              { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) },
+              { backgroundColor: theme.background, paddingBottom: sheetBottomPadding(insets.bottom) },
             ]}>
             <View style={styles.header}>
               {update.photoUrl && (

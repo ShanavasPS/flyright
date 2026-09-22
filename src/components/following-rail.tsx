@@ -16,7 +16,7 @@ import { Avatar } from '@/components/avatar';
 import { FlightFactsStrip } from '@/components/flight-facts';
 import { PrimaryButton } from '@/components/primary-button';
 import { RouteLeg } from '@/components/route-leg';
-import { SHEET_ENTERING } from '@/components/sheet-entering';
+import { SHEET_ENTERING, sheetBottomPadding } from '@/components/sheet-entering';
 import { ThemedText } from '@/components/themed-text';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { UpdatesCard } from '@/components/trip-updates';
@@ -387,7 +387,7 @@ export function MyUpdatesSheet({
             entering={SHEET_ENTERING}
             style={[
               styles.card,
-              { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) },
+              { backgroundColor: theme.background, paddingBottom: sheetBottomPadding(insets.bottom) },
             ]}>
             <View style={styles.sheetHeader}>
               <View style={styles.sheetTitle}>
@@ -482,7 +482,7 @@ function TripSheet({
             entering={SHEET_ENTERING}
             style={[
               styles.card,
-              { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) },
+              { backgroundColor: theme.background, paddingBottom: sheetBottomPadding(insets.bottom) },
             ]}>
             <SheetBody
               key={entry.sessionId}
