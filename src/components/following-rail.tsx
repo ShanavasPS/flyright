@@ -412,11 +412,17 @@ export function MyUpdatesSheet({
                   onRemove={onRemove}
                   onOpenPhoto={
                     ownerId
-                      ? (updateId) =>
+                      ? (updateId) => {
+                          // Close first, like every other way out of the
+                          // sheet: presenting the full-screen viewer over an
+                          // open Modal leaves the Modal marked open but off
+                          // screen, and it never opens again.
+                          onClose();
                           router.push({
                             pathname: '/update-viewer',
                             params: { ownerId, journeyKey: trip.journeyKey, updateId, name: 'You' },
-                          })
+                          });
+                        }
                       : undefined
                   }
                 />
@@ -614,7 +620,12 @@ function SheetBody({
                   onReport={() => report(u.updateId)}
                   onOpenPhoto={
                     entry.journeyId
-                      ? () =>
+                      ? () => {
+                          // Close first (see MyUpdatesSheet): pushed over the
+                          // open sheet, the viewer left the whole rail dead —
+                          // the Modal stayed `visible` off screen, so no face
+                          // could open it again.
+                          onClose();
                           router.push({
                             pathname: '/update-viewer',
                             params: {
@@ -623,7 +634,8 @@ function SheetBody({
                               updateId: u.updateId,
                               name: entry.owner.name,
                             },
-                          })
+                          });
+                        }
                       : undefined
                   }
                 />

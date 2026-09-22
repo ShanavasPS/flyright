@@ -1,0 +1,44 @@
+# Regression (2026-09-22): open a friend's status sheet from the Updates rail,
+# open their postcard photo full screen, close it with X — the rail must still
+# open the sheet. Before the fix the viewer was pushed over the open sheet
+# (an RN Modal); iOS took the Modal off screen but it stayed `visible`, so no
+# face in the rail could open it again.
+# Needs: a signed-in account following someone in the air who posted a photo
+# (the dev store profile: Noah Berg, see scripts/seed-store-profile.mjs),
+# iPhone-sized simulator, dev build on Metro :8081. Taps by position because
+# the rail face and the feed postcard share the friend's name.
+appId: com.shanavasshaji.flyright
+tags:
+  - updates
+---
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Welcome.*|Good .*"
+    timeout: 180000
+- tapOn: "Updates"
+- waitForAnimationToEnd:
+    timeout: 5000
+- repeat:
+    times: 2
+    commands:
+      - tapOn:
+          point: 13%, 16%
+      - extendedWaitUntil:
+          visible: "See .* trips"
+          timeout: 10000
+      - tapOn:
+          point: 30%, 50%
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - tapOn:
+          point: 6%, 9%
+      - waitForAnimationToEnd:
+          timeout: 5000
+- tapOn:
+    point: 13%, 16%
+- extendedWaitUntil:
+    visible: "See .* trips"
+    timeout: 10000
+- assertNotVisible: "Something went wrong"
