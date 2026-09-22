@@ -203,3 +203,47 @@ This is dense. If a day slips, the order to drop is World → Updates → Duo re
   error from expo app-metrics ("Session.addMetric … shared object already
   released"). It comes from the previous runtime's session, not from app code;
   dismiss and continue.
+
+## 12. Days 2–4 (2026-09-22) — built, and what testing found
+
+**Built:** every tab. Flights on the shared split (list no longer remounts),
+Claims (claim pane from local data, summary, "Nothing in progress", no-claims
+explainers with the corrected EU261 table), Friends (Person embedded,
+selection context), Updates (feed + panel: faces rail, a live pass per
+friend in the air, the friends card), World (globe pane + side panel with
+the route list), the Duo reversed order (switch off). Code freeze here.
+
+**Checked so far:**
+- Phone width is pixel-identical to `main` for Flights, Updates, Friends,
+  Claims and a pushed person page: signed-in iPhone (dev build), the Flip,
+  the Fold cover. The only differences are the live card's running border
+  and "LIVE" dot, which animate. Tooling: `scripts/wide-layouts/ab.sh`,
+  `pixdiff.cjs`, `.maestro/wide/phone-ab.yaml`.
+- Wide on iPad Pro 13 (portrait and landscape) and the Pixel Fold (open):
+  default picks, selection, empty states, the panels, the iPad tab-bar
+  clearance.
+- The Duo reversed order, rendered on the iPad with a temporary override:
+  detail/panel left, list/globe right, meeting at the middle.
+
+**Found and fixed:**
+- *Fold from a split Updates or World left the cover cut off at the right.*
+  Unsplit, SplitPanes laid out a row; content sized from its last layout
+  (the globe canvas, feed photos) held the pane at its split width. Unsplit
+  is now a column (commit e39d697). Flights/Claims/Friends were not affected because their
+  split widths were narrower than the cover.
+- The Updates panel showed the quiet-day card's "Nobody is flying right now"
+  under a live pass. The card now drops that line while someone flies.
+- iPad panes: a scroll view added the top safe area on top of its
+  SafeAreaView; now `contentInsetAdjustmentBehavior="never"` in panes and
+  the iPad tab-bar clearance is 24 pt.
+
+**Known, not fixed (not regressions):**
+- Android: unfolding scrolls the Flights list back to the top. The
+  selection and screen state survive (no remount); folding keeps the scroll.
+- Dev only: fast refresh sometimes misses newly added files — force-reload
+  before trusting a check. Maestro cannot find elements in iPad landscape
+  (test iPad in portrait; the 13" still splits) and on iOS it can attach to
+  the wrong booted simulator — keep one iOS simulator booted per run.
+- The Duo simulator's inner display cannot be opened from scripts (Device
+  Hub only), so the Duo is covered by the unit tests, the iPad override
+  check and, on 2026-10-23, the device itself before `duoMirror` goes on.
