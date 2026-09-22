@@ -141,7 +141,10 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
     focus: 'bottom',
     eyebrow: 'WHEN IT GOES WRONG',
     title: 'Know what you’re owed',
-    body: 'A delay of three hours can be worth €600. FlyRight tells you the moment a flight starts owing you money.',
+    // "Up to", and from three hours, not "three hours = €600": at 3–4 hours
+    // a long-haul flight pays €300, and €600 needs 4h+ on a flight leaving
+    // or entering the EU (EU261 Art. 7).
+    body: 'From three hours late, a flight can owe you up to €600. FlyRight tells you the moment a flight starts owing you money.',
   },
   {
     shot: 'claims',
