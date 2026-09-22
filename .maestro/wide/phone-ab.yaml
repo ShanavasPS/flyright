@@ -1,0 +1,44 @@
+# Phone-width regression shots for docs/wide-layouts-plan.md §9 (Pass 2):
+# every tab, then a pushed person page, on an installed dev build that is
+# already signed in and past onboarding. Run by scripts/wide-layouts/ab.sh
+# once on main and once on the branch; the shots must match.
+#   maestro --device <udid> test -e SHOTS=<dir> -e NAME=<main|branch> .maestro/wide/phone-ab.yaml
+appId: com.shanavasshaji.flyright
+tags:
+  - wide
+---
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Ask App Not to Track"
+    optional: true
+- extendedWaitUntil:
+    visible: "Welcome.*|Good morning.*|Good afternoon.*|Good evening.*"
+    timeout: 180000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${SHOTS}/${NAME}-1-flights
+- tapOn: "Updates"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${SHOTS}/${NAME}-2-updates
+- tapOn: "Friends"
+- extendedWaitUntil:
+    visible: "Following.*|Sign in to invite|Nobody's following you yet"
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: ${SHOTS}/${NAME}-3-friends
+- tapOn: "Claims"
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: ${SHOTS}/${NAME}-5-claims
+- tapOn: "Friends"
+- tapOn:
+    text: "Tomas Ek.*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: ${SHOTS}/${NAME}-6-person
+- assertNotVisible: "Something went wrong"
