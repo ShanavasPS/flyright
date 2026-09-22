@@ -10,7 +10,6 @@ import {
   SectionList,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +21,8 @@ import { TripRow } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { LayoverMark } from '@/components/layover-mark';
+import { PaneOutline } from '@/components/pane-placeholders';
+import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FlashToast } from '@/components/flash-toast';
@@ -35,9 +36,10 @@ import {
   WHITE_DIM,
   WHITE_FAINT,
 } from '@/components/travel-stats-header';
-import { MaxContentWidth, Spacing, TwoPaneMinWidth } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { JourneyDetail } from '@/screens/journey-detail';
 import { useNow } from '@/hooks/use-now';
+import { useSplitLayout } from '@/hooks/use-split-layout';
 import { useAuthSettled } from '@/hooks/use-settled';
 import { useTheme } from '@/hooks/use-theme';
 import { evaluate } from '@/rules/engine';
@@ -215,21 +217,26 @@ export function Journeys() {
 
   // Book posture / big screens: list on the left, the selected trip's detail
   // on the right. Expanded-width windows only (unfolded foldable in
-  // landscape, big tablets); on a book-fold the pane seam sits exactly on
-  // the hinge. Tabletop wins when both could apply (a fold rotated to a
-  // horizontal hinge is a tabletop, not a book).
-  const { width: windowWidth } = useWindowDimensions();
-  const twoPane = !tabletopHinge && windowWidth >= TwoPaneMinWidth && loaded && !!journeys?.length;
+  // landscape, big tablets, an iPhone Duo opened flat); on a book-fold the
+  // pane seam sits exactly on the hinge. Tabletop wins when both could apply
+  // (a fold rotated to a horizontal hinge is a tabletop, not a book). The
+  // rules live in useSplitLayout, shared with the other tabs.
+  const layout = useSplitLayout('flights', {
+    primaryWidth: (width) => width * 0.42,
+    allowWeb: true,
+  });
+  // Split once the journal is in: a trip's detail beside the list, or — with
+  // no trips yet — the outline of the page a trip will open on.
+  const twoPane = layout.split && loaded && !journalError;
+  const hasTrips = !!journeys?.length;
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const bookHinge =
-    fold.orientation === 'vertical' && fold.isSeparating ? fold.hingeBounds : null;
-  const listPaneWidth = bookHinge ? bookHinge.left : Math.round(windowWidth * 0.42);
   // Nothing selected yet: today's flight if there is one, else the next trip.
-  const detailId = twoPane
-    ? journeys!.some((j) => j.id === selectedId)
-      ? selectedId
-      : (hero?.journey.id ?? sections[0]?.data[0]?.id ?? null)
-    : null;
+  const detailId =
+    twoPane && hasTrips
+      ? journeys!.some((j) => j.id === selectedId)
+        ? selectedId
+        : (hero?.journey.id ?? sections[0]?.data[0]?.id ?? null)
+      : null;
 
   const listPane = (
     <>
@@ -367,19 +374,27 @@ export function Journeys() {
           </SafeAreaView>
         </View>
       )}
-      {twoPane ? (
-        <View style={styles.panes}>
-          <View style={{ width: listPaneWidth }}>{listPane}</View>
-          <ThemedView type="backgroundElement" style={styles.paneDivider} />
-          <View style={styles.detailPane}>
-            {/* Keyed so a new selection restarts the detail's entering
-                animations instead of morphing the previous trip's state. */}
-            {detailId && <JourneyDetail key={detailId} journeyId={detailId} embedded />}
-          </View>
-        </View>
-      ) : (
-        listPane
-      )}
+      {/* The list holds one slot whether or not the window is split, so a
+          rotation, a resize or a fold adds or drops the detail pane without
+          remounting it — the scroll position and selection survive. */}
+      <SplitPanes
+        layout={{ ...layout, split: twoPane }}
+        primary={listPane}
+        secondary={
+          hasTrips ? (
+            // Keyed so a new selection restarts the detail's entering
+            // animations instead of morphing the previous trip's state.
+            detailId && <JourneyDetail key={detailId} journeyId={detailId} embedded />
+          ) : (
+            <SafeAreaView edges={['top', 'right']} style={styles.outlinePane}>
+              <PaneOutline
+                kind="trip"
+                caption="Your flight opens here: gate, delays and landing, live on the day."
+              />
+            </SafeAreaView>
+          )
+        }
+      />
       {/* "Update shared" after posting from the rail's You tile or the hero. */}
       <FlashToast />
     </ThemedView>
@@ -668,17 +683,12 @@ const styles = StyleSheet.create({
   belowHinge: {
     paddingTop: Spacing.three,
   },
-  // Book posture / expanded windows: list left, selected trip's detail right,
-  // seam on the hinge when there is one.
-  panes: {
+  // Wide window, no trips yet: the outline of the page a trip opens on,
+  // clear of iPadOS's floating tab bar.
+  outlinePane: {
     flex: 1,
-    flexDirection: 'row',
-  },
-  paneDivider: {
-    width: StyleSheet.hairlineWidth,
-  },
-  detailPane: {
-    flex: 1,
+    paddingTop: Spacing.four + PadTabBarClearance,
+    paddingHorizontal: Spacing.four,
   },
   titleRow: {
     flexDirection: 'row',

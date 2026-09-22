@@ -57,8 +57,12 @@ export interface SplitInput {
  */
 export function splitLayoutFor(input: SplitInput): SplitLayout {
   const { width, os, isPad, fold, switches, surface, primaryWidth, allowWeb } = input;
+  // Same test as the Flights tabletop layout: a horizontal hinge that splits
+  // the screen and whose bounds are known.
   const tabletop =
-    fold.orientation === 'horizontal' && (fold.posture === 'halfOpened' || fold.isSeparating);
+    fold.orientation === 'horizontal' &&
+    (fold.posture === 'halfOpened' || fold.isSeparating) &&
+    !!fold.hingeBounds;
   const wide = width >= TwoPaneMinWidth;
   const duoOpen = os === 'ios' && !isPad && wide;
   const split = wide && !tabletop && switches[surface] && (os !== 'web' || allowWeb);

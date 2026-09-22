@@ -84,6 +84,11 @@ describe('splitLayoutFor — Android postures and switches', () => {
     expect(layout).toMatchObject({ split: false, tabletop: true });
   });
 
+  it('treats a separating horizontal hinge with no bounds as flat, like Flights does', () => {
+    const fold: FoldState = { posture: 'halfOpened', orientation: 'horizontal', isSeparating: true, hingeBounds: null };
+    expect(splitLayoutFor(input({ os: 'android', width: 841, fold }))).toMatchObject({ split: true, tabletop: false });
+  });
+
   it('honours a surface switched off', () => {
     const switches = { ...WIDE_LAYOUT_DEFAULTS, claims: false };
     expect(splitLayoutFor(input({ isPad: true, width: 1180, switches })).split).toBe(false);

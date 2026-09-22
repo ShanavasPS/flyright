@@ -405,7 +405,7 @@ export function JourneyDetail({
         <HeaderIcon
           label="Trip options"
           name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
-          onPress={() => showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router)}
+          onPress={() => showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router, embedded)}
         />
       )}
     </View>
@@ -635,7 +635,7 @@ export function JourneyDetail({
                       label="Trip options"
                       name={{ ios: 'ellipsis.circle', android: 'more_horiz', web: 'more_horiz' }}
                       onPress={() =>
-                      showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router)
+                      showTripMenu(row.id, row.source === 'manual', privacyOn ? changeAudience : null, router, embedded)
                     }
                     />
                   )}
@@ -927,7 +927,10 @@ function NotesBlock({
   );
 }
 
-function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>) {
+/** `embedded`: the trip is the detail pane beside the Flights list, not a
+ * pushed route — the list drops the row and the pane falls back to its
+ * default pick, and there is no screen of its own to go back from. */
+function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>, embedded: boolean) {
   Alert.alert('Remove this trip?', 'It will disappear from your travel history.', [
     { text: 'Cancel', style: 'cancel' },
     {
@@ -935,7 +938,7 @@ function confirmRemove(journeyId: string, router: ReturnType<typeof useRouter>) 
       style: 'destructive',
       onPress: async () => {
         await deleteJourney(journeyId);
-        router.back();
+        if (!embedded) router.back();
       },
     },
   ]);
@@ -950,6 +953,7 @@ function showTripMenu(
   editable: boolean,
   changeAudience: (() => void) | null,
   router: ReturnType<typeof useRouter>,
+  embedded: boolean,
 ) {
   const items: { text: string; onPress: () => void; destructive?: boolean }[] = [];
   if (editable) {
@@ -963,7 +967,7 @@ function showTripMenu(
   }
   items.push({
     text: 'Remove from Flights',
-    onPress: () => confirmRemove(journeyId, router),
+    onPress: () => confirmRemove(journeyId, router, embedded),
     destructive: true,
   });
 
