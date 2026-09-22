@@ -12,6 +12,7 @@ Deployed on the user's request, between releases; the stores keep 1.1.1. Checked
 | Backend | `release:deploy-backend`: production and development, **67** client functions on both. `release:preflight` exit 0: tsc, contract tests, Jest **91 suites / 1066 tests** (exits on its own now) |
 | Hosting | Deployment `tq3gt88h2o` promoted; `https://flyright.expo.app` serves `entry-24d78964ebdce78b5ef0ba60ba773d7a.js` = local export, which carries the new landing line. `/api/app-version` for 1.1.1: no `layouts` field; Play `latest` 1.1.1; App Store `latest` 1.1.1 released 2026-09-21T20:27:59Z (first request after the deploy returned `latest: null`, the route's fail-soft retry; answered on retry). `.env.production.local` pulled and removed (none pre-existed) |
 | Stores | Untouched. App Store serves 1.1.1 (so 1.1.1 cleared review). The physical Pixel 9a still runs Play 1.0.39 |
+| Hosting (2nd) | `/flights` redirect-loop fix (`b3841b9`, web only): deployment `0hkv8urz6d` promoted; `flyright.expo.app` serves `entry-a00d1c626f2e3ba45923468fc66b9255.js`; `https://getflyright.com/flights` and the Expo URL now load the front page (was "Something went wrong" / max update depth). Env file pulled and removed again |
 
 ## 2026-09-21 — 1.1.1 (Flights first again, Updates tab) replaced 1.1.0 in App Review; Play production live
 
