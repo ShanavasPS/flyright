@@ -1,0 +1,37 @@
+# One screenshot per tab, on whatever state the installed app already holds.
+# Used by docs/wide-layouts-plan.md §9: taken before any wide-layout change
+# (the baseline) and again after, on phones, Flip, Fold, iPad and the Duo;
+# the compact-width shots must match pixel for pixel.
+# Keeps app data. Run:
+#   maestro --device <udid-or-serial> test -e SHOTS=<dir> .maestro/wide/tabs-snapshot.yaml
+appId: com.shanavasshaji.flyright
+tags:
+  - wide
+---
+- launchApp:
+    clearState: false
+    permissions: {}
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOTS}/1-flights
+- tapOn: "Updates"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOTS}/2-updates
+- tapOn: "Friends"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOTS}/3-friends
+- tapOn: "World"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${SHOTS}/4-world
+- tapOn: "Claims"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOTS}/5-claims
+- assertNotVisible: "Something went wrong"
+- tapOn: "Flights"

@@ -21,6 +21,7 @@
  */
 import { RELEASE_NOTES } from '@/constants/release-notes';
 import { STORE_URLS } from '@/constants/store-links';
+import { parseLayoutEnv } from '@/constants/wide-layouts';
 import {
   compareVersions,
   isVersion,
@@ -55,12 +56,16 @@ export async function GET(request: Request) {
 
   const valid = compareVersions(version, MIN_SUPPORTED_VERSION) >= 0;
   const latest = await latestFor(platform as Platform);
+  // Wide-layout switch overrides (constants/wide-layouts); omitted when the
+  // env var sets nothing, so the binary's own defaults stand.
+  const layouts = parseLayoutEnv(process.env.WIDE_LAYOUTS);
   const body: AppVersionResponse = {
     valid,
     minVersion: MIN_SUPPORTED_VERSION,
     storeUrl: STORE_URLS[platform as Platform],
     latest,
     notes: latest ? notesBetween(RELEASE_NOTES, version, latest.version) : [],
+    ...(Object.keys(layouts).length ? { layouts } : {}),
   };
   // EAS Hosting caches by URL; ten minutes keeps a launch wave off the stores.
   return Response.json(body, { headers: { 'cache-control': 'public, max-age=600' } });

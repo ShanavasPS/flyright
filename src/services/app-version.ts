@@ -30,6 +30,10 @@ export interface AppVersionResponse {
   /** Newest first: every release newer than the caller's and no newer than
    * `latest`, so a phone sees exactly what an update would bring. */
   notes?: ReleaseNote[];
+  /** Overrides for the wide-window layout switches (constants/wide-layouts).
+   * Advisory like the rest: a client validates it and falls back to its own
+   * defaults for anything missing or malformed. */
+  layouts?: Partial<Record<string, boolean>>;
 }
 
 /** The release notes an update from `installed` to `latest` would bring. */

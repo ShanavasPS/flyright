@@ -72,6 +72,9 @@ export function useAppVersion(): {
   storeUrl: string | null;
   update: AvailableUpdate | null;
   ready: boolean;
+  /** The server's wide-layout switch overrides, unvalidated — read them
+   * through hooks/use-wide-layouts, which validates and applies defaults. */
+  layouts: unknown;
 } {
   const version = installedVersion();
 
@@ -105,5 +108,6 @@ export function useAppVersion(): {
     blocked: data?.valid === false,
     storeUrl: data?.storeUrl ?? null,
     update,
+    layouts: data?.layouts,
   };
 }
