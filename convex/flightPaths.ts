@@ -1,3 +1,7 @@
+import { isPro } from './entitlements';
+import { maySee } from './audience';
+import { blockedBetween } from './safetyHelpers';
+import { flightDay } from './airportZones';
 /** Durable state behind the flight-path lookups: the shared answer cache,
  * the month's spending cap and the per-caller daily meter — the same three
  * questions provider.ts answers for the status lookups, for a second
@@ -28,7 +32,7 @@ export type PathBeginResult =
   /** Already bought — the answer, or null for "asked, and there is none". */
   | { outcome: 'cached'; payload: string | null }
   | { outcome: 'permit' }
-  | { outcome: 'refused'; reason: 'quota' | 'budget' };
+  | { outcome: 'refused'; reason: 'quota' | 'budget' | 'pro_required' };
 
 function assertSecret(secret: string): void {
   const expected = process.env.LOOKUP_QUOTA_SECRET;
@@ -121,9 +125,23 @@ export const begin = mutation({
     flight: v.string(),
     date: v.string(),
     subject: subjectArg,
+    sharedJourneyId: v.optional(v.id('journeys')),
   },
-  handler: async (ctx, { secret, ...args }): Promise<PathBeginResult> => {
+  handler: async (ctx, { secret, sharedJourneyId, ...args }): Promise<PathBeginResult> => {
     assertSecret(secret);
+    let allowed = args.subject.kind === 'user' && await isPro(ctx, args.subject.userId);
+    if (!allowed && sharedJourneyId && args.subject.kind === 'user') {
+      const journey = await ctx.db.get(sharedJourneyId);
+      if (journey && !journey.deletedAt && journey.number.replace(/\s/g, '').toUpperCase() === args.flight && flightDay(journey.scheduledDeparture, journey.fromCode) === args.date) {
+        const viewerId = args.subject.userId;
+        const membership = await ctx.db.query('circle').withIndex('by_owner_member', q => q.eq('ownerId', journey.userId).eq('memberId', viewerId)).unique();
+        allowed = !!membership && maySee(journey, !!membership.close) && !(await blockedBetween(ctx, journey.userId, viewerId)) && await isPro(ctx, journey.userId);
+      }
+    }
+    // Historical tracks are journal material. A recent or upcoming track
+    // must have a paid traveller, including when the answer is cached.
+    const historical = /^\d{4}-\d{2}-\d{2}$/.test(args.date) && Date.parse(args.date) < Date.now() - 3 * 86_400_000;
+    if (!allowed && !historical) return { outcome: 'refused', reason: 'pro_required' };
     return decide(ctx, args, Date.now());
   },
 });

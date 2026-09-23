@@ -1,3 +1,4 @@
+import { serverProUntil, useServerPro, useServerProReady } from '@/services/server-pro';
 // Web build of the purchases boundary. react-native-purchases is native-only,
 // so the web/static-export bundle gets the same API surface with inert
 // fallbacks — the web app is informational, billing happens in the apps.
@@ -16,10 +17,10 @@ export const OFFERING_CHANGE_PLAN = 'change-plan';
 export const billingAvailable = true;
 
 export const useCustomerInfo = (): CustomerInfo | null => null;
-export const useHasPro = () => false;
-/** Web has no entitlement state, so Pro features read as locked — the
- * teasers double as the pitch for the /go-pro funnel. */
-export const useProLocked = () => true;
+export const useHasPro = useServerPro;
+export const useProReady = useServerProReady;
+/** Native billing is absent here; use the authenticated server mirror. */
+export const useProLocked = () => !useServerPro();
 export const useProEntitlement = () => null;
 
 const NO_SUBSCRIPTIONS: string[] = [];
@@ -34,11 +35,11 @@ export async function logInPurchases(_userId: string) {}
 export async function logOutPurchases() {}
 
 export async function hasPro(): Promise<boolean> {
-  return false;
+  return serverProUntil() > Date.now();
 }
 
 export async function proLocked(): Promise<boolean> {
-  return true;
+  return !(await hasPro());
 }
 
 export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
@@ -72,3 +73,5 @@ export async function getAppUserId(): Promise<string | null> {
 export async function restorePurchases(): Promise<boolean> {
   return false;
 }
+
+export const proExpiresAt = serverProUntil;

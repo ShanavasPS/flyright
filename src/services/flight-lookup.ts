@@ -135,9 +135,10 @@ const lookupQueue = createSerialQueue(LOOKUP_GAP_MS);
 export async function lookupFlight(
   flight: string,
   date: string,
-  options?: { inbound?: boolean; background?: boolean },
+  options?: { inbound?: boolean; background?: boolean; purpose?: 'schedule' | 'monitor' },
 ): Promise<FlightStatus> {
   const inbound = options?.inbound ? '&inbound=1' : '';
+  const purpose = options?.purpose === 'monitor' ? '&purpose=monitor' : '';
   const headers = await lookupHeaders();
   // The guest allowance is for searches the traveller initiates. A headless
   // refresh must not spend it before they next open the app.
@@ -148,7 +149,7 @@ export async function lookupFlight(
   // asked — the import's legs, the flight watch, add-flight.
   const response = await lookupQueue(() =>
     fetch(
-      `/api/flight-status?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}${inbound}`,
+      `/api/flight-status?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}${inbound}${purpose}`,
       Object.keys(headers).length ? { headers } : undefined,
     ),
   );
@@ -157,7 +158,9 @@ export async function lookupFlight(
     const body = await response.json().catch(() => null);
     const code = typeof body?.error === 'string' ? body.error : undefined;
     const message =
-      code === 'guest_quota_exceeded'
+      code === 'pro_required'
+        ? 'Live updates need FlyRight Pro.'
+        : code === 'guest_quota_exceeded'
         ? "You've used today's 5 guest lookups. Sign in to look up more flights."
         : response.status === 404
           ? 'No flight found for that number and day.'

@@ -1,3 +1,4 @@
+import { useHasPro } from '@/services/purchases';
 import { useRouter } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -59,10 +60,11 @@ export function useHeroTrip(
   // morning flight whose landed stamp already closed its window wins on
   // departure time, then fails the phase check below and collapses the hero
   // to plain stats while a later trip is genuinely live.
+  const pro = useHasPro();
   const stateOf = useTravelDayStates();
   const planOf = useMemo(() => stagePlans(journeys), [journeys]);
   const active = activeJourney(journeys, now, stateOf, planOf);
-  if (!active) return null;
+  if (!pro || !active) return null;
   const state = stateOf(active.id);
   const plan = planOf(active.id);
   const phase: TravelPhase = travelWindow(active, state, now, plan).phase;

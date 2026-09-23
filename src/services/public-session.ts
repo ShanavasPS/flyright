@@ -1,7 +1,7 @@
 // No landing window here on purpose: how long a trip leads is the server's
 // rule now (liveUntil), and a copy compiled into the app is what let an old
 // build disagree with it.
-import { heldOnGround, presumedFlightStage, type PublicSession } from '../../convex/liveShared';
+import { liveMonitoring, heldOnGround, presumedFlightStage, type PublicSession } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { flightInstant, formatTime } from '@/services/dates';
@@ -46,7 +46,7 @@ export function adaptPublicSession(s: PublicSession): {
       stage: (s.currentStage as TravelStage | null) ?? null,
       stamps: s.stageTimes as TravelDayState['stamps'],
     },
-    facts: {
+    facts: !liveMonitoring(s) ? EMPTY_FACTS : {
       ...EMPTY_FACTS,
       delayMinutes: s.delayMinutes,
       gate: s.gate,
@@ -116,6 +116,7 @@ export function sessionProgress(s: PublicSession, now: Date): number {
 export function followerStatus(
   s: Pick<
     PublicSession,
+    | 'monitoringUntil'
     | 'fromCode'
     | 'toCode'
     | 'currentStage'
@@ -132,6 +133,7 @@ export function followerStatus(
   >,
   now: Date,
 ): { headline: string; detail: string | null; delayed: boolean } {
+  if (!liveMonitoring(s, now.getTime())) return { headline: 'Saved itinerary', detail: 'Live updates off for this trip', delayed: false };
   const stage = (s.currentStage as TravelStage | null) ?? null;
   const times = liveTimes(s);
   const delayed = s.delayMinutes != null && s.delayMinutes >= 30;

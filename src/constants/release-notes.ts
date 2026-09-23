@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.3',
+    date: '2026-09-23',
+    notes: [
+      'Keep past and upcoming flights, follow your people and read their postcards for free. Pro adds your own live travel updates, postcard publishing and new claim preparation.',
+      'See what Pro adds to your next trip, choose a plan when you need it, or set an in-app reminder for two days before departure. Your family follows for free.',
+      'Browse Pro plans before signing in, then return to your chosen plan after creating an account or signing in. Continuing free keeps your flights saved.',
+      'Trip headings now use destination cities, so different stops in the same country are easier to tell apart.',
+      'Connected flights sit in clearer trip groups, with the first live flight expanded and later travel-day cards linked to the right flight.',
+      'Adding the same flight again, including from a codeshare boarding pass, updates the saved flight instead of creating a duplicate.',
+    ],
+  },
+  {
     version: '1.1.2',
     date: '2026-09-22',
     notes: [

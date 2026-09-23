@@ -1,3 +1,4 @@
+import { proLocked, proExpiresAt } from '@/services/purchases';
 import { and, eq, isNull, or } from 'drizzle-orm';
 import * as Notifications from 'expo-notifications';
 import Storage from 'expo-sqlite/kv-store';
@@ -35,6 +36,8 @@ import type { ScheduleChange } from '@/services/schedule-change';
 /** Mirrors the Clerk session for scheduling scope — reconcile runs outside
  * React (background task, service mutations) where useAuth isn't available. */
 const VIEWER_KEY = 'notification-viewer';
+
+export const getNotificationViewer = (): string | null => Storage.getItemSync(VIEWER_KEY);
 
 export function setNotificationViewer(userId: string | null) {
   if (userId) Storage.setItemSync(VIEWER_KEY, userId);
@@ -85,14 +88,14 @@ async function doReconcile(): Promise<void> {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const owned = scheduled.filter((request) => OWNED_ID.test(request.identifier));
 
-  if (!(await getPushEnabled())) {
+  if (await proLocked() || !(await getPushEnabled())) {
     await Promise.all(
       owned.map((request) => Notifications.cancelScheduledNotificationAsync(request.identifier)),
     );
     return;
   }
 
-  const viewerId = Storage.getItemSync(VIEWER_KEY);
+  const viewerId = getNotificationViewer();
   const journeyRows = await db.select().from(journeys).where(visibleJourneys(viewerId));
   const claimRows = await db
     .select()
@@ -113,7 +116,7 @@ async function doReconcile(): Promise<void> {
     journey: row.journeys,
   }));
 
-  const plan = planReminders(journeyRows, reminderClaims, new Date());
+  const plan = planReminders(journeyRows, reminderClaims, new Date()).filter(r => r.fireDate.getTime() < proExpiresAt());
   const wanted = new Set(plan.map((reminder) => reminder.id));
 
   await Promise.all(
@@ -171,12 +174,13 @@ const tierKey = (journeyId: string) => `delay-tier-${journeyId}`;
  * boundary can't spam.
  */
 export async function maybeNotifyDelay(journey: Journey, delayMinutes: number): Promise<void> {
+  if (await proLocked()) return;
   const tier = delayTier(journey, delayMinutes);
   const previous = (Storage.getItemSync(tierKey(journey.id)) ?? 'none') as DelayTier;
   if (!outranks(tier, previous)) return;
   Storage.setItemSync(tierKey(journey.id), tier);
 
-  if (!(await getPushEnabled())) return;
+  if (await proLocked() || !(await getPushEnabled())) return;
   const content = delayNotification(journey, delayMinutes, tier as Exclude<DelayTier, 'none'>);
   await Notifications.scheduleNotificationAsync({
     identifier: content.id,
@@ -201,7 +205,7 @@ export async function maybeNotifyScheduleChange(
   if (Storage.getItemSync(scheduleKey(journey.id)) === change.departure) return;
   Storage.setItemSync(scheduleKey(journey.id), change.departure);
 
-  if (!(await getPushEnabled())) return;
+  if (await proLocked() || !(await getPushEnabled())) return;
   const content = scheduleChangeNotification(journey, change, departureClock);
   await Notifications.scheduleNotificationAsync({
     identifier: content.id,
@@ -221,7 +225,7 @@ export async function maybeNotifyInbound(journey: Journey, outlook: InboundOutlo
   if (Storage.getItemSync(inboundKey(journey.id))) return;
   Storage.setItemSync(inboundKey(journey.id), 'sent');
 
-  if (!(await getPushEnabled())) return;
+  if (await proLocked() || !(await getPushEnabled())) return;
   const content = inboundNotification(journey, outlook);
   await Notifications.scheduleNotificationAsync({
     identifier: content.id,

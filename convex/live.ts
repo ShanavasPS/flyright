@@ -1,3 +1,4 @@
+import { isPro } from './entitlements';
 import { bounded, limit, HOUR, DAY } from './abuse';
 import { v } from 'convex/values';
 
@@ -54,7 +55,7 @@ export const start = mutation({
 
     const existing = await activeSessionForKey(ctx, identity.subject, naturalKey);
     if (existing) {
-      if (activityId && activityId !== existing.activityId) {
+      if (await isPro(ctx, identity.subject) && activityId && activityId !== existing.activityId) {
         // The device's report is the latest the activity can have started —
         // a safe upper bound for the eight-hour restart rule.
         await ctx.db.patch(existing._id, { activityId, activityStartedAt: new Date().toISOString() });
@@ -68,7 +69,10 @@ export const start = mutation({
     // A private trip has no link to hand out; the client never asks, but
     // the rule is the server's to keep.
     if (journey.privateTrip) throw new Error('Trip is private');
-    const session = await createSession(ctx, journey, { stage, stamps, activityId, plan });
+    const paid = await isPro(ctx, identity.subject);
+    const session = await createSession(ctx, journey, paid
+      ? { stage, stamps, activityId, plan }
+      : { stage: null, stamps: {}, activityId: null, plan });
     return { token: session.shareToken };
   },
 });
@@ -89,6 +93,7 @@ export const setStage = mutation({
   },
   handler: async (ctx, { naturalKey, stage, stamps, activityId, plan }) => {
     const identity = await requireIdentity(ctx);
+    if (!(await isPro(ctx, identity.subject))) return { shared: false };
     validateState(naturalKey, stage, stamps, activityId, plan);
     await limit(ctx, `live-state:${identity.subject}`, 240, HOUR);
     let session = await activeSessionForKey(ctx, identity.subject, naturalKey);

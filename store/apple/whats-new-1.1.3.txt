@@ -1,0 +1,7 @@
+Keep past and upcoming flights, follow your people and read their postcards for free. Pro adds your own live travel updates, postcard publishing and new claim preparation. Your family follows for free.
+
+See what Pro adds to your next trip, choose a plan when you need it, or set an in-app reminder for two days before departure. Browse plans before signing in and return to your chosen plan afterwards.
+
+Trip headings now use destination cities, with clearer groups for connections and stays. The first live flight expands in place, and later travel-day cards link to the right flight.
+
+Adding the same flight again, including from a codeshare boarding pass, updates the saved flight instead of creating a duplicate.

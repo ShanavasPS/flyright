@@ -3,12 +3,15 @@ import { internal } from './_generated/api';
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import { maySee } from './audience';
 import { blockedBetween } from './safetyHelpers';
+import { isPro } from './entitlements';
 
 /** A follow row is necessary but not sufficient: recheck visibility at
  * delivery time, including during concurrent privacy changes. */
 export async function followerActivityAccess(ctx: MutationCtx | QueryCtx, follow: Doc<'follows'>) {
   const session = await ctx.db.get(follow.sessionId);
   if (!session || session.userId === follow.followerId || session.userId !== follow.ownerId) return null;
+  // The travelling owner funds live coverage; the follower stays free.
+  if (!(await isPro(ctx, session.userId))) return null;
   if (await blockedBetween(ctx, session.userId, follow.followerId)) return null;
   const journey = await ctx.db.query('journeys').withIndex('by_user_key', q =>
     q.eq('userId', session.userId).eq('naturalKey', session.naturalKey)).unique();

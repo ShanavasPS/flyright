@@ -1,3 +1,4 @@
+import { isPro } from './entitlements';
 /** Abuse limits for the on-device Live Activity proxy (src/app/api/live-activity).
  *
  * The proxy exists so the OneSignal REST key stays server-side, and it can't
@@ -28,19 +29,21 @@ const SWEEP_AFTER_MS = 2 * 24 * 60 * 60 * 1000;
 
 export type PermitResult =
   | { allowed: true }
-  | { allowed: false; reason: 'expired' | 'exhausted' | 'too-fast' | 'address' };
+  | { allowed: false; reason: 'expired' | 'exhausted' | 'too-fast' | 'address' | 'pro_required' };
 
 export const permit = mutation({
   args: {
     secret: v.string(),
+    userId: v.optional(v.string()),
     activityId: v.string(),
     /** Hashed client address (the route never sends the raw IP). */
     address: v.string(),
     event: v.union(v.literal('update'), v.literal('end')),
   },
-  handler: async (ctx, { secret, activityId, address, event }): Promise<PermitResult> => {
+  handler: async (ctx, { secret, userId, activityId, address, event }): Promise<PermitResult> => {
     const expected = process.env.LOOKUP_QUOTA_SECRET;
     if (!expected || secret !== expected) throw new Error('forbidden');
+    if (event === 'update' && (!userId || !(await isPro(ctx, userId)))) return { allowed: false, reason: 'pro_required' };
     const now = Date.now();
 
     const actKey = `act:${activityId}`;

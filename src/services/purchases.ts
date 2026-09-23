@@ -1,3 +1,4 @@
+import { serverProUntil, useServerPro, useServerProReady } from '@/services/server-pro';
 import { Platform } from 'react-native';
 import Purchases, {
   LOG_LEVEL,
@@ -29,7 +30,7 @@ import {
  *
  * Entitlements:
  *  - 'Owed Pro' (displayed as "FlyRight Pro") → Pro subscription/lifetime
- *    (unlimited claims, deadline tracking). The lookup key kept the app's old
+ *    (live monitoring, postcards, claim preparation). The lookup key kept the app's old
  *    name because RevenueCat entitlement identifiers are immutable.
  * Products (attached to 'Owed Pro' in the dashboard): monthly, yearly, lifetime.
  * Non-subscription (planned):
@@ -51,18 +52,36 @@ const usePurchasesStore = create<{ customerInfo: CustomerInfo | null }>(() => ({
 
 /** Whether a CustomerInfo carries the active 'FlyRight Pro' entitlement —
  * for synchronous checks on SDK callback payloads (prefer useHasPro in UI). */
-export const entitledToPro = (info: CustomerInfo | null) =>
-  info != null && ENTITLEMENT_PRO in info.entitlements.active;
+export const entitledToPro = (info: CustomerInfo | null, now = Date.now()) => {
+  const entitlement = info?.entitlements.active[ENTITLEMENT_PRO];
+  return !!entitlement && (!entitlement.expirationDate || Date.parse(entitlement.expirationDate) > now);
+};
+export function proExpiresAt(): number {
+  const info = usePurchasesStore.getState().customerInfo;
+  const entitlement = info?.entitlements.active[ENTITLEMENT_PRO];
+  if (!configured) return serverProUntil();
+  return entitlement ? entitlement.expirationDate ? Date.parse(entitlement.expirationDate) : Infinity : 0;
+}
 
 /** Latest CustomerInfo, updated live on purchases/renewals/restores. */
 export const useCustomerInfo = () => usePurchasesStore((s) => s.customerInfo);
 
 /** Reactive 'FlyRight Pro' entitlement check — use this to gate UI. */
-export const useHasPro = () => usePurchasesStore((s) => entitledToPro(s.customerInfo));
+export const useHasPro = () => {
+  const native = usePurchasesStore(s => entitledToPro(s.customerInfo));
+  const server = useServerPro();
+  return configured ? native : server;
+};
+
+export function useProReady() {
+  const info = useCustomerInfo();
+  const serverReady = useServerProReady();
+  return configured ? !!info : serverReady;
+}
 
 /** Active 'FlyRight Pro' entitlement details (product, renewal state), or null. */
 export const useProEntitlement = () =>
-  usePurchasesStore((s) => s.customerInfo?.entitlements.active[ENTITLEMENT_PRO] ?? null);
+  usePurchasesStore((s) => entitledToPro(s.customerInfo) ? s.customerInfo!.entitlements.active[ENTITLEMENT_PRO] : null);
 
 const NO_SUBSCRIPTIONS: string[] = [];
 
@@ -71,9 +90,14 @@ const NO_SUBSCRIPTIONS: string[] = [];
 // purchases, renewals, restores and account switches alike; re-sent only when
 // it actually changes.
 let lastReportedTier: string | null = null;
+let expiryTimer: ReturnType<typeof setTimeout> | undefined;
 usePurchasesStore.subscribe(({ customerInfo }) => {
+  if (expiryTimer) clearTimeout(expiryTimer);
+  const expires = customerInfo?.entitlements.active[ENTITLEMENT_PRO]?.expirationDate;
+  const remaining = expires ? Date.parse(expires) - Date.now() : 0;
+  if (remaining > 0) expiryTimer = setTimeout(() => usePurchasesStore.setState({ customerInfo }), Math.min(remaining + 1, 2_147_000_000));
   if (!customerInfo) return;
-  const tier = customerInfo.entitlements.active[ENTITLEMENT_PRO]?.productIdentifier ?? 'free';
+  const tier = entitledToPro(customerInfo) ? customerInfo.entitlements.active[ENTITLEMENT_PRO].productIdentifier : 'free';
   if (tier === lastReportedTier) return;
   lastReportedTier = tier;
   setAnalyticsUserProperties({ subscription_tier: tier });
@@ -121,25 +145,20 @@ export const useActiveSubscriptions = () =>
  * Whether this binary can sell Pro at all. The Galaxy Store build can't:
  * RevenueCat has no Samsung IAP integration and Galaxy Store policy expects
  * Samsung IAP for digital goods — so that build hides all upsell UI and
- * leaves claims un-gated instead of dead-ending users on a paywall.
+ * uses a signed-in account’s existing entitlement for paid features.
  */
 export const billingAvailable = !IS_GALAXY_BUILD;
 
-/**
- * Whether a Pro-only feature is locked for this user right now. Pro gates
- * three things: filing a real claim, the inbound-aircraft prediction (with
- * its early-warning push) and a circle bigger than FREE_CIRCLE_SIZE. Builds
- * that can't sell Pro never lock anything — a paywall nobody can pass is
- * worse than giving the feature away.
- */
+/** Own monitoring, postcard publishing and claim preparation require Pro.
+ * Following, reading and the saved journal are free on every platform. */
 export const useProLocked = () => {
   const pro = useHasPro();
-  return billingAvailable && !pro;
+  return !pro;
 };
 
 /** Imperative twin of useProLocked, for background work (flight-watch). */
 export async function proLocked(): Promise<boolean> {
-  return billingAvailable && !(await hasPro());
+  return !(await hasPro());
 }
 
 export function initPurchases() {
@@ -212,7 +231,7 @@ export async function logOutPurchases() {
 
 /** Imperative entitlement check (prefer useHasPro in components). */
 export async function hasPro(): Promise<boolean> {
-  if (!configured) return false;
+  if (!configured) return serverProUntil() > Date.now();
   try {
     const info = await Purchases.getCustomerInfo();
     usePurchasesStore.setState({ customerInfo: info });

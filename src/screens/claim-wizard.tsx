@@ -1,3 +1,4 @@
+import { hasPro, useProLocked } from '@/services/purchases';
 import { useAuth, useUser } from '@clerk/expo';
 import { setStringAsync } from 'expo-clipboard';
 import { Observe } from 'expo-observe';
@@ -63,6 +64,7 @@ const PROMPTS: Record<Step, string> = {
 export function ClaimWizard() {
   const router = useRouter();
   const theme = useTheme();
+  const proLocked = useProLocked();
   const { userId } = useAuth();
   const { user } = useUser();
   const { journeyId, delay } = useLocalSearchParams<{ journeyId?: string; delay?: string }>();
@@ -179,12 +181,20 @@ export function ClaimWizard() {
   };
 
   const keepDraft = async () => {
+    if (!isDemo && !(await hasPro())) {
+      router.push({ pathname: '/pro-offer', params: { feature: 'claim', journeyId: journey.id } });
+      return;
+    }
     await persist(false);
     setDraftSaved(true);
     setStep('review');
   };
 
   const deliver = async (method: SentVia) => {
+    if (!isDemo && !(await hasPro())) {
+      router.push({ pathname: '/pro-offer', params: { feature: 'claim', journeyId: journey.id } });
+      return;
+    }
     setBusy(true);
     try {
       const letterHtml = renderClaimLetter(journey, verdict, claimant);
@@ -339,9 +349,12 @@ export function ClaimWizard() {
           />
           <View style={styles.cta}>
             <PrimaryButton
-              label="Preview my claim →"
+              label={!isDemo && proLocked ? 'Prepare with Pro' : 'Preview my claim →'}
               disabled={!detailsValid}
-              onPress={() => setStep('review')}
+              onPress={() => {
+                if (!isDemo && proLocked) router.push({ pathname: '/pro-offer', params: { journeyId: journey.id, feature: 'claim' } });
+                else setStep('review');
+              }}
             />
           </View>
         </View>

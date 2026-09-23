@@ -1,3 +1,4 @@
+import { liveMonitoring } from '../../convex/liveShared';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PublicSession } from '../../convex/liveShared';
@@ -99,7 +100,7 @@ export function LivePass({
           {/* The pill means "updating now"; once down, the bold "Landed
               8:55 AM" line already says everything, so nothing sits beside
               it. */}
-          {!tripDone(session, now) && <LivePill />}
+          {liveMonitoring(session, now.getTime()) && !tripDone(session, now) && <LivePill /> }
         </View>
         <View style={styles.route}>
           <View>

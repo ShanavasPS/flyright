@@ -19,7 +19,7 @@ import { boundedBody } from '../../../convex/uploadShared';
  */
 
 import { api } from '../../../convex/_generated/api';
-import { clientAddressHash, convex } from '@/server/lookup-gate';
+import { clientAddressHash, convex, identifyCaller } from '@/server/lookup-gate';
 
 /** Widget strings are one line each; anything longer is not a flight status. */
 const MAX_STRING = 120;
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
   const verdict = await meter(request, activityId, event);
   if (!verdict.allowed) {
     console.warn('[live-activity] refused', verdict.reason);
-    return Response.json({ error: verdict.reason === 'unavailable' ? 'metering unavailable' : 'rate limited', reason: verdict.reason }, { status: verdict.reason === 'unavailable' ? 503 : 429 });
+    return Response.json({ error: verdict.reason === 'unavailable' ? 'metering unavailable' : 'rate limited', reason: verdict.reason }, { status: verdict.reason === 'unavailable' ? 503 : verdict.reason === 'pro_required' ? 403 : 429 });
   }
 
   const upstream = await fetch(
@@ -154,7 +154,10 @@ async function meter(
     return process.env.NODE_ENV === 'production' ? { allowed: false, reason: 'unavailable' } : { allowed: true };
   }
   try {
+    const caller = await identifyCaller(request);
+    if (event === 'update' && (!caller.ok || caller.subject.kind !== 'user')) return { allowed: false, reason: 'pro_required' };
     return await client.mutation(api.liveActivityMeter.permit, {
+      ...(caller.ok && caller.subject.kind === 'user' ? { userId: caller.subject.userId } : {}),
       secret,
       activityId,
       address: await clientAddressHash(request),

@@ -1,3 +1,4 @@
+import { useAuth } from '@clerk/expo';
 /** Client for GET /api/flight-path: the line a flight actually flew — or the
  * route it filed — for the trip's inset map, which draws the great circle
  * until it has one. See convex/flightPathShared.ts for what the server
@@ -28,7 +29,8 @@ export type FlightPathReason =
   | 'not_yet'
   | 'no_data'
   | 'budget'
-  | 'quota';
+  | 'quota'
+  | 'pro_required';
 
 export interface FlightPathResult {
   path: FlightPath | null;
@@ -36,6 +38,7 @@ export interface FlightPathResult {
 }
 
 export interface FlightPathSource {
+  sharedJourneyId?: string;
   number: string;
   fromCode: string;
   toCode: string;
@@ -54,6 +57,7 @@ export async function lookupFlightPath(source: FlightPathSource): Promise<Flight
     to: source.toCode,
     departure: source.scheduledDeparture,
   });
+  if (source.sharedJourneyId) params.set('sharedJourneyId', source.sharedJourneyId);
   const response = await fetch(`/api/flight-path?${params}`, { headers: await lookupHeaders() });
   if (!response.ok) throw new Error(`flight-path ${response.status}`);
   return (await response.json()) as FlightPathResult;
@@ -78,9 +82,10 @@ export function pathWorthAsking(scheduledDeparture: string, now: number): boolea
  * `null` when there is none (yet, or at all) — the caller draws its great
  * circle. `source` null disables the query (a manual entry, the demo). */
 export function useFlightPath(source: FlightPathSource | null, now: number): FlightPath | null {
+  const { userId } = useAuth();
   const enabled = !!source && pathWorthAsking(source.scheduledDeparture, now);
   const query = useQuery({
-    queryKey: ['flight-path', source?.number, source?.date, source?.fromCode, source?.toCode],
+    queryKey: ['flight-path', source?.number, source?.date, source?.fromCode, source?.toCode, source?.sharedJourneyId, userId ?? 'guest'],
     queryFn: () => lookupFlightPath(source!),
     enabled,
     retry: false,
@@ -100,5 +105,5 @@ export function useFlightPath(source: FlightPathSource | null, now: number): Fli
       return airborne && !data?.path ? 5 * 60_000 : false;
     },
   });
-  return query.data?.path ?? null;
+  return source ? query.data?.path ?? null : null;
 }

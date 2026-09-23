@@ -20,7 +20,6 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { trackEvent } from '@/services/analytics';
 import { requestPushPermission } from '@/services/notifications';
 import { clearPendingFollow, markPendingFollow, pendingFollowFor } from '@/services/pending-follow';
-import { useProLocked } from '@/services/purchases';
 
 /** The invite page behind getflyright.com/i/<token>: "Sam invited you to
  * follow their trips". Accepting files a follow request Sam allows in
@@ -64,7 +63,6 @@ export function JoinCircle({ token }: { token: string }) {
   // One automatic redemption per visit — accept() also spends one of the
   // invite's uses, so a re-entrant effect must not double-tap it.
   const redeeming = useRef(false);
-  const proLocked = useProLocked();
 
   // Back to the People tab, wherever this page was pushed from.
   const done = useCallback(() => router.replace('/(tabs)/(people)/people'), [router]);
@@ -131,14 +129,7 @@ export function JoinCircle({ token }: { token: string }) {
     try {
       await shareBack({ userId: joined.ownerId });
       trackEvent('circle_shared_back');
-    } catch (e) {
-      // My own circle is at the free cap. Offer Pro; the paywall lands on
-      // People either way, which is where `done` was heading.
-      if (e instanceof ConvexError && e.data === CIRCLE_FULL && proLocked) {
-        setBusy(false);
-        router.replace({ pathname: '/paywall', params: { next: '/people' } });
-        return;
-      }
+    } catch {
       // Otherwise already severed on their side — nothing to share back to.
     } finally {
       setBusy(false);

@@ -26,7 +26,7 @@ import { ConvexHttpClient } from 'convex/browser';
 
 import { api } from '../../convex/_generated/api';
 import { lookupDay } from '../../convex/lookupShared';
-import type { BeginResult } from '../../convex/provider';
+import type { BeginResult, InteractiveBeginResult } from '../../convex/provider';
 import { providerFetch, type ProviderResponse } from '../../convex/providerFetch';
 import type { Degradation } from '../../convex/providerShared';
 
@@ -281,6 +281,7 @@ export interface LookupRequest {
   want: 'base' | 'inbound';
   /** Units of the caller's daily allowance this costs on a cache miss. */
   cost: number;
+  purpose?: 'schedule' | 'monitor';
 }
 
 /**
@@ -293,11 +294,11 @@ export interface LookupRequest {
 export async function beginLookup(
   subject: GateSubject,
   request: LookupRequest,
-): Promise<BeginResult | { outcome: 'unavailable' }> {
+): Promise<InteractiveBeginResult | { outcome: 'unavailable' }> {
   const secret = process.env.LOOKUP_QUOTA_SECRET;
   const client = convex();
   if (!secret || !client) {
-    if (!isProduction()) return { outcome: 'permit', level: 'full' };
+    if (!isProduction()) return { outcome: 'permit', level: 'full', pro: false };
     return { outcome: 'unavailable' };
   }
   try {

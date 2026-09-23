@@ -1,4 +1,6 @@
 import { bounded, limit, HOUR } from './abuse';
+import { isPro } from './entitlements';
+import { PRO_REQUIRED } from './proShared';
 import { internal } from './_generated/api';
 import { requireFileOwner, deleteOwnedFile, ownedFileUrl } from './fileOwnership';
 import { ConvexError, v } from 'convex/values';
@@ -270,6 +272,7 @@ export const post = mutation({
     const session = await activeSessionForKey(ctx, me, journeyKey);
     const landedAt = session?.stageTimes.landed ?? session?.actualArrival ?? null;
     if (!updateWindowOpen(journey, now, landedAt)) throw new ConvexError(WINDOW_CLOSED);
+    if (!(await isPro(ctx, me))) throw new ConvexError(PRO_REQUIRED);
     const stage =
       (reported && stageIndex(reported) >= 0 ? reported : null) ?? session?.currentStage ?? null;
     return ctx.db.insert('tripUpdates', {

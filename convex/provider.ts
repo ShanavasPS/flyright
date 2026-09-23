@@ -151,6 +151,8 @@ export type BeginResult =
   | { outcome: 'permit'; level: Degradation }
   | { outcome: 'refused'; reason: 'quota' | 'budget'; level: Degradation; limit: number };
 
+export type InteractiveBeginResult = (BeginResult & { pro: boolean }) | { outcome: 'pro_required' };
+
 async function decide(
   ctx: MutationCtx,
   args: {
@@ -275,14 +277,17 @@ export const begin = mutation({
     kind: callKind,
     cost: v.number(),
     subject: subjectArg,
+    purpose: v.optional(v.union(v.literal('schedule'), v.literal('monitor'))),
   },
-  handler: async (ctx, { secret, subject, ...args }): Promise<BeginResult> => {
+  handler: async (ctx, { secret, subject, purpose, ...args }): Promise<InteractiveBeginResult> => {
     assertSecret(secret);
     const resolved: LookupSubject =
       subject.kind === 'user'
         ? { kind: 'user', userId: subject.userId, pro: await isPro(ctx, subject.userId) }
         : { kind: 'anonymous', address: subject.address };
-    return decide(ctx, { ...args, subject: resolved }, Date.now());
+    const pro = resolved.kind === 'user' && resolved.pro;
+    if (!pro && (purpose === 'monitor' || args.want === 'inbound')) return { outcome: 'pro_required' };
+    return { ...(await decide(ctx, { ...args, subject: resolved }, Date.now())), pro };
   },
 });
 

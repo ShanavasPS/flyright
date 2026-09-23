@@ -1,10 +1,13 @@
+import { hasPro, useProLocked } from '@/services/purchases';
+import { confirmServerPro } from '@/services/pro-access';
+import { clearPostcardDraft, keepDraftPhoto, readPostcardDraft, removeDraftPhoto, savePostcardDraft } from '@/services/postcard-draft';
 import { useAuth } from '@clerk/expo';
 import { ConvexError } from 'convex/values';
 import { useMutation } from 'convex/react';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +28,7 @@ import Animated, {
 
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
-import { placeFor } from '../../convex/updatesShared';
+import { placeFor, updateWindowOpen } from '../../convex/updatesShared';
 
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { ThemedText } from '@/components/themed-text';
@@ -66,6 +69,12 @@ import { visibilityOf } from '@/services/trip-visibility';
  * field sits at the top of the card and is never under the keyboard.
  */
 export function TripUpdateComposer() {
+  const { userId } = useAuth();
+  const { journeyId } = useLocalSearchParams<{ journeyId?: string }>();
+  return <PostcardComposer key={`${userId ?? 'guest'}:${journeyId ?? ''}`} />;
+}
+
+function PostcardComposer() {
   const { journeyId } = useLocalSearchParams<{ journeyId?: string }>();
   const router = useRouter();
   const theme = useTheme();
@@ -77,9 +86,17 @@ export function TripUpdateComposer() {
   const post = useMutation(api.updates.post);
   const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
 
-  const [text, setText] = useState('');
-  const [picked, setPicked] = useState<PickedImage | null>(null);
+  const proLocked = useProLocked();
+  const draftDone = useRef(false);
+  const [draft] = useState(() => readPostcardDraft(userId, journeyId ?? ''));
+  const [text, setText] = useState(draft.text);
+  const [picked, setPicked] = useState<PickedImage | null>(draft.picked);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!draftDone.current && journeyId) savePostcardDraft(userId, journeyId, { text, picked });
+  }, [userId, journeyId, text, picked]);
+  const offerPro = () => router.push({ pathname: '/pro-offer', params: { journeyId: journeyId ?? '', feature: 'postcard' } });
+
   // From the moment the picker opens until it hands the photo over:
   // converting or fetching one from iCloud takes seconds after it closes,
   // and the photo slot says so instead of sitting empty.
@@ -92,7 +109,11 @@ export function TripUpdateComposer() {
       setPreparing(true);
       try {
         const [image] = await pickImages(source, { limit: 1 });
-        if (image) setPicked(image);
+        if (image) {
+          const saved = keepDraftPhoto(image);
+          if (picked) removeDraftPhoto(picked);
+          setPicked(saved);
+        }
       } catch (error) {
         if (error instanceof PhotoPermissionError) {
           Alert.alert(
@@ -109,8 +130,17 @@ export function TripUpdateComposer() {
 
   const submit = async () => {
     if (!row || !canPost) return;
+    if (visibilityOf(row) === 'private') {
+      Alert.alert('This trip is only yours', 'Change who sees it from the trip menu to share postcards.');
+      return;
+    }
+    if (!updateWindowOpen(row, Date.now(), travel.stamps.landed ?? row.actualArrival)) {
+      Alert.alert('Postcards open on your flight day', 'Share from the day you fly until a day after you land. Your draft is saved.');
+      return;
+    }
     setBusy(true);
     try {
+      if (!(await hasPro()) || !(await confirmServerPro())) { offerPro(); return; }
       // The photo is filed in the journal first — it is the traveller's own
       // record either way — then its bytes go up, and the update points at
       // the same file (see convex/updates.ts on why neither may free it).
@@ -133,6 +163,8 @@ export function TripUpdateComposer() {
         height: photo?.height ?? null,
         stage: travel.stage,
       });
+      draftDone.current = true;
+      clearPostcardDraft(userId, row.id);
       noteSuccess();
       trackEvent('trip_update_posted', { photo: !!picked, chars: text.trim().length });
       // The composer closes on success; the trip underneath says it went
@@ -141,7 +173,9 @@ export function TripUpdateComposer() {
       router.back();
     } catch (error) {
       const code = error instanceof ConvexError ? String(error.data) : '';
-      if (code === 'WINDOW_CLOSED') {
+      if (code === 'pro_required') {
+        offerPro();
+      } else if (code === 'WINDOW_CLOSED') {
         Alert.alert('This trip is over', 'Updates can be shared from the day you fly until a day after you land.');
       } else if (code === 'PRIVATE_TRIP') {
         Alert.alert('This trip is only yours', 'Change who sees it from the trip menu to share updates.');
@@ -160,7 +194,7 @@ export function TripUpdateComposer() {
     }
     Alert.alert('Discard this update?', undefined, [
       { text: 'Keep writing', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+      { text: 'Discard', style: 'destructive', onPress: () => { draftDone.current = true; clearPostcardDraft(userId, journeyId ?? ''); router.back(); } },
     ]);
   };
 
@@ -215,7 +249,7 @@ export function TripUpdateComposer() {
                 </ThemedText>
               </View>
             ) : (
-              <HeaderButton label="Post" bold disabled={!canPost} onPress={submit} />
+              <HeaderButton label={proLocked ? "Post with Pro" : "Post"} bold disabled={!canPost} onPress={submit} />
             ),
         }}
       />
@@ -227,6 +261,7 @@ export function TripUpdateComposer() {
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
           {tripLine}
         </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">Postcards need Pro and can be shared from your flight day until a day after landing. Your people read them free.</ThemedText>
         <TextInput
           testID="trip-update-editor"
           autoFocus
@@ -279,7 +314,7 @@ export function TripUpdateComposer() {
                 accessibilityRole="button"
                 accessibilityLabel="Remove photo"
                 hitSlop={Spacing.two}
-                onPress={() => setPicked(null)}
+                onPress={() => { if (picked) removeDraftPhoto(picked); setPicked(null); }}
                 style={({ pressed }) => [styles.removePhoto, pressed && styles.pressed]}>
                 <SymbolView
                   name={{ ios: 'xmark', android: 'close', web: 'close' }}

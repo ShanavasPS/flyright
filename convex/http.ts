@@ -87,7 +87,7 @@ http.route({
 
 /**
  * RevenueCat webhook receiver — mirrors the 'Owed Pro' entitlement into the
- * entitlements table so server-enforced limits (free circle size) can check
+ * entitlements table so server-enforced paid capabilities can check
  * it. Configure in RevenueCat (Integrations → Webhooks) pointing at
  * https://<deployment>.convex.site/rc-webhook with an Authorization header
  * value, and set that same value as REVENUECAT_WEBHOOK_AUTH on the

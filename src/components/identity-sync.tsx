@@ -1,3 +1,4 @@
+import { bindProAccount } from '@/services/server-pro';
 import { useSession, useUser } from '@clerk/expo';
 import { useEffect, useRef } from 'react';
 
@@ -49,6 +50,7 @@ export function IdentitySync() {
 
   useEffect(() => {
     if (!isLoaded) return;
+    bindProAccount(userId ?? null);
     if (userId) {
       // Signed in: the notice (if any) has done its job, and this session is
       // the one to judge next time the app finds itself signed out.

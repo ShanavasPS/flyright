@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, or } from 'drizzle-orm';
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 
@@ -10,7 +10,7 @@ import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight } from '@/services/flight-lookup';
 import { inboundNewsworthy, inboundOutlook } from '@/services/inbound';
 import { toDomainJourney } from '@/services/journeys';
-import { maybeNotifyDelay, maybeNotifyInbound } from '@/services/notification-lifecycle';
+import { getNotificationViewer, maybeNotifyDelay, maybeNotifyInbound } from '@/services/notification-lifecycle';
 import { proLocked } from '@/services/purchases';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
 import { noteFlightFacts, reconcileTravelDay } from '@/services/travel-day-lifecycle';
@@ -78,10 +78,16 @@ export async function registerFlightWatch(): Promise<void> {
 }
 
 export async function checkTrackedFlights(now = new Date()): Promise<void> {
+  if (await proLocked()) {
+    await reconcileTravelDay();
+    return;
+  }
+  const viewerId = getNotificationViewer();
   const rows = await db
     .select()
     .from(journeys)
-    .where(and(eq(journeys.source, 'lookup'), isNull(journeys.deletedAt)));
+    .where(and(eq(journeys.source, 'lookup'), isNull(journeys.deletedAt),
+      viewerId ? or(isNull(journeys.userId), eq(journeys.userId, viewerId)) : isNull(journeys.userId)));
 
   // Departure-window filter in JS: stored timestamps mix offset formats, so
   // lexicographic SQL comparison against toISOString() would miss rows.
@@ -105,6 +111,7 @@ export async function checkTrackedFlights(now = new Date()): Promise<void> {
       const status = await lookupFlight(row.number, lookupDayFor(row), {
         inbound: upcoming && inboundUnlocked,
         background: true,
+        purpose: 'monitor',
       });
       await noteFlightFacts(row.id, status);
       // The airline may have moved the flight since the ticket was read. This

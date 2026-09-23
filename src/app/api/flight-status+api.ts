@@ -1,3 +1,4 @@
+import { freeFlightDetails } from '../../../convex/flightAccess';
 /**
  * GET /api/flight-status?flight=LH873&date=2026-08-10[&inbound=1]
  *
@@ -171,6 +172,7 @@ export async function GET(request: Request) {
   const flight = url.searchParams.get('flight')?.toUpperCase().replace(/\s/g, '');
   const date = url.searchParams.get('date');
   const wantInbound = url.searchParams.get('inbound') === '1';
+  const purpose = url.searchParams.get('purpose') === 'monitor' ? 'monitor' : 'schedule';
 
   if (!flight || !date) {
     return Response.json({ error: 'flight and date are required' }, { status: 400 });
@@ -181,7 +183,7 @@ export async function GET(request: Request) {
       console.warn('[flight-status] no AERODATABOX_API_KEY — serving mock data');
       const leg = mockLeg(flight, date);
       return leg
-        ? Response.json(leg)
+        ? Response.json(purpose === 'monitor' ? leg : freeFlightDetails(leg))
         : Response.json({ error: 'flight not found' }, { status: 404 });
     }
     return Response.json(
@@ -208,14 +210,18 @@ export async function GET(request: Request) {
     date,
     want,
     cost,
+    purpose,
   });
 
   // Someone already asked this question recently — free, and doesn't touch
   // anyone's allowance.
   if (begin.outcome === 'unavailable') return Response.json({ error: 'metering_unavailable' }, { status: 503 });
 
+  if (begin.outcome === 'pro_required') return Response.json({ error: 'pro_required' }, { status: 403 });
+
   if (begin.outcome === 'cached') {
-    return new Response(begin.payload, {
+    const payload = begin.pro ? begin.payload : JSON.stringify(freeFlightDetails(JSON.parse(begin.payload)));
+    return new Response(payload, {
       headers: { 'content-type': 'application/json', 'x-flyright-cache': 'hit' },
     });
   }
@@ -330,7 +336,7 @@ export async function GET(request: Request) {
     ...poolCharge(spent),
   });
 
-  return new Response(payload, {
+  return new Response(begin.pro ? payload : JSON.stringify(freeFlightDetails(facts)), {
     headers: { 'content-type': 'application/json', 'x-flyright-cache': 'miss' },
   });
 }

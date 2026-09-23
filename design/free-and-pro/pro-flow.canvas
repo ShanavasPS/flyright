@@ -1,0 +1,179 @@
+{
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "text",
+      "x": 0,
+      "y": -300,
+      "width": 2180,
+      "height": 250,
+      "text": "# When does “trip readiness” appear?\n\nIt does not exist in the app today. This proposal calls it “What Pro adds to this trip”: a new optional sheet opened only after tapping the saved trip’s Pro card. Existing trip details and the travel-day checklist are different.\n\nExisting: add flight → saved confirmation → Flights; Pro paywall. Proposed: inline Pro card, explanation sheet and travel-focused paywall content. No automatic explanation or checkout after saving. Open design/free-and-pro/flow.html for the interactive flow."
+    },
+    {
+      "id": "step-1-label",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 130,
+      "text": "## 1. Save a flight\n\nExisting entry and confirmation. Remains free."
+    },
+    {
+      "id": "step-1",
+      "type": "file",
+      "file": "design/free-and-pro/previews/flow-step-1.png",
+      "x": 0,
+      "y": 160,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "step-2-label",
+      "type": "text",
+      "x": 480,
+      "y": 0,
+      "width": 400,
+      "height": 130,
+      "text": "## 2. See the saved trip\n\nFirst visit: introduction. Later visits/new trips: compact entry."
+    },
+    {
+      "id": "step-2",
+      "type": "file",
+      "file": "design/free-and-pro/previews/flow-step-2.png",
+      "x": 480,
+      "y": 160,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "step-3-label",
+      "type": "text",
+      "x": 960,
+      "y": 0,
+      "width": 400,
+      "height": 130,
+      "text": "## 3. What Pro adds to this trip\n\nNEW SHEET. This is the earlier option B."
+    },
+    {
+      "id": "step-3",
+      "type": "file",
+      "file": "design/free-and-pro/previews/flow-step-3.png",
+      "x": 960,
+      "y": 160,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "step-4-label",
+      "type": "text",
+      "x": 1440,
+      "y": 0,
+      "width": 400,
+      "height": 130,
+      "text": "## 4. Choose a plan\n\nExisting paywall + proposed travel-focused copy."
+    },
+    {
+      "id": "step-4",
+      "type": "file",
+      "file": "design/free-and-pro/previews/flow-step-4.png",
+      "x": 1440,
+      "y": 160,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "step-5-label",
+      "type": "text",
+      "x": 1920,
+      "y": 0,
+      "width": 400,
+      "height": 130,
+      "text": "## 5. Return to the same trip\n\nAfter successful store confirmation."
+    },
+    {
+      "id": "step-5",
+      "type": "file",
+      "file": "design/free-and-pro/previews/flow-step-5.png",
+      "x": 1920,
+      "y": 160,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "free",
+      "type": "file",
+      "file": "design/free-and-pro/previews/flow-declined.png",
+      "x": 960,
+      "y": 1330,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "free-label",
+      "type": "text",
+      "x": 820,
+      "y": 1130,
+      "width": 680,
+      "height": 150,
+      "text": "## Close / Not now / Continue free\n\nReturn to the same saved trip. No lost flight or purchase. Consume the one-time introduction; retain a quiet “See Pro” entry on later visits and new trips. Parents reading someone else’s updates, past-flight logging and active subscribers skip acquisition entirely."
+    }
+  ],
+  "edges": [
+    {
+      "id": "save",
+      "fromNode": "step-1",
+      "fromSide": "right",
+      "toNode": "step-2",
+      "toSide": "left",
+      "label": "Save → brief confirmation"
+    },
+    {
+      "id": "learn",
+      "fromNode": "step-2",
+      "fromSide": "right",
+      "toNode": "step-3",
+      "toSide": "left",
+      "label": "Tap “See Pro for this trip”"
+    },
+    {
+      "id": "plans",
+      "fromNode": "step-3",
+      "fromSide": "right",
+      "toNode": "step-4",
+      "toSide": "left",
+      "label": "Tap “See plans”"
+    },
+    {
+      "id": "purchase",
+      "fromNode": "step-4",
+      "fromSide": "right",
+      "toNode": "step-5",
+      "toSide": "left",
+      "label": "Subscribe → store confirms"
+    },
+    {
+      "id": "decline-2",
+      "fromNode": "step-2",
+      "fromSide": "bottom",
+      "toNode": "free-label",
+      "toSide": "top",
+      "label": "Not now"
+    },
+    {
+      "id": "decline-3",
+      "fromNode": "step-3",
+      "fromSide": "bottom",
+      "toNode": "free-label",
+      "toSide": "top",
+      "label": "Not now / close"
+    },
+    {
+      "id": "decline-4",
+      "fromNode": "step-4",
+      "fromSide": "bottom",
+      "toNode": "free-label",
+      "toSide": "top",
+      "label": "Continue free"
+    }
+  ]
+}

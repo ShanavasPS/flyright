@@ -1,3 +1,4 @@
+import { useHasPro } from '@/services/purchases';
 import { useEffect, useState } from 'react';
 
 import { lookupFlight } from '@/services/flight-lookup';
@@ -38,7 +39,8 @@ export function useLivePlane(
   refresh: boolean,
 ): { plane: LivePlane | null; progress: number } {
   const [, setRefreshed] = useState(0);
-  const facts = journey ? getFlightFacts(journey.id) : null;
+  const pro = useHasPro();
+  const facts = journey && pro ? getFlightFacts(journey.id) : null;
   const progress = journey && facts ? flightProgress(journey, state, facts, now) : 0;
   const airborne = !!journey && !!route && progress > 0 && progress < 1;
 
@@ -47,11 +49,11 @@ export function useLivePlane(
   const lookupDay = journey ? lookupDayFor(journey) : null;
   const tracked = airborne && journey.source === 'lookup' && !!number;
   useEffect(() => {
-    if (!tracked || !refresh || !journeyId || !number || !lookupDay) return;
+    if (!pro || !tracked || !refresh || !journeyId || !number || !lookupDay) return;
     let cancelled = false;
     const poll = async () => {
       try {
-        const status = await lookupFlight(number, lookupDay, { background: true });
+        const status = await lookupFlight(number, lookupDay, { background: true, purpose: 'monitor' });
         if (cancelled) return;
         await noteFlightFacts(journeyId, status);
         if (!cancelled) setRefreshed((n) => n + 1);
@@ -66,7 +68,7 @@ export function useLivePlane(
       clearTimeout(first);
       clearInterval(id);
     };
-  }, [tracked, refresh, journeyId, number, lookupDay]);
+  }, [pro, tracked, refresh, journeyId, number, lookupDay]);
 
   if (!airborne || !journey || !route || !facts) return { plane: null, progress };
   const leg = route.legs.find((candidate) => candidate.id === journey.id);

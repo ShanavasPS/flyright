@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import { CIRCLE_FULL, FREE_CIRCLE_LABEL } from '../../convex/circleShared';
+import { CIRCLE_FULL } from '../../convex/circleShared';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { Avatar } from '@/components/avatar';
@@ -47,7 +47,6 @@ import { trackEvent } from '@/services/analytics';
 import { inviteTokenFrom } from '@/services/circle';
 import { formatDayLabel } from '@/services/dates';
 import { keepOrFallback, pickPerson } from '@/services/default-pick';
-import { useProLocked } from '@/services/purchases';
 import { onHomeScreen, spanLabel } from '@/services/public-session';
 import { Person } from '@/screens/person';
 
@@ -150,20 +149,14 @@ const NAVY = '#0C1B36';
 /** The one way into someone's circle: the add-person sheet, which searches
  * FlyRight for people who already have it and falls back to the share link
  * for everyone else. Signed-out users go through sign-in first (followers
- * are addressed by Clerk id); a free account already at FREE_CIRCLE_SIZE
- * goes to the paywall, since the server would refuse either invitation. */
-function useInvite(full: boolean) {
+ * are addressed by Clerk id). Following is free. */
+function useInvite() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
-  const proLocked = useProLocked();
 
   return () => {
     if (!isSignedIn) {
       router.push({ pathname: '/sign-in', params: { next: '/people' } });
-      return;
-    }
-    if (full && proLocked) {
-      router.push({ pathname: '/paywall', params: { next: '/people' } });
       return;
     }
     router.push('/add-person');
@@ -202,29 +195,11 @@ function circleEmpty(data: CircleList): boolean {
   );
 }
 
-/** The circle-full failure in one place: Pro fixes it for a free account,
- * otherwise it is simply said. `whose` names the circle that is full. */
-function circleFullAlert(
-  e: unknown,
-  whose: string,
-  proLocked: boolean,
-  router: ReturnType<typeof useRouter>,
-  fallback: string,
-) {
-  if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
-    if (whose === 'Your' && proLocked) {
-      router.push({ pathname: '/paywall', params: { next: '/people' } });
-      return;
-    }
-    Alert.alert(
-      `${whose} circle is full`,
-      whose === 'Your'
-        ? 'Remove someone to make room.'
-        : `They can make room with FlyRight Pro.`,
-    );
-    return;
-  }
-  Alert.alert(fallback, 'Check your connection and try again.');
+/** A legacy server rejection never sends a follower to checkout. */
+function circleFullAlert(e: unknown, fallback: string) {
+  Alert.alert(fallback, e instanceof ConvexError && e.data === CIRCLE_FULL
+    ? 'Following is free. Please try again in a moment.'
+    : 'Check your connection and try again.');
 }
 
 /** The People tab: Find My for flights. Two tabs, Instagram-style: whose
@@ -238,8 +213,7 @@ export function People() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const data = useQuery(api.circle.list, isSignedIn ? {} : 'skip');
-  const invite = useInvite(!!data?.full);
-  const proLocked = useProLocked();
+  const invite = useInvite();
   const focused = useIsFocused();
   const markSeen = useMutation(api.attention.markPeopleSeen);
   // Null until the data is in: the tab with something waiting on it opens
@@ -391,7 +365,7 @@ export function People() {
         </>
       );
     } else {
-      items = followersItems(data, data.full && proLocked);
+      items = followersItems(data, false);
       footer = (
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
           Followers see your upcoming flights and get updates on travel day. Remove anyone at any
@@ -708,9 +682,7 @@ function CircleHero({
  * line. Long-press (or tap, when not live) for mute/leave. */
 function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) {
   const theme = useTheme();
-  const router = useRouter();
   const now = useNow();
-  const proLocked = useProLocked();
   const shareBack = useMutation(api.circle.shareBack);
   const [busy, setBusy] = useState(false);
 
@@ -723,7 +695,7 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
       await shareBack({ userId: person.userId });
       trackEvent('circle_shared_back', { from: 'people' });
     } catch (e) {
-      circleFullAlert(e, 'Your', proLocked, router, `Couldn't share with ${person.name}`);
+      circleFullAlert(e, `Couldn't share with ${person.name}`);
     } finally {
       setBusy(false);
     }
@@ -836,7 +808,6 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
  * withdraw. Someone who already invited me is followed on the spot. */
 function FollowerRow({ person, fresh }: { person: Follower; fresh: boolean }) {
   const theme = useTheme();
-  const router = useRouter();
   const { open: openPerson, selected } = useOpenPerson(person.userId);
   const ask = useMutation(api.circle.askToFollow);
   const cancel = useMutation(api.circle.cancelRequest);
@@ -848,7 +819,7 @@ function FollowerRow({ person, fresh }: { person: Follower; fresh: boolean }) {
       const result = await ask({ userId: person.userId });
       trackEvent('circle_follow_back', { status: result.status });
     } catch (e) {
-      circleFullAlert(e, `${person.name}'s`, false, router, `Couldn't ask ${person.name}`);
+      circleFullAlert(e, `Couldn't ask ${person.name}`);
     } finally {
       setBusy(false);
     }
@@ -976,8 +947,6 @@ function RowChip({
 /** Someone asking to follow MY trips — "Follow back" from their side. Allow
  * runs the same join an accepted invitation does, with me as the owner. */
 function FollowRequestRow({ request }: { request: Incoming }) {
-  const router = useRouter();
-  const proLocked = useProLocked();
   const respond = useMutation(api.circle.respondToRequest);
   const [busy, setBusy] = useState(false);
 
@@ -988,7 +957,7 @@ function FollowRequestRow({ request }: { request: Incoming }) {
       trackEvent('circle_follow_request_answered', { accept });
     } catch (e) {
       // My circle is at the free cap; the request stays here for after.
-      circleFullAlert(e, 'Your', proLocked, router, `Couldn't answer that just now`);
+      circleFullAlert(e, `Couldn't answer that just now`);
     } finally {
       setBusy(false);
     }
@@ -1116,8 +1085,6 @@ function RequestRow({ request }: { request: Incoming }) {
  * held open in Followers, an ask to follow a seat I'm waiting for in
  * Following. Tap to take it back. */
 function PendingRow({ request, kind }: { request: Outgoing; kind: 'invite' | 'follow' }) {
-  const router = useRouter();
-  const proLocked = useProLocked();
   const cancel = useMutation(api.circle.cancelRequest);
   const verb = kind === 'invite' ? 'Invited' : 'Asked to follow';
   // They said yes and found no seat: the row says so, and the sheet offers
@@ -1131,14 +1098,6 @@ function PendingRow({ request, kind }: { request: Outgoing; kind: 'invite' | 'fo
         ? `${request.name} tried to follow your trips, but your circle is full. The invitation waits until you make room.`
         : `${verb} ${formatDayLabel(request.since)}. Not answered yet.`,
       [
-        ...(blocked && proLocked
-          ? [
-              {
-                text: 'Add your whole family with Pro',
-                onPress: () => router.push({ pathname: '/paywall', params: { next: '/people' } }),
-              },
-            ]
-          : []),
         {
           text: kind === 'invite' ? 'Withdraw invitation' : 'Withdraw request',
           style: 'destructive' as const,
@@ -1189,12 +1148,10 @@ function InviteRow({ locked, onInvite }: { locked: boolean; onInvite: () => void
         />
         <View style={styles.rowBody}>
           <ThemedText type="smallBold" style={{ color: theme.tint }}>
-            {locked ? 'Add your whole family with Pro' : 'Invite someone'}
+            Invite someone
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {locked
-              ? `Free includes ${FREE_CIRCLE_LABEL} — Pro has no limit`
-              : 'Search FlyRight by name or email, or share a link'}
+            Search FlyRight by name or email, or share a link
           </ThemedText>
         </View>
       </View>

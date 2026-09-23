@@ -1,0 +1,185 @@
+{
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "text",
+      "x": 0,
+      "y": -270,
+      "width": 1260,
+      "height": 230,
+      "text": "# Free to remember. Pro when you travel.\n\nFree: past/upcoming flights, following, reading postcards, receiving a Pro traveller’s shared live updates. Pro: live monitoring, postcard publishing and claim processing. One large introduction per account, then compact entries; allow permanent home dismissal and use the same Live updates off card in trip details.\n\nRecommendation: A as entry, B to explain, C as an optional reminder. Canvas proposal only. Open design/free-and-pro/canvas.html for interactions and the complete product scope."
+    },
+    {
+      "id": "label-a",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 110,
+      "text": "## A · One-time introduction\n\nFirst meaningful exposure only; later visits and new trips stay compact."
+    },
+    {
+      "id": "option-a",
+      "type": "file",
+      "file": "design/free-and-pro/previews/option-a.png",
+      "x": 0,
+      "y": 130,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-b",
+      "type": "text",
+      "x": 440,
+      "y": 0,
+      "width": 400,
+      "height": 110,
+      "text": "## B · New explanation sheet\n\nReached from A. Open flow.html for the clarified placement."
+    },
+    {
+      "id": "option-b",
+      "type": "file",
+      "file": "design/free-and-pro/previews/option-b.png",
+      "x": 440,
+      "y": 130,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-c",
+      "type": "text",
+      "x": 880,
+      "y": 0,
+      "width": 400,
+      "height": 110,
+      "text": "## C · Closer to departure\n\nChoose a reminder; subscribe only when ready."
+    },
+    {
+      "id": "option-c",
+      "type": "file",
+      "file": "design/free-and-pro/previews/option-c.png",
+      "x": 880,
+      "y": 130,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-family",
+      "type": "text",
+      "x": 0,
+      "y": 1110,
+      "width": 400,
+      "height": 110,
+      "text": "## A free parent receives\n\nLive updates funded by the traveller; free reading and replies."
+    },
+    {
+      "id": "screen-family",
+      "type": "file",
+      "file": "design/free-and-pro/previews/family.png",
+      "x": 0,
+      "y": 1240,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-post",
+      "type": "text",
+      "x": 440,
+      "y": 1110,
+      "width": 400,
+      "height": 110,
+      "text": "## Publishing is Pro\n\nPreserve the draft through purchase or dismissal."
+    },
+    {
+      "id": "screen-post",
+      "type": "file",
+      "file": "design/free-and-pro/previews/post.png",
+      "x": 440,
+      "y": 1240,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-history",
+      "type": "text",
+      "x": 880,
+      "y": 1110,
+      "width": 400,
+      "height": 110,
+      "text": "## Existing postcards remain free\n\nAdd a clear path to earlier postcards."
+    },
+    {
+      "id": "screen-history",
+      "type": "file",
+      "file": "design/free-and-pro/previews/history.png",
+      "x": 880,
+      "y": 1240,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-plan",
+      "type": "text",
+      "x": 0,
+      "y": 2220,
+      "width": 400,
+      "height": 110,
+      "text": "## Start close to travel\n\nMonthly first; all prices in this board are illustrative."
+    },
+    {
+      "id": "screen-plan",
+      "type": "file",
+      "file": "design/free-and-pro/previews/plan.png",
+      "x": 0,
+      "y": 2350,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-cancel",
+      "type": "text",
+      "x": 440,
+      "y": 2220,
+      "width": 400,
+      "height": 110,
+      "text": "## Renewal cancelled\n\nAccess remains through the verified expiry date."
+    },
+    {
+      "id": "screen-cancel",
+      "type": "file",
+      "file": "design/free-and-pro/previews/cancel.png",
+      "x": 440,
+      "y": 2350,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "label-expired",
+      "type": "text",
+      "x": 880,
+      "y": 2220,
+      "width": 400,
+      "height": 110,
+      "text": "## Free account continues\n\nKeep history and followers. Stop fresh monitoring and publishing."
+    },
+    {
+      "id": "screen-expired",
+      "type": "file",
+      "file": "design/free-and-pro/previews/expired.png",
+      "x": 880,
+      "y": 2350,
+      "width": 400,
+      "height": 880
+    },
+    {
+      "id": "scope",
+      "type": "text",
+      "x": 0,
+      "y": 3380,
+      "width": 1260,
+      "height": 560,
+      "text": "## Required changes\n\n1. Explicit owner-monitoring, author-publishing and follower-reading capabilities.\n2. Remove three-follower monetization from server and UI.\n3. Separate free saving/import from paid live data and polling.\n4. Keep authorised follower access free; share provider work.\n5. Gate publishing server-side; preserve drafts and private photos.\n6. Contextual trip prompts, suppression and opt-in reminders.\n7. Clear cancellation/expiry/restore and retained history.\n8. Update remote paywall, onboarding, web, stores and support.\n9. Plan existing-user transition, active-flight grace and Galaxy billing exception.\n10. Validate free family access, expiry, privacy, old clients and provider cost.\n\nClaim processing stays Pro. Compare manual-free versus all-Pro eligibility in the Claims panel. Large introduction once per account; use the Live updates off card in trip details after home dismissal. Decide postcard window and migration/grace. Seats are saved details, not a supported automatic alert.\n\nSee design/free-and-pro/README.md for source audit, boundaries, rollout and acceptance."
+    }
+  ],
+  "edges": []
+}

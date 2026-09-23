@@ -5,8 +5,7 @@ import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import { maySee } from './audience';
-import { FREE_CIRCLE_SIZE } from './circleShared';
-import { isPro } from './entitlements';
+import { isPro, proEndsAt } from './entitlements';
 import { makeToken, nextPollDelayMs, sessionExpiryFor } from './liveShared';
 import { poolStretchFactor } from './provider';
 
@@ -60,14 +59,15 @@ export async function schedulePoll(ctx: MutationCtx, session: Doc<'liveSessions'
     await ctx.scheduler.cancel(session.pollScheduledId).catch(() => {});
   }
   const now = Date.now();
-  const base = nextPollDelayMs(session, now);
+  const monitoringUntil = await proEndsAt(ctx, session.userId);
+  const base = monitoringUntil > now ? nextPollDelayMs(session, now) : null;
   // A thin monthly pool stretches the cadence rather than killing the chain.
   const delay = base === null ? null : base * (await poolStretchFactor(ctx, now));
   const pollScheduledId =
     delay === null
       ? null
       : await ctx.scheduler.runAfter(delay, internal.liveInternal.poll, { sessionId: session._id });
-  await ctx.db.patch(session._id, { pollScheduledId });
+  await ctx.db.patch(session._id, { pollScheduledId, monitoringUntil });
 }
 
 /** Who in the owner's circle may see this trip: everyone, only the members
@@ -202,6 +202,7 @@ export async function createSession(
   await limit(ctx, `live-start:${journey.userId}`, 30, DAY);
   const sessionId = await ctx.db.insert('liveSessions', {
     userId: journey.userId,
+    monitoringUntil: await proEndsAt(ctx, journey.userId),
     naturalKey: journey.naturalKey,
     status: 'active',
     carrier: journey.carrier,
@@ -324,6 +325,7 @@ export async function armHeadsUp(ctx: MutationCtx, journey: Doc<'journeys'>) {
   const now = Date.now();
   if (
     !journey.deletedAt &&
+    (await isPro(ctx, journey.userId)) &&
     !journey.headsUpSentAt &&
     !Number.isNaN(dep) &&
     dep > now &&
@@ -359,12 +361,10 @@ export async function armHeadsUpsForOwner(ctx: MutationCtx, ownerId: string) {
 const INVITE_TTL_MS = 7 * 24 * 3_600_000;
 const INVITE_MAX_USES = 10;
 
-/** Free accounts share with FREE_CIRCLE_SIZE people; Pro is unlimited. The
- * SDK-side entitlement never reaches here — only the webhook mirror counts,
- * so a fresh purchase gates until RC's event lands (seconds, normally). */
-export async function circleFull(ctx: QueryCtx | MutationCtx, ownerId: string) {
-  const members = await circleMembers(ctx, ownerId);
-  return members.length >= FREE_CIRCLE_SIZE && !(await isPro(ctx, ownerId));
+/** Kept in the response contract for older clients. Following is free;
+ * invitation and search abuse limits are independent of subscriptions. */
+export async function circleFull(_ctx: QueryCtx | MutationCtx, _ownerId: string) {
+  return false;
 }
 
 export function inviteUsable(invite: { uses: number; expiresAt: string; ownerIssued?: boolean } | null) {

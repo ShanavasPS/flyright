@@ -305,7 +305,7 @@ function PushNotificationsRow() {
     if (result === 'blocked') {
       Alert.alert(
         'Notifications are off for FlyRight',
-        'Allow notifications in system settings to get disruption alerts and claim reminders.',
+        'Allow notifications in system settings for shared updates, plus your own flight alerts and claim reminders with Pro.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -435,7 +435,7 @@ export function Settings() {
           {billingAvailable && (
             <>
               <Pressable
-                onPress={() => router.push(pro ? '/manage-subscription' : '/paywall')}
+                onPress={() => router.push(pro ? '/manage-subscription' : '/pro-offer')}
                 style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
                 <View style={styles.rowLabel}>
                   <ThemedText>{pro ? 'FlyRight Pro' : 'Get FlyRight Pro'}</ThemedText>

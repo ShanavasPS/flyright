@@ -157,6 +157,10 @@ export const purge = internalMutation({
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .unique();
     if (entitlement) await ctx.db.delete(entitlement._id);
+    for (const table of ['proPreferences', 'proReminders'] as const) {
+      const preferences = await ctx.db.query(table).withIndex('by_user', q => q.eq('userId', userId)).collect();
+      for (const row of preferences) await ctx.db.delete(row._id);
+    }
 
     // Support conversations: the thread row carries their reply address and
     // every message they wrote. The human inbox keeps its own copy of the

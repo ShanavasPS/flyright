@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "text",
+      "x": 0,
+      "y": -160,
+      "width": 1460,
+      "height": 120,
+      "text": "# Trip-group header leads\n\nFour options; canvas only. Open design/trip-header-leads/canvas.html for five examples, light/dark appearance, larger text and individual focus. A is the recommended compact direction."
+    },
+    {
+      "id": "a",
+      "type": "file",
+      "file": "design/trip-header-leads/previews/option-a.png",
+      "x": 0,
+      "y": 0,
+      "width": 356,
+      "height": 912
+    },
+    {
+      "id": "b",
+      "type": "file",
+      "file": "design/trip-header-leads/previews/option-b.png",
+      "x": 380,
+      "y": 0,
+      "width": 356,
+      "height": 912
+    },
+    {
+      "id": "c",
+      "type": "file",
+      "file": "design/trip-header-leads/previews/option-c.png",
+      "x": 760,
+      "y": 0,
+      "width": 356,
+      "height": 912
+    },
+    {
+      "id": "d",
+      "type": "file",
+      "file": "design/trip-header-leads/previews/option-d.png",
+      "x": 1140,
+      "y": 0,
+      "width": 356,
+      "height": 912
+    }
+  ],
+  "edges": []
+}

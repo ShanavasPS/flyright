@@ -68,6 +68,7 @@ export interface TripCardModel {
 }
 
 export interface TripCardInput {
+  monitoring?: boolean;
   row: JourneyRow;
   /** The live facts with the record filling the gaps (factsFor). */
   facts: FlightFacts;
@@ -82,9 +83,9 @@ export interface TripCardInput {
 /** Half an hour late is the app's one threshold for calling a flight late. */
 const LATE_MINUTES = 30;
 
-export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCardInput): TripCardModel {
+export function tripCard({ row, facts, state, phase, now, statusKnown, monitoring = true }: TripCardInput): TripCardModel {
   const t = now.getTime();
-  const tracked = row.source === 'lookup';
+  const tracked = monitoring && row.source === 'lookup';
   const departureZone = airportZone(row.fromCode);
   const arrivalZone = airportZone(row.toCode);
   const timed = hasRealTime(row);
@@ -247,7 +248,7 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
         ];
 
   let footnote: string | null = null;
-  if (overdue) {
+  if (overdue && !over && monitoring) {
     // The same ask the live card and the Lock Screen make at this moment.
     // The step is right below this card, in Trip progress.
     footnote = 'Landed? Mark it in Trip progress — some airports never report it.';
@@ -259,6 +260,12 @@ export function tripCard({ row, facts, state, phase, now, statusKnown }: TripCar
     footnote = "Where the airport posts something different, the airport's wins.";
   }
 
+  if (!monitoring && !over) {
+    status = { text: 'Saved flight', tone: 'neutral' };
+    if (!over && timed) clock = { kind: 'static', label: 'Scheduled departure', value: formatTime(row.scheduledDeparture, departureZone), unit: null };
+    progress = null;
+    footnote = 'Saved details. Live updates are off.';
+  }
   return { status, clock, line, progress, sections, footnote };
 }
 

@@ -35,12 +35,12 @@ const SHOTS = [
   {
     raw: 'phone-01-journeys.png',
     headline: 'Every flight, remembered',
-    sub: 'Your travel journal with live delay tracking',
+    sub: 'Your free travel journal. Live updates with Pro.',
   },
   {
     raw: 'phone-05-travel-day.png',
     headline: 'Your travel day, live',
-    sub: 'Countdown, gate and seat — all in one live card',
+    sub: 'Gate, delays and landing updates with FlyRight Pro',
   },
   {
     raw: 'phone-03-verdict.png',

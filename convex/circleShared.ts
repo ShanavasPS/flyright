@@ -1,18 +1,8 @@
 /** Circle limits shared by the Convex functions and the app (imported by
  * relative path, like liveShared). */
 
-/** People who may follow a free account's trips. Pro lifts the cap — "your
- * whole family follows every trip automatically" is the recurring reason to
- * stay subscribed between (rare) claims. */
-export const FREE_CIRCLE_SIZE: number = 3;
-
-/** The cap as copy says it: "one person" / "3 people". */
-export const FREE_CIRCLE_LABEL =
-  FREE_CIRCLE_SIZE === 1 ? 'one person' : `${FREE_CIRCLE_SIZE} people`;
-
-/** ConvexError data thrown by circle.createInvite / accept / shareBack when
- * the owner is at the free cap. Plain Error messages are redacted in
- * production, so the client matches on this instead. */
+/** Legacy response code understood by older clients. Following has no
+ * subscription cap; independent invitation and search abuse limits remain. */
 export const CIRCLE_FULL = 'circle_full';
 
 /** How "add someone" compares a typed query with a stored profile: trimmed,

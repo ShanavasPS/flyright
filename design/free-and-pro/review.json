@@ -1,0 +1,263 @@
+{
+  "reviewed": "2026-09-23",
+  "scope": "Design preview only; no native app or backend tests.",
+  "checks": [
+    {
+      "label": "All embedded images load offline",
+      "pass": true
+    },
+    {
+      "label": "Three distinct traveller treatments",
+      "pass": true
+    },
+    {
+      "label": "A opens the proposed explanation before pricing",
+      "pass": true
+    },
+    {
+      "label": "Trip offer states account access and recurring monthly billing",
+      "pass": true
+    },
+    {
+      "label": "Yearly shows the full annual charge and renewal",
+      "pass": true
+    },
+    {
+      "label": "Dismissing A preserves free trip and removes the automatic card",
+      "pass": true
+    },
+    {
+      "label": "Reminder does not start a subscription",
+      "pass": true
+    },
+    {
+      "label": "Close to travel changes C from reminder to timely Pro entry",
+      "pass": true
+    },
+    {
+      "label": "past has no acquisition button in any option",
+      "pass": true
+    },
+    {
+      "label": "past keeps useful free content",
+      "pass": true
+    },
+    {
+      "label": "follower has no acquisition button in any option",
+      "pass": true
+    },
+    {
+      "label": "follower keeps useful free content",
+      "pass": true
+    },
+    {
+      "label": "Dismissed paywall keeps postcard draft",
+      "pass": true
+    },
+    {
+      "label": "Preview purchase returns to draft with explicit Publish",
+      "pass": true
+    },
+    {
+      "label": "Cancellation and expiry have distinct outcomes",
+      "pass": true
+    },
+    {
+      "label": "Scope includes both the rules and ten workstreams",
+      "pass": true
+    },
+    {
+      "label": "Revised prompt board has one large introduction and compact later/contextual entries",
+      "pass": true
+    },
+    {
+      "label": "Three trip groups and six legs share one account status entry",
+      "pass": true
+    },
+    {
+      "label": "Reopening consumes the introduction even without explicit dismissal",
+      "pass": true
+    },
+    {
+      "label": "Switching screens does not restore the large introduction",
+      "pass": true
+    },
+    {
+      "label": "Home close hides the card without opening Pro; trip details retain it",
+      "pass": true
+    },
+    {
+      "label": "Home dismissal survives navigation and opening another trip",
+      "pass": true
+    },
+    {
+      "label": "Home dismissal survives the active-to-free preview",
+      "pass": true
+    },
+    {
+      "label": "Trip status opens the short Pro offer with the three paid benefits",
+      "pass": true
+    },
+    {
+      "label": "The initial offer retains Paris and keeps the timing choice short",
+      "pass": true
+    },
+    {
+      "label": "The next step shows the selected Paris reminder date and delivery",
+      "pass": true
+    },
+    {
+      "label": "Choosing a Paris reminder does not opt London or Tokyo in",
+      "pass": true
+    },
+    {
+      "label": "Opening another trip updates the Pro offer and its reminder",
+      "pass": true
+    },
+    {
+      "label": "Plans retain the trip chosen through the list",
+      "pass": true
+    },
+    {
+      "label": "The user-requested offer has a single reminder button",
+      "pass": true
+    },
+    {
+      "label": "Reminder retains Free and one status entry across the trip list",
+      "pass": true
+    },
+    {
+      "label": "An opted-in due reminder reuses the same compact status position",
+      "pass": true
+    },
+    {
+      "label": "An explicitly requested reminder never restores a hidden home card",
+      "pass": true
+    },
+    {
+      "label": "Dismissed reminder cannot automatically reappear",
+      "pass": true
+    },
+    {
+      "label": "Within two days no past reminder can be created",
+      "pass": true
+    },
+    {
+      "label": "Plans keep the selected trip and offer a route back to timing",
+      "pass": true
+    },
+    {
+      "label": "Closing an unconfirmed reminder schedules nothing",
+      "pass": true
+    },
+    {
+      "label": "Account Pro cancels acquisition reminders and hides timing upsells",
+      "pass": true
+    },
+    {
+      "label": "The purchase-success preview activates account Pro and clears reminders",
+      "pass": true
+    },
+    {
+      "label": "Claim processing offer is Pro and retains the correct flight context",
+      "pass": true
+    },
+    {
+      "label": "Claim purchase resumes review without automatic filing",
+      "pass": true
+    },
+    {
+      "label": "All-Pro alternative labels unchecked eligibility honestly",
+      "pass": true
+    },
+    {
+      "label": "1440px / prompts: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "1440px / timing: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "1440px / claims: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "1440px / options: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "1440px / family: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "1440px / plans: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "1440px / rules: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / prompts: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / timing: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / claims: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / options: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / family: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / plans: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / rules: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / prompts: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / timing: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / claims: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / options: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / family: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / plans: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / rules: no page or phone horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "No browser runtime errors",
+      "pass": true
+    }
+  ],
+  "runtimeErrors": []
+}

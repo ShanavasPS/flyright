@@ -1,3 +1,4 @@
+import { isPro } from './entitlements';
 import { flightDay } from './airportZones';
 import { v } from 'convex/values';
 
@@ -34,7 +35,10 @@ const HOUR_MS = 3_600_000;
 
 export const getSession = internalQuery({
   args: { sessionId: v.id('liveSessions') },
-  handler: (ctx, { sessionId }) => ctx.db.get(sessionId),
+  handler: async (ctx, { sessionId }) => {
+    const session = await ctx.db.get(sessionId);
+    return session ? { ...session, pro: await isPro(ctx, session.userId) } : null;
+  },
 });
 
 /** What the traveller's OWN Lock Screen card knows beyond the session: the
@@ -53,7 +57,7 @@ export const getNotifyTargets = internalQuery({
   args: { sessionId: v.id('liveSessions') },
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.db.get(sessionId);
-    if (!session) return null;
+    if (!session || !(await isPro(ctx, session.userId))) return null;
     const follows = await ctx.db
       .query('follows')
       .withIndex('by_session', (q) => q.eq('sessionId', sessionId))
@@ -115,6 +119,10 @@ export const applyFlightFacts = internalMutation({
   handler: async (ctx, { sessionId, facts }) => {
     const session = await ctx.db.get(sessionId);
     if (!session || session.status !== 'active') return;
+    if (!(await isPro(ctx, session.userId))) {
+      await ctx.db.patch(sessionId, { pollScheduledId: null });
+      return;
+    }
 
     const now = Date.now();
     const patch: Record<string, unknown> = {
@@ -216,6 +224,10 @@ export const poll = internalAction({
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.runQuery(internal.liveInternal.getSession, { sessionId });
     if (!session || session.status !== 'active') return;
+    if (!session.pro) {
+      await ctx.runMutation(internal.entitlements.reconcileAccess, { userId: session.userId });
+      return;
+    }
     // No audience → skip the metered call but keep the chain alive.
     let facts = null;
     if (session.shareToken || session.activityId || await ctx.runQuery(internal.followerActivities.hasAudience, { sessionId })) {
@@ -287,7 +299,7 @@ export const startActivity = internalAction({
   args: { sessionId: v.id('liveSessions') },
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.runQuery(internal.liveInternal.getSession, { sessionId });
-    if (!session?.activityId || session.status !== 'active') return;
+    if (!session?.activityId || !session.pro || session.status !== 'active') return;
     const own = await ctx.runQuery(internal.liveInternal.ownCardExtras, { sessionId });
     const state = buildContentState(session, Date.now(), own);
     const started = await startLiveActivity(
@@ -355,7 +367,7 @@ export const updateActivity = internalAction({
     const own = await ctx.runQuery(internal.liveInternal.ownCardExtras, { sessionId });
     await pushLiveActivity(
       session.activityId,
-      session.status === 'active' ? 'update' : 'end',
+      session.status === 'active' && session.pro ? 'update' : 'end',
       buildContentState(session, Date.now(), own),
     );
   },
@@ -387,6 +399,12 @@ export const closeExpired = internalMutation({
             sessionId: session._id,
           });
         }
+        continue;
+      }
+      if (!(await isPro(ctx, session.userId))) {
+        if (session.pollScheduledId) await ctx.scheduler.cancel(session.pollScheduledId).catch(() => {});
+        await ctx.db.patch(session._id, { pollScheduledId: null, monitoringUntil: 0 });
+        if (session.activityId) await ctx.scheduler.runAfter(0, internal.liveInternal.updateActivity, { sessionId: session._id });
         continue;
       }
       // Chain re-arm: an active, unexpired session with no pending poll.

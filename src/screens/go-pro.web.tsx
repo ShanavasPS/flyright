@@ -18,9 +18,9 @@ import { proPriceFrom } from '@/services/web-pricing';
  * in inside the app — no restore, no code to type. */
 
 const BENEFITS = [
-  'Airline-ready claim letters, written for you',
-  'Six-week response deadline tracked automatically',
-  'Delay alerts the moment a flight starts owing you money',
+  'Live gate, terminal, delay and belt updates where available',
+  'Postcards for your people — they read and follow free',
+  'Claim preparation and response deadline reminders',
 ] as const;
 
 export function GoPro() {
@@ -34,7 +34,7 @@ export function GoPro() {
             FlyRight Pro
           </ThemedText>
           <ThemedText themeColor="textSecondary">
-            One delayed flight pays for years of Pro.
+            Free to remember. Pro when you travel.
           </ThemedText>
           <ThemedText type="smallBold" themeColor="textSecondary">
             {proPriceFrom(navigator.language)} · annual and lifetime at checkout · cancel anytime

@@ -1,0 +1,91 @@
+{
+  "reviewed": "2026-09-23",
+  "scope": "Design flow only; no app or backend implementation.",
+  "checks": [
+    {
+      "label": "Default view explicitly labels the explanation as a new sheet",
+      "pass": true
+    },
+    {
+      "label": "Saving returns to the free trip without opening a sheet",
+      "pass": true
+    },
+    {
+      "label": "Later visit uses compact entry even without explicit dismissal",
+      "pass": true
+    },
+    {
+      "label": "Another saved trip does not reset the account introduction",
+      "pass": true
+    },
+    {
+      "label": "Only the Pro entry opens the explanation",
+      "pass": true
+    },
+    {
+      "label": "Declining returns to saved trip and collapses the offer",
+      "pass": true
+    },
+    {
+      "label": "Plans follow an explicit See plans tap",
+      "pass": true
+    },
+    {
+      "label": "Subscribe requests store confirmation before Pro is active",
+      "pass": true
+    },
+    {
+      "label": "Cancelling store purchase remains on plans",
+      "pass": true
+    },
+    {
+      "label": "Failed purchase preserves the free state",
+      "pass": true
+    },
+    {
+      "label": "Confirmed purchase returns to the same trip with honest future coverage",
+      "pass": true
+    },
+    {
+      "label": "past has no explanation or acquisition button",
+      "pass": true
+    },
+    {
+      "label": "follower has no explanation or acquisition button",
+      "pass": true
+    },
+    {
+      "label": "pro has no explanation or acquisition button",
+      "pass": true
+    },
+    {
+      "label": "1440px / walk: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "1440px / compare: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / walk: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / compare: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / walk: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / compare: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "No browser runtime errors",
+      "pass": true
+    }
+  ],
+  "runtimeErrors": []
+}

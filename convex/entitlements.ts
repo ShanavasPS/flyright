@@ -1,8 +1,9 @@
 import { HOUR } from './abuse';
 import { v } from 'convex/values';
+import { armHeadsUpsForOwner, schedulePoll } from './liveHelpers';
 
 import { internal } from './_generated/api';
-import { action, internalAction, internalMutation, type MutationCtx, type QueryCtx } from './_generated/server';
+import { action, query, internalAction, internalMutation, type MutationCtx, type QueryCtx } from './_generated/server';
 import {
   proActive,
   proUntilFromSubscriber,
@@ -14,8 +15,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 /** Server-side view of RevenueCat's 'Owed Pro' entitlement — see the
  * entitlements table in schema.ts and the /rc-webhook route in http.ts.
- * Anything the server enforces for free vs Pro (the circle size cap in
- * circle.ts) asks here, never the client. */
+ * Paid monitoring and publishing ask here, never trusting the client. */
 
 export async function isPro(ctx: QueryCtx | MutationCtx, userId: string): Promise<boolean> {
   const row = await ctx.db
@@ -25,6 +25,22 @@ export async function isPro(ctx: QueryCtx | MutationCtx, userId: string): Promis
   return proActive(row?.proUntil);
 }
 
+export async function proEndsAt(ctx: QueryCtx | MutationCtx, userId: string): Promise<number> {
+  const row = await ctx.db.query('entitlements').withIndex('by_user', q => q.eq('userId', userId)).unique();
+  return row?.proUntil ? Date.parse(row.proUntil) || 0 : 0;
+}
+
+/** Only the signed-in account can read its entitlement. */
+export const mine = query({
+  args: {},
+  handler: async ctx => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const row = await ctx.db.query('entitlements').withIndex('by_user', q => q.eq('userId', identity.subject)).unique();
+    return { pro: proActive(row?.proUntil), proUntil: row?.proUntil ?? null };
+  },
+});
+
 async function setProUntil(ctx: MutationCtx, userId: string, proUntil: string | null, source: string) {
   const existing = await ctx.db
     .query('entitlements')
@@ -33,7 +49,36 @@ async function setProUntil(ctx: MutationCtx, userId: string, proUntil: string | 
   const updatedAt = new Date().toISOString();
   if (existing) await ctx.db.patch(existing._id, { proUntil, source, updatedAt });
   else await ctx.db.insert('entitlements', { userId, proUntil, source, updatedAt });
+  await ctx.scheduler.runAfter(0, internal.entitlements.reconcileAccess, { userId });
+  const endsAt = proUntil ? Date.parse(proUntil) : NaN;
+  // A lifetime entitlement needs no timer. Old timers recheck the current
+  // mirror, so a renewal cannot be undone by the previous expiry job.
+  if (endsAt > Date.now() && endsAt < Date.now() + 366 * 86_400_000) {
+    await ctx.scheduler.runAt(endsAt, internal.entitlements.reconcileAccess, { userId });
+  }
+  // A purchase fulfils reminder consent. Expiry must never revive it.
+  if (proActive(proUntil)) {
+    const reminders = await ctx.db.query('proReminders').withIndex('by_user', q => q.eq('userId', userId)).collect();
+    for (const reminder of reminders) {
+      if (reminder.state === 'pending') await ctx.db.patch(reminder._id, { state: 'cancelled' });
+    }
+  }
 }
+
+export const reconcileAccess = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const paid = await isPro(ctx, userId);
+    const sessions = await ctx.db.query('liveSessions').withIndex('by_user', q => q.eq('userId', userId)).collect();
+    for (const session of sessions) {
+      if (session.status !== 'active') continue;
+      await schedulePoll(ctx, session);
+      if (!paid && session.activityId) await ctx.scheduler.runAfter(0, internal.liveInternal.updateActivity, { sessionId: session._id });
+      await ctx.scheduler.runAfter(0, internal.followerActivities.syncSession, { sessionId: session._id });
+    }
+    if (paid) await armHeadsUpsForOwner(ctx, userId);
+  },
+});
 
 /** Snapshot generations prevent a slower, older response overwriting a refund. */
 export const reserveSnapshot = internalMutation({

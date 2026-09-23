@@ -93,6 +93,7 @@ async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}
   async function followerFixture(overrides = {}) {
     const s = context('viewer');
     const now = Date.now();
+    await s.ctx.db.insert('entitlements', { userId: 'owner', proUntil: new Date(now + 86_400_000).toISOString() });
     const journeyId = await s.ctx.db.insert('journeys', { userId: 'owner', naturalKey: 'private-owner-key', deletedAt: null });
     const sessionId = await s.ctx.db.insert('liveSessions', {
       userId: 'owner', naturalKey: 'private-owner-key', number: 'AY1', carrier: 'Finnair', fromCode: 'HEL', toCode: 'LHR',
@@ -424,6 +425,102 @@ async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}
     const start = performance.now();
     assert.equal(qs.parse('q=' + attack).q.length, 100_003);
     assert(performance.now() - start < 3000, 'malformed query took over 3 seconds');
+  });
+  await check('following remains free beyond three people, without an entitlement', async () => {
+    const s = context('owner');
+    for (let i = 0; i < 8; i++) await s.ctx.db.insert('circle', { ownerId: 'owner', memberId: `person-${i}` });
+    assert.equal(await load('convex/liveHelpers.ts').circleFull(s.ctx, 'owner'), false);
+    const invite = await circle.createInvite.handler(s.ctx, {});
+    assert.equal(typeof invite.token, 'string');
+  });
+  await check('home suppression is permanent, scoped to the caller, and independent of reminders', async () => {
+    const s = context('owner'), prompts = load('convex/proPrompts.ts');
+    await prompts.suppress.handler(s.ctx, { userId: 'owner', introductionSeen: false, homeDismissed: true });
+    await prompts.suppress.handler(s.ctx, { userId: 'owner', introductionSeen: false, homeDismissed: false });
+    assert.equal((await prompts.mine.handler(s.ctx, { userId: 'owner' })).homeDismissed, true);
+    assert.equal((await prompts.mine.handler(s.ctx, { userId: 'owner' })).introductionSeen, true);
+    assert.equal(await prompts.mine.handler(s.ctx, { userId: 'someone-else' }), null);
+    await assert.rejects(prompts.suppress.handler(s.ctx, { userId: 'someone-else', introductionSeen: true, homeDismissed: true }));
+  });
+  await check('a reminder follows its own edited departure and Pro cancels it without reviving after expiry', async () => {
+    const s = context('owner'), prompts = load('convex/proPrompts.ts');
+    const departure = Date.now() + 10 * 86_400_000;
+    const tripId = await s.ctx.db.insert('journeys', { userId: 'owner', naturalKey: 'trip', fromCode: 'HEL', toCode: 'LHR', scheduledDeparture: new Date(departure).toISOString(), scheduledArrival: new Date(departure + 3_600_000).toISOString(), deletedAt: null });
+    await prompts.suppress.handler(s.ctx, { userId: 'owner', introductionSeen: true, homeDismissed: true });
+    await prompts.setReminder.handler(s.ctx, { userId: 'owner', journeyKey: 'trip', action: 'set' });
+    assert.equal((await prompts.mine.handler(s.ctx, { userId: 'owner' })).reminders[0].remindAt, departure - 48 * 3_600_000);
+    await s.ctx.db.patch(tripId, { scheduledDeparture: new Date(departure + 86_400_000).toISOString() });
+    assert.equal((await prompts.mine.handler(s.ctx, { userId: 'owner' })).reminders[0].remindAt, departure + 86_400_000 - 48 * 3_600_000);
+    await entitlements.set.handler(s.ctx, { userId: 'owner', proUntil: new Date(departure).toISOString() });
+    await entitlements.set.handler(s.ctx, { userId: 'owner', proUntil: null });
+    const after = await prompts.mine.handler(s.ctx, { userId: 'owner' });
+    assert.equal(after.reminders.length, 0);
+    assert.equal(after.homeDismissed, true);
+    assert.equal(s.rows('journeys').length, 1);
+  });
+  await check('reminders cannot target another account, a deleted trip or a departure within 48 hours', async () => {
+    const s = context('owner'), prompts = load('convex/proPrompts.ts');
+    for (const trip of [
+      { userId: 'other', naturalKey: 'theirs', offset: 10, deletedAt: null },
+      { userId: 'owner', naturalKey: 'deleted', offset: 10, deletedAt: 'now' },
+      { userId: 'owner', naturalKey: 'soon', offset: 1, deletedAt: null },
+    ]) {
+      await s.ctx.db.insert('journeys', { ...trip, fromCode: 'HEL', toCode: 'LHR', scheduledDeparture: new Date(Date.now() + trip.offset * 86_400_000).toISOString(), scheduledArrival: new Date(Date.now() + (trip.offset + 1) * 86_400_000).toISOString() });
+      await assert.rejects(prompts.setReminder.handler(s.ctx, { userId: 'owner', journeyKey: trip.naturalKey, action: 'set' }));
+    }
+    assert.equal(s.rows('proReminders').length, 0);
+  });
+  await check('text-only postcard publication requires Pro, with existing posts retained after expiry', async () => {
+    const s = context('owner'), updates = load('convex/updates.ts');
+    const now = Date.now();
+    await s.ctx.db.insert('journeys', { userId: 'owner', naturalKey: 'trip', fromCode: 'HEL', toCode: 'LHR', scheduledDeparture: new Date(now).toISOString(), scheduledArrival: new Date(now + 3_600_000).toISOString(), deletedAt: null });
+    const args = { journeyKey: 'trip', text: 'Hello family', storageId: null, photoId: null, width: null, height: null };
+    await assert.rejects(updates.post.handler(s.ctx, args), /pro_required/);
+    assert.equal(s.rows('tripUpdates').length, 0);
+    const entitlement = await s.ctx.db.insert('entitlements', { userId: 'owner', proUntil: new Date(now + 86_400_000).toISOString() });
+    await updates.post.handler(s.ctx, args);
+    await s.ctx.db.patch(entitlement, { proUntil: new Date(now - 1).toISOString() });
+    await assert.rejects(updates.post.handler(s.ctx, args), /pro_required/);
+    assert.equal(s.rows('tripUpdates').length, 1);
+  });
+  await check('free monitoring is denied before cache access; free schedule lookup remains available', async () => {
+    const s = context('owner'), provider = load('convex/provider.ts');
+    process.env.LOOKUP_QUOTA_SECRET = 'fixture-only-secret';
+    const args = { secret: 'fixture-only-secret', subject: { kind: 'user', userId: 'owner' }, flight: 'AY1', date: '2099-01-01', want: 'base', kind: 'interactive', cost: 1, day: '2099-01-01' };
+    await s.ctx.db.insert('flightFacts', { key: provider.cacheKey(args.flight, args.date, 'base'), expiresAt: Date.now() + 60_000, payload: '{"gate":"secret"}' });
+    assert.equal((await provider.begin.handler(s.ctx, { ...args, purpose: 'monitor' })).outcome, 'pro_required');
+    assert.equal((await provider.begin.handler(s.ctx, { ...args, want: 'inbound' })).outcome, 'pro_required');
+    const free = await provider.begin.handler(s.ctx, { ...args, purpose: 'schedule' });
+    assert.equal(free.outcome, 'cached'); assert.equal(free.pro, false);
+  });
+  await check('an unpaid parent receives paid-owner live activity access, which ends when the owner expires', async () => {
+    const s = await followerFixture();
+    const access = load('convex/followerActivityHelpers.ts').followerActivityAccess;
+    const follow = s.rows('follows')[0];
+    assert(await access(s.ctx, follow));
+    assert.equal(s.rows('entitlements').some(e => e.userId === 'viewer'), false);
+    await s.ctx.db.patch(s.rows('entitlements')[0]._id, { proUntil: new Date(Date.now() - 1).toISOString() });
+    assert.equal(await access(s.ctx, follow), null);
+    assert.equal(s.rows('follows').length, 1);
+  });
+  await check('cached live tracks are free for approved family only while the traveller has Pro', async () => {
+    const s = context('viewer'), paths = load('convex/flightPaths.ts');
+    process.env.LOOKUP_QUOTA_SECRET = 'fixture-only-secret';
+    const date = '2099-01-01', args = { secret: 'fixture-only-secret', subject: { kind: 'user', userId: 'viewer' }, flight: 'AY1', date, day: date };
+    const journeyId = await s.ctx.db.insert('journeys', { userId: 'owner', number: 'AY1', fromCode: 'HEL', scheduledDeparture: date + 'T10:00:00Z', deletedAt: null });
+    const entitlementId = await s.ctx.db.insert('entitlements', { userId: 'owner', proUntil: '2099-01-02T00:00:00Z' });
+    const key = load('convex/flightPathShared.ts').pathKey('AY1', date);
+    await s.ctx.db.insert('flightPaths', { key, expiresAt: Date.now() + 60_000, payload: 'paid live track' });
+    const request = { ...args, sharedJourneyId: journeyId };
+    assert.equal((await paths.begin.handler(s.ctx, request)).reason, 'pro_required');
+    await s.ctx.db.insert('circle', { ownerId: 'owner', memberId: 'viewer', close: false });
+    assert.equal((await paths.begin.handler(s.ctx, request)).payload, 'paid live track');
+    assert.equal((await paths.begin.handler(s.ctx, { ...request, flight: 'AY2' })).reason, 'pro_required');
+    await s.ctx.db.patch(journeyId, { privateTrip: true });
+    assert.equal((await paths.begin.handler(s.ctx, request)).reason, 'pro_required');
+    await s.ctx.db.patch(journeyId, { privateTrip: false });
+    await s.ctx.db.patch(entitlementId, { proUntil: new Date(Date.now() - 1).toISOString() });
+    assert.equal((await paths.begin.handler(s.ctx, request)).reason, 'pro_required');
   });
   console.log(`${passed} security regression checks passed. Fixtures only; no production traffic.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

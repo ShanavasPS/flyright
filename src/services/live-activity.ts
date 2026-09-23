@@ -1,3 +1,4 @@
+import { lookupHeaders } from '@/services/flight-lookup';
 /** iOS Live Activity boundary for the travel-day surfaces.
  *
  * Uses OneSignal's DefaultLiveActivityAttributes flow: `startDefault` renders
@@ -197,11 +198,11 @@ export function updateTravelActivity(journeyId: string, content: LiveContent): v
   // proxy still runs, because it is what refreshes the push token and what
   // reaches the card when the app is not the one asking.
   void updateLiveActivityLocally(activityId, state).catch(() => {});
-  void fetch('/api/live-activity', {
+  void lookupHeaders().then(headers => fetch('/api/live-activity', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { ...headers, 'content-type': 'application/json' },
     body: JSON.stringify({ activityId, event: 'update', contentState: state }),
-  }).catch(() => {});
+  })).catch(() => {});
   markStale(activityId, content);
 }
 
@@ -244,9 +245,9 @@ function endById(activityId: string, content?: LiveContent): void {
         leadSub: '',
         delayChip: '',
       };
-  void fetch('/api/live-activity', {
+  void lookupHeaders().then(headers => fetch('/api/live-activity', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { ...headers, 'content-type': 'application/json' },
     body: JSON.stringify({ activityId, event: 'end', contentState: finalState }),
-  }).catch(() => {});
+  })).catch(() => {});
 }

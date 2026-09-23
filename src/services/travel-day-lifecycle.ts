@@ -1,3 +1,4 @@
+import { proLocked } from '@/services/purchases';
 /** Keeps the travel-day OS surfaces in lockstep with the journal — the iOS
  * Live Activity and the Android Live Update (promoted ongoing notification on
  * 16+, classic progress notification below). Reconcile is idempotent and
@@ -185,7 +186,7 @@ async function doReconcile(): Promise<void> {
   // The Android ongoing notification needs the push permission; the iOS Live
   // Activity has its own OS consent, so only our own switch gates it there.
   const enabled =
-    getTravelDayEnabled() && (Platform.OS === 'ios' || (await getPushEnabled()));
+    !(await proLocked()) && getTravelDayEnabled() && (Platform.OS === 'ios' || (await getPushEnabled()));
   if (!enabled) {
     for (const row of stateRows) {
       if (row.activityStartedAt && !row.endedAt) await teardown(row.journeyId, 'disabled');

@@ -42,11 +42,11 @@ export function NotificationPrime() {
       <View style={styles.content}>
         <NotificationPitchArt />
         <ThemedText type="subtitle" themeColor="heading" style={styles.title}>
-          Money alerts, one tap away
+          Stay connected to your people
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.body}>
-          You asked to be reminded: FlyRight can flag the moment a delay is
-          worth up to €600 and keep claim deadlines from slipping.
+          You asked to be reminded. Get shared flight updates from your people for free.
+          Pro adds alerts for your own flights and claim follow-ups.
         </ThemedText>
       </View>
       <View style={styles.footer}>

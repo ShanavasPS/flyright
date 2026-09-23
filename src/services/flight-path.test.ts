@@ -1,5 +1,6 @@
 import { lookupFlightPath, pathWorthAsking } from '@/services/flight-path';
 
+jest.mock('@clerk/expo', () => ({ useAuth: () => ({ userId: null }) }));
 jest.mock('@/services/flight-lookup', () => ({
   lookupHeaders: async () => ({ 'X-FlyRight-Guest': '1' }),
 }));

@@ -78,6 +78,16 @@ const values = (model: ReturnType<typeof tripCard>) =>
   model.sections.map((s) => s.cells.map((c) => c.value ?? `(${c.placeholder ?? 'add'})`));
 
 describe('tripCard', () => {
+  it('after Pro expires, preserves saved details without a live status or countdown', () => {
+    const model = card({ at: '2026-09-19T14:00:00Z', facts: posted, monitoring: false });
+    expect(model.status.text).toBe('Saved flight');
+    expect(model.clock).toMatchObject({ kind: 'static', label: 'Scheduled departure' });
+    expect(model.progress).toBeNull();
+    expect(model.sections[0].cells.map(c => c.value)).toEqual(['2', 'Area 200', '53', expect.stringMatching(/15:30|3:30/)]);
+    expect(model.sections[1].cells.map(c => c.value)).toEqual(['14A', 'FRX7YQ']);
+    expect(model.footnote).toBe('Saved details. Live updates are off.');
+  });
+
   it('days ahead: the countdown, the ticket, and when the rest will come', () => {
     const model = card({ at: '2026-09-16T09:00:00Z', phase: 'before' });
     expect(model.status).toEqual({ text: 'Scheduled', tone: 'neutral' });
@@ -87,6 +97,14 @@ describe('tripCard', () => {
       ['14A', 'FRX7YQ'],
       ['(After landing)'],
     ]);
+  });
+
+  it('keeps historical arrival and delay records available on Free', () => {
+    const model = card({ at: '2026-09-25T09:00:00Z', phase: 'ended', monitoring: false,
+      facts: { ...posted, actualArrival: '2026-09-19T17:08:00Z' } });
+    expect(model.status.text).toBe('Landed 1h 3m late');
+    expect(model.clock).toMatchObject({ kind: 'static', label: 'Flew on' });
+    expect(model.footnote).toBeNull();
   });
 
   it('at the airport: everything posted, in the same places', () => {

@@ -1,0 +1,503 @@
+{
+  "reviewed": "2026-09-23",
+  "scope": "Canvas only. No trip-group application code changes.",
+  "checks": [
+    {
+      "label": "1600px / light / india / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / india / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / india: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / india: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / canada / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / canada / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / canada: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / canada: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / continued / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / continued / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / continued: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / continued: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / long / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / long / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / long: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / long: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / unknown / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / unknown / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / unknown: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / light / unknown: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / india / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / india / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / india: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / india: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / canada / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / canada / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / canada: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / canada: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / continued / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / continued / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / continued: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / continued: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / long / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / long / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / long: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / long: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / unknown / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / unknown / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / unknown: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "1600px / dark / unknown: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / light / india / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / india / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / india: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / light / india: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / light / canada / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / canada / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / canada: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / light / canada: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / light / continued / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / continued / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / continued: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / light / continued: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / light / long / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / long / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / long: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / light / long: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / light / unknown / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / unknown / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / light / unknown: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / light / unknown: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / india / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / india / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / india: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / india: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / canada / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / canada / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / canada: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / canada: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / continued / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / continued / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / continued: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / continued: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / long / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / long / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / long: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / long: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / unknown / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / unknown / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / unknown: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "390px / dark / unknown: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / light / india / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / india / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / india: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / light / india: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / light / canada / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / canada / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / canada: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / light / canada: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / light / continued / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / continued / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / continued: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / light / continued: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / light / long / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / long / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / long: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / light / long: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / light / unknown / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / unknown / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / light / unknown: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / light / unknown: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / india / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / india / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / india: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / india: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / canada / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / canada / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / canada: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / canada: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / continued / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / continued / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / continued: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / continued: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / long / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / long / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / long: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / long: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / unknown / normal: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / unknown / large: readable header, no overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / unknown: same flight content in all options",
+      "pass": true
+    },
+    {
+      "label": "320px / dark / unknown: complete title and dates",
+      "pass": true
+    },
+    {
+      "label": "Appearance control switches theme",
+      "pass": true
+    },
+    {
+      "label": "Focus control isolates an option",
+      "pass": true
+    },
+    {
+      "label": "Text size control works",
+      "pass": true
+    },
+    {
+      "label": "No browser runtime errors",
+      "pass": true
+    }
+  ],
+  "runtimeErrors": []
+}

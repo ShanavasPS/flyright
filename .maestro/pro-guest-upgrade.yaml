@@ -1,0 +1,110 @@
+# Start signed out with zero visible flights. Use a dedicated Clerk development
+# account: a new +clerk_test email covers signup; an existing one covers sign-in.
+# Required: EMAIL, ACCOUNT_MATCH, FLIGHT_DATE (visible calendar month), FROM, TO, SHOTS.
+# Adds one fixture flight, retains it after auth, and never opens store checkout.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: ".*Add your first flight"
+    timeout: 90000
+- assertNotVisible: "Live updates off"
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/06-empty-start
+- tapOn: ".*Add your first flight"
+- extendedWaitUntil:
+    visible:
+      id: "add-manually"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/06a-add-flight
+- tapOn:
+    id: "add-manually"
+- extendedWaitUntil:
+    visible: "Departure date"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/06b-calendar
+- tapOn: "${FLIGHT_DATE}"
+- tapOn: "Use .*"
+- extendedWaitUntil:
+    visible: "From · city or HEL"
+    timeout: 10000
+- tapOn: "From · city or HEL"
+- inputText: ${FROM}
+- tapOn: "${FROM}, .*"
+- tapOn: "To · city or JFK"
+- inputText: ${TO}
+- tapOn: "${TO}, .*"
+- scrollUntilVisible:
+    element: "Add to Flights.*"
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/06c-flight-summary
+- tapOn: "Add to Flights.*"
+- extendedWaitUntil:
+    visible: "Extra help when you travel.|Live updates off"
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/07-first-pro-prompt
+- tapOn: "See Pro for .*"
+- extendedWaitUntil:
+    visible: "What Pro adds"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/08-offer-fixed
+- tapOn: "Continue free"
+- extendedWaitUntil:
+    visible: "Live updates off"
+    timeout: 10000
+- assertVisible: "Open your travel stats"
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/09-home-after-collapse
+- tapOn: "See Pro for .*"
+- extendedWaitUntil:
+    visible: "See plans"
+    timeout: 10000
+- tapOn: "See plans"
+- extendedWaitUntil:
+    visible: "Sign in to keep Pro with your account."
+    timeout: 15000
+- tapOn: "Yearly, .*"
+- assertVisible: "Continue · .* / year"
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/10-yearly-before-signup
+- tapOn: "Continue · .* / year"
+- extendedWaitUntil:
+    visible: "Enter your email"
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/10a-signup-form
+- runFlow:
+    file: clerk-dev-sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+- extendedWaitUntil:
+    visible: "Pro when you travel."
+    timeout: 45000
+- assertNotVisible: "Sign in to keep Pro with your account."
+- assertVisible: "Continue · .* / year"
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/12-yearly-after-signup
+- tapOn: "Continue free"
+- extendedWaitUntil:
+    visible: "Live updates off"
+    timeout: 10000
+- assertVisible: "Open your travel stats"
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOTS}/13-home-after-signup
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: flyright://settings
+- extendedWaitUntil:
+    visible: "${ACCOUNT_MATCH}"
+    timeout: 20000
+- assertNotVisible: "Sign in or create account"
+- takeScreenshot: ${SHOTS}/14-session-survives-restart

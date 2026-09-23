@@ -1,3 +1,4 @@
+import type { Id } from '../../../convex/_generated/dataModel';
 /**
  * GET /api/flight-path?flight=AY1331&date=2026-08-30&from=HEL&to=LHR&departure=2026-08-30T08:00:00Z
  *
@@ -127,7 +128,8 @@ export async function GET(request: Request) {
   const caller = await identifyCaller(request);
   if (!caller.ok) return Response.json({ error: caller.error }, { status: caller.status });
 
-  const begin = await beginPath(caller.subject, { flight, date });
+  const sharedJourneyId = url.searchParams.get('sharedJourneyId');
+  const begin = await beginPath(caller.subject, { flight, date, ...(sharedJourneyId ? { sharedJourneyId: sharedJourneyId as Id<'journeys'> } : {}) });
   if (begin.outcome === 'unavailable') {
     return Response.json({ error: 'metering_unavailable' }, { status: 503 });
   }

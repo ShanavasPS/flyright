@@ -14,7 +14,7 @@ import {
   markJourneysSynced,
 } from '@/services/sync';
 
-const PUSH_CHUNK = 200;
+const PUSH_CHUNK = 100;
 
 /** Keeps local SQLite and Convex converged for the signed-in user. Renders
  * nothing. Mounted inside ConvexProviderWithClerk, which mounts only after

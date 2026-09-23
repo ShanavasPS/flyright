@@ -24,36 +24,36 @@ describe('trip grouping from the current journal', () => {
   it('handles an empty journal and a one-way flight without inventing a stay', () => {
     expect(buildTripGroups([])).toEqual([]);
     expect(tripListSections([], NOW)).toEqual([]);
-    expect(titles([out])).toEqual(['US trip']);
+    expect(titles([out])).toEqual(['New York']);
     expect(stays([out])).toEqual([]);
     expect(tripGroupDates(buildTripGroups([out])[0]!.groups[0]!, 2027)).toBe('1 Jun');
   });
 
   it('grows a one-way into a return with a local calendar stay, excluding the overnight flight home', () => {
-    expect(titles([back, out])).toEqual(['US trip']);
+    expect(titles([back, out])).toEqual(['New York']);
     expect(stays([back, out])).toMatchObject([{ days: 22, place: 'the US', fromId: 'out', toId: 'back' }]);
     expect(flights([back, out])).toEqual(['out', 'back']);
     expect(tripGroupDates(buildTripGroups([out, back])[0]!.groups[0]!, 2027)).toBe('1–24 Jun');
   });
 
-  it('adapts the simple return to the approved three groups when Canada is added', () => {
+  it('shows each visited city when an intermediate international stop is added', () => {
     const trips = buildTripGroups([back, canadaBack, out, canadaOut]);
     expect(trips).toHaveLength(1);
-    expect(titles(all)).toEqual(['US trip', 'Canada trip', 'US trip continued']);
+    expect(titles(all)).toEqual(['New York', 'Toronto', 'Boston']);
     expect(trips[0]!.groups.map(g => g.entries.map(e => e.kind === 'flight' ? e.journey.id : `${e.stay.days} days`))).toEqual([
-      ['out', '9 days'], ['canada-out', '4 days', 'canada-back'], ['9 days', 'back'],
+      ['out', '9 days'], ['canada-out', '4 days'], ['canada-back', '9 days', 'back'],
     ]);
     expect(trips[0]!.groups.map(g => tripGroupDates(g, 2027))).toEqual(['1–10 Jun', '10–14 Jun', '14–24 Jun']);
     expect(stays(all).map(s => s.days)).toEqual([9, 4, 9]);
   });
 
   it('works when the Canada return was saved before the outer US trip', () => {
-    expect(titles([canadaBack, canadaOut])).toEqual(['Canada trip']);
+    expect(titles([canadaBack, canadaOut])).toEqual(['Toronto']);
     expect(titles([canadaBack, canadaOut, back, out])).toEqual(titles(all));
   });
 
   it('collapses back to the return after deleting the intermediate trip', () => {
-    expect(titles([out, back, { ...canadaOut, deletedAt: '2027-05-01' }, { ...canadaBack, deletedAt: '2027-05-01' }])).toEqual(['US trip']);
+    expect(titles([out, back, { ...canadaOut, deletedAt: '2027-05-01' }, { ...canadaBack, deletedAt: '2027-05-01' }])).toEqual(['New York']);
     expect(stays([out, back])[0]!.days).toBe(22);
   });
 
@@ -64,13 +64,13 @@ describe('trip grouping from the current journal', () => {
   });
 
   it('handles partial intermediate imports without inventing travel across missing legs', () => {
-    expect(titles([out, canadaOut, back])).toEqual(['US trip', 'Canada trip', 'Finland trip']);
+    expect(titles([out, canadaOut, back])).toEqual(['New York', 'Toronto', 'Helsinki']);
     expect(stays([out, canadaOut, back]).map(s => s.days)).toEqual([9]);
-    expect(titles(all)).toEqual(['US trip', 'Canada trip', 'US trip continued']);
+    expect(titles(all)).toEqual(['New York', 'Toronto', 'Boston']);
   });
 
-  it('does not add an empty continued group when only the return from Canada is known', () => {
-    expect(titles([out, canadaOut, canadaBack])).toEqual(['US trip', 'Canada trip']);
+  it('gives an arrival in a different city its own heading even without a flight home yet', () => {
+    expect(titles([out, canadaOut, canadaBack])).toEqual(['New York', 'Toronto', 'Boston']);
   });
 
   it('keeps connecting legs and puts the stay after the last outbound leg', () => {
@@ -80,7 +80,7 @@ describe('trip grouping from the current journal', () => {
       flight('c', 'JFK', 'LHR', '2027-06-23T18:30', '2027-06-24T06:30'),
       flight('d', 'LHR', 'HEL', '2027-06-24T08:30', '2027-06-24T13:20'),
     ];
-    expect(titles(rows)).toEqual(['US trip']);
+    expect(titles(rows)).toEqual(['New York']);
     expect(flights(rows)).toEqual(['a', 'b', 'c', 'd']);
     expect(stays(rows)).toMatchObject([{ days: 22, fromId: 'b', toId: 'c' }]);
     const items = tripListSections(rows, NOW)[0]!.data;
@@ -89,7 +89,7 @@ describe('trip grouping from the current journal', () => {
   });
 
   it('does not let a different booking split a geographically continuous return', () => {
-    expect(titles([{ ...out, bookingReference: 'AAA' }, { ...back, bookingReference: 'BBB' }])).toEqual(['US trip']);
+    expect(titles([{ ...out, bookingReference: 'AAA' }, { ...back, bookingReference: 'BBB' }])).toEqual(['New York']);
   });
 
   it('does not let a shared booking merge flights from disconnected places', () => {
@@ -102,7 +102,7 @@ describe('trip grouping from the current journal', () => {
     const laterOut = { ...out, id: 'later-out', scheduledDeparture: '2027-09-01T14:00', scheduledArrival: '2027-09-01T15:55' };
     const laterBack = { ...back, id: 'later-back', scheduledDeparture: '2027-09-10T18:00', scheduledArrival: '2027-09-11T08:00' };
     expect(buildTripGroups([...all, laterOut, laterBack])).toHaveLength(2);
-    expect(titles([...all, laterOut, laterBack])).toEqual(['US trip', 'Canada trip', 'US trip continued', 'US trip']);
+    expect(titles([...all, laterOut, laterBack])).toEqual(['New York', 'Toronto', 'Boston', 'New York']);
     const items = tripListSections([...all, laterOut, laterBack], NOW)[0]!.data;
     expect(items.filter(i => i.kind === 'separator')).toHaveLength(1);
     expect(tripListSections(all, NOW)[0]!.data.filter(i => i.kind === 'separator')).toHaveLength(0);
@@ -110,15 +110,33 @@ describe('trip grouping from the current journal', () => {
 
   it('uses city destinations for domestic returns', () => {
     const domestic = [flight('a', 'HEL', 'OUL', '2027-06-01T10:00', '2027-06-01T11:00'), flight('b', 'OUL', 'HEL', '2027-06-04T10:00', '2027-06-04T11:00')];
-    expect(titles(domestic)).toEqual(['Oulu / Oulunsalo trip']);
+    expect(titles(domestic)).toEqual(['Oulu / Oulunsalo']);
     expect(stays(domestic)).toMatchObject([{ days: 3, place: 'Oulu / Oulunsalo' }]);
   });
 
-  it('keeps domestic movements inside a foreign-country visit', () => {
+  it('shows distinct destination cities for domestic flights within a foreign-country trip', () => {
     const internal = flight('domestic', 'JFK', 'BOS', '2027-06-10T10:00', '2027-06-10T11:00');
-    expect(titles([out, internal, back])).toEqual(['US trip']);
+    expect(titles([out, internal, back])).toEqual(['New York', 'Boston']);
+    expect(buildTripGroups([out, internal, back])).toHaveLength(1);
+    expect(buildTripGroups([out, internal, back])[0]!.groups.map(g => [g.country, g.continued])).toEqual([['US', false], ['US', false]]);
     expect(flights([out, internal, back])).toEqual(['out', 'domestic', 'back']);
     expect(stays([out, internal, back]).map(s => s.days)).toEqual([9, 13]);
+  });
+
+  it('marks a return to the same city as continued across different airports', () => {
+    const returnToNewYork = flight('return-to-new-york', 'YYZ', 'LGA', '2027-06-14T14:00', '2027-06-14T15:40');
+    const home = flight('home', 'JFK', 'HEL', '2027-06-23T18:00', '2027-06-24T08:00');
+    const rows = [out, canadaOut, returnToNewYork, home];
+    expect(titles(rows)).toEqual(['New York', 'Toronto', 'New York continued']);
+    expect(buildTripGroups(rows)[0]!.groups[2]).toMatchObject({ country: 'US', continued: true });
+    expect(flights(rows)).toEqual(rows.map(r => r.id));
+  });
+
+  it('keeps an international return to another home city under the destination heading', () => {
+    const home = flight('home', 'BOS', 'OUL', '2027-06-23T18:00', '2027-06-24T08:00');
+    expect(titles([out, home])).toEqual(['New York']);
+    expect(flights([out, home])).toEqual(['out', 'home']);
+    expect(tripGroupDates(buildTripGroups([out, home])[0]!.groups[0]!, 2027)).toBe('1–24 Jun');
   });
 
   it('flattens repeated intermediate visits without nesting or duplicate flights', () => {
@@ -126,7 +144,7 @@ describe('trip grouping from the current journal', () => {
     const mexicoBack = flight('mexico-back', 'MEX', 'YYZ', '2027-06-16T10:00', '2027-06-16T14:00');
     const laterCanadaBack = { ...canadaBack, scheduledDeparture: '2027-06-18T14:00', scheduledArrival: '2027-06-18T15:40' };
     const rows = [out, canadaOut, laterCanadaBack, back, mexicoOut, mexicoBack];
-    expect(titles(rows)).toEqual(['US trip', 'Canada trip', 'Mexico trip', 'Canada trip continued', 'US trip continued']);
+    expect(titles(rows)).toEqual(['New York', 'Toronto', 'Mexico City', 'Toronto continued', 'Boston']);
     expect(new Set(flights(rows)).size).toBe(rows.length);
   });
 
@@ -150,7 +168,7 @@ describe('trip grouping from the current journal', () => {
     const unknown = flight('unknown', 'ZZZ', 'XXX', '2027-07-01T10:00Z', '2027-07-01T13:00Z');
     const invalid = { ...back, id: 'invalid', scheduledDeparture: 'bad', scheduledArrival: 'bad' };
     const train = { ...out, id: 'train', mode: 'train' as const };
-    expect(titles([unknown])).toEqual(['XXX trip']);
+    expect(titles([unknown])).toEqual(['XXX']);
     expect(buildTripGroups([out, train, back, unknown, invalid]).flatMap(t => t.journeys)).toHaveLength(5);
     expect(stays([out, invalid])).toEqual([]);
     expect(() => tripListSections([invalid, unknown, train], NOW)).not.toThrow();
@@ -165,7 +183,7 @@ describe('trip grouping from the current journal', () => {
   it('recognises a direct same-day return as a stay instead of a connection', () => {
     const a = flight('a', 'HEL', 'ARN', '2027-06-01T09:00', '2027-06-01T09:05');
     const b = flight('b', 'ARN', 'HEL', '2027-06-01T18:00', '2027-06-01T20:00');
-    expect(titles([a, b])).toEqual(['Sweden trip']);
+    expect(titles([a, b])).toEqual(['Stockholm']);
     expect(stays([a, b])).toMatchObject([{ days: 0, place: 'Sweden' }]);
     expect(tripListSections([a, b], NOW)[0]!.data.flatMap(i => i.kind === 'flight' && i.connection ? [i.connection] : [])).toEqual([]);
   });
@@ -203,7 +221,7 @@ describe('grouped list sections', () => {
 
   it('keeps the active full row without losing its destination, stays or position', () => {
     const items = tripListSections(all, NOW, out.id)[0]!.data;
-    expect(items.flatMap(i => i.kind === 'header' ? [i.group.title] : [])).toEqual(['US trip', 'Canada trip', 'US trip continued']);
+    expect(items.flatMap(i => i.kind === 'header' ? [i.group.title] : [])).toEqual(['New York', 'Toronto', 'Boston']);
     expect(items.flatMap(i => i.kind === 'flight' ? [i.journey.id] : [])).toEqual(['out', 'canada-out', 'canada-back', 'back']);
     expect(items.flatMap(i => i.kind === 'flight' && i.hero ? [i.journey.id] : [])).toEqual(['out']);
     expect(items.flatMap(i => i.kind === 'stay' ? [i.stay.days] : [])).toEqual([9, 4, 9]);
@@ -251,25 +269,25 @@ describe('grouped list sections', () => {
     expect(tripHeroGroup(rows, NOW, b.id)?.isFirstFlight).toBe(false);
   });
 
-  it('puts the live Canada return before the continued US heading and its stay', () => {
+  it('keeps a live flight into a new city under that city heading, followed by its stay', () => {
     const items = tripListSections(all, new Date('2027-06-14T17:00Z'), canadaBack.id)[0]!.data;
     const active = items.findIndex(i => i.kind === 'flight' && i.hero);
-    expect(items[active - 1]).toMatchObject({ kind: 'stay', stay: { days: 4 } });
-    expect(items[active + 1]).toMatchObject({ kind: 'header', group: { title: 'US trip continued' } });
-    expect(items[active + 2]).toMatchObject({ kind: 'stay', stay: { days: 9 } });
-    expect(tripHeroGroup(all, NOW, canadaBack.id)).toMatchObject({ group: { title: 'Canada trip' }, isFirstFlight: false });
-    expect(tripHeroGroup(all, NOW, back.id)).toMatchObject({ group: { title: 'US trip continued' } });
+    expect(items[active - 2]).toMatchObject({ kind: 'stay', stay: { days: 4 } });
+    expect(items[active - 1]).toMatchObject({ kind: 'header', group: { title: 'Boston', continued: false } });
+    expect(items[active + 1]).toMatchObject({ kind: 'stay', stay: { days: 9 } });
+    expect(tripHeroGroup(all, NOW, canadaBack.id)).toMatchObject({ group: { title: 'Boston' }, isFirstFlight: false });
+    expect(tripHeroGroup(all, NOW, back.id)).toMatchObject({ group: { title: 'Boston' } });
   });
 
   it('grows a lone live hero into a return and then a flat multi-destination trip', () => {
     expect(tripListSections([out], NOW, out.id)[0]!.data.filter(i => i.kind === 'flight')).toHaveLength(1);
-    expect(tripHeroGroup([out], NOW, out.id)).toMatchObject({ group: { title: 'US trip' }, dates: '1 Jun', isFirstFlight: true });
+    expect(tripHeroGroup([out], NOW, out.id)).toMatchObject({ group: { title: 'New York' }, dates: '1 Jun', isFirstFlight: true });
     expect(tripHeroGroup([out, back], NOW, out.id)).toMatchObject({ dates: '1–24 Jun', isFirstFlight: true });
     const added = tripListSections(all, NOW, out.id)[0]!.data;
     expect(added.filter(i => i.kind === 'flight' && i.hero)).toHaveLength(1);
     expect(tripHeroGroup(all, NOW, out.id)?.isFirstFlight).toBe(true);
     expect(tripHeroGroup([back], NOW, back.id)?.isFirstFlight).toBe(true);
-    expect(added.filter(i => i.kind === 'header').map(i => i.group.title)).toEqual(['US trip', 'Canada trip', 'US trip continued']);
+    expect(added.filter(i => i.kind === 'header').map(i => i.group.title)).toEqual(['New York', 'Toronto', 'Boston']);
     expect(tripHeroGroup([out], NOW, null)).toBeUndefined();
     expect(tripHeroGroup([{ ...out, deletedAt: '2027-06-01' }], NOW, out.id)).toBeUndefined();
   });

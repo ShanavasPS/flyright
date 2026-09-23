@@ -1,3 +1,4 @@
+import { proTripUpcoming } from './proShared';
 import { bounded, limit, DAY } from './abuse';
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
@@ -96,6 +97,10 @@ export const push = mutation({
         if (!row.deletedAt) added.push(journeyId);
       } else if (row.updatedAt > existing.updatedAt) {
         await ctx.db.patch(existing._id, row);
+        if (row.deletedAt || !proTripUpcoming(row) || !proTripUpcoming(existing)) {
+          const reminder = await ctx.db.query('proReminders').withIndex('by_user_key', q => q.eq('userId', identity.subject).eq('journeyKey', row.naturalKey)).unique();
+          if (reminder?.state === 'pending') await ctx.db.patch(reminder._id, { state: 'cancelled' });
+        }
         // A client from before private trips omits privateTrip; the patch
         // above left the stored flag alone, so read the audience the same way.
         const wasRank = audienceRank(audienceOf(existing));

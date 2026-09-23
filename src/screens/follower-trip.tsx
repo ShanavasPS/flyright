@@ -1,3 +1,4 @@
+import { liveMonitoring } from '../../convex/liveShared';
 import { useQuery } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
 import { useRef } from 'react';
@@ -78,9 +79,10 @@ export function FollowerTrip({
     : 'Trip';
   // The same real line the traveller's own map draws, when there is one.
   const flightPath = useFlightPath(
-    shown && shown.number
+    shown && shown.number && result && !('gone' in result) && result.owner.pro
       ? {
           number: shown.number,
+          sharedJourneyId: journeyId,
           fromCode: shown.fromCode,
           toCode: shown.toCode,
           scheduledDeparture: shown.scheduledDeparture,
@@ -131,7 +133,7 @@ export function FollowerTrip({
 
         {/* Their gate and terminal on the day, where the traveller has
             them on their own trip: right under the map. */}
-        {session && (
+        {session && liveMonitoring(session, now.getTime()) && (
           <FlightFactsStrip
             facts={adaptPublicSession(session).facts}
             stage={(session.currentStage as TravelStage | null) ?? null}
@@ -198,7 +200,9 @@ export function FollowerTrip({
         )}
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
-          {session
+          {session && !liveMonitoring(session, now.getTime())
+            ? 'Saved itinerary. Live updates are off for this trip. Following stays free.'
+            : session
             ? tripDone(session, now)
               ? hasLanded(session.currentStage as TravelStage | null)
                 ? `${owner.name} has landed. Only ${owner.name} can change this trip.`
@@ -209,10 +213,10 @@ export function FollowerTrip({
               : `You'll get a nudge at every step until ${owner.name} lands.`
             : flightInstant(trip.scheduledDeparture, airportZone(trip.fromCode)) - now.getTime() >
                 DAY_MS
-              ? `Live updates start the day before ${owner.name} flies. Only ${owner.name} can change this trip.`
+              ? `Live updates appear here when shared by ${owner.name}. Following stays free. Only ${owner.name} can change this trip.`
               : // Inside the last day there is no "day before" left to promise:
                 // the session opens with the traveller's travel day.
-                `Live updates appear here once ${owner.name}'s travel day begins. Only ${owner.name} can change this trip.`}
+                `Live updates appear here when shared by ${owner.name}. Following stays free. Only ${owner.name} can change this trip.`}
         </ThemedText>
       </>
     );

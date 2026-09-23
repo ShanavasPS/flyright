@@ -127,11 +127,11 @@ export function ManageSubscription() {
         <Card>
           <ThemedText type="subtitle">No active subscription</ThemedText>
           <ThemedText type="small">
-            FlyRight Pro unlocks claim generation and deadline tracking for every
-            disrupted flight.
+            FlyRight Pro adds live flight updates, postcard publishing and claim
+            preparation. Your family follows free.
           </ThemedText>
           <View style={styles.cta}>
-            <PrimaryButton label="See FlyRight Pro →" onPress={() => router.push('/paywall')} />
+            <PrimaryButton label="See FlyRight Pro →" onPress={() => router.push('/pro-offer')} />
           </View>
         </Card>
       </ThemedView>

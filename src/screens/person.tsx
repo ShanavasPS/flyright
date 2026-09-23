@@ -29,7 +29,6 @@ import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
-import { useProLocked } from '@/services/purchases';
 
 /**
  * A person in your circle, and their travel — the page a row in People opens.
@@ -69,7 +68,6 @@ export function Person({
   const cancelRequest = useMutation(api.circle.cancelRequest);
   const react = useReactToUpdate();
   const block = useMutation(api.safety.block);
-  const proLocked = useProLocked();
   const [busy, setBusy] = useState<'theirs' | 'mine' | null>(null);
   const { show: showSheet, sheet } = useChoiceSheet();
 
@@ -109,7 +107,7 @@ export function Person({
         trackEvent('circle_follow_back', { status: r.status, from: 'person' });
       } catch (e) {
         if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
-          Alert.alert(`${p.name}'s circle is full`, 'They can make room with FlyRight Pro.');
+          Alert.alert(`${p.name}'s circle is full`, 'Please try following again in a moment.');
         } else failed(`Couldn't ask ${p.name}`);
       } finally {
         setBusy(null);
@@ -149,8 +147,7 @@ export function Person({
         trackEvent('circle_shared_back', { from: 'person' });
       } catch (e) {
         if (e instanceof ConvexError && e.data === CIRCLE_FULL) {
-          if (proLocked) router.push({ pathname: '/paywall', params: { next: '/people' } });
-          else Alert.alert('Your circle is full', 'Remove someone to make room.');
+          failed('Please try sharing again');
         } else failed(`Couldn't share with ${p.name}`);
       } finally {
         setBusy(null);

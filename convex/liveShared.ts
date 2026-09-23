@@ -786,6 +786,8 @@ export function buildContentState(
 }
 
 export interface PublicSession {
+  /** Owner-funded live coverage ends here; saved content stays readable. */
+  monitoringUntil?: number;
   status: 'active' | 'closed' | 'canceled';
   travelerName: string | null;
   followerCount: number;
@@ -820,6 +822,10 @@ export interface PublicSession {
   liveUntil?: number;
 }
 
+export function liveMonitoring(s: Pick<PublicSession, 'monitoringUntil'>, now = Date.now()): boolean {
+  return s.monitoringUntil === undefined || s.monitoringUntil > now;
+}
+
 /** The ONLY way session data leaves the server for non-owners: a whitelist.
  * Never userId, naturalKey, shareToken, activityId, or push bookkeeping. */
 export function toPublicSession(
@@ -832,6 +838,7 @@ export function toPublicSession(
 ): PublicSession {
   return {
     status: s.status,
+    monitoringUntil: s.monitoringUntil ?? 0,
     travelerName,
     followerCount,
     carrier: s.carrier,

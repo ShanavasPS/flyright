@@ -1,0 +1,41 @@
+# Free test account with a future flight and an undismissed home Pro card.
+# Repeated real button opens catch native form-sheet sizing failures that a
+# deep link or React renderer test cannot. No purchase or reminder is set.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: flyright:///
+- extendedWaitUntil:
+    visible: "Live updates off"
+    timeout: 15000
+- waitForAnimationToEnd
+- assertVisible: "Open your travel stats"
+- repeat:
+    times: 3
+    commands:
+      - tapOn: "See Pro for .*"
+      - extendedWaitUntil:
+          visible: "What Pro adds"
+          timeout: 10000
+      - assertVisible: "See plans"
+      - assertVisible: "Continue free"
+      - assertVisible: "Updates where available. Family follows free."
+      - tapOn: "Continue free"
+      - assertVisible: "Live updates off"
+      - assertVisible: "Open your travel stats"
+- tapOn: "See Pro for .*"
+- extendedWaitUntil:
+    visible: "What Pro adds"
+    timeout: 10000
+- takeScreenshot: /private/tmp/flyright-pro-offer-ios-verified
+- tapOn: "See plans"
+- extendedWaitUntil:
+    visible: "Pro when you travel."
+    timeout: 20000
+- assertVisible: "Continue free"
+- tapOn: "Continue free"
+- assertVisible: "Live updates off"

@@ -167,10 +167,10 @@ function flattenVisits(route: Direction[], international: boolean): TripGroup[] 
   const seen = new Set<string>();
   let current: TripGroup | null = null;
   const makeGroup = (p: Place, start: Moment, id: string) => {
-    const key = placeKey(p, international);
+    const key = placeKey(p, false);
     const continued = seen.has(key);
     const group: TripGroup = {
-      id, title: `${destinationName(p, international)} trip${continued ? ' continued' : ''}`,
+      id, title: `${destinationName(p, false)}${continued ? ' continued' : ''}`,
       country: p.country, continued, start, end: start, entries: [],
     };
     seen.add(key);
@@ -181,7 +181,7 @@ function flattenVisits(route: Direction[], international: boolean): TripGroup[] 
   for (const [i, direction] of route.entries()) {
     const previous = route[i - 1];
     if (previous) {
-      // The previous direction may have returned from Canada to the US.
+      // The previous direction may have returned to an earlier city.
       // Only create the resumed group if there is a later flight to show.
       current ??= makeGroup(direction.from, arrival(last(previous)), `continued:${first(direction).id}`);
       const stay = stayBetween(previous, direction, international);
@@ -190,9 +190,12 @@ function flattenVisits(route: Direction[], international: boolean): TripGroup[] 
         current.end = departure(first(direction));
       }
     }
-    const destination = placeKey(direction.to, international);
-    const returnTo = visited.findIndex(p => placeKey(p, international) === destination);
-    const samePlace = destination === placeKey(direction.from, international);
+    // Visits follow cities even within one country. A return to a different
+    // airport/city back home still closes the existing international trip.
+    const destination = placeKey(direction.to, false);
+    const returnTo = visited.findIndex((p, index) => placeKey(p, false) === destination
+      || (index === 0 && international && p.country === direction.to.country));
+    const samePlace = destination === placeKey(direction.from, false);
     if (!current || (returnTo === -1 && !samePlace)) {
       current = makeGroup(direction.to, departure(first(direction)), `visit:${first(direction).id}`);
     }

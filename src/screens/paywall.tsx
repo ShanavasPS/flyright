@@ -1,3 +1,4 @@
+import { ProPlans } from '@/components/pro-plans';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
@@ -18,10 +19,9 @@ import {
 } from '@/services/purchases';
 
 /**
- * The paywall itself is remote-configured in RevenueCat (Paywalls v2) and
- * rendered embedded here, inside this expo-router modal route — presenting a
- * second native modal on top of the route's own presentation is unreliable.
- * Shows a fallback when the SDK isn't configured (fresh checkout, no keys).
+ * Acquisition uses ProPlans with RevenueCat's actual store packages. Named
+ * subscriber offerings use the remote Paywalls v2 layout, embedded in this
+ * route to avoid stacking a second native modal over the existing sheet.
  *
  * Pass ?offering=<identifier> to show a specific offering's paywall — the
  * Customer Center's change-plan action uses this to show subscriber copy
@@ -81,9 +81,11 @@ export function Paywall() {
     exited.current = true;
     go();
   };
-  const continueTo = typeof next === 'string' && next.length > 0 ? (next as Href) : null;
+  const continueTo = typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') ? (next as Href) : null;
   const unlocked = () =>
     exitOnce(() => (continueTo ? router.replace(continueTo) : router.back()));
+
+  if (!wantsOffering) return <ProPlans onClose={() => exitOnce(() => router.canGoBack() ? router.back() : router.replace('/'))} onUnlocked={unlocked} />;
 
   if (isPurchasesConfigured()) {
     if (resolving) {
@@ -103,7 +105,7 @@ export function Paywall() {
           }}
           onPurchaseCompleted={({ customerInfo, storeTransaction }) => {
             reportPurchase(pendingPackage.current, storeTransaction, customerInfo);
-            unlocked();
+            if (entitledToPro(customerInfo)) unlocked();
           }}
           // A restore can complete without granting Pro (nothing to restore) —
           // only an entitling one continues; otherwise the paywall stays up.
@@ -150,10 +152,7 @@ export function Paywall() {
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="title">FlyRight Pro</ThemedText>
           <ThemedText>
-            RevenueCat isn&apos;t configured in this build. Set EXPO_PUBLIC_RC_TEST_KEY
-            (dev) or EXPO_PUBLIC_RC_IOS_KEY / EXPO_PUBLIC_RC_ANDROID_KEY (release) in
-            .env.local, and create the &apos;FlyRight Pro&apos; entitlement and an offering
-            in the RevenueCat dashboard.
+            Plans are unavailable in this build. Your flights are still saved.
           </ThemedText>
           <Pressable onPress={() => router.back()}>
             <ThemedText type="link">Close</ThemedText>

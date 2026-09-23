@@ -1,3 +1,4 @@
+import { useHasPro } from '@/services/purchases';
 import { useAuth } from '@clerk/expo';
 import { useConvexAuth, useMutation } from 'convex/react';
 import { useEffect, useRef } from 'react';
@@ -20,6 +21,7 @@ import { isDirty, markTravelDaySynced, rowToState } from '@/services/travel-day-
  * inside CloudSync next to JourneySync. */
 export function TravelDaySync() {
   const { userId } = useAuth();
+  const pro = useHasPro();
   const { isAuthenticated } = useConvexAuth();
   const setStage = useMutation(api.live.setStage);
   const { data: rows } = useLiveRows(db.select().from(travelDay));
@@ -40,7 +42,7 @@ export function TravelDaySync() {
   const busy = useRef(false);
 
   useEffect(() => {
-    if (!userId || !isAuthenticated || !rows || !trips) return;
+    if (!pro || !userId || !isAuthenticated || !rows || !trips) return;
     if (busy.current) return;
     // Trips that already flew are history: a status refresh can still backfill
     // their timeline (mergeFlightStages) and re-dirty the row weeks later, and
@@ -75,7 +77,7 @@ export function TravelDaySync() {
         busy.current = false;
       }
     })();
-  }, [userId, isAuthenticated, rows, trips, setStage]);
+  }, [pro, userId, isAuthenticated, rows, trips, setStage]);
 
   return null;
 }

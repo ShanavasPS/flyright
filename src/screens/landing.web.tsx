@@ -95,7 +95,7 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
     shot: 'travelDay',
     eyebrow: 'TRAVEL DAY',
     title: 'Travel day, live',
-    body: 'Gate, delay and boarding on your lock screen — and the plane where it is on the map, from take-off to touchdown.',
+    body: 'With Pro, get gate, terminal and delay updates on your lock screen, plus the plane’s reported position where available.',
   },
   {
     shot: 'steps',
@@ -103,25 +103,25 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
     focus: 'bottom',
     eyebrow: 'STEP BY STEP',
     title: 'Every step of the day, ticked off',
-    body: 'At the airport, checked in, bags dropped, through security — one tap each, timed as you go. The people following you watch the same list move.',
+    body: 'With Pro, mark each step of your travel day. The people following you watch the same list move for free.',
   },
   {
     shot: 'updates',
     eyebrow: 'TRIP UPDATES',
     title: 'A photo from the window, for the people who care',
-    body: 'Post a line or a photo from inside the trip. It goes to your circle, not the whole internet — and it stays in your journal.',
+    body: 'Share a line or photo with Pro, from your flight day until a day after landing. Your people read and reply for free.',
   },
   {
     shot: 'people',
     eyebrow: 'YOUR CIRCLE',
     title: 'People who fly with you',
-    body: 'Your circle follows the trip live: the delay, the landing, the photo from the gate. No more “landed?” texts.',
+    body: 'Follow your people and read their postcards for free. When a traveller has Pro, their shared live updates are free for you too.',
   },
   {
     shot: 'journeys',
     eyebrow: 'JOURNAL',
     title: 'A journal that fills itself',
-    body: 'Every flight remembered with its seat, its notes and its photos. Scan a boarding pass, or just type the number.',
+    body: 'Save past and upcoming flights, seats, notes and private photos for free. Scan a boarding pass, or just type the number.',
   },
   {
     shot: 'world',
@@ -144,7 +144,7 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
     // "Up to", and from three hours, not "three hours = €600": at 3–4 hours
     // a long-haul flight pays €300, and €600 needs 4h+ on a flight leaving
     // or entering the EU (EU261 Art. 7).
-    body: 'From three hours late, a flight can owe you up to €600. FlyRight tells you the moment a flight starts owing you money.',
+    body: 'Check a past delay for free. Pro adds automatic delay alerts and help preparing a claim when compensation may apply.',
   },
   {
     shot: 'claims',
@@ -438,14 +438,14 @@ function Pro({ compact }: { compact: boolean }) {
             FLYRIGHT PRO
           </ThemedText>
           <ThemedText role="heading" aria-level={2} themeColor="heading" style={styles.h2}>
-            One delayed flight pays for years of Pro.
+            Pro when you travel. Your family follows free.
           </ThemedText>
           <View style={{ gap: 6, marginTop: Spacing.two }}>
             {[
-              'Airline-ready claim letters, written for you',
-              'Six-week response deadline tracked automatically',
-              'Delay alerts the moment a flight starts owing you money',
-              'A bigger circle, and inbound-aircraft predictions',
+              'Live gate, terminal, delay and belt updates where available',
+              'Postcards for your people — they read and follow free',
+              'Airline-ready claim letters and deadline reminders',
+              'Inbound-aircraft predictions before departure',
             ].map((line) => (
               <ThemedText key={line} type="small">
                 <ThemedText type="smallBold" style={{ color: theme.success }}>
@@ -461,7 +461,7 @@ function Pro({ compact }: { compact: boolean }) {
             {price}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            14-day free trial · annual and lifetime at checkout · cancel anytime
+            Monthly, annual and lifetime · available offers confirmed at checkout
           </ThemedText>
           <Pressable
             accessibilityRole="link"

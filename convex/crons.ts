@@ -26,4 +26,6 @@ crons.interval('prune live activity meter', { hours: 12 }, internal.liveActivity
 crons.interval('prune abuse counters', { hours: 1 }, internal.abuse.prune, {});
 crons.interval('prune photo uploads', { hours: 1 }, internal.uploads.prune, {});
 
+crons.interval('clear expired Pro reminders', { hours: 1 }, internal.proPrompts.clearExpired, {});
+
 export default crons;

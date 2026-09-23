@@ -1,3 +1,5 @@
+import { useProPreferences } from '@/services/pro-prompts';
+import { useHasPro } from '@/services/purchases';
 import { useAuth, useUser } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
@@ -15,6 +17,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 
+import { ProTripCard } from '@/components/pro-trip-card';
+import { nextProTrip } from '../../../convex/proShared';
 import { AddFlightButton } from '@/components/add-flight-button';
 import { DataErrorCard } from '@/components/data-state';
 import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass-card';
@@ -172,6 +176,11 @@ export function Journeys() {
   // A flight can enter/leave the travel window without any journal edit.
   const now = clock;
   const hero = useHeroTrip(journeys ?? [], now);
+  const proPreferences = useProPreferences(userId);
+  const paid = useHasPro();
+  const dueKeys = new Set(proPreferences.reminders.filter(r => r.remindAt <= now.getTime()).map(r => r.journeyKey));
+  const reminderTrip = nextProTrip((journeys ?? []).filter(j => dueKeys.has(j.id)), now.getTime());
+  const proTrip = reminderTrip ?? nextProTrip(journeys ?? [], now.getTime());
   const heroId = hero?.journey.id ?? null;
   const sections = useMemo(
     () => groupJourneys((journeys ?? []).filter((j) => j.id !== heroId), now),
@@ -189,6 +198,9 @@ export function Journeys() {
   );
   const heroGroup = useMemo(() => tripHeroGroup(journeys ?? [], now, heroId), [journeys, now, heroId]);
   const listRef = useRef<SectionList<TripListItem, TripListSection>>(null);
+  const listHeaderHeight = useRef(0);
+  const [anchoredViewer, setAnchoredViewer] = useState<string | null>(null);
+  const preserveListPosition = anchoredViewer === (userId ?? 'guest');
   const reduceMotion = useReducedMotion();
   const scrollRetry = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingJump = useRef(false);
@@ -336,7 +348,12 @@ export function Journeys() {
             contentContainerStyle={[styles.list, styles.groupedList, Platform.OS === 'ios' && { paddingBottom: insets.bottom + Spacing.three }]}
             scrollIndicatorInsets={Platform.OS === 'ios' ? { bottom: insets.bottom } : undefined}
             stickySectionHeadersEnabled={false}
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            // Anchor flights only after scrolling past the header. Anchoring
+            // the shrinking Pro introduction can create a negative offset
+            // and a large blank gap above the summary when its sheet opens.
+            maintainVisibleContentPosition={preserveListPosition ? { minIndexForVisible: 0 } : undefined}
+            onScroll={event => setAnchoredViewer(event.nativeEvent.contentOffset.y > listHeaderHeight.current ? userId ?? 'guest' : null)}
+            scrollEventThrottle={16}
             onScrollBeginDrag={() => {
               pendingJump.current = false;
               if (scrollRetry.current) clearTimeout(scrollRetry.current);
@@ -350,15 +367,16 @@ export function Journeys() {
               scrollRetry.current = setTimeout(() => { if (pendingJump.current) jumpToActiveFlight(); }, 150);
             }}
             ListHeaderComponent={
-              <>
+              <View onLayout={event => { listHeaderHeight.current = event.nativeEvent.layout.height; }}>
                 <SignedOutNoticeCard next="/" />
+                {proTrip && <ProTripCard key={userId ?? 'guest'} trip={proTrip} home />}
                 {/* A first live flight expands inside its group beneath the
                     small summary. A later flight gets the linked top card.
                     On ordinary days HomeHero shows the full stats card. */}
                 {!tabletopHinge && (inlineHero
                   ? <TravelStatsStrip stats={stats} />
                   : <HomeHero journeys={journeys} stats={stats} snapshot={{ hero, now }} tripGroup={heroGroup} onViewTrip={jumpToActiveFlight} />)}
-              </>
+              </View>
             }
             renderSectionHeader={({ section }) =>
               <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
@@ -394,7 +412,7 @@ export function Journeys() {
                   <JourneyItem
                     row={row}
                     now={now}
-                    live={item.live && !item.hero}
+                    live={paid && item.live && !item.hero}
                     hero={item.hero ? hero ?? undefined : undefined}
                     onViewLive={jumpToHero}
                     claim={claimByJourney.get(row.id)}
@@ -452,7 +470,7 @@ export function Journeys() {
             <SafeAreaView edges={['top', 'right']} style={styles.outlinePane}>
               <PaneOutline
                 kind="trip"
-                caption="Your flight opens here: gate, delays and landing, live on the day."
+                caption="Your saved flight opens here. Pro adds live gate, delay and landing updates."
               />
             </SafeAreaView>
           )
@@ -515,8 +533,8 @@ function JournalHero({
         </Text>
         <Text style={styles.heroPitch}>
           {signedIn
-            ? 'On the day, it runs live here — gate, delays, landing — and the friends who follow you see it too.'
-            : 'Next month\u2019s trip or one from years back — your travel day runs live here, and distance, countries and airlines add up.'}
+            ? 'Your flight is saved for free. Pro adds live travel updates and postcards for the people who follow you.'
+            : 'Next month\u2019s trip or one from years back — save your flights for free and see your distance, countries and airlines add up.'}
         </Text>
       </View>
       <PassDivider />

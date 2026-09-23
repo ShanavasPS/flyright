@@ -11,6 +11,7 @@ import { DocumentShareRouter } from "@/components/document-share-router";
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
 import { PhotoSync } from "@/components/photo-sync";
+import { ProPreferencesSync } from "@/components/pro-preferences-sync";
 import { EntitlementSync } from "@/components/entitlement-sync";
 import { ProfileSync } from "@/components/profile-sync";
 import { TravelDaySync } from "@/components/travel-day-sync";
@@ -125,6 +126,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
       <ProfileSync />
       <PushIdentitySync />
       <EntitlementSync />
+      <ProPreferencesSync />
       {children}
     </ConvexProviderWithClerk>
   );
@@ -344,6 +346,7 @@ function RootLayout() {
                   animation: "fade",
                 }}
               />
+              <Stack.Screen name="pro-offer" options={{ presentation: "formSheet", headerShown: false, sheetGrabberVisible: true, sheetAllowedDetents: [0.9, 1.0] }} />
               <Stack.Screen
                 name="paywall"
                 options={{

@@ -6,25 +6,21 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
 /**
- * The push pitch's hero: two notifications the lifecycle actually sends —
- * a delay crossing into compensation territory, and the travel-day heads-up
- * before departure — rendered as mock push banners (the Expedia/Vrbo/Flighty
- * pattern). Showing the moment beats describing it: one banner is the money,
- * the other the travel buddy.
+ * Notification examples distinguish free family delivery from own Pro alerts.
  */
 export function NotificationPitchArt() {
   return (
     <View style={styles.stack}>
       <MockBanner
         when="now"
-        title="AY1331 delayed — you’re likely owed €400"
-        body="Running 3h 15m late. EU261 compensation applies — start your claim."
+        title="Alex is flying today"
+        body="Helsinki → London. Follow the shared flight in FlyRight."
       />
       <MockBanner
         muted
         when="1h ago"
-        title="Travel day: Helsinki → London"
-        body="AY1331 departs 8:00 AM and is on time. We’re watching it for you."
+        title="With Pro: your flight update"
+        body="Gate, terminal and delay alerts when the airline makes them available."
       />
     </View>
   );

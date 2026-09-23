@@ -1,3 +1,4 @@
+import type { Id } from '../../convex/_generated/dataModel';
 /** The flight-path route's side of the Convex metering — cache, monthly cap
  * and per-caller meter in one round trip, then the provider call made from
  * Convex, then filing what was bought. Identity is lookup-gate's
@@ -30,7 +31,7 @@ export async function pathCall(path: string): Promise<PathProviderResponse> {
 
 export async function beginPath(
   subject: GateSubject,
-  request: { flight: string; date: string },
+  request: { flight: string; date: string; sharedJourneyId?: Id<'journeys'> },
 ): Promise<PathBeginResult | { outcome: 'unavailable' }> {
   const secret = process.env.LOOKUP_QUOTA_SECRET;
   const client = convex();

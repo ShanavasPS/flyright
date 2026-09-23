@@ -24,7 +24,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { RouteHero, cityLabel, type Schedule } from '@/components/route-hero';
 import { RouteMap } from '@/components/route-map';
 import { OwnUpdatesCard } from '@/components/own-updates-card';
-import { IconBadge, SheenSweep } from '@/components/sheen-card';
+import { SheenSweep } from '@/components/sheen-card';
 import { FlashToast } from '@/components/flash-toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -69,7 +69,8 @@ import {
   useJourneys,
   type JourneyRow,
 } from '@/services/journeys';
-import { billingAvailable, hasPro, useProLocked } from '@/services/purchases';
+import { ProTripCard } from '@/components/pro-trip-card';
+import { hasPro, useProLocked } from '@/services/purchases';
 import { shiftLabel } from '@/services/schedule-change';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
 import {
@@ -163,15 +164,17 @@ export function JourneyDetail({
   // straddles UTC midnight (see dates.flightDay).
   const lookupDay = row ? lookupDayFor(row) : undefined;
   const status = useQuery({
-    queryKey: ['flight-status', journey?.number, lookupDay, userId ?? 'guest', inboundUnlocked],
+    queryKey: ['flight-status', journey?.number, lookupDay, userId ?? 'guest', inboundUnlocked, proLocked],
     queryFn: () =>
       lookupFlight(journey!.number, lookupDay!, {
         // Pre-departure only: past that, the rotation can't predict anything
         // and the server would skip the extra provider call anyway.
         inbound: inboundUnlocked,
+        purpose: proLocked ? 'schedule' : 'monitor',
       }),
-    enabled: isLookupable && authLoaded,
+    enabled: isLookupable && authLoaded && !proLocked,
     staleTime: 5 * 60 * 1000,
+    refetchInterval: !proLocked && row && Date.parse(row.scheduledArrival) + 3_600_000 > now ? 2 * 60_000 : false,
     retry: false,
   });
 
@@ -179,7 +182,7 @@ export function JourneyDetail({
   // route, when the path lookup has one; the great circle until then. Only
   // for tracked flights — a journal entry has nothing to look up.
   const flightPath = useFlightPath(
-    isLookupable && row && lookupDay
+    isLookupable && row && lookupDay && (!proLocked || now - Date.parse(row.scheduledDeparture) > 3 * 86_400_000)
       ? {
           number: journey!.number,
           fromCode: row.fromCode,
@@ -224,10 +227,10 @@ export function JourneyDetail({
   // as the Live Activity's bar — for the route hero's contrail and the inset's
   // plane. Null on the ground either side, and for the demo.
   const liveProgress = useMemo(() => {
-    if (isDemo || !row) return null;
+    if (isDemo || !row || proLocked) return null;
     const fraction = flightProgress(row, travelState, factsFor(row), new Date(now));
     return fraction > 0 && fraction < 1 ? fraction : null;
-  }, [isDemo, row, travelState, now]);
+  }, [isDemo, row, travelState, now, proLocked]);
   // Which stages this leg's travel day has: the whole airport walk for a
   // flight on its own, transit security and the arrival steps for a leg of
   // a longer itinerary — read off the journal, since the other legs decide.
@@ -297,16 +300,16 @@ export function JourneyDetail({
   // A verdict is a bonus on top of the journal — when we can't get live data
   // (manual entries, flights the provider no longer remembers), the trip
   // simply reads as history instead of showing a spinner or an error.
-  const journalOnly = !isDemo && (!isLookupable || status.isError);
+  const journalOnly = !isDemo && (!isLookupable || status.isError || proLocked);
 
   // Inside the travel window the live timeline takes over from the passive
   // "watching" copy; the verdict card still wins when there's money on it.
   const travelWin = !isDemo && row ? travelWindow(row, travelState, new Date(now), travelPlan) : null;
   const travelPhase = travelWin?.phase ?? 'unsupported';
-  const travelActive = travelPhase === 'reminder' || travelPhase === 'live';
+  const travelActive = !proLocked && (travelPhase === 'reminder' || travelPhase === 'live');
   // Before the window the steps still show, locked, so the traveler knows
   // what the day will look like and when the card comes alive.
-  const travelPreview = travelPhase === 'before';
+  const travelPreview = !proLocked && travelPhase === 'before';
   // The trip log is the whole story for manual entries and forgotten flights;
   // every other state gets the notes as their own card underneath.
   const showTripLog = !disruption && !travelActive && !travelPreview && journalOnly;
@@ -424,6 +427,7 @@ export function JourneyDetail({
           phase: travelPhase,
           now: new Date(now),
           statusKnown: !!status.data,
+          monitoring: !proLocked,
         })
       : null;
 
@@ -462,7 +466,7 @@ export function JourneyDetail({
           <RouteMap
             journey={mapSource}
             path={flightPath}
-            live={row && !isDemo ? { journey: row, state: travelState, facts, now } : null}
+            live={row && !isDemo && !proLocked ? { journey: row, state: travelState, facts, now } : null}
             onPress={() => {
               // Hand the trip to the World tab (see services/world-focus).
               // The demo isn't a DB row, so World shows every travel for it.
@@ -506,8 +510,8 @@ export function JourneyDetail({
           action={!card && embedded ? inlineActions : null}
         />
 
-        {isLookupable && upcoming && proLocked && <InboundTeaserCard />}
-        {status.data && (() => {
+        {!isDemo && row && proLocked && <ProTripCard trip={row} />}
+        {!proLocked && status.data && (() => {
           const outlook = inboundOutlook(status.data);
           return outlook ? <InboundCard outlook={outlook} /> : null;
         })()}
@@ -545,7 +549,7 @@ export function JourneyDetail({
                     </ThemedText>
                     {!journalOnly && (
                       <ThemedText type="small" themeColor="textSecondary">
-                        {status.isPending
+                        {status.isFetching
                           ? 'Checking the latest status…'
                           : "We're watching this flight. If a delay makes you eligible for compensation, you'll know here first."}
                       </ThemedText>
@@ -572,6 +576,16 @@ export function JourneyDetail({
             trip's own news before the airline's. */}
         {CONVEX_URL && !isDemo && row && <OwnUpdatesCard row={row} travel={travelState} now={new Date(now)} />}
 
+        {proLocked && isLookupable && row && Date.parse(row.scheduledArrival) < now && !disruption && (
+          <Card>
+            <ThemedText type="smallBold">Was this flight delayed?</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">Check its final arrival delay for free. Preparing a claim with FlyRight needs Pro.</ThemedText>
+            <PrimaryButton label={status.isFetching ? 'Checking…' : 'Check eligibility'} disabled={status.isFetching} onPress={() => void status.refetch()} />
+            {status.isError && <ThemedText type="small" themeColor="textSecondary">We couldn’t retrieve the arrival. Try again later. Your flight is still saved.</ThemedText>}
+            {status.data && status.data.delayMinutes == null && <ThemedText type="small" themeColor="textSecondary">The final arrival time isn’t available yet.</ThemedText>}
+          </Card>
+        )}
+
         {disruption ? (
           <VerdictCard journey={journey} disruption={disruption} />
         ) : travelActive || travelPreview ? null : journalOnly && row ? (
@@ -594,7 +608,7 @@ export function JourneyDetail({
             </View>
             <ThemedText type="subtitle">We&apos;re watching this flight</ThemedText>
             <ThemedText type="small">
-              {status.isPending && !isDemo
+              {status.isFetching && !isDemo
                 ? 'Checking the latest status…'
                 : "No disruption so far. If a delay makes you eligible for compensation, you'll know here first."}
             </ThemedText>
@@ -1043,40 +1057,6 @@ function InboundCard({ outlook }: { outlook: InboundOutlook }) {
   );
 }
 
-/** The free user's stand-in for InboundCard — one compact row, not a pitch:
- * the question, a Pro tag, a chevron. The real details below keep the
- * screen; the paywall does the selling. Closing it comes back here, where
- * useProLocked has flipped and the full card takes the slot. */
-function InboundTeaserCard() {
-  const router = useRouter();
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Where's your plane? Unlock with Pro"
-      onPress={() => router.push('/paywall')}
-      style={({ pressed }) => pressed && { opacity: 0.85 }}>
-      <Card testID="inbound-teaser" style={styles.teaserRow}>
-        <IconBadge symbol={{ ios: 'airplane', android: 'flight', web: 'flight' }} size={32} />
-        <ThemedText themeColor="heading" style={styles.teaserTitle} numberOfLines={1}>
-          Where&apos;s your plane?
-        </ThemedText>
-        <View style={[styles.proPill, { backgroundColor: `${theme.tint}1A` }]}>
-          <ThemedText type="smallBold" style={{ color: theme.tint }}>
-            Pro
-          </ThemedText>
-        </View>
-        <SymbolView
-          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-          size={14}
-          weight="semibold"
-          tintColor={theme.textSecondary}
-        />
-      </Card>
-    </Pressable>
-  );
-}
-
 // One success buzz per journey per app session — the verdict is a thrill the
 // first time it appears, a fact every time after.
 const celebratedJourneys = new Set<string>();
@@ -1106,15 +1086,15 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
     // The demo exists to show off the whole verdict → letter flow, so it never
     // hits the paywall — Pro gates real claims only. Builds that can't sell
     // Pro (Galaxy Store) don't gate at all: no purchase path, no paywall.
-    if (isDemoJourneyId(journey.id) || !billingAvailable || (await hasPro())) {
+    if (isDemoJourneyId(journey.id) || (await hasPro())) {
       router.push({ pathname: '/claim', params: { journeyId: journey.id, delay } });
       return;
     }
     // `next` lets the paywall continue straight into the claim wizard after an
     // unlock instead of bouncing back here for a second tap.
     router.push({
-      pathname: '/paywall',
-      params: { next: `/claim?journeyId=${encodeURIComponent(journey.id)}&delay=${delay}` },
+      pathname: '/pro-offer',
+      params: { feature: 'claim', journeyId: journey.id, next: `/claim?journeyId=${encodeURIComponent(journey.id)}&delay=${delay}` },
     });
   };
 

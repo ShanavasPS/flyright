@@ -1,3 +1,6 @@
+import { reconcileNotifications } from '@/services/notification-lifecycle';
+import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
+import { useAuth } from '@clerk/expo';
 import { useConvexAuth, useAction } from 'convex/react';
 import { useEffect } from 'react';
 
@@ -12,14 +15,16 @@ import { useHasPro } from '@/services/purchases';
  * (pre-webhook purchases, anonymous purchases aliased to a Clerk id). See
  * entitlements.refreshMine. Renders nothing; mounted inside CloudSync. */
 export function EntitlementSync() {
+  const { userId } = useAuth();
   const { isAuthenticated } = useConvexAuth();
   const pro = useHasPro();
   const refresh = useAction(api.entitlements.refreshMine);
+  useEffect(() => { void reconcileNotifications(); void reconcileTravelDay(); }, [pro, userId]);
 
   useEffect(() => {
     if (!isAuthenticated || !pro) return;
     refresh({}).catch(() => {});
-  }, [isAuthenticated, pro, refresh]);
+  }, [isAuthenticated, userId, pro, refresh]);
 
   return null;
 }

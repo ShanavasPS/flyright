@@ -3,6 +3,10 @@
  * src/app so expo-router never sees a non-route file in the routes dir. */
 
 import { GET } from '../app/api/flight-status+api';
+jest.mock('@/server/lookup-gate', () => {
+  const actual = jest.requireActual('@/server/lookup-gate');
+  return { ...actual, beginLookup: jest.fn(async () => ({ outcome: 'permit', level: 'full', pro: true })) };
+});
 
 const numberLeg = {
   number: 'AY 1331',

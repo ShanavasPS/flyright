@@ -28,10 +28,7 @@ type Page = {
   kind?: 'push';
 };
 
-// Travel buddy first, claims second — the pages sell the journal before the
-// money, mirroring how the tabs are ordered. The push pitch closes the show:
-// it carries the claim story too (delay alerts AND deadline reminders), so
-// the ask lands right after the €600 page has established the stakes.
+// Free journaling and family viewing first; Pro is optional when travelling.
 /** Readable column for the intro copy and CTA on tablet-width screens —
  * tighter than MaxContentWidth because these are single short paragraphs. */
 const PageMaxWidth = 480;
@@ -46,25 +43,24 @@ const PAGES: Page[] = [
     eyebrow: 'Welcome to FlyRight',
     title: 'Every flight, remembered',
     body:
-      'Log any trip — next week’s or years back. Distance, countries, airlines: ' +
-      'your travel story adds up in one place.',
+      'Save past and upcoming flights for free. Follow your people, read their ' +
+      'postcards and watch your travel story grow.',
   },
   {
     key: 'rights',
-    title: 'Delayed 3+ hours? That’s money',
+    title: 'Pro when you travel',
     body:
-      'EU and UK rules owe you up to €600 for long delays and cancellations. ' +
-      'FlyRight checks every flight you track and gives you the verdict.',
+      'Add live flight updates, share postcards and prepare delay claims with Pro. ' +
+      'Choose it when you need it. Your family follows free.',
     icon: { ios: 'clock.badge.exclamationmark', android: 'schedule', web: 'schedule' },
   },
   {
     key: 'push',
     kind: 'push',
-    title: 'Never miss money you’re owed',
+    title: 'Stay close, even miles apart',
     body:
-      'Most passengers never claim — they simply never find out. Get an alert ' +
-      'the moment a delay is worth money, and reminders before a claim ' +
-      'deadline slips away.',
+      'Get shared flight updates from your people for free. ' +
+      'Pro adds alerts for your own flights and claim follow-ups. Notifications are optional.',
   },
 ];
 

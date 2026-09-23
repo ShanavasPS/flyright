@@ -1,5 +1,5 @@
 import { useUser } from '@clerk/expo';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import { Observe } from 'expo-observe';
 import { useRouter } from 'expo-router';
@@ -8,7 +8,7 @@ import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
-import { CIRCLE_FULL, FREE_CIRCLE_LABEL, FREE_CIRCLE_SIZE, SEARCH_LIMIT } from '../../convex/circleShared';
+import { CIRCLE_FULL, SEARCH_LIMIT } from '../../convex/circleShared';
 
 import { Avatar } from '@/components/avatar';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
@@ -18,7 +18,6 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { shareInvite } from '@/services/circle-share';
-import { useProLocked } from '@/services/purchases';
 
 type Person = {
   userId: string;
@@ -51,34 +50,9 @@ export function AddPerson() {
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const proLocked = useProLocked();
   const insets = useSafeAreaInsets();
   const requestFollow = useMutation(api.circle.requestFollow);
   const createInvite = useMutation(api.circle.createInvite);
-  // Same subscription the People tab holds, so this costs nothing extra.
-  const circle = useQuery(api.circle.list);
-
-  // The cap, said before the invitations go out rather than after they
-  // can't be honoured: a free account seats FREE_CIRCLE_SIZE followers, and
-  // more invitations out than seats are a race for them — the losers hear
-  // "circle is full" when they say yes, and this sheet is the only place
-  // that could have warned the sender.
-  let capNote: string | null = null;
-  if (proLocked && circle) {
-    const seat = FREE_CIRCLE_LABEL;
-    const out = circle.outgoing.length;
-    const followerCount = circle.followers.length;
-    const seatsLeft = FREE_CIRCLE_SIZE - followerCount;
-    if (seatsLeft <= 0) {
-      capNote = `Your free circle is full — ${seat} can follow your trips. Pro lets your whole family follow.`;
-    } else if (out >= seatsLeft) {
-      // More promises out than seats: whoever answers last finds no room.
-      capNote = `Free accounts share trips with ${seat}. ${out === 1 ? 'One invitation is' : `${out} invitations are`} already out for ${seatsLeft === 1 ? 'the last seat' : `${seatsLeft} seats`} — whoever accepts first takes ${seatsLeft === 1 ? 'it' : 'them'}. Pro lets your whole family follow.`;
-    } else {
-      capNote = `Free accounts share trips with ${seat}. Pro lets your whole family follow.`;
-    }
-  }
-
   // Only search once there's something worth matching whole, and a beat
   // after the last keystroke: each search is a counted mutation (see
   // circle.findPeople), so the box asks once per pause, not per letter.
@@ -135,9 +109,7 @@ export function AddPerson() {
     } catch (e) {
       setError(
         e instanceof ConvexError && e.data === CIRCLE_FULL
-          ? proLocked
-            ? `Free accounts share with ${FREE_CIRCLE_LABEL}. Pro lets your whole family follow.`
-            : 'Your Pro purchase is still syncing — try again in a moment.'
+          ? 'Please try the invitation again in a moment.'
           : `Couldn't send that invitation. Check your connection and try again.`,
       );
     } finally {
@@ -165,7 +137,7 @@ export function AddPerson() {
     } catch (e) {
       setError(
         e instanceof ConvexError && e.data === CIRCLE_FULL
-          ? 'Your circle is full — FlyRight Pro lets your whole family follow.'
+          ? 'Please try creating the invitation again in a moment.'
           : `Couldn't create a link just now. Check your connection and try again.`,
       );
     } finally {
@@ -269,17 +241,6 @@ export function AddPerson() {
           same constraint claim-wizard and add-flight carry). Whole-name
           matching keeps the list short enough that it never needs one. */}
       <View style={styles.results}>
-        {capNote && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Free accounts share with ${FREE_CIRCLE_LABEL}. See FlyRight Pro`}
-            testID="add-person-cap-note"
-            onPress={() => router.push({ pathname: '/paywall', params: { next: '/people' } })}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.capNote}>
-              {capNote}
-            </ThemedText>
-          </Pressable>
-        )}
         {found}
         {error && (
           <ThemedText type="small" style={[styles.empty, { color: theme.danger }]}>

@@ -7,6 +7,17 @@ import { v } from 'convex/values';
  * both sides — no parse/format round trips. Deletes are tombstones
  * (`deletedAt`), never row removal, so they propagate across devices. */
 export default defineSchema({
+  proPreferences: defineTable({
+    userId: v.string(),
+    introductionSeen: v.boolean(),
+    homeDismissed: v.boolean(),
+  }).index('by_user', ['userId']),
+  proReminders: defineTable({
+    userId: v.string(),
+    journeyKey: v.string(),
+    state: v.union(v.literal('pending'), v.literal('cancelled'), v.literal('dismissed')),
+    createdAt: v.number(),
+  }).index('by_user', ['userId']).index('by_user_key', ['userId', 'journeyKey']),
   appUpdateAnnouncements: defineTable({
     platform: v.union(v.literal('ios'), v.literal('android')),
     version: v.string(),
@@ -162,6 +173,7 @@ export default defineSchema({
    * server unauthenticated (see liveShared.toPublicSession). */
   liveSessions: defineTable({
     userId: v.string(),
+    monitoringUntil: v.optional(v.number()),
     naturalKey: v.string(),
     status: v.union(v.literal('active'), v.literal('closed'), v.literal('canceled')),
 
@@ -449,7 +461,7 @@ export default defineSchema({
 
   /** Server-side mirror of the RevenueCat 'Owed Pro' entitlement, fed by the
    * RC webhook (http.ts /rc-webhook) — the client's SDK state can't be
-   * trusted for server-enforced limits like the free circle size. One row per
+   * trusted for paid monitoring and postcard publishing. One row per
    * RC app_user_id (Clerk ids and RC anonymous ids alike, since RC events
    * list every alias). */
   revenueCatEvents: defineTable({ eventId: v.string(), processedAt: v.number() }).index("by_event", ["eventId"]).index("by_time", ["processedAt"]),

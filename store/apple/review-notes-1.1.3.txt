@@ -1,0 +1,9 @@
+This update changes Free/Pro access and introduces a trip-specific Pro offer. Saving past/future flights and private journal photos, following people, and viewing permitted postcards remain free. Pro covers monitoring the traveller's own flight, publishing postcards and preparing new claim documents. A free follower can receive updates shared by a Pro traveller. Existing claim records remain readable; manual historical delay eligibility checks remain free.
+
+The offer appears only with a future flight. The first home introduction becomes a compact card; its close control permanently hides it from home, while future trip details retain the entry. The optional reminder is explicitly confirmed and appears in-app two days before departure; it is not a deferred purchase or scheduled push.
+
+Guests can browse actual store plans, then must sign in before purchase or restore. Successful signup/sign-in returns to the selected plan; the user must explicitly continue again to initiate StoreKit. Continue free never purchases. Subscription prices, periods, renewal information, restore and legal links are available on the plans screen.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. No purchase is required to review the free journal, map, following, existing claims or Pro offer/plan screens. New paid features require an active Pro entitlement.
+
+Also included: city-based trip headings, connected-flight grouping and duplicate/codeshare boarding-pass matching. No new device permissions are introduced.

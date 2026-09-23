@@ -11,7 +11,7 @@ import {
   materializeCircleFollows,
   profileFor,
 } from './liveHelpers';
-import { FREE_CIRCLE_LABEL } from './circleShared';
+import { isPro } from './entitlements';
 import { sendFollowerPush } from './onesignal';
 import { tripsAddedCopy } from './pushCopy';
 
@@ -35,7 +35,7 @@ export const headsUp = internalMutation({
       await armHeadsUp(ctx, { ...journey, headsUpScheduledId: null });
       return;
     }
-    if (!(await audienceFor(ctx, journey)).length) return;
+    if (!(await isPro(ctx, journey.userId)) || !(await audienceFor(ctx, journey)).length) return;
 
     let session = await activeSessionForKey(ctx, journey.userId, journey.naturalKey);
     if (session) await materializeCircleFollows(ctx, session);
@@ -122,7 +122,7 @@ export const notifyRequest = internalAction({
       blocked: {
         to: r.fromUserId,
         title: `${r.toName} tried to follow you`,
-        body: `Your circle is full — free accounts share trips with ${FREE_CIRCLE_LABEL}. Pro lets your whole family follow.`,
+        body: `Please try the invitation again. Following is free.`,
       },
     }[kind];
     const badge = await ctx.runQuery(internal.attention.badgeFor, { userId: copy.to });
