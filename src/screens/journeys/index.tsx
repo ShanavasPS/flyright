@@ -386,7 +386,7 @@ export function Journeys() {
             renderItem={({ item, index, section }) => {
               if (item.kind === 'separator') return null;
               if (item.kind === 'header') return (
-                <TripGroupFrame header>
+                <TripGroupFrame header country={item.group.country}>
                   <TripGroupHeading group={item.group} dates={item.dates} />
                 </TripGroupFrame>
               );

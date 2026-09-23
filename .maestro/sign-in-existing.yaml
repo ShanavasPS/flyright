@@ -1,0 +1,28 @@
+# Sign a Clerk DEV test user in on a device that ALREADY has a journal, without
+# clearing state: open Settings by deep link, open the sign-in sheet and run the
+# shared OTP helper. signed-in-journal.yaml does the same from a clean install;
+# this one exists for the store-screenshot devices, where the seeded trips and
+# demo settings have to survive the sign-in.
+# Run: maestro --device <udid> test .maestro/sign-in-existing.yaml \
+#        -e EMAIL=maja+clerk_test@example.com
+# On the Android emulator Maestro's inputText stalls in Clerk's field — type the
+# address with `adb -s <serial> shell input text` instead, as the helper notes.
+appId: com.shanavasshaji.flyright
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 60000
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: "Sign in or create account"
+    timeout: 20000
+- tapOn: "Sign in or create account"
+- runFlow:
+    file: clerk-dev-sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+# Signing in lands on the account's own screen, which is titled "Profile".
+- extendedWaitUntil:
+    visible: "Profile"
+    timeout: 40000
