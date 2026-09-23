@@ -23,6 +23,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'Browse Pro plans before signing in, then return to your chosen plan after creating an account or signing in. Continuing free keeps your flights saved.',
       'Trip headings now use destination cities, so different stops in the same country are easier to tell apart.',
       "Each trip heading carries its country's flag, faded across the heading, with the dates beneath the city name.",
+      'Past trips read newest first the whole way down, including each destination within a single trip.',
+      'A flight saved without a real arrival time no longer splits a trip into pieces or hides how long you stayed at each stop.',
       'Connected flights sit in clearer trip groups, with the first live flight expanded and later travel-day cards linked to the right flight.',
       'Adding the same flight again, including from a codeshare boarding pass, updates the saved flight instead of creating a duplicate.',
     ],
