@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
-import { internalAction, internalMutation } from './_generated/server';
+import { internalAction, internalMutation, internalQuery } from './_generated/server';
 import { armHeadsUp, createSession, materializeCircleFollows } from './liveHelpers';
 import { sendFollowerPush } from './onesignal';
 import { safeAvatar } from './profileShared';
@@ -501,6 +501,97 @@ export const resetStoreDemo = internalMutation({
       if (!journey.naturalKey.startsWith('demo-')) continue;
       await ctx.db.delete(journey._id);
       out.push(`viewer journey ${journey.naturalKey}`);
+    }
+    return out;
+  },
+});
+
+/** Read-only listing of one traveller's itinerary, in travel order, for
+ * answering a grouping or stay question from the real rows rather than from a
+ * screenshot. Writes nothing and returns itinerary fields only.
+ * `npx convex run --prod devTools:inspectItinerary '{"nameLike":"Shanavas"}'` */
+export const inspectItinerary = internalQuery({
+  args: { nameLike: v.string() },
+  handler: async (ctx, { nameLike }) => {
+    const needle = nameLike.toLowerCase();
+    const people = (await ctx.db.query('profiles').collect()).filter((p) =>
+      (p.name ?? '').toLowerCase().includes(needle),
+    );
+    const out = [];
+    for (const person of people) {
+      const rows = (
+        await ctx.db
+          .query('journeys')
+          .withIndex('by_user', (q) => q.eq('userId', person.userId))
+          .collect()
+      )
+        .filter((r) => !r.deletedAt)
+        .sort((a, b) => a.scheduledDeparture.localeCompare(b.scheduledDeparture))
+        .map((r) => ({
+          key: r.naturalKey,
+          flight: r.number,
+          from: `${r.fromCode}/${r.fromCountry}`,
+          to: `${r.toCode}/${r.toCountry}`,
+          dep: r.scheduledDeparture,
+          arr: r.scheduledArrival,
+          booking: r.bookingReference ?? null,
+        }));
+      out.push({ user: person.userId, name: person.name, count: rows.length, rows });
+    }
+    return out;
+  },
+});
+
+/** Read-only search for journeys touching any of these airports on or after a
+ * date, across every account, for locating an itinerary someone is asking
+ * about. Writes nothing.
+ * `npx convex run --prod devTools:inspectRoute '{"codes":["LAX"],"since":"2026-09-01"}'` */
+export const inspectRoute = internalQuery({
+  args: { codes: v.array(v.string()), since: v.string() },
+  handler: async (ctx, { codes, since }) => {
+    const wanted = new Set(codes.map((c) => c.toUpperCase()));
+    const rows = (await ctx.db.query('journeys').collect()).filter(
+      (r) =>
+        !r.deletedAt &&
+        r.scheduledDeparture >= since &&
+        (wanted.has(r.fromCode.toUpperCase()) || wanted.has(r.toCode.toUpperCase())),
+    );
+    return rows
+      .sort((a, b) => a.scheduledDeparture.localeCompare(b.scheduledDeparture))
+      .map((r) => ({
+        user: r.userId,
+        key: r.naturalKey,
+        flight: r.number,
+        from: `${r.fromCode}/${r.fromCountry}`,
+        to: `${r.toCode}/${r.toCountry}`,
+        dep: r.scheduledDeparture,
+        arr: r.scheduledArrival,
+        booking: r.bookingReference ?? null,
+      }));
+  },
+});
+
+/** Clears the store-screenshot viewer's own NON-demo journal rows, so a capture
+ * run starts from scripts/seed-demo-data.mjs alone. The listing account picks up
+ * trips from ordinary testing, and a signed-in device pulls those over the seed,
+ * leaving the Flights panel inconsistent with the panels carried forward beside
+ * it. `demo-*` rows belong to resetStoreDemo and are left alone. Dev only in
+ * practice: never run it against a deployment holding real travellers.
+ * `npx convex run devTools:clearViewerJournal '{"userId":"user_…","confirm":"clear-store-viewer-journal"}'` */
+export const clearViewerJournal = internalMutation({
+  args: { userId: v.string(), confirm: v.string() },
+  handler: async (ctx, { userId, confirm }) => {
+    if (confirm !== 'clear-store-viewer-journal') {
+      throw new Error('Pass confirm: "clear-store-viewer-journal" to clear a viewer journal');
+    }
+    const out: string[] = [];
+    for (const journey of await ctx.db
+      .query('journeys')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect()) {
+      if (journey.naturalKey.startsWith('demo-')) continue;
+      await ctx.db.delete(journey._id);
+      out.push(`journey ${journey.naturalKey}`);
     }
     return out;
   },

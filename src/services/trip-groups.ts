@@ -114,12 +114,28 @@ function stayBetween(a: Direction, b: Direction, international: boolean): TripSt
   return { id: `${last(a).id}:${first(b).id}`, days, place: stayPlace(a.to, international), fromId: last(a).id, toId: first(b).id };
 }
 
+/** Where a direction leaves the traveller in time. A hand-typed flight often
+ * carries one placeholder for both of its times, and a row whose arrival is
+ * missing or not after its departure used to break the chain on both sides of
+ * itself, shattering one trip into several and taking every stay around it
+ * with it. Which airport follows which is readable from the codes and the
+ * departure times alone, so such a row is anchored by its own departure.
+ * Measuring a stay still needs a real arrival, and stayBetween goes on
+ * declining to invent one. */
+function chainAnchor(d: Direction): number {
+  const leg = last(d);
+  const arrived = at(arrival(leg));
+  return Number.isFinite(arrived) && arrived > at(departure(leg)) ? arrived : at(departure(leg));
+}
+
 function canFollow(a: Direction, b: Direction, international: boolean): boolean {
   if (first(a).mode !== 'flight' || first(b).mode !== 'flight') return false;
   if (placeKey(a.to, international) !== placeKey(b.from, international)) return false;
-  if (!(at(arrival(last(a))) > at(departure(first(a)))) || !(at(arrival(last(b))) > at(departure(first(b))))) return false;
-  const gap = at(departure(first(b))) - at(arrival(last(a)));
-  if (!Number.isFinite(gap) || gap <= 0) return false;
+  const leaves = chainAnchor(a);
+  const arrives = at(departure(first(b)));
+  if (!Number.isFinite(leaves) || !Number.isFinite(arrives)) return false;
+  const gap = arrives - leaves;
+  if (gap <= 0) return false;
   const booking = last(a).bookingReference?.trim().toUpperCase();
   return gap <= MAX_INFERRED_STAY_MS || (!!booking && booking === first(b).bookingReference?.trim().toUpperCase());
 }

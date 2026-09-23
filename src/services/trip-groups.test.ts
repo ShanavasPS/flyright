@@ -164,6 +164,19 @@ describe('trip grouping from the current journal', () => {
     expect(stays(rows)[0]!.days).toBe(2);
   });
 
+  it('still chains a hand-typed flight whose arrival was left at its departure time', () => {
+    // A manually added flight often carries one placeholder for both times.
+    // The airports and the departure order say what follows what, so the trip
+    // must stay whole and keep its stays instead of shattering per leg.
+    const lax = flight('lax', 'DXB', 'LAX', '2025-09-27T08:55:00', '2025-09-27T14:15:00');
+    const sfo = flight('sfo', 'LAX', 'SFO', '2025-10-01T12:00:00', '2025-10-01T12:00:00');
+    const las = flight('las', 'SFO', 'LAS', '2025-10-04T12:00:00', '2025-10-04T12:00:00');
+    const rows = [lax, sfo, las];
+    expect(buildTripGroups(rows)).toHaveLength(1);
+    expect(titles(rows)).toEqual(['Los Angeles', 'San Francisco', 'Las Vegas']);
+    expect(stays(rows)).toMatchObject([{ days: 4, place: 'the US' }, { days: 3, place: 'the US' }]);
+  });
+
   it('handles unknown airports, invalid schedules and non-flight modes without dropping records', () => {
     const unknown = flight('unknown', 'ZZZ', 'XXX', '2027-07-01T10:00Z', '2027-07-01T13:00Z');
     const invalid = { ...back, id: 'invalid', scheduledDeparture: 'bad', scheduledArrival: 'bad' };
