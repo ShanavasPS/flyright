@@ -123,11 +123,11 @@ describe('trip grouping from the current journal', () => {
     expect(stays([out, internal, back]).map(s => s.days)).toEqual([9, 13]);
   });
 
-  it('marks a return to the same city as continued across different airports', () => {
+  it('marks a return to the same city as a repeat visit across different airports', () => {
     const returnToNewYork = flight('return-to-new-york', 'YYZ', 'LGA', '2027-06-14T14:00', '2027-06-14T15:40');
     const home = flight('home', 'JFK', 'HEL', '2027-06-23T18:00', '2027-06-24T08:00');
     const rows = [out, canadaOut, returnToNewYork, home];
-    expect(titles(rows)).toEqual(['New York', 'Toronto', 'New York continued']);
+    expect(titles(rows)).toEqual(['New York', 'Toronto', 'New York']);
     expect(buildTripGroups(rows)[0]!.groups[2]).toMatchObject({ country: 'US', continued: true });
     expect(flights(rows)).toEqual(rows.map(r => r.id));
   });
@@ -144,7 +144,7 @@ describe('trip grouping from the current journal', () => {
     const mexicoBack = flight('mexico-back', 'MEX', 'YYZ', '2027-06-16T10:00', '2027-06-16T14:00');
     const laterCanadaBack = { ...canadaBack, scheduledDeparture: '2027-06-18T14:00', scheduledArrival: '2027-06-18T15:40' };
     const rows = [out, canadaOut, laterCanadaBack, back, mexicoOut, mexicoBack];
-    expect(titles(rows)).toEqual(['New York', 'Toronto', 'Mexico City', 'Toronto continued', 'Boston']);
+    expect(titles(rows)).toEqual(['New York', 'Toronto', 'Mexico City', 'Toronto', 'Boston']);
     expect(new Set(flights(rows)).size).toBe(rows.length);
   });
 

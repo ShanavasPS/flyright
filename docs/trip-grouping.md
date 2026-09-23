@@ -27,6 +27,10 @@ Adding, editing or deleting flights recomputes the groups through `useJourneys`.
 - Disconnected or overlapping flights remain separate. An inferred gap over
   180 days stays separate unless the adjacent directions share a booking
   reference. A shared booking never overrides missing geographic continuity.
+- A heading is the destination city alone. A repeat visit within one trip is
+  still recorded on the group, but nothing is appended to the title: the dates
+  distinguish the two visits, and a "continued" label read oddly above the
+  visit it continued once finished trips were reversed.
 - A return flight belongs to the destination it leaves. For HEL → JFK,
   LGA → YYZ, YYZ → BOS, BOS → HEL, the groups are **US trip**, **Canada trip**
   (including YYZ → BOS), then **US trip continued**. The continued header

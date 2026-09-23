@@ -186,7 +186,11 @@ function flattenVisits(route: Direction[], international: boolean): TripGroup[] 
     const key = placeKey(p, false);
     const continued = seen.has(key);
     const group: TripGroup = {
-      id, title: `${destinationName(p, false)}${continued ? ' continued' : ''}`,
+      // The heading is the city alone. `continued` still records that this is a
+      // repeat visit within one trip, which the dates already make plain and
+      // which read oddly above the visit it continued once finished trips were
+      // reversed.
+      id, title: destinationName(p, false),
       country: p.country, continued, start, end: start, entries: [],
     };
     seen.add(key);
