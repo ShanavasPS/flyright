@@ -32,6 +32,17 @@ describe('countdown', () => {
   it('treats departures within the hour as now', () => {
     expect(countdown('2026-08-04T12:30:00Z', NOW)).toEqual({ value: 0, unit: 'now' });
   });
+
+  it('coarsens to weeks, months and years rather than counting hundreds of days', () => {
+    expect(countdown('2026-08-25T12:00:00Z', NOW)).toEqual({ value: 3, unit: 'weeks' });
+    expect(countdown('2026-07-07T12:00:00Z', NOW)).toEqual({ value: 4, unit: 'weeks ago' });
+    expect(countdown('2026-12-04T12:00:00Z', NOW)).toEqual({ value: 4, unit: 'months' });
+    expect(countdown('2025-10-08T12:00:00Z', NOW)).toEqual({ value: 10, unit: 'months ago' });
+    // The 357- and 362-day cases that read as "357d ago" before.
+    expect(countdown('2025-08-12T12:00:00Z', NOW)).toEqual({ value: 1, unit: 'years ago' });
+    expect(countdown('2025-08-07T12:00:00Z', NOW)).toEqual({ value: 1, unit: 'years ago' });
+    expect(countdown('2029-08-04T12:00:00Z', NOW)).toEqual({ value: 3, unit: 'years' });
+  });
 });
 
 describe('localDateString', () => {

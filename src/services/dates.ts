@@ -302,7 +302,8 @@ export function flightInstant(iso: string, zone?: string | null): number {
   return Date.parse(pinToZone(iso, zone) ?? iso);
 }
 
-/** The big left-column label on journey rows: time until (or since) departure. */
+/** The big left-column label on journey rows: time until (or since)
+ * departure, in the largest unit that still reads true. */
 export function countdown(
   departureIso: string,
   now: Date,
@@ -313,9 +314,18 @@ export function countdown(
   const hours = Math.round(abs / 3_600_000);
   const days = Math.round(abs / 86_400_000);
 
+  const since = (value: number, unit: string) => ({ value, unit: ms >= 0 ? unit : `${unit} ago` });
+
   if (abs < 3_600_000) return { value: 0, unit: 'now' };
-  if (hours < 48) return { value: hours, unit: ms >= 0 ? 'hours' : 'hours ago' };
-  return { value: days, unit: ms >= 0 ? 'days' : 'days ago' };
+  if (hours < 48) return since(hours, 'hours');
+  // Coarsen with distance. A flight last spring is "12mo ago", not "357d
+  // ago": nobody counts a year in days, and the row has no room for four
+  // digits. Anything an hour to two days out keeps its clock.
+  if (days < 7) return since(days, 'days');
+  if (days < 60) return since(Math.round(days / 7), 'weeks');
+  const months = Math.round(days / 30);
+  if (months < 12) return since(months, 'months');
+  return since(Math.round(days / 365), 'years');
 }
 
 /** Whole days between two 'YYYY-MM-DD' calendar dates. */

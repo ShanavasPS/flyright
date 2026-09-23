@@ -247,10 +247,15 @@ function LandingClock({
   );
 }
 
+/** One or two letters per unit, so the label stays on the row's right edge.
+ * Months take "mo": a bare "m" beside "h" reads as minutes. */
+const TIMER_SHORT: Record<string, string> = { hours: 'h', days: 'd', weeks: 'w', months: 'mo', years: 'y' };
+
 export function timerLabel(timer: { value: number; unit: string }): string {
   if (timer.unit === 'now') return 'now';
-  const short = timer.unit.startsWith('hours') ? 'h' : 'd';
-  return timer.unit.endsWith('ago') ? `${timer.value}${short} ago` : `in ${timer.value}${short}`;
+  const ago = timer.unit.endsWith(' ago');
+  const short = TIMER_SHORT[ago ? timer.unit.slice(0, -4) : timer.unit] ?? 'd';
+  return ago ? `${timer.value}${short} ago` : `in ${timer.value}${short}`;
 }
 
 /** The first non-empty line of a note, for the list row's one-line peek. */

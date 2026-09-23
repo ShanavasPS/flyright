@@ -112,7 +112,7 @@ function headerEyebrow(
     if (timer.unit === 'now') return 'Boarding soon';
     // Words, not the rows' "3d": the header has the room, and in its
     // uppercase letters "3d" read as "3D".
-    const unit = timer.unit.startsWith('hours') ? 'hour' : 'day';
+    const unit = (timer.unit.endsWith(' ago') ? timer.unit.slice(0, -4) : timer.unit).replace(/s$/, '');
     return `Next trip in ${timer.value} ${unit}${timer.value === 1 ? '' : 's'}`;
   }
   return now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
