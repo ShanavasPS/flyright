@@ -1,5 +1,5 @@
-import { importedJourneyPatch, matchingImportedJourney, normalizedFlight } from './imported-journeys';
-import type { JourneyRow } from './journeys';
+import { importedJourneyPatch, matchingImportedJourney, matchingJourney, normalizedFlight } from './imported-journeys';
+import type { JourneyRow, NewJourneyRow } from './journeys';
 import type { ImportedSegment } from './itinerary';
 
 const code = 'M1LINDQVIST/MAJA      EFRX7YQ HELLHRAY 1331 257Y014A0042 100';
@@ -41,4 +41,34 @@ it('updates only explicit document clocks and keeps booking/seat when absent', (
 it('does not rewrite the same departure merely because its ISO formatting differs', () => {
   const patch = importedJourneyPatch({ ...segment, depTime: '08:00' }, { ...trip, scheduledDeparture: '2026-09-14T05:00Z' }, 'now');
   expect(patch.scheduledDeparture).toBeUndefined();
+});
+
+// The 2026-07-25 QR517 that reached production twice: once from a lookup
+// (UTC, id `QR517-2026-07-25`) and once from the manual form (bare Kochi
+// wall clock, id `QR517-COK-DOH-2026-07-25`). Two rows, so the Flights tab
+// grew a second "India trip" header and a stay the other copy could not see.
+const lookupCopy = { id: 'QR517-2026-07-25', mode: 'flight', number: 'QR517', fromCode: 'COK', toCode: 'DOH', scheduledDeparture: '2026-07-24T22:45Z', scheduledArrival: '2026-07-25T03:05Z', deletedAt: null, bookingReference: null, passCode: null } as JourneyRow;
+const manualCopy = { id: 'QR517-COK-DOH-2026-07-25', mode: 'flight', number: 'QR517', fromCode: 'COK', toCode: 'DOH', scheduledDeparture: '2026-07-25T04:15:00', scheduledArrival: '2026-07-25T06:05:00' } as NewJourneyRow;
+
+it('matches the two id formats for one flight, in either direction', () => {
+  expect(matchingJourney(manualCopy, [lookupCopy])?.id).toBe('QR517-2026-07-25');
+  expect(matchingJourney({ ...lookupCopy }, [{ ...manualCopy, deletedAt: null } as JourneyRow])?.id).toBe('QR517-COK-DOH-2026-07-25');
+});
+it('normalizes the number and reads the day in the origin airport zone', () => {
+  expect(matchingJourney({ ...manualCopy, number: 'QR 0517' }, [lookupCopy])?.id).toBe('QR517-2026-07-25');
+  // 22:45Z on the 24th is 04:15 in Kochi on the 25th — the same flight.
+  expect(matchingJourney(manualCopy, [{ ...lookupCopy, scheduledDeparture: '2026-07-24T12:00:00Z' }])).toBeNull();
+});
+it('keeps genuinely different trips apart', () => {
+  expect(matchingJourney(manualCopy, [{ ...lookupCopy, toCode: 'DXB' }])).toBeNull();
+  expect(matchingJourney(manualCopy, [{ ...lookupCopy, number: 'QR518' }])).toBeNull();
+  expect(matchingJourney(manualCopy, [{ ...lookupCopy, deletedAt: '2026-07-20' }])).toBeNull();
+  expect(matchingJourney({ ...manualCopy, mode: 'train' }, [{ ...lookupCopy, mode: 'train' }])).toBeNull();
+  expect(matchingJourney({ ...manualCopy, number: '' }, [{ ...lookupCopy, number: '' }])).toBeNull();
+});
+it('leaves a codeshare pair to the document matcher, which has the booking', () => {
+  // AS686 and QR3387 are the same SEA-PDX metal; only a shared PNR proves it.
+  const operating = { ...lookupCopy, id: 'AS686-2026-07-25', number: 'AS686', fromCode: 'SEA', toCode: 'PDX', scheduledDeparture: '2026-07-25T22:55Z' } as JourneyRow;
+  const marketing = { ...manualCopy, id: 'QR3387-SEA-PDX-2026-07-25', number: 'QR3387', fromCode: 'SEA', toCode: 'PDX', scheduledDeparture: '2026-07-25T15:55:00' } as NewJourneyRow;
+  expect(matchingJourney(marketing, [operating])).toBeNull();
 });

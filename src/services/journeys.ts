@@ -12,7 +12,7 @@ import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
-import { importedJourneyPatch, matchingImportedJourney } from '@/services/imported-journeys';
+import { importedJourneyPatch, matchingImportedJourney, matchingJourney } from '@/services/imported-journeys';
 import type { ImportedSegment } from '@/services/itinerary';
 
 export type JourneyRow = typeof journeys.$inferSelect;
@@ -61,50 +61,61 @@ export function useJourney(id: string, currentUserId: string | null | undefined)
 
 export async function addJourney(row: NewJourneyRow) {
   const now = new Date().toISOString();
-  // id is the natural key (number + date). Re-adding a soft-deleted trip
-  // revives it, and either way the trip's facts are refreshed from the new
-  // source — a receipt that names the operating airline of a codeshare leg
-  // must win over the marketing carrier a plain lookup stored earlier. The
-  // journal fields (notes, rating, photos) are never touched; seat and
-  // booking reference only when the new source knows them. The audience:
-  // the add-trip screens pass the traveler's choice, which wins even on a
-  // revived row (they saw it before saving); a caller that sets neither
-  // flag gets the Settings default ("Show new trips to") on a brand-new
-  // trip, and a revived row keeps what it had.
+  // Re-adding a soft-deleted trip revives it, and either way the trip's facts
+  // are refreshed from the new source — a receipt that names the operating
+  // airline of a codeshare leg must win over the marketing carrier a plain
+  // lookup stored earlier. The journal fields (notes, rating, photos) are
+  // never touched; seat and booking reference only when the new source knows
+  // them. The audience: the add-trip screens pass the traveler's choice,
+  // which wins even on a revived row (they saw it before saving); a caller
+  // that sets neither flag gets the Settings default ("Show new trips to")
+  // on a brand-new trip, and a revived row keeps what it had.
   const chosen = row.hiddenFromCircle != null || row.privateTrip != null;
   const seeded = chosen ? {} : flagsFor(getDefaultTripVisibility());
-  await db
-    .insert(journeys)
-    .values({ ...row, ...seeded, updatedAt: row.updatedAt ?? now })
-    .onConflictDoUpdate({
-      target: journeys.id,
-      set: {
-        deletedAt: null,
-        updatedAt: now,
-        carrier: row.carrier,
-        carrierCountry: row.carrierCountry,
-        fromCode: row.fromCode,
-        fromCountry: row.fromCountry,
-        toCode: row.toCode,
-        toCountry: row.toCountry,
-        distanceKm: row.distanceKm,
-        scheduledDeparture: row.scheduledDeparture,
-        scheduledArrival: row.scheduledArrival,
-        ...(row.seat != null ? { seat: row.seat } : {}),
-        ...(row.bookingReference != null ? { bookingReference: row.bookingReference } : {}),
-        // A pass scanned for a trip already in the journal is the newest
-        // pass for it: the code and its symbology move together.
-        ...(row.passCode != null
-          ? { passCode: row.passCode, passFormat: row.passFormat, passCapturedAt: row.passCapturedAt ?? now }
-          : {}),
-        ...(row.ticketCode != null
-          ? { ticketCode: row.ticketCode, ticketFormat: row.ticketFormat, ticketCapturedAt: row.ticketCapturedAt ?? now }
-          : {}),
-        ...(chosen
-          ? { hiddenFromCircle: !!row.hiddenFromCircle, privateTrip: !!row.privateTrip }
-          : {}),
-      },
-    });
+  const refresh = {
+    deletedAt: null,
+    updatedAt: now,
+    carrier: row.carrier,
+    carrierCountry: row.carrierCountry,
+    fromCode: row.fromCode,
+    fromCountry: row.fromCountry,
+    toCode: row.toCode,
+    toCountry: row.toCountry,
+    distanceKm: row.distanceKm,
+    scheduledDeparture: row.scheduledDeparture,
+    scheduledArrival: row.scheduledArrival,
+    ...(row.seat != null ? { seat: row.seat } : {}),
+    ...(row.bookingReference != null ? { bookingReference: row.bookingReference } : {}),
+    // A pass scanned for a trip already in the journal is the newest
+    // pass for it: the code and its symbology move together.
+    ...(row.passCode != null
+      ? { passCode: row.passCode, passFormat: row.passFormat, passCapturedAt: row.passCapturedAt ?? now }
+      : {}),
+    ...(row.ticketCode != null
+      ? { ticketCode: row.ticketCode, ticketFormat: row.ticketFormat, ticketCapturedAt: row.ticketCapturedAt ?? now }
+      : {}),
+    ...(chosen
+      ? { hiddenFromCircle: !!row.hiddenFromCircle, privateTrip: !!row.privateTrip }
+      : {}),
+  };
+  db.transaction(tx => {
+    // The id is only one spelling of this flight: the lookup path mints
+    // `QR517-2026-07-25` and the manual form `QR517-COK-DOH-2026-07-25`, so
+    // an id-only upsert saved the same flight twice and the trip split into
+    // two groups on the Flights tab. Ask the journal about the flight itself
+    // first — the check the import path has had since Wallet passes landed.
+    // Read and write under one transaction so a second save racing this one
+    // cannot slip a duplicate in between.
+    const existing = matchingJourney(row, tx.select().from(journeys).where(visibleTo(row.userId)).all());
+    if (existing && existing.id !== row.id) {
+      tx.update(journeys).set(refresh).where(eq(journeys.id, existing.id)).run();
+      return;
+    }
+    tx.insert(journeys)
+      .values({ ...row, ...seeded, updatedAt: row.updatedAt ?? now })
+      .onConflictDoUpdate({ target: journeys.id, set: refresh })
+      .run();
+  });
   void reconcileNotifications();
   void reconcileTravelDay();
 }

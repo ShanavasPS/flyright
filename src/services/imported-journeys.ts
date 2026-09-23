@@ -12,6 +12,45 @@ export function normalizedFlight(value: string | null | undefined): string {
   return match ? `${match[1]}${match[2]}` : compact;
 }
 
+/** What actually identifies a flight in the journal. `journeys.id` does not:
+ * a lookup mints `QR517-2026-07-25` and the manual form
+ * `QR517-COK-DOH-2026-07-25` for the same flight, so an id-only upsert saved
+ * it twice and the trip then appeared under two headers, one of them with a
+ * stay the other could not see. */
+export type JourneyIdentity = Pick<
+  NewJourneyRow,
+  'mode' | 'number' | 'fromCode' | 'toCode' | 'scheduledDeparture'
+>;
+
+/** The journal row `candidate` is another copy of: same route, same
+ * origin-local departure day, same flight number. Numbers are normalized
+ * ('QR 0517' → 'QR517') and the day is read in the origin airport's zone, so
+ * the two id formats above — and a UTC row against a bare wall-clock one —
+ * still land on one trip.
+ *
+ * Deliberately strict. A codeshare held under the marketing number on one
+ * copy and the operating number on the other is NOT matched here: telling
+ * those apart from two genuinely different flights needs the shared booking
+ * reference that only a document carries, which is `matchingImportedJourney`
+ * below. */
+export function matchingJourney(candidate: JourneyIdentity, rows: JourneyRow[]): JourneyRow | null {
+  if (candidate.mode !== 'flight') return null;
+  const number = normalizedFlight(candidate.number);
+  if (!number) return null;
+  const day = flightDay(candidate.scheduledDeparture, airportZone(candidate.fromCode));
+  return (
+    rows.find(
+      row =>
+        row.mode === 'flight' &&
+        !row.deletedAt &&
+        row.fromCode === candidate.fromCode &&
+        row.toCode === candidate.toCode &&
+        normalizedFlight(row.number) === number &&
+        flightDay(row.scheduledDeparture, airportZone(row.fromCode)) === day,
+    ) ?? null
+  );
+}
+
 export function matchingImportedJourney(segment: ImportedSegment, rows: JourneyRow[]): JourneyRow | null {
   if (!segment.date) return null;
   const candidates = rows.filter(row => row.mode === 'flight' && !row.deletedAt &&
