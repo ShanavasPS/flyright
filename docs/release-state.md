@@ -2,6 +2,96 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-23 — 1.1.3: free journals and trip-specific Pro (store submission on hold)
+
+The user authorized commit/push and the full release, explicitly **skipping
+physical-device tests**. The signed-out first-flight walkthrough is complete:
+empty journal → add future flight → Pro offer → plans → native signup or existing
+sign-in → selected Yearly plan restored → Continue free. The flight remains saved,
+the session survives a cold start, and the home summary has no unwanted gap after
+the introduction collapses. No purchase or reminder was submitted. A separate
+uninterrupted 16-step screenshot run passed; its reviewed gallery and ZIP are in
+`~/Downloads/FlyRight-pro-flow-2026-09-23/` and the adjacent `.zip`.
+
+| Item | Observed result |
+| --- | --- |
+| Code/version | **1.1.3**, iOS **64**, Android **60**. Implementation/release commit `5afc8f9`, listing copy `ea73c80`, walkthrough evidence `8531da9`, all pushed. |
+| Backend/preflight | Both production and development deployed with **71 referenced public functions**. TypeScript, five backend-contract regressions, **100 Jest suites / 1,190 tests**, and **32 security regressions** passed. |
+| Hosting | Deployment **`qxelxt0bga`**, production alias serves `entry-2b27e969d2f25d81d024d5f1fb123a22.js`, matching the export. Production Convex and Clerk verified; development Convex absent. `/api/app-version` still reports live store version 1.1.2. The isolated export's production env file was removed. |
+| iOS upload | Local Xcode 27 build **64**; IPA production configuration, scene support and `iphoneos27.0` verified. Submission **`3af65383-8853-48f0-a340-25b3a9b79ec0` FINISHED**; ASC build **`8f162abf-1a6e-4bc0-be8f-08096731d9e6` VALID**. The first upload's transient EPIPE was retried with the same IPA. |
+| Android upload | EAS build **`5dcc404e-d658-46e9-a9ee-bf6693b1cbbe` FINISHED**, versionCode **60**. Submission **`c39d5977-ec19-423c-b15c-10422fd935ac` FINISHED**. Store AAB downloaded and packaged for the existing emulator using bundletool's device specification and the existing debug keystore. |
+| Store metadata | ASC version **`a0dca108-aeb8-4fcd-882b-0371484b0230`**, localization **`635afcac-739d-4940-9597-78291e06d200`**, review detail **`ae0e6824-bc79-4b56-b540-71093133f82b`**. What's New, review notes and description updated; existing review credentials preserved. Play Free/Pro descriptions committed after EAS upload finished. |
+| Physical devices | **Skipped at the user's explicit request.** No physical-phone coverage is claimed. |
+
+**Publication hold:** after both uploads completed, the user explicitly said
+**“Hold off on store submission.”** Do not submit App Review or promote Play
+production until the user resumes publication. ASC remains editable and Android
+remains on the internal track. Listing text and the first refreshed screenshot
+sets had already been uploaded before the hold; later capture refinements remain
+local. Verification, dev-app restoration and commit/push continue.
+
+**Verified store hold (14:36 UTC):** iOS 1.1.3 remains
+`PREPARE_FOR_SUBMISSION`; Play internal is 1.1.3 (60), while production remains
+1.1.2 (59), completed. No review submission or production promotion was performed.
+
+**Production candidate checks passed on both platforms.** iOS used Release
+1.1.3 (64) with production configuration on `E2AC008A`; Android used the exact
+store AAB 1.1.3 (60), converted to device-specific APKs and re-signed with the
+existing local debug key. Both retained the dedicated reviewer account, passed
+two cold starts, loaded backend/Friends data and displayed the established
+retained trip/photo. Report: `.maestro/out/release/2026-09-23T14-35-31.278Z/report.json`.
+Additional Updates, Claims and Flights flows passed on both platforms; their
+screenshots and both retained-photo screenshots were inspected. iOS retained all
+three original trip IDs. This is simulator/emulator coverage, not store-signed
+physical-phone coverage.
+
+**Android emulator recovery:** World was initially blank even though its data
+loaded and the automated assertions passed. A data-preserving reboot restored
+the globe; it remained correctly rendered after another app cold start. Android
+also displayed a System UI ANR during recovery, and the emulator process later
+needed a full restart without loading its snapshot. No app fix was made. Reviewed
+before/after captures are in `android-core/` within the release scratch directory.
+The automated World assertion alone is not proof of visual rendering.
+
+**Store images:** current Release builds were used to refresh Flights and claim
+panels on iPhone/Android and all three iPad panels. Free/Pro captions were updated.
+The first complete sets were uploaded before the hold (ASC seven iPhone/three
+iPad, Play seven each for phone and both tablet sizes). The later iPhone Updates
+capture remains local and must be uploaded if publication resumes. Other pictured
+surfaces were carried forward where unchanged. Temporary Pro entitlements for
+three synthetic development screenshot owners were restored to their original
+null values, with access reconciled; the viewing account stayed free.
+
+**Native regressions and restoration completed.** Explicit prebuild and native
+rebuilds installed Debug **1.1.3 (64)** on the original `A653D3AC` iOS simulator and
+Debug **1.1.3 (60)** on `FlyRight_Dev` / `emulator-5554`; installed native versions
+were checked. The final native photo regression passed on both (**22 s / 48 s**):
+old-container file resolution and upload, recoverable HTTP failure, missing and
+empty files rejected before upload, and a valid retry. The receiver independently
+verified three expected requests on each platform. Report:
+`.maestro/out/release/2026-09-23T15-03-59.142Z/report.json`.
+
+All **25 original Android trip IDs** remain after the release and dev upgrades
+(30 total rows, including existing reviewer and screenshot fixtures). No uninstall
+or data clear was used. The main iOS simulator was signed out through the account
+UI for the user's next manual Pro walkthrough; its account flights are retained.
+Android's restored dev build is signed out after changing back from production
+Clerk configuration. Metro stays on port 8081. The separate iOS production-candidate
+simulator keeps its verified Release app and reviewer data, shut down.
+
+The large local builds exhausted disk space and slowed both simulators. Completed
+FlyRight Xcode intermediates/products, npm cache and the regenerable Xcode module
+cache were cleared; the IPA, AAB, APKs and simulator app copies remain in the
+release scratch directory. Temporary production environment files and reviewer
+credential/debug files were removed. No physical tests or purchases were run.
+
+Useful non-secret evidence is copied to
+`~/Downloads/FlyRight-1.1.3-verification-2026-09-23/`; the separate 16-step gallery
+remains in `~/Downloads/FlyRight-pro-flow-2026-09-23/`. Release scratch/evidence:
+`/private/tmp/flyright-release-1.1.3/`. **Publication remains on hold.** Before
+resuming, recheck current store state and upload the final local screenshot
+refinement; do not treat the TestFlight/internal uploads as a completed release.
+
 ## 2026-09-22/23 — 1.1.2: grouped trips; iOS waiting for review, Play production accepted
 
 The approved display-only trip grouping is implemented: country flags, date

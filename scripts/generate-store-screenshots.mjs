@@ -45,7 +45,7 @@ const SHOTS = [
   {
     raw: 'phone-03-verdict.png',
     headline: "Know what you're owed",
-    sub: 'Instant EU261 compensation verdicts',
+    sub: 'Check a delay for free. Prepare your claim with Pro.',
   },
   {
     raw: 'phone-06-world.png',
