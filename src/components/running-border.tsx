@@ -1,7 +1,7 @@
-import { Canvas, DashPathEffect, RoundedRect, useClock } from '@shopify/react-native-skia';
+import { Canvas, DashPathEffect, RoundedRect } from '@shopify/react-native-skia';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useDerivedValue, useReducedMotion } from 'react-native-reanimated';
+import { useDerivedValue, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 
 /** The live card's status border, and the light that runs around it. */
 export const BORDER_WIDTH = 1.5;
@@ -15,8 +15,8 @@ const SWEEP_SHARE = 0.3;
  * the rest of the perimeter, with the dash phase driven round the path. The
  * card's own border stays beneath at low opacity, so the ring is always
  * closed and the segment reads as light moving along it rather than a border
- * appearing and vanishing. Before the live window (the evening before) and
- * under reduce-motion the border is simply solid.
+ * appearing and vanishing. The travel-day card also runs in its day-before reminder window.
+ * Under Reduce Motion, or when running is false, the border stays solid.
  *
  * Drawn with Skia off a clock, not with an SVG and a repeating Reanimated
  * animation: the phase is a pure function of time, so nothing can leave it
@@ -47,7 +47,7 @@ export function RunningBorder({ color, radius, running }: { color: string; radiu
           <RunningRing frame={frame} perimeter={perimeter} color={color} />
         </Canvas>
       )}
-      {perimeter > 0 && !running && (
+      {perimeter > 0 && !animate && (
         <Canvas style={{ width: size.w, height: size.h }}>
           <RoundedRect {...frame} style="stroke" strokeWidth={BORDER_WIDTH} color={color} />
         </Canvas>
@@ -67,7 +67,10 @@ function RunningRing({
   perimeter: number;
   color: string;
 }) {
-  const clock = useClock();
+  const clock = useSharedValue(0);
+  // Absolute frame time keeps the hero and a newly mounted/virtualized row
+  // on the same lap. A per-component elapsed clock would restart the row.
+  useFrameCallback(({ timestamp }) => { clock.value = timestamp; });
   // A full negative perimeter per lap moves the segment in path direction —
   // clockwise from the top-left, the way the rect is built — and the modulo
   // lands every lap exactly where it began, so the loop is seamless.

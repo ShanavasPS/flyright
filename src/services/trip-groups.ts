@@ -49,10 +49,23 @@ export interface TravelTrip {
 export type TripListItem =
   | { kind: 'header'; key: string; group: TripGroup; dates: string }
   | { kind: 'separator'; key: string }
-  | { kind: 'flight'; key: string; journey: JourneyRow; live: boolean; connection?: Connection }
+  | { kind: 'flight'; key: string; journey: JourneyRow; live: boolean; hero: boolean; connection?: Connection }
   | Extract<TripGroupEntry, { kind: 'stay' }>;
 
 export interface TripListSection { key: string; title: string; data: TripListItem[] }
+
+export interface TripHeroGroup { group: TripGroup; dates: string; isFirstFlight: boolean }
+
+/** The active itinerary sorts first. Its first flight expands in place;
+ * a later live flight keeps a shortcut between its row and the top card. */
+export function tripHeroGroup(rows: JourneyRow[], now: Date, heroId: string | null): TripHeroGroup | undefined {
+  if (!heroId) return undefined;
+  for (const trip of buildTripGroups(rows)) {
+    const group = trip.groups.find(g => g.entries.some(e => e.kind === 'flight' && e.journey.id === heroId));
+    if (group) return { group, dates: tripGroupDates(group, now.getFullYear()), isFirstFlight: trip.journeys[0]!.id === heroId };
+  }
+  return undefined;
+}
 
 function place(row: JourneyRow, side: 'from' | 'to'): Place {
   const code = row[`${side}Code`].trim().toUpperCase();
@@ -232,31 +245,33 @@ export function tripGroupDates(group: TripGroup, currentYear: number): string {
     : `${single(start, false)} – ${single(end, false)}${suffix}`;
 }
 
-/** Keep complete trips together while preserving the journal's Live,
- * Upcoming and past-year sections. Flights inside a trip always read in
- * travel order; completed independent trips still sort newest first. */
+/** Classify the complete trip before highlighting its active flight row.
+ * A trip remains current between its flights and through the hero's arrival
+ * window. Flights stay in travel order; completed trips are newest first. */
 export function tripListSections(rows: JourneyRow[], now: Date, heroId: string | null = null): TripListSection[] {
-  const visible = rows.filter(r => !r.deletedAt && r.id !== heroId);
+  const visible = rows.filter(r => !r.deletedAt);
   const phase = new Map(groupJourneys(visible, now).flatMap(s => s.data.map(r => [r.id, s.key] as const)));
   const connections = connectionsInto(rows.filter(r => !r.deletedAt));
   const filed = buildTripGroups(rows).map(trip => {
     const keys = trip.journeys.map(r => phase.get(r.id));
     const year = calendarDay(departure(trip.journeys[0]!))?.slice(0, 4) ?? 'undated';
-    const key = keys.includes('live') ? 'live' : keys.includes('upcoming') ? 'upcoming' : year;
-    return { trip, key };
+    const hasHero = trip.journeys.some(r => r.id === heroId);
+    const started = at(departure(trip.journeys[0]!)) <= now.getTime();
+    const current = hasHero || keys.includes('live') || (started && keys.includes('upcoming'));
+    const key = current ? 'current' : keys.includes('upcoming') ? 'upcoming' : year;
+    return { trip, key, hasHero };
   });
-  const rank = (key: string) => key === 'live' ? 0 : key === 'upcoming' ? 1 : key === 'undated' ? Infinity : 10_000 - Number(key);
+  const rank = (key: string) => key === 'current' ? 0 : key === 'upcoming' ? 1 : key === 'undated' ? Infinity : 10_000 - Number(key);
   filed.sort((a, b) => rank(a.key) - rank(b.key) ||
-    (a.key === 'live' || a.key === 'upcoming' ? 1 : -1) *
+    Number(b.hasHero) - Number(a.hasHero) ||
+    (a.key === 'current' || a.key === 'upcoming' ? 1 : -1) *
     (at(departure(a.trip.journeys[0]!)) - at(departure(b.trip.journeys[0]!))));
 
   const sections: TripListSection[] = [];
   for (const { trip, key } of filed) {
     const items: TripListItem[] = [];
     for (const group of trip.groups) {
-      const entries = group.entries.filter(e => e.kind !== 'flight' || e.journey.id !== heroId);
-      // A lone hero already represents this flight above the list.
-      if (!entries.length) continue;
+      const entries = group.entries;
       items.push({ kind: 'header', key: `header:${group.id}`, group, dates: tripGroupDates(group, now.getFullYear()) });
       let previousId: string | undefined;
       for (const entry of entries) {
@@ -265,7 +280,7 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
           previousId = undefined;
         } else {
           const connection = connections.get(entry.journey.id);
-          items.push({ ...entry, live: phase.get(entry.journey.id) === 'live', connection: connection?.prevId === previousId ? connection : undefined });
+          items.push({ ...entry, live: phase.get(entry.journey.id) === 'live', hero: entry.journey.id === heroId, connection: connection?.prevId === previousId ? connection : undefined });
           previousId = entry.journey.id;
         }
       }
@@ -273,7 +288,7 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
     if (!items.length) continue;
     let section = sections[sections.length - 1];
     if (section?.key !== key) {
-      section = { key, title: key === 'live' ? 'Live' : key === 'upcoming' ? 'Upcoming' : key === 'undated' ? 'Other flights' : key, data: [] };
+      section = { key, title: key === 'current' ? 'Current trip' : key === 'upcoming' ? 'Upcoming' : key === 'undated' ? 'Other flights' : key, data: [] };
       sections.push(section);
     } else {
       section.data.push({ kind: 'separator', key: `separator:${trip.id}` });

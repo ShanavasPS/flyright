@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { RouteLeg } from '@/components/route-leg';
@@ -38,9 +38,8 @@ export interface RowTrip {
  * the two codes big at the edges with the contrail and plane between, city
  * and clock beneath each, block time under the plane — at list size.
  *
- * The card body only — pressing is the caller's, because the journal pushes
- * a route (or selects into its second pane) while a profile opens somebody
- * else's copy of the trip.
+ * Pressing is normally the caller's. A highlighted row has two sibling
+ * actions: its live-card shortcut and its normal flight-detail target.
  *
  * One row for every list of trips. A follower's profile drew its own for a
  * while: the codes where the cities go, the flight number where the date
@@ -55,6 +54,7 @@ export function TripRow({
   eyebrowTone = 'tint',
   progress,
   live = false,
+  highlight,
 }: {
   trip: RowTrip;
   now: Date;
@@ -79,6 +79,16 @@ export function TripRow({
   /** In the air right now: the row wears the live card's running light and
    * counts down to the landing instead of saying how long ago it left. */
   live?: boolean;
+  /** The active flight keeps its full row, with a shortcut to its live card.
+   * Separate targets let both actions work with touch and screen readers. */
+  highlight?: {
+    color: string;
+    running: boolean;
+    action: React.ReactNode;
+    onOpenTrip: () => void;
+    departure?: string | null;
+    arrival?: string | null;
+  };
 }) {
   const theme = useTheme();
   const eyebrowColor = eyebrowTone === 'heading' ? theme.heading : theme.tint;
@@ -86,19 +96,11 @@ export function TripRow({
   const departs = flightInstant(trip.scheduledDeparture, departureZone);
   const old = now.getTime() - departs > YEAR_MS;
   const upcoming = departs >= now.getTime();
+  const departure = highlight?.departure ?? trip.scheduledDeparture;
+  const arrival = highlight?.arrival ?? trip.scheduledArrival;
 
-  return (
-    <SheenCard
-      style={[
-        styles.card,
-        live && styles.liveCard,
-        live && { borderWidth: BORDER_WIDTH, borderColor: `${theme.tint}59` },
-        selected && { borderWidth: 1, borderColor: theme.tint },
-      ]}>
-      {/* The same light that runs around the live card, at the row's radius:
-          one flight, one language, wherever it is drawn. It overlays, so the
-          row keeps the height and width of every other row. */}
-      {live && <RunningBorder color={theme.tint} radius={Spacing.four} running />}
+  const body = (
+    <>
       <AirlineLogo number={trip.number} carrier={trip.carrier} />
       <View style={styles.body}>
         {eyebrow && (
@@ -126,7 +128,7 @@ export function TripRow({
             {trip.number || trip.carrier}
           </ThemedText>
           {badge ??
-            (live ? (
+            (!highlight && (live ? (
               // "2h ago" is the wrong fact while the flight is still in the
               // air, and "in 3h" is too coarse to look alive: the row runs
               // the live card's own clock, at the meta line's size.
@@ -145,16 +147,17 @@ export function TripRow({
                   {timerLabel(countdown(trip.scheduledDeparture, now, departureZone))}
                 </ThemedText>
               )
-            ))}
+            )))}
         </View>
         <RouteLeg
           progress={progress}
           leg={{
             fromCode: trip.fromCode,
             toCode: trip.toCode,
-            departure: trip.scheduledDeparture,
-            arrival: trip.scheduledArrival,
-            ticketedDeparture: trip.ticketedDeparture,
+            departure,
+            arrival,
+            ticketedDeparture: trip.ticketedDeparture ?? (departure !== trip.scheduledDeparture ? trip.scheduledDeparture : undefined),
+            ticketedArrival: arrival !== trip.scheduledArrival ? trip.scheduledArrival : undefined,
             distanceKm: trip.distanceKm,
           }}
         />
@@ -170,6 +173,33 @@ export function TripRow({
           </ThemedText>
         )}
       </View>
+    </>
+  );
+
+  return (
+    <SheenCard
+      style={[
+        styles.card,
+        live && styles.liveCard,
+        live && { borderWidth: BORDER_WIDTH, borderColor: `${theme.tint}59` },
+        selected && { borderWidth: 1, borderColor: theme.tint },
+        highlight && styles.highlightCard,
+        highlight && { borderWidth: BORDER_WIDTH, borderColor: `${highlight.color}59` },
+      ]}>
+      {(live || highlight) && <RunningBorder color={highlight?.color ?? theme.tint} radius={Spacing.four} running={highlight?.running ?? true} />}
+      {highlight ? (
+        <>
+          {highlight.action}
+          <Pressable
+            testID="trip-live-row"
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${trip.number || trip.carrier} trip from ${trip.fromCode} to ${trip.toCode}`}
+            onPress={highlight.onOpenTrip}
+            style={({ pressed }) => [styles.highlightBody, pressed && { opacity: 0.9 }]}>
+            {body}
+          </Pressable>
+        </>
+      ) : body}
     </SheenCard>
   );
 }
@@ -241,6 +271,8 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   body: { flex: 1, gap: Spacing.half },
+  highlightCard: { flexDirection: 'column', alignItems: 'stretch', padding: 0, gap: 0 },
+  highlightBody: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingBottom: Spacing.three },
   eyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',

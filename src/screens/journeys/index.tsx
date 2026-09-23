@@ -2,7 +2,7 @@ import { useAuth, useUser } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -12,7 +12,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { AddFlightButton } from '@/components/add-flight-button';
 import { DataErrorCard } from '@/components/data-state';
@@ -28,10 +29,11 @@ import { ThemedView } from '@/components/themed-view';
 import { FlashToast } from '@/components/flash-toast';
 import { JournalSkeleton } from '@/components/journal-skeleton';
 import { greeting, ProfileButton } from '@/components/profile-button';
-import { HomeHero, LiveDot, useHeroTrip } from '@/components/travel-day-banner';
+import { HomeHero, useHeroTrip, type HeroTrip } from '@/components/travel-day-banner';
 import {
   COBALT,
   MiniContrail,
+  TravelStatsStrip,
   WHITE,
   WHITE_DIM,
   WHITE_FAINT,
@@ -57,8 +59,9 @@ import {
   onboardingSeen,
   pushRemindDue,
 } from '@/services/onboarding';
-import { tripListSections } from '@/services/trip-groups';
-import { hasLanded } from '@/services/travel-day';
+import { tripHeroGroup, tripListSections, type TripListItem, type TripListSection } from '@/services/trip-groups';
+import { hasLanded, liveContent } from '@/services/travel-day';
+import { factsFor } from '@/services/travel-day-lifecycle';
 import { welcomeFor } from '@/services/welcome';
 import { groupJourneys, travelStats } from '@/services/timeline';
 
@@ -113,13 +116,13 @@ function headerEyebrow(
 
 export function Journeys() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
   const { user } = useUser();
   const firstName = user?.firstName ?? user?.fullName?.split(' ')[0] ?? null;
   // Decided once per account per launch, so it can't flip mid-session.
   const welcome = useMemo(() => (userId ? welcomeFor(userId) : null), [userId]);
-  // The greeting's clock: "Good morning" turns to afternoon while the app
-  // stays open, which the memoised `now` below would not notice.
+  // Refresh the greeting and trip phases while the screen stays open.
   const clock = useNow(60_000);
   const { data: journeys, error: journalError } = useJourneys(userId);
   const { data: claimRows } = useClaims(userId);
@@ -165,13 +168,9 @@ export function Journeys() {
     });
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // One instant per render, memoised so the grouping below is not rebuilt on
-  // every frame for a Date that means the same thing.
-  const now = useMemo(() => new Date(), [journeys]); // eslint-disable-line react-hooks/exhaustive-deps
-  // The live card at the top is that trip's row for the day: listing it
-  // again under "Upcoming" said the same thing twice. (While the card lived
-  // on Home, the row stayed so this tab had today's trip at all; it is back
-  // here, so the row steps aside again.)
+  // The same minute clock drives the hero, its list row and section phases.
+  // A flight can enter/leave the travel window without any journal edit.
+  const now = clock;
   const hero = useHeroTrip(journeys ?? [], now);
   const heroId = hero?.journey.id ?? null;
   const sections = useMemo(
@@ -179,12 +178,34 @@ export function Journeys() {
     [journeys, heroId, now],
   );
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
-  // Group the full journal before hiding the hero's row, so its origin and
-  // destination still anchor the trip and any stay that follows it.
+  // Keep the active flight in the complete, chronological itinerary.
   const tripSections = useMemo(
     () => tripListSections(journeys ?? [], now, heroId),
     [journeys, now, heroId],
   );
+  const heroGroup = useMemo(() => tripHeroGroup(journeys ?? [], now, heroId), [journeys, now, heroId]);
+  const listRef = useRef<SectionList<TripListItem, TripListSection>>(null);
+  const reduceMotion = useReducedMotion();
+  const scrollRetry = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingJump = useRef(false);
+  useEffect(() => {
+    pendingJump.current = false;
+    return () => { if (scrollRetry.current) clearTimeout(scrollRetry.current); };
+  }, [heroId]);
+  const jumpToActiveFlight = useCallback(() => {
+    for (const [sectionIndex, section] of tripSections.entries()) {
+      const itemIndex = section.data.findIndex(item => item.kind === 'flight' && item.hero);
+      if (itemIndex < 0) continue;
+      pendingJump.current = true;
+      listRef.current?.scrollToLocation({ sectionIndex, itemIndex, viewPosition: 0.5, animated: !reduceMotion });
+      return;
+    }
+  }, [tripSections, reduceMotion]);
+  const jumpToHero = useCallback(() => {
+    pendingJump.current = false;
+    if (scrollRetry.current) clearTimeout(scrollRetry.current);
+    listRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: !reduceMotion });
+  }, [reduceMotion]);
   const claimByJourney = useMemo(() => {
     const map = new Map<string, ClaimRow>();
     for (const row of claimRows ?? []) map.set(row.claims.journeyId, row.claims);
@@ -219,6 +240,9 @@ export function Journeys() {
     fold.orientation === 'horizontal' && (fold.posture === 'halfOpened' || fold.isSeparating)
       ? fold.hingeBounds
       : null;
+  // The first flight expands in its normal list position. On a tabletop
+  // fold the existing glance pane remains fixed above the hinge instead.
+  const inlineHero = !!heroGroup?.isFirstFlight && !tabletopHinge;
 
   // Book posture / big screens: list on the left, the selected trip's detail
   // on the right. Expanded-width windows only (unfolded foldable in
@@ -298,40 +322,52 @@ export function Journeys() {
           <JournalSkeleton />
         ) : journeys.length ? (
           <SectionList
+            ref={listRef}
             sections={tripSections}
             keyExtractor={(row) => row.key}
-            contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={styles.list}
+            // The fixed greeting precedes this scroll view, so UIKit's
+            // automatic inset discovery can miss it. Reserve the tab safe
+            // area explicitly, including when jumping to the very last row.
+            contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'never' : 'automatic'}
+            contentContainerStyle={[styles.list, Platform.OS === 'ios' && { paddingBottom: insets.bottom + Spacing.three }]}
+            scrollIndicatorInsets={Platform.OS === 'ios' ? { bottom: insets.bottom } : undefined}
             stickySectionHeadersEnabled={false}
-            // One hero: on travel day the live flight and all-time stats
-            // share a single navy card; otherwise the stats card stands alone.
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            onScrollBeginDrag={() => {
+              pendingJump.current = false;
+              if (scrollRetry.current) clearTimeout(scrollRetry.current);
+            }}
+            onScrollToIndexFailed={({ averageItemLength, index }) => {
+              if (!pendingJump.current) return;
+              // Render the distant target's window, then retry with its real
+              // measured position. No scroll happens until the user asks.
+              listRef.current?.getScrollResponder()?.scrollTo({ y: averageItemLength * index, animated: false });
+              if (scrollRetry.current) clearTimeout(scrollRetry.current);
+              scrollRetry.current = setTimeout(() => { if (pendingJump.current) jumpToActiveFlight(); }, 150);
+            }}
             ListHeaderComponent={
               <>
                 <SignedOutNoticeCard next="/" />
-                {/* Your travel day leads: the live card, with the all-time
-                    strip under it; any other day, the all-time card alone.
-                    The faces of whoever you follow and what they post are
-                    on Updates. */}
-                {!tabletopHinge && <HomeHero journeys={journeys} stats={stats} />}
+                {/* A first live flight expands inside its group beneath the
+                    small summary. A later flight gets the linked top card.
+                    On ordinary days HomeHero shows the full stats card. */}
+                {!tabletopHinge && (inlineHero
+                  ? <TravelStatsStrip stats={stats} />
+                  : <HomeHero journeys={journeys} stats={stats} snapshot={{ hero, now }} tripGroup={heroGroup} onViewTrip={jumpToActiveFlight} />)}
               </>
             }
             renderSectionHeader={({ section }) =>
-              // The flight in the air gets the live card's own marker rather
-              // than a grey word: same heartbeat, same green, same meaning.
-              section.key === 'live' ? (
-                <View style={styles.liveHeading}>
-                  <LiveDot />
-                </View>
-              ) : (
-                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-                  {section.title}
-                </ThemedText>
-              )
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+                {section.title}
+              </ThemedText>
             }
             renderItem={({ item }) => {
               if (item.kind === 'header') return <TripGroupHeading group={item.group} dates={item.dates} />;
               if (item.kind === 'stay') return <TripStayMark stay={item.stay} />;
               if (item.kind === 'separator') return <IndependentTripSeparator />;
+              if (item.hero && inlineHero) {
+                return <HomeHero journeys={journeys} stats={stats} variant="glance" snapshot={{ hero, now }} />;
+              }
               const row = item.journey;
               return (
                 <>
@@ -339,7 +375,9 @@ export function Journeys() {
                   <JourneyItem
                     row={row}
                     now={now}
-                    live={item.live}
+                    live={item.live && !item.hero}
+                    hero={item.hero ? hero ?? undefined : undefined}
+                    onViewLive={jumpToHero}
                     claim={claimByJourney.get(row.id)}
                     owed={owedByJourney.get(row.id)}
                     onSelect={twoPane ? () => setSelectedId(row.id) : undefined}
@@ -376,7 +414,7 @@ export function Journeys() {
               has no room for the all-time strip, so the list below skips
               the hero altogether. */}
           <SafeAreaView edges={['top', 'left', 'right']} style={styles.topPaneSafe}>
-            <HomeHero journeys={journeys ?? []} stats={stats} variant="glance" />
+            <HomeHero journeys={journeys ?? []} stats={stats} variant="glance" snapshot={{ hero, now }} tripGroup={heroGroup} onViewTrip={jumpToActiveFlight} />
           </SafeAreaView>
         </View>
       )}
@@ -611,6 +649,8 @@ function JourneyItem({
   owed,
   onSelect,
   selected,
+  hero,
+  onViewLive,
 }: {
   row: JourneyRow;
   now: Date;
@@ -622,30 +662,60 @@ function JourneyItem({
   /** Two-pane mode: select into the detail pane instead of pushing a route. */
   onSelect?: () => void;
   selected?: boolean;
+  hero?: HeroTrip;
+  onViewLive: () => void;
 }) {
+  const router = useRouter();
+  const theme = useTheme();
+  const facts = hero ? factsFor(row) : undefined;
+  const content = hero && facts ? liveContent(row, hero.state, facts, now, hero.plan) : undefined;
+  const color = content?.emphasis === 'delay' ? theme.warning : theme.tint;
+  const href = {
+    pathname: '/journey/[id]' as const,
+    params: { id: row.id, from: row.fromCode, to: row.toCode },
+  };
+  const rowContent = (
+    <TripRow
+      trip={row}
+      now={now}
+      live={live}
+      // Where it is along the route, so the plane sits where the flight is
+      // rather than in the middle of the line.
+      progress={content?.progress ?? (live ? legProgress(row, now) : undefined)}
+      selected={selected}
+      highlight={hero ? {
+        color,
+        running: true,
+        action: (
+          <Pressable
+            testID="trip-view-live-card"
+            accessibilityRole="button"
+            accessibilityLabel="View live card above"
+            onPress={onViewLive}
+            style={({ pressed }) => [styles.viewLive, pressed && styles.rowPressed]}>
+            <ThemedText type="smallBold" themeColor="tint">View live card</ThemedText>
+            <SymbolView name={{ ios: 'arrow.up', android: 'arrow_upward', web: 'arrow_upward' }} size={12} tintColor={theme.tint} />
+          </Pressable>
+        ),
+        onOpenTrip: onSelect ?? (() => router.push(href)),
+        departure: facts?.estimatedDeparture,
+        arrival: facts?.estimatedArrival,
+      } : undefined}
+      // One right slot on the meta line: the money moment outranks the
+      // countdown the row would otherwise put there.
+      badge={claim || owed ? <MoneyBadge claim={claim} owed={owed} now={now} /> : undefined}
+    />
+  );
+  if (hero) return rowContent;
   const card = (
     <Pressable onPress={onSelect} style={({ pressed }) => pressed && styles.rowPressed}>
-      <TripRow
-        trip={row}
-        now={now}
-        live={live}
-        // Where it is along the route, so the plane sits where the flight is
-        // rather than in the middle of the line.
-        progress={live ? legProgress(row, now) : undefined}
-        selected={selected}
-        // One right slot on the meta line: the money moment outranks the
-        // countdown the row would otherwise put there.
-        badge={claim || owed ? <MoneyBadge claim={claim} owed={owed} now={now} /> : undefined}
-      />
+      {rowContent}
     </Pressable>
   );
   if (onSelect) return card;
   return (
     <Link
-      href={{
-        pathname: '/journey/[id]',
-        params: { id: row.id, from: row.fromCode, to: row.toCode },
-      }}
+      href={href}
       asChild>
       {card}
     </Link>
@@ -746,19 +816,26 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   list: {
-    gap: Spacing.two,
+    gap: Spacing.one,
     paddingHorizontal: Spacing.four,
-    // Breathing room past the auto tab-bar inset when scrolled to the end.
+    // Breathing room in addition to the platform's tab-bar clearance.
     paddingBottom: Spacing.three,
   },
-  liveHeading: { paddingTop: Spacing.three, paddingBottom: Spacing.two },
   sectionTitle: {
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginTop: Spacing.two,
+    marginTop: Spacing.one,
   },
   rowPressed: {
     opacity: 0.9,
+  },
+  viewLive: {
+    minHeight: 44,
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
   },
   claimBadge: {
     flexDirection: 'row',

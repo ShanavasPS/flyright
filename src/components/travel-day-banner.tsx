@@ -38,6 +38,8 @@ import { noteWarning, tapLight } from '@/services/haptics';
 import { factsFor } from '@/services/travel-day-lifecycle';
 import { stagePlans } from '@/services/travel-day-plan';
 import { useTravelDayStates } from '@/services/travel-day-store';
+import type { TripHeroGroup } from '@/services/trip-groups';
+import { flagEmoji } from '@/services/travel-recap';
 
 const SPRING = { damping: 18, stiffness: 170 } as const;
 /** The plane glyph's box on the route line — its travel is the line minus this. */
@@ -47,9 +49,8 @@ const BORDER_RADIUS = Spacing.four;
 
 /** The trip the home hero is showing live, if any: the soonest flight inside
  * its travel window (T−24h through landing), with its stage state. One
- * answer for the screen and the hero both — the screen uses it to keep that
- * trip out of the list (the hero IS its row for the day) and to word the
- * eyebrow, so the same flight never shows up twice with two countdowns. */
+ * answer for the screen and the hero both. The first flight expands in place;
+ * a later flight keeps a linked full row without a second live countdown. */
 export function useHeroTrip(
   journeys: JourneyRow[],
   now: Date,
@@ -77,30 +78,39 @@ export function useHeroTrip(
  * every day and nobody has to relearn which card is which. Sharing a single
  * card used to read as one confusing object: lifetime kilometres under a
  * boarding pass. */
-export function HomeHero({
-  journeys,
-  stats,
-  variant = 'full',
-  fallback,
-}: {
+export type HeroTrip = NonNullable<ReturnType<typeof useHeroTrip>>;
+
+type HomeHeroProps = {
   journeys: JourneyRow[];
   stats: TravelStats;
-  /** 'glance' = the live card by itself, with no all-time strip under it.
-   * The fold's top pane needs that (it must fit a half-screen without
-   * scrolling) and so does Home, where the all-time card belongs to the
-   * Flights tab next door and would otherwise appear on both. */
+  /** Glance omits all-time stats on Updates and above a tabletop hinge. */
   variant?: 'full' | 'glance';
-  /** What stands here on an ordinary day. The journal's answer is the navy
-   * all-time card; Home's is its own, because the two tabs sit next to each
-   * other and the same summary on both would read as one screen shown
-   * twice. Only a missing prop means the all-time card: `null` is Home
-   * saying "nothing here", and `??` would read it as missing. */
+  /** Only undefined means the stats fallback; null intentionally shows none. */
   fallback?: ReactNode;
-}) {
+  /** Flights shares its selection and clock with the hero and full list row, so
+   * arrival and connection handovers need no journal edit to refresh. */
+  snapshot?: { hero: HeroTrip | null; now: Date };
+  tripGroup?: TripHeroGroup;
+  onViewTrip?: () => void;
+};
+
+export function HomeHero(props: HomeHeroProps) {
+  return props.snapshot
+    ? <HeroContent {...props} {...props.snapshot} />
+    : <AutomaticHero {...props} />;
+}
+
+function AutomaticHero(props: HomeHeroProps) {
+  const now = useNow(60_000);
+  const hero = useHeroTrip(props.journeys, now);
+  return <HeroContent {...props} hero={hero} now={now} />;
+}
+
+function HeroContent({
+  stats, variant = 'full', fallback, hero, now, tripGroup, onViewTrip,
+}: HomeHeroProps & { hero: HeroTrip | null; now: Date }) {
   const router = useRouter();
   const theme = useTheme();
-  const now = useNow(60_000);
-  const hero = useHeroTrip(journeys, now);
   if (!hero) return <>{fallback === undefined ? <TravelStatsHeader stats={stats} /> : fallback}</>;
   const { journey: active, phase, state, plan } = hero;
 
@@ -124,7 +134,7 @@ export function HomeHero({
     {/* The border is the card's status: the brand's cobalt while the flight
         is running to plan, amber once the airline has posted a delay — the
         one colour cue a glance across the room can read. Once the flight is
-        live, a light runs clockwise around it: the card is happening now. */}
+        shown, a light runs clockwise around it, including the day-before reminder. */}
     <SheenCard style={[styles.card, { borderColor: `${statusColor}59` }]}>
       <Pressable
         accessibilityRole="button"
@@ -270,10 +280,27 @@ export function HomeHero({
         </View>
       </Pressable>
 
+      {tripGroup && onViewTrip && (
+        <Pressable
+          testID="hero-view-in-trip"
+          accessibilityRole="button"
+          accessibilityLabel={`View ${tripGroup.group.title} in trip`}
+          onPress={() => { tapLight(); onViewTrip(); }}
+          style={({ pressed }) => [styles.groupLink, { borderTopColor: theme.hairline }, pressed && styles.pressed]}>
+          <ThemedText type="smallBold" themeColor="heading" style={styles.groupName}>
+            {flagEmoji(tripGroup.group.country)} {tripGroup.group.title}
+          </ThemedText>
+          <View style={styles.groupAction}>
+            <ThemedText type="smallBold" themeColor="tint" style={styles.groupActionLabel}>View in trip</ThemedText>
+            <SymbolView name={{ ios: 'arrow.down', android: 'arrow_downward', web: 'arrow_downward' }} size={12} tintColor={theme.tint} />
+          </View>
+        </Pressable>
+      )}
+
       {/* Keyed by journey so a hero handover never inherits the previous
        * flight's delay/gate memory and false-flashes. */}
       <StatusFlash key={active.id} delayLabel={content.delayLabel} gate={content.gate} />
-      <RunningBorder color={statusColor} radius={BORDER_RADIUS} running={phase === 'live'} />
+      <RunningBorder color={statusColor} radius={BORDER_RADIUS} running />
     </SheenCard>
     {variant === 'full' && <TravelStatsStrip stats={stats} />}
     </View>
@@ -475,17 +502,17 @@ const styles = StyleSheet.create({
   },
   // The wash overlay is clipped to the rounded corners; SheenCard supplies
   // the surface, border and radius.
-  // Sized to the all-time summary card it replaces on a travel day, so the
-  // hero is one shape every day and only its content swaps. SheenCard's
-  // Spacing.four padding is the single biggest saving; the clock below is the
-  // other. Nothing is dropped — the rows are the same rows, tighter.
+  // Tighten padding and gaps, not the countdown or gate. The group shortcut
+  // stays a separate 44pt target rather than nesting inside Open trip.
   card: {
     overflow: 'hidden',
     borderWidth: BORDER_WIDTH,
-    padding: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + Spacing.one,
+    gap: Spacing.one,
   },
   liveSection: {
-    gap: Spacing.two - 2,
+    gap: Spacing.one,
   },
   spacedRow: {
     flexDirection: 'row',
@@ -519,7 +546,7 @@ const styles = StyleSheet.create({
     // lines hang under them (a moved flight shows two).
     alignItems: 'flex-start',
     gap: Spacing.three,
-    marginTop: Spacing.one,
+    marginTop: 0,
     // On wide windows (tablet, unfolded foldable) an unclamped contrail
     // strands the airport codes at the card's far edges — cap the route to a
     // boarding-pass-plausible width. No-op on phones.
@@ -565,7 +592,7 @@ const styles = StyleSheet.create({
   // The clock keeps its width; a long fact beside it shrinks instead.
   clockBlock: {
     flexShrink: 0,
-    gap: Spacing.one,
+    gap: Spacing.half,
   },
   clockLabelRow: {
     flexDirection: 'row',
@@ -632,8 +659,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.one,
   },
+  groupLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth },
+  groupName: { flex: 1, fontSize: 12, lineHeight: 16 },
+  groupAction: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, maxWidth: '45%' },
+  groupActionLabel: { fontSize: 12, lineHeight: 16, flexShrink: 1 },
   openTrip: {
     flex: 1,
   },

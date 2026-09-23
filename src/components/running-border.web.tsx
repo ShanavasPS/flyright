@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  cancelAnimation,
-  Easing,
   useAnimatedProps,
+  useFrameCallback,
   useReducedMotion,
   useSharedValue,
-  withRepeat,
-  withTiming,
 } from 'react-native-reanimated';
 import Svg, { Rect } from 'react-native-svg';
 
@@ -34,12 +31,14 @@ export function RunningBorder({ color, radius, running }: { color: string; radiu
   const perimeter = w > 0 && h > 0 ? 2 * (w + h) - 8 * r + 2 * Math.PI * r : 0;
   const animate = running && !reduceMotion && perimeter > 0;
 
+  const frame = useFrameCallback(({ timestamp }) => {
+    offset.value = -((timestamp % SWEEP_MS) / SWEEP_MS) * perimeter;
+  }, false);
+
   useEffect(() => {
-    if (!animate) return;
-    offset.value = 0;
-    offset.value = withRepeat(withTiming(-perimeter, { duration: SWEEP_MS, easing: Easing.linear }), -1, false);
-    return () => cancelAnimation(offset);
-  }, [animate, perimeter, offset]);
+    frame.setActive(animate);
+    return () => frame.setActive(false);
+  }, [animate, frame]);
 
   const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: offset.value }));
 
@@ -48,7 +47,7 @@ export function RunningBorder({ color, radius, running }: { color: string; radiu
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
       onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
-      {(animate || !running) && perimeter > 0 && (
+      {perimeter > 0 && (
         <Svg width={size.w} height={size.h}>
           <AnimatedRect
             x={inset}

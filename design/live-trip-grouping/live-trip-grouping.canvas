@@ -1,0 +1,104 @@
+{
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "text",
+      "x": 0,
+      "y": -210,
+      "width": 1340,
+      "height": 170,
+      "text": "# Live flights in grouped trips\n\nCurrent behavior and two alternatives. A keeps the live card at the top and a compact route pointer in its original place. B expands the flight inside its group. Design only. Open design/live-trip-grouping/canvas.html for eight travel moments, both themes and working shortcuts."
+    },
+    {
+      "id": "title-current",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 420,
+      "height": 120,
+      "text": "## 00 / Current\n\nThe live row is omitted; the US group starts with a stay."
+    },
+    {
+      "id": "phone-current",
+      "type": "file",
+      "file": "design/live-trip-grouping/previews/outbound-current.png",
+      "x": 0,
+      "y": 140,
+      "width": 400,
+      "height": 930
+    },
+    {
+      "id": "canada-current",
+      "type": "file",
+      "file": "design/live-trip-grouping/previews/canada-current.png",
+      "x": 0,
+      "y": 1230,
+      "width": 400,
+      "height": 930
+    },
+    {
+      "id": "title-anchor",
+      "type": "text",
+      "x": 460,
+      "y": 0,
+      "width": 420,
+      "height": 120,
+      "text": "## A / Keep a small pointer · Recommended\n\nOne live card, with the original route position retained."
+    },
+    {
+      "id": "phone-anchor",
+      "type": "file",
+      "file": "design/live-trip-grouping/previews/outbound-anchor.png",
+      "x": 460,
+      "y": 140,
+      "width": 400,
+      "height": 930
+    },
+    {
+      "id": "canada-anchor",
+      "type": "file",
+      "file": "design/live-trip-grouping/previews/canada-anchor.png",
+      "x": 460,
+      "y": 1230,
+      "width": 400,
+      "height": 930
+    },
+    {
+      "id": "title-inline",
+      "type": "text",
+      "x": 920,
+      "y": 0,
+      "width": 420,
+      "height": 120,
+      "text": "## B / Expand in its group\n\nThe flight stays put; later live flights require a shortcut or scroll."
+    },
+    {
+      "id": "phone-inline",
+      "type": "file",
+      "file": "design/live-trip-grouping/previews/outbound-inline.png",
+      "x": 920,
+      "y": 140,
+      "width": 400,
+      "height": 930
+    },
+    {
+      "id": "canada-inline",
+      "type": "file",
+      "file": "design/live-trip-grouping/previews/canada-inline.png",
+      "x": 920,
+      "y": 1230,
+      "width": 400,
+      "height": 930
+    },
+    {
+      "id": "canada-label",
+      "type": "text",
+      "x": 0,
+      "y": 1100,
+      "width": 1340,
+      "height": 100,
+      "text": "## Canada → US · the same list, scrolled to the live flight’s place\n\nYYZ → BOS stays in Canada. US trip continued starts with its nine-day stay. No nesting or separator inside this overall trip."
+    }
+  ],
+  "edges": []
+}

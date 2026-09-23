@@ -1,0 +1,122 @@
+# Seed a stopped, anonymous dedicated test app with seed-live-trip-row.py.
+# CASE: direct|connection|canada|homebound|stay|oneway|reminder. No clear-state.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright://flights"
+- assertNotVisible: "Something went wrong"
+- runFlow:
+    when:
+      true: ${CASE === 'stay'}
+    commands:
+      - assertNotVisible:
+          id: "travel-day-banner"
+      - scrollUntilVisible:
+          element: "Current trip"
+          direction: DOWN
+      - assertNotVisible:
+          id: "trip-live-row"
+      - takeScreenshot: ${SHOTS}/stay
+- runFlow:
+    when:
+      true: ${CASE !== 'stay'}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "travel-day-banner"
+          timeout: 30000
+      - takeScreenshot: ${SHOTS}/${CASE}-hero
+      - runFlow:
+          when:
+            true: ${CASE === 'direct' || CASE === 'connection' || CASE === 'oneway' || CASE === 'reminder'}
+          commands:
+            - assertVisible: "US trip"
+            - assertNotVisible:
+                id: "hero-view-in-trip"
+            - assertNotVisible:
+                id: "trip-live-row"
+            - assertNotVisible:
+                id: "trip-view-live-card"
+            - runFlow:
+                when:
+                  true: ${CASE === 'connection'}
+                commands:
+                  - scrollUntilVisible:
+                      element: "2h connection in London"
+                      direction: DOWN
+                  - takeScreenshot: ${SHOTS}/connection-inline
+                  - scrollUntilVisible:
+                      element:
+                        id: "travel-day-banner"
+                      direction: UP
+      - runFlow:
+          when:
+            true: ${CASE === 'canada' || CASE === 'homebound'}
+          commands:
+            - tapOn:
+                id: "hero-view-in-trip"
+                # The live countdown/borders intentionally never settle.
+                # Wait for the destination assertion instead of UI idleness.
+                waitToSettleTimeoutMs: 1000
+            - extendedWaitUntil:
+                visible:
+                  id: "trip-live-row"
+                timeout: 15000
+            - assertVisible:
+                id: "trip-view-live-card"
+            - runFlow:
+                when:
+                  true: ${CASE === 'connection'}
+                commands:
+                  - assertVisible: "2h connection in London"
+            - runFlow:
+                when:
+                  true: ${CASE === 'canada'}
+                commands:
+                  - assertVisible: "US trip continued"
+                  - assertNotVisible:
+                      id: "independent-trip-separator"
+            - takeScreenshot: ${SHOTS}/${CASE}-row
+            - tapOn:
+                id: "trip-view-live-card"
+                waitToSettleTimeoutMs: 1000
+            - extendedWaitUntil:
+                visible:
+                  id: "hero-view-in-trip"
+                timeout: 15000
+            - takeScreenshot: ${SHOTS}/${CASE}-back-to-live
+            - tapOn:
+                id: "hero-view-in-trip"
+                waitToSettleTimeoutMs: 1000
+            - extendedWaitUntil:
+                visible:
+                  id: "trip-live-row"
+                timeout: 15000
+            - waitForAnimationToEnd:
+                timeout: 2000
+            - tapOn:
+                id: "trip-live-row"
+                # Aim within the flight body, clear of its separate shortcut.
+                point: "25%,25%"
+                waitToSettleTimeoutMs: 1000
+            - extendedWaitUntil:
+                visible: "Trip options"
+                timeout: 20000
+            - openLink: "flyright://flights"
+            - scrollUntilVisible:
+                element:
+                  id: "travel-day-banner"
+                direction: UP
+                timeout: 20000
+      - tapOn:
+          id: "travel-day-banner"
+          waitToSettleTimeoutMs: 1000
+      - extendedWaitUntil:
+          visible: "Trip options"
+          timeout: 20000
+      - assertNotVisible: "Something went wrong"
+      - takeScreenshot: ${SHOTS}/${CASE}-detail

@@ -1,7 +1,10 @@
 # Flights: destination groups
 
-The Flights list uses the approved flat design in `design/trip-grouping/canvas.html`.
-Country flags and right-aligned dates identify each destination. A clock with a
+The Flights list uses the approved flat design in `design/trip-grouping/canvas.html`,
+with the 23 September live-flight revision: when the first flight is live,
+the small all-time summary leads and that flight expands into the live card
+inside its destination group. A later live flight has a top card linked to
+its original full row. Country flags and right-aligned dates identify each destination. A clock with a
 dotted vertical marker identifies a connection; a bed, explicit “Stay” label and
 short 16-point side lines identify time at the destination. The more visible
 full-width separator appears only between independent overall trips.
@@ -30,17 +33,55 @@ Adding, editing or deleting flights recomputes the groups through `useJourneys`.
 - Stay lengths count arrival-to-departure local calendar days, excluding
   flights and connecting layovers. A same-day visit says “Less than a day”.
   Missing or invalid schedules do not produce invented durations.
-- Complete trips remain together in Live, Upcoming or a completed-year section.
-  Flights within them read in travel order. Completed independent trips remain
-  newest first. The existing hero flight is omitted only after grouping, so its
-  destination and any following stay are retained.
+- Complete trips remain together in Current trip, Upcoming or a completed-year
+  section. Flights within them read in travel order. Completed independent trips
+  remain newest first. Classify the full trip before highlighting the active row,
+  so the final flight home cannot file the itinerary as completed too early.
+  An ongoing trip stays current during known stays between flights.
+
+## Live flight in the itinerary
+
+When the active flight is the first flight in the list, the small all-time
+summary comes first, then the destination heading and the expanded live card
+in that flight’s normal position. No duplicate row or jump links appear.
+This also covers a lone flight, a first connecting leg and the day-before
+reminder. The existing tabletop fold layout keeps its fixed glance pane.
+
+When an earlier flight precedes it, the live card remains at the top and the
+active flight keeps its full card in the chronological group: airline logo,
+date, flight number, route, cities and flight times. “View live card ↑” returns
+to the top; “View in trip ↓” finds that row. Both are separate 44-point targets,
+so tapping the flight body still opens the trip or selects the tablet detail.
+Both cards have the same animated border. After a connecting-leg handover,
+the first flight becomes a normal row and the later live flight gains the
+linked layout automatically.
+
+YYZ → BOS remains in Canada. BOS → HEL belongs to US trip continued, after its
+resumed stay. Both surfaces use one selection and minute clock, so reminder,
+arrival and connection handovers work without a journal edit. Stable row keys
+retain the reader's place. The iOS list reserves bottom safe-area clearance so
+the final row stays above the floating tabs when reached by the shortcut.
+
+Both cards reuse RunningBorder: 1.5-point stroke, 30% highlight and a 3.2-second
+clockwise lap. Absolute frame timestamps keep their phase aligned after a row
+remounts. Both derive amber/cobalt and flight estimates from the same facts;
+changed flight times retain the original times struck through. The border runs
+throughout the displayed travel-day window, including the day-before reminder.
+The hero retains its live status label; the row uses the return shortcut.
+Reduce Motion stays solid.
+
+The live hero has 12-point vertical padding, 16-point horizontal padding and
+4-point row gaps. Countdown and gate sizes stay unchanged. Its group link is a
+separate 44-point tap target. In the list, gaps are 4 points, stays have 4-point
+vertical padding, and group headings have 4 points above with no extra bottom margin. The short
+stay lines and separators between independent trips keep their distinct styles.
 
 ## Regression checks
 
 Run `npm run typecheck` and `npm test -- --runInBand --watchman=false`.
 `src/services/trip-groups.test.ts` covers incremental imports, deletion, date
 edits, incomplete returns, connections, bookings, repeated visits, domestic
-travel, calendar boundaries, malformed schedules, hero exclusion and row identity.
+travel, calendar boundaries, malformed schedules, hero placement, connection handovers and row identity.
 
 The native layout flow is `.maestro/trip-grouping.yaml`. Use dedicated test
 installations with Metro serving the current workspace. Stop the app, obtain
@@ -96,3 +137,63 @@ expo-router development warning (“Can't perform a React state update…”),
 whose toast covers the tab bar. It still requires the signed-in account,
 loaded Friends data and World on both cold starts. Production candidate
 checks run separately without development LogBox overlays.
+
+
+### Live-row native checks
+
+Use `.maestro/live-trip-row.yaml` with `CASE` and `SHOTS`. The helper
+`scripts/seed-live-trip-row.py <SQLite-directory> <scenario>` prepares
+clock-relative anonymous fixtures in a **stopped, dedicated test app** and
+refuses a database with signed-in users’ other trips. It supports direct,
+connection, Canada-return, homebound, stay, one-way and reminder cases. It only
+replaces `live-pointer-*` records and their cached facts. Follow the existing
+copy/stop/relaunch recipe above; do not seed a personal installation.
+
+The test checks first-flight expansion with no duplicate row or jump links,
+then both shortcuts for a later live flight. It opens the original trip detail
+from the full row and hero and checks connections and the Canada/continued-US
+boundary. The first-flight branch includes one-way and day-before reminders.
+Evidence for the option-A implementation is under
+`.maestro/out/live-trip-pointer-20260923/`. These are development simulator and
+emulator checks, not a new store release or physical-device verification.
+
+The homebound check caught a final-row overlap with iOS's floating tabs; the
+list now explicitly reserves its safe-area clearance, and both shortcuts pass.
+Live-card taps cap the test runner’s idle wait at one second because the
+countdown and border intentionally keep changing. Before tapping the flight
+body after a shortcut, the flow allows the list scroll two seconds to settle
+and targets the body clear of the separate shortcut. Destination assertions
+still require the expected card or trip detail; a manual native tap also
+verified Android detail navigation while diagnosing the runner’s stale bounds.
+
+On 2026-09-23, the original pointer version’s six seeded scenarios (Canada, connection, homebound,
+reminder, one-way and stay) passed on the iPhone 17 Pro / iOS 27 simulator
+and Pixel 9a / Android API 37 emulator. The existing clean-launch/onboarding
+smoke passed on both. TypeScript, scoped ESLint, all 96 Jest suites (1,139
+tests), all 24 security fixtures and the web export passed.
+
+Fresh email-OTP sign-up passed on both platforms. iOS also passed the existing
+sign-out/new-account/original-account round trip. Android required native
+keyboard input after Maestro's known Clerk erase-text timeout; space repeated
+R key events more than 200 ms apart when typing into the native Compose form,
+or React Native Debug's double-R shortcut reloads the app mid-address. The
+new Android account passed both signed-in cold starts and was signed out
+through the native account sheet afterward. No authentication code changed.
+
+The final first-flight expansion revision passed four native cases on **each**
+platform: reminder, first connecting leg, lone flight, and the later Canada
+return. The first three require a single expanded live card and no jump links;
+the later-flight case checks both links and trip detail from both cards.
+The earlier homebound check also passed on both platforms, including the final
+row’s clearance above the tabs. The final grouping/travel-day run passed all
+86 tests, with TypeScript, scoped ESLint and the web export also passing.
+Screenshots and flow logs are in `.maestro/out/live-trip-row-20260923/`.
+Short native recordings confirmed moving borders, including the reminder window.
+
+After testing, the dedicated iOS fixtures were cleared and the original iOS
+simulator was reopened with its 82 stored journey rows and no fixture IDs.
+Android’s pre-test snapshot was restored; all 30 original journey IDs matched
+its backup and the original account was reopened. No authentication, backend,
+version or release configuration changed in this live-card revision. Physical
+phones were skipped as requested; these checks used Debug 1.1.2 (iOS 63,
+Android 59) with the current workspace served by Metro.

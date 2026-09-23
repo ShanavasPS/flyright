@@ -61,12 +61,12 @@ export function IndependentTripSeparator() {
 }
 
 const styles = StyleSheet.create({
-  heading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.three, marginBottom: Spacing.two },
+  heading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
   title: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minWidth: 0 },
   flag: { fontSize: 22, lineHeight: 28 },
   name: { fontSize: 16, flexShrink: 1 },
   dates: { fontSize: 12, lineHeight: 16, textAlign: 'right', maxWidth: '40%', fontVariant: ['tabular-nums'] },
-  stay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.three },
+  stay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.one },
   shortLine: { width: Spacing.three, flexShrink: 0, height: StyleSheet.hairlineWidth },
   stayLabel: { fontSize: 12, flexShrink: 0 },
   stayCopy: { flexShrink: 1, textAlign: 'center' },
