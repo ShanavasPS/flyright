@@ -6,8 +6,8 @@ Shared release log for Codex and Claude. Read before a release and prepend dated
 
 Supersedes the held 1.1.3 builds below. The user resumed publication, asked for
 the trip-heading and grouping work to ship with it, and **explicitly skipped
-physical-device tests** again. iOS was submitted for review; see the table for
-what each platform actually reached.
+physical-device tests** again. iOS reached `WAITING_FOR_REVIEW` and Play production completed its rollout;
+Apple's approval timing is its own and is not claimed here.
 
 | Item | Observed result |
 | --- | --- |
@@ -16,7 +16,7 @@ what each platform actually reached.
 | Backend | `npm run release:deploy-backend` passed: **71 referenced client functions** deployed on production and development. Adds read-only `devTools:inspectItinerary`, `inspectRoute` and `clearViewerJournal`. |
 | Hosting | Deployed and promoted; `getflyright.com` serves `entry-07b920c5111767bfcde41d3c2d8a1e2b.js`, matching the export, so the production alias moved. `/api/app-version?version=1.1.2` returns live store version **1.1.2** with empty notes, which is correct until the store serves 1.1.3. `.env.production.local` removed after deploying. |
 | iOS | Local Xcode 27 build **66**, verified `1.1.3 (66)`, `iphoneos27.0`, scene manifest present. Submission **`28018291-ec61-40ec-a044-de73f8d43aaf`** for build 65 and the build-66 upload both finished; ASC build **`7eb408a8-6cdd-4626-bab1-71020fd9f4a1` VALID** attached to version **`a0dca108-aeb8-4fcd-882b-0371484b0230`**. Review submission **`41a4f32b-6daa-4c07-b2cb-fad6c78a9469`** submitted 18:56 UTC: **`WAITING_FOR_REVIEW`**, `releaseType AFTER_APPROVAL`. |
-| Android | EAS build **`7ba834ce-f9d3-4254-b834-57f4ea7ebb8b`** versionCode **63** with `--auto-submit`, submission **`0a58829b-58d5-4959-9004-038f35ced7db`**. Earlier build `b3c72535` (61) **errored** with no artifact and cancelled its submission; `39f66249` (62) finished but predates the grouping commits. |
+| Android | EAS build **`7ba834ce-f9d3-4254-b834-57f4ea7ebb8b`** versionCode **63** FINISHED, submission **`0a58829b-58d5-4959-9004-038f35ced7db`** FINISHED to `internal`. Promoted to **production** in edit `14599592560087283355`: re-reading the track shows **1.1.3 (63), `completed`, full rollout**, replacing 1.1.2 (59). Release notes 471 chars. Earlier build `b3c72535` (61) **errored** with no artifact and cancelled its submission; `39f66249` (62) finished but predates the grouping commits. |
 | Store metadata | What's New updated on localization **`635afcac-739d-4940-9597-78291e06d200`** (9 bullets, 1,200 chars). Reviewer notes PATCHed on **`ae0e6824-bc79-4b56-b540-71093133f82b`**; demo account `appreview@getflyright.com` preserved. `store/apple/review-notes-1.1.3.txt` updated to match. |
 | Screenshots | Only `phone-01-journeys` shows a trip heading, so it alone was reshot, from the iPhone Release build with the nine-trip demo journal. The other six iPhone panels and all iPad panels were carried forward unchanged. **The Android raw was NOT reshot** — `adb run-as` cannot reach app data on a non-debuggable release APK, so the emulator could not be reseeded after installing it. |
 | Physical devices | **Skipped at the user's explicit request.** No physical-phone coverage is claimed. |
