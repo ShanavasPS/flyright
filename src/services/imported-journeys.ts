@@ -1,6 +1,8 @@
 /** Shared-document matching and patches are pure so every import path uses
  * the same identity rules without replacing the traveller's journal. */
 import { airportZone } from '@/services/airports';
+import { parseBcbp } from '@/services/bcbp';
+import { legFor } from '@/services/boarding-pass';
 import { flightDay } from '@/services/dates';
 import type { ImportedSegment } from '@/services/itinerary';
 import type { JourneyRow, NewJourneyRow } from '@/services/journeys';
@@ -22,17 +24,27 @@ export type JourneyIdentity = Pick<
   'mode' | 'number' | 'fromCode' | 'toCode' | 'scheduledDeparture'
 >;
 
+/** A confirmed codeshare keeps the ticket's number on the trip and the
+ * operator's number in its boarding pass. Both identify this leg on rescan. */
+function hasFlightNumber(row: JourneyRow, number: string): boolean {
+  if (normalizedFlight(row.number) === number) return true;
+  const pass = row.passCode ? parseBcbp(row.passCode) : null;
+  if (!pass) return false;
+  const leg = legFor(pass, {
+    ...row, date: flightDay(row.scheduledDeparture, airportZone(row.fromCode)),
+  });
+  return !!leg && normalizedFlight(leg.flight) === number;
+}
+
 /** The journal row `candidate` is another copy of: same route, same
  * origin-local departure day, same flight number. Numbers are normalized
  * ('QR 0517' → 'QR517') and the day is read in the origin airport's zone, so
  * the two id formats above — and a UTC row against a bare wall-clock one —
  * still land on one trip.
  *
- * Deliberately strict. A codeshare held under the marketing number on one
- * copy and the operating number on the other is NOT matched here: telling
- * those apart from two genuinely different flights needs the shared booking
- * reference that only a document carries, which is `matchingImportedJourney`
- * below. */
+ * An attached pass can also supply a previously confirmed operating number.
+ * An unconfirmed codeshare needs a shared booking reference or the traveller's
+ * confirmation through the import flow below. */
 export function matchingJourney(candidate: JourneyIdentity, rows: JourneyRow[]): JourneyRow | null {
   if (candidate.mode !== 'flight') return null;
   const number = normalizedFlight(candidate.number);
@@ -45,10 +57,19 @@ export function matchingJourney(candidate: JourneyIdentity, rows: JourneyRow[]):
         !row.deletedAt &&
         row.fromCode === candidate.fromCode &&
         row.toCode === candidate.toCode &&
-        normalizedFlight(row.number) === number &&
+        hasFlightNumber(row, number) &&
         flightDay(row.scheduledDeparture, airportZone(row.fromCode)) === day,
     ) ?? null
   );
+}
+
+/** Route and day are enough to suggest an existing leg, never to silently
+ * merge different flight numbers: a traveller can fly that route twice. */
+export function possibleImportedJourneys(segment: ImportedSegment, rows: JourneyRow[]): JourneyRow[] {
+  if (!segment.date || !segment.fromCode || !segment.toCode) return [];
+  return rows.filter(row => row.mode === 'flight' && !row.deletedAt &&
+    row.fromCode === segment.fromCode && row.toCode === segment.toCode &&
+    flightDay(row.scheduledDeparture, airportZone(row.fromCode)) === segment.date);
 }
 
 export function matchingImportedJourney(segment: ImportedSegment, rows: JourneyRow[]): JourneyRow | null {
@@ -56,12 +77,18 @@ export function matchingImportedJourney(segment: ImportedSegment, rows: JourneyR
   const candidates = rows.filter(row => row.mode === 'flight' && !row.deletedAt &&
     flightDay(row.scheduledDeparture, airportZone(row.fromCode)) === segment.date &&
     (!segment.fromCode || row.fromCode === segment.fromCode) && (!segment.toCode || row.toCode === segment.toCode));
-  const exact = candidates.filter(row => normalizedFlight(row.number) && normalizedFlight(row.number) === normalizedFlight(segment.flight));
-  if (exact.length) return exact.find(row => row.passCode === segment.pass?.code) ?? exact[0];
+  const number = normalizedFlight(segment.flight);
+  const exact = candidates.filter(row => number && hasFlightNumber(row, number));
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) {
+    const samePass = exact.filter(row => segment.pass && row.passCode === segment.pass.code);
+    return samePass.length === 1 ? samePass[0] : null;
+  }
   // A receipt can use the marketing number while the pass uses the operator.
   // Require the same booking and full route, or a journal entry with no number.
   if (!segment.fromCode || !segment.toCode) return null;
-  const alternate = candidates.filter(row => !row.number || (!!segment.pnr && !!row.bookingReference && row.bookingReference.toUpperCase() === segment.pnr.toUpperCase()));
+  const booking = segment.pnr?.trim().toUpperCase();
+  const alternate = candidates.filter(row => !row.number || (booking && row.bookingReference?.trim().toUpperCase() === booking));
   return alternate.length === 1 ? alternate[0] : null;
 }
 
@@ -70,7 +97,10 @@ export function importedJourneyPatch(segment: ImportedSegment, row: JourneyRow, 
   const seat = segment.seat?.trim();
   const booking = segment.pnr?.trim();
   if (seat && seat !== row.seat) patch.seat = seat;
-  if (booking && booking !== row.bookingReference) patch.bookingReference = booking;
+  // A partner's locator can differ from the ticket's. Keep the original
+  // booking; the operating locator remains available in the attached pass.
+  const codeshare = row.number && segment.flight && normalizedFlight(row.number) !== normalizedFlight(segment.flight);
+  if (booking && booking !== row.bookingReference && (!codeshare || !row.bookingReference)) patch.bookingReference = booking;
   if (!row.number && segment.flight) patch.number = segment.flight;
   if (segment.pass && (segment.pass.code !== row.passCode || segment.pass.format !== row.passFormat)) {
     Object.assign(patch, { passCode: segment.pass.code, passFormat: segment.pass.format, passCapturedAt: now });

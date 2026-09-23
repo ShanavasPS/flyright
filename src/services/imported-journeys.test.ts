@@ -1,6 +1,7 @@
-import { importedJourneyPatch, matchingImportedJourney, matchingJourney, normalizedFlight } from './imported-journeys';
+import { importedJourneyPatch, matchingImportedJourney, matchingJourney, normalizedFlight, possibleImportedJourneys } from './imported-journeys';
 import type { JourneyRow, NewJourneyRow } from './journeys';
 import type { ImportedSegment } from './itinerary';
+import { CODESHARE_PASS, CODESHARE_SEGMENT, CODESHARE_TRIP } from './__fixtures__/codeshare';
 
 const code = 'M1LINDQVIST/MAJA      EFRX7YQ HELLHRAY 1331 257Y014A0042 100';
 const segment = { flight: 'AY1331', date: '2026-09-14', fromCode: 'HEL', toCode: 'LHR', seat: '14A', pnr: 'FRX7YQ', depTime: null, arrTime: null, pass: { code, format: 'pdf417' } } as ImportedSegment;
@@ -67,8 +68,62 @@ it('keeps genuinely different trips apart', () => {
   expect(matchingJourney({ ...manualCopy, number: '' }, [{ ...lookupCopy, number: '' }])).toBeNull();
 });
 it('leaves a codeshare pair to the document matcher, which has the booking', () => {
-  // AS686 and QR3387 are the same SEA-PDX metal; only a shared PNR proves it.
+  // Different numbers without a booking or previously attached pass need confirmation.
   const operating = { ...lookupCopy, id: 'AS686-2026-07-25', number: 'AS686', fromCode: 'SEA', toCode: 'PDX', scheduledDeparture: '2026-07-25T22:55Z' } as JourneyRow;
   const marketing = { ...manualCopy, id: 'QR3387-SEA-PDX-2026-07-25', number: 'QR3387', fromCode: 'SEA', toCode: 'PDX', scheduledDeparture: '2026-07-25T15:55:00' } as NewJourneyRow;
   expect(matchingJourney(marketing, [operating])).toBeNull();
+});
+
+describe('marketing ticket followed by an operating boarding pass', () => {
+  it('suggests the existing leg when the partner uses a different or missing booking reference', () => {
+    for (const pnr of ['ASPNR1', null]) {
+      const incoming = { ...CODESHARE_SEGMENT, pnr };
+      expect(matchingImportedJourney(incoming, [CODESHARE_TRIP])).toBeNull();
+      expect(possibleImportedJourneys(incoming, [CODESHARE_TRIP])).toEqual([CODESHARE_TRIP]);
+    }
+  });
+
+  it('matches automatically when the booking reference agrees, including whitespace and case', () => {
+    expect(matchingImportedJourney({ ...CODESHARE_SEGMENT, pnr: ' qrpnr1 ' }, [CODESHARE_TRIP])).toBe(CODESHARE_TRIP);
+  });
+
+  it('keeps the ticket number, booking and journal after confirmation, and recognises subsequent scans', () => {
+    const patch = importedJourneyPatch(CODESHARE_SEGMENT, CODESHARE_TRIP, 'now');
+    expect(patch).toEqual({ seat: '2A', passCode: CODESHARE_PASS, passFormat: 'pdf417', passCapturedAt: 'now' });
+    const saved = { ...CODESHARE_TRIP, ...patch } as JourneyRow;
+    expect(saved).toMatchObject({ id: 'qatar-leg', number: 'QR3387', bookingReference: 'QRPNR1', notes: 'Keep my journal', privateTrip: true });
+    // A changed barcode/seat or locator still has the confirmed operator number.
+    const reissued = { ...CODESHARE_SEGMENT, pnr: 'NEWPNR', seat: '3B', pass: { code: CODESHARE_PASS.replace('002A', '003B'), format: 'aztec' as const } };
+    expect(matchingImportedJourney(reissued, [saved])).toBe(saved);
+    expect(matchingJourney({ ...saved, number: 'AS 0686' }, [saved])).toBe(saved);
+    expect(matchingImportedJourney({ ...CODESHARE_SEGMENT, flight: 'QR3387', pass: null }, [saved])).toBe(saved);
+    expect(importedJourneyPatch(CODESHARE_SEGMENT, saved, 'later')).toEqual({});
+  });
+
+  it('never offers another route, departure day, deleted trip or non-flight', () => {
+    const others = [
+      { ...CODESHARE_TRIP, toCode: 'SFO' },
+      { ...CODESHARE_TRIP, scheduledDeparture: '2026-07-26T22:55:00Z' },
+      { ...CODESHARE_TRIP, deletedAt: 'now' },
+      { ...CODESHARE_TRIP, mode: 'train' as const },
+    ];
+    expect(possibleImportedJourneys(CODESHARE_SEGMENT, others)).toEqual([]);
+    expect(possibleImportedJourneys({ ...CODESHARE_SEGMENT, fromCode: null }, [CODESHARE_TRIP])).toEqual([]);
+  });
+
+  it('does not guess between several existing flights', () => {
+    const duplicate = { ...CODESHARE_TRIP, id: 'another', number: 'QR3388' };
+    expect(possibleImportedJourneys(CODESHARE_SEGMENT, [CODESHARE_TRIP, duplicate])).toHaveLength(2);
+    expect(matchingImportedJourney({ ...CODESHARE_SEGMENT, pnr: 'QRPNR1' }, [CODESHARE_TRIP, duplicate])).toBeNull();
+  });
+
+  it('does not borrow the operating number from a different leg in an attached pass', () => {
+    const unrelated = { ...CODESHARE_TRIP, passCode: CODESHARE_PASS.replace('SEAPDX', 'SEASFO') };
+    expect(matchingImportedJourney(CODESHARE_SEGMENT, [unrelated])).toBeNull();
+    const otherDay = { ...CODESHARE_TRIP, passCode: CODESHARE_PASS.replace('206Y', '207Y') };
+    expect(matchingImportedJourney(CODESHARE_SEGMENT, [otherDay])).toBeNull();
+    const connection = { ...CODESHARE_TRIP, passCode: 'M2DOE/JOHNMR          EASPNR1 SEAPDXAS 0686 206Y002A0042 100ASPNR1 PDXSFOAS 0330 206Y002A0042 100' };
+    expect(matchingImportedJourney(CODESHARE_SEGMENT, [connection])).toBe(connection);
+    expect(matchingImportedJourney({ ...CODESHARE_SEGMENT, flight: 'AS330' }, [connection])).toBeNull();
+  });
 });

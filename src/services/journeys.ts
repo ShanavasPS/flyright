@@ -12,7 +12,7 @@ import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
-import { importedJourneyPatch, matchingImportedJourney, matchingJourney } from '@/services/imported-journeys';
+import { importedJourneyPatch, matchingImportedJourney, matchingJourney, possibleImportedJourneys } from '@/services/imported-journeys';
 import type { ImportedSegment } from '@/services/itinerary';
 
 export type JourneyRow = typeof journeys.$inferSelect;
@@ -122,11 +122,15 @@ export async function addJourney(row: NewJourneyRow) {
 
 /** Recheck under the same SQLite transaction as the write. A delayed lookup,
  * repeated share or second import screen cannot turn an update into a new trip. */
-export async function saveImportedJourney(segment: ImportedSegment, newRow: NewJourneyRow | null, currentUserId: string | null | undefined) {
+export async function saveImportedJourney(segment: ImportedSegment, newRow: NewJourneyRow | null, currentUserId: string | null | undefined, confirmedId?: string) {
   const now = new Date().toISOString();
   const result = db.transaction(tx => {
     const rows = tx.select().from(journeys).where(visibleTo(currentUserId)).all();
-    const existing = matchingImportedJourney(segment, rows) ?? (newRow ? rows.find(row => row.id === newRow.id) : null);
+    // A confirmation applies only to this account's still-visible route/day.
+    // A removed or edited trip must not turn confirmation into a new insert.
+    const confirmed = confirmedId ? possibleImportedJourneys(segment, rows).find(row => row.id === confirmedId) : null;
+    if (confirmedId && !confirmed) throw new Error('This trip has changed. Close this screen and share the pass again.');
+    const existing = confirmed ?? matchingImportedJourney(segment, rows) ?? (newRow ? rows.find(row => row.id === newRow.id) : null);
     if (existing) {
       const patch = importedJourneyPatch(segment, existing, now);
       if (Object.keys(patch).length) tx.update(journeys).set({ ...patch, updatedAt: now }).where(eq(journeys.id, existing.id)).run();

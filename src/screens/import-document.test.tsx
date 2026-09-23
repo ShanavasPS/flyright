@@ -1,15 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, create } from 'react-test-renderer';
+import { Alert } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
 import { FINNAIR_RECEIPT } from '@/services/__fixtures__/itinerary-documents';
+import { CODESHARE_PASS, CODESHARE_TRIP } from '@/services/__fixtures__/codeshare';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { extractItinerary } from '@/services/itinerary';
-import { saveImportedJourney } from '@/services/journeys';
+import { saveImportedJourney, type JourneyRow } from '@/services/journeys';
 import { ImportDocument } from './import-document';
 
 const mockDocument = { kind: 'pdf', name: 'five-flights.pdf', read: jest.fn() };
 let mockSignedIn = true;
+let mockJourneys: JourneyRow[] = [];
 jest.mock('@clerk/expo', () => ({
   useAuth: () => ({ userId: mockSignedIn ? 'traveller' : null, isSignedIn: mockSignedIn, isLoaded: true }),
 }));
@@ -19,7 +22,7 @@ jest.mock('@/services/flight-lookup', () => ({
   lookupFlight: jest.fn(),
 }));
 jest.mock('@/services/journeys', () => ({
-  useJourneys: () => ({ data: [] }),
+  useJourneys: () => ({ data: mockJourneys }),
   saveImportedJourney: jest.fn(),
 }));
 jest.mock('expo-router', () => ({
@@ -97,6 +100,7 @@ beforeEach(() => {
   // The parser's development-only document dump adds no evidence to these tests.
   jest.spyOn(console, 'log').mockImplementation(() => {});
   mockSignedIn = true;
+  mockJourneys = [];
   pending = new Map();
   client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
   mockDocument.read.mockResolvedValue({ pages: FINNAIR_RECEIPT, pageCount: FINNAIR_RECEIPT.length });
@@ -193,4 +197,55 @@ it('preserves a traveller’s deselection while the other lookups finish', async
   expect(button().props.label).toBe('Add 4 flights →');
   await pressAdd();
   expect(savedFlights()).toEqual(segments.slice(1).map(segment => segment.flight));
+});
+
+describe('an operating boarding pass for an existing marketing flight', () => {
+  async function mountPass() {
+    mockDocument.read.mockResolvedValue({ pages: [{ text: '', barcodes: [CODESHARE_PASS], barcodeFormats: ['pdf417'] }], pageCount: 1 });
+    await mount();
+    await act(async () => pending.get('AS686')!.reject(new FlightLookupError('No live record', 404)));
+    await flushQueries();
+  }
+
+  it('updates the selected original trip after confirming a different partner locator, even offline', async () => {
+    mockJourneys = [CODESHARE_TRIP];
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.text === 'Update existing')?.onPress?.();
+    });
+    await mountPass();
+    await pressAdd();
+    expect(alert).toHaveBeenCalledWith('Is this the same flight?', expect.stringContaining('QR3387'), expect.any(Array), expect.any(Object));
+    expect(saveImportedJourney).toHaveBeenCalledTimes(1);
+    expect(saveImportedJourney).toHaveBeenCalledWith(expect.objectContaining({ flight: 'AS686', pnr: 'ASPNR1' }), null, 'traveller', 'qatar-leg');
+  });
+
+  it('returns to review without saving on cancellation', async () => {
+    mockJourneys = [CODESHARE_TRIP];
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.text === 'Cancel')?.onPress?.();
+    });
+    await mountPass();
+    await pressAdd();
+    expect(saveImportedJourney).not.toHaveBeenCalled();
+    expect(button().props.disabled).toBe(false);
+  });
+
+  it('allows a separate flight after an explicit choice', async () => {
+    mockJourneys = [CODESHARE_TRIP];
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.text === 'Add separately')?.onPress?.();
+    });
+    await mountPass();
+    await pressAdd();
+    expect(saveImportedJourney).toHaveBeenCalledWith(expect.objectContaining({ flight: 'AS686' }), expect.objectContaining({ number: 'AS686' }), 'traveller');
+  });
+
+  it('recognises a confirmed operating number automatically on the next import', async () => {
+    mockJourneys = [{ ...CODESHARE_TRIP, passCode: CODESHARE_PASS.replace('002A', '003B'), passFormat: 'pdf417' }];
+    const alert = jest.spyOn(Alert, 'alert');
+    await mountPass();
+    await pressAdd();
+    expect(alert).not.toHaveBeenCalled();
+    expect(saveImportedJourney).toHaveBeenCalledWith(expect.objectContaining({ flight: 'AS686' }), null, 'traveller', undefined);
+  });
 });

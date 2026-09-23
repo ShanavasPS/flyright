@@ -40,6 +40,7 @@ import { saveImportedJourney, useJourneys, type NewJourneyRow } from '@/services
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 import { importedJourneyPatch, matchingImportedJourney } from '@/services/imported-journeys';
+import { confirmImportedJourney } from '@/services/confirm-imported-journey';
 import { legSchedule } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
@@ -315,12 +316,25 @@ export function ImportDocument() {
     saving.current = true;
     try {
       setPhase((current) => (current.kind === 'review' ? { ...current, kind: 'saving' } : current));
+      // Resolve uncertain codeshares before writing any of this document, so
+      // cancelling the confirmation leaves the selected trips untouched.
+      const confirmedIds = new Map<string, string>();
+      for (const { segment, existingId } of selectedRows) {
+        if (existingId) continue;
+        const existing = await confirmImportedJourney(segment, journeys);
+        if (existing === 'cancel') {
+          setPhase(current => current.kind === 'saving' ? { ...current, kind: 'review' } : current);
+          return;
+        }
+        if (existing) confirmedIds.set(segment.key, existing.id);
+      }
       let tracked = 0;
       const now = new Date().toISOString();
       let attached = 0;
       for (const { segment, plan, attachable, existingId } of selectedRows) {
-        if (attachable && existingId) {
-          await saveImportedJourney(segment, null, userId);
+        const confirmedId = confirmedIds.get(segment.key);
+        if ((attachable && existingId) || confirmedId) {
+          await saveImportedJourney(segment, null, userId, confirmedId);
           attached += 1;
           trackEvent('boarding_pass_attached', { via: 'document' });
           continue;
