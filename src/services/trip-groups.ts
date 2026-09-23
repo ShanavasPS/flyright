@@ -289,7 +289,13 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
   const sections: TripListSection[] = [];
   for (const { trip, key } of filed) {
     const items: TripListItem[] = [];
-    for (const group of trip.groups) {
+    // Travel order is what a traveller wants of a trip they are on or about to
+    // take: the legs come in the order they will be flown. A finished trip is
+    // read the other way, newest first, like the trips around it — so its
+    // destinations are reversed and the whole past list descends by date.
+    // Each destination keeps its own flight-then-stay order internally.
+    const completed = key !== 'current' && key !== 'upcoming';
+    for (const group of completed ? [...trip.groups].reverse() : trip.groups) {
       const entries = group.entries;
       items.push({ kind: 'header', key: `header:${group.id}`, group, dates: tripGroupDates(group, now.getFullYear()) });
       let previousId: string | undefined;

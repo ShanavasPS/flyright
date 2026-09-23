@@ -35,8 +35,11 @@ Adding, editing or deleting flights recomputes the groups through `useJourneys`.
   flights and connecting layovers. A same-day visit says “Less than a day”.
   Missing or invalid schedules do not produce invented durations.
 - Complete trips remain together in Current trip, Upcoming or a completed-year
-  section. Flights within them read in travel order. Completed independent trips
-  remain newest first. Classify the full trip before highlighting the active row,
+  section. A current or upcoming trip reads in travel order, the order its legs
+  will be flown. A completed trip reads back the other way, its destinations
+  newest first, so the whole past list descends by date; each destination keeps
+  its own flight-then-stay order. Completed independent trips remain newest first.
+  Classify the full trip before highlighting the active row,
   so the final flight home cannot file the itinerary as completed too early.
   An ongoing trip stays current during known stays between flights.
 

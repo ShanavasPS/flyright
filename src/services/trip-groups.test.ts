@@ -177,6 +177,15 @@ describe('trip grouping from the current journal', () => {
     expect(stays(rows)).toMatchObject([{ days: 4, place: 'the US' }, { days: 3, place: 'the US' }]);
   });
 
+  it('reads a finished trip newest destination first, while a coming one keeps travel order', () => {
+    const headers = (rows: JourneyRow[], now: Date) =>
+      tripListSections(rows, now).flatMap(s => s.data.flatMap(d => (d.kind === 'header' ? [d.group.title] : [])));
+    // Still to fly: the legs come in the order they will be flown.
+    expect(headers(all, NOW)).toEqual(['New York', 'Toronto', 'Boston']);
+    // Flown: read back like the trips around it, newest destination first.
+    expect(headers(all, new Date('2027-08-01T12:00:00Z'))).toEqual(['Boston', 'Toronto', 'New York']);
+  });
+
   it('handles unknown airports, invalid schedules and non-flight modes without dropping records', () => {
     const unknown = flight('unknown', 'ZZZ', 'XXX', '2027-07-01T10:00Z', '2027-07-01T13:00Z');
     const invalid = { ...back, id: 'invalid', scheduledDeparture: 'bad', scheduledArrival: 'bad' };
@@ -226,10 +235,14 @@ describe('grouped list sections', () => {
     expect(tripGroupDates(buildTripGroups([a, b])[0]!.groups[0]!, 2027)).toBe('20 Dec 2026 – 6 Jan 2027');
   });
 
-  it('sorts completed independent trips newest first but each trip chronologically', () => {
+  it('sorts completed trips newest first, and each finished trip newest destination first', () => {
     const portugal = flight('portugal', 'HEL', 'LIS', '2027-07-01T10:00', '2027-07-01T14:00');
     const sections = tripListSections([...all, portugal], new Date('2027-09-01'));
-    expect(sections[0]!.data.flatMap(i => i.kind === 'flight' ? [i.journey.id] : [])).toEqual(['portugal', ...all.map(r => r.id)]);
+    // Portugal is the latest trip, then the US/Canada trip read back from its
+    // last destination: Boston, Toronto, New York.
+    expect(sections[0]!.data.flatMap(i => i.kind === 'flight' ? [i.journey.id] : [])).toEqual([
+      'portugal', 'canada-back', 'back', 'canada-out', 'out',
+    ]);
   });
 
   it('keeps the active full row without losing its destination, stays or position', () => {
@@ -261,7 +274,10 @@ describe('grouped list sections', () => {
     expect(tripListSections(all, afterScheduledLanding, back.id)[0]!.key).toBe('current');
     const complete = tripListSections(all, afterScheduledLanding);
     expect(complete.map(s => s.key)).toEqual(['2027']);
-    expect(complete[0]!.data.filter(i => i.kind === 'flight').map(i => i.journey.id)).toEqual(all.map(j => j.id));
+    // Filed as finished, so its destinations read back newest first.
+    expect(complete[0]!.data.filter(i => i.kind === 'flight').map(i => i.journey.id)).toEqual([
+      'canada-back', 'back', 'canada-out', 'out',
+    ]);
     expect(complete[0]!.data.some(i => i.kind === 'flight' && i.hero)).toBe(false);
   });
 
