@@ -1,13 +1,14 @@
 # Flights: destination groups
 
-The Flights list uses the approved flat design in `design/trip-grouping/canvas.html`,
-with the 23 September live-flight revision: when the first flight is live,
+The Flights list uses the approved flat grouping and option C from
+`design/trip-containers/canvas.html`, with the 23 September live-flight revision: when the first flight is live,
 the small all-time summary leads and that flight expands into the live card
 inside its destination group. A later live flight has a top card linked to
 its original full row. Country flags and right-aligned dates identify each destination. A clock with a
 dotted vertical marker identifies a connection; a bed, explicit “Stay” label and
-short 16-point side lines identify time at the destination. The more visible
-full-width separator appears only between independent overall trips.
+short 16-point side lines identify time at the destination. Each destination
+group has a filled, bordered container with a blue-grey title band. This replaces
+the full-width separators, including those between independent overall trips.
 
 ## How grouping works
 
@@ -70,11 +71,27 @@ throughout the displayed travel-day window, including the day-before reminder.
 The hero retains its live status label; the row uses the return shortcut.
 Reduce Motion stays solid.
 
+## Trip containers
+
+Each container includes its flag, title, date range, flights, connections and
+stays. It uses the theme's selected fill for the title band, field fill for the
+body, a 1-point hairline-colour outline and 16-point outer corners. The header
+has 12-point vertical padding and a 12-point gap before the first flight or
+stay. There are 12 points between groups and an 8-point inset around the body.
+The container extends 8 points into the existing list margins, preserving the
+flight cards' width and existing 24-point corners.
+
+`TripGroupFrame` joins adjacent virtualized cells into that surface. The list
+filters out separator markers and wraps each existing row, preserving its key,
+measured scroll target, detail action and live-card shortcuts. Grouping and
+stored journeys are unchanged. The enclosing border stays still; only the
+active flight's border animates.
+
 The live hero has 12-point vertical padding, 16-point horizontal padding and
 4-point row gaps. Countdown and gate sizes stay unchanged. Its group link is a
-separate 44-point tap target. In the list, gaps are 4 points, stays have 4-point
-vertical padding, and group headings have 4 points above with no extra bottom margin. The short
-stay lines and separators between independent trips keep their distinct styles.
+separate 44-point tap target. Inside the group body, gaps are 4 points and stays
+have 4-point vertical padding. Short stay accents and dotted connection markers
+keep their distinct styles.
 
 ## Regression checks
 
@@ -99,7 +116,8 @@ Repeat with `multi` and `connections`; `clear` removes only fixture IDs beginnin
 with `grouping-`. Android requires copying the stopped app's database and any
 WAL to a temporary local directory, seeding there, and replacing the app's
 database. Never seed a personal installation. The simple fixture also includes
-an independent Portugal flight to exercise the stronger separator.
+an independent Portugal flight to check its separate container and the absence
+of the old separator.
 
 Use the existing smoke, add-flight, airport-picker, core-screen and
 `e2e-signup-roundtrip.yaml` flows on both platforms. Sign-up checks use fresh
@@ -197,3 +215,32 @@ its backup and the original account was reopened. No authentication, backend,
 version or release configuration changed in this live-card revision. Physical
 phones were skipped as requested; these checks used Debug 1.1.2 (iOS 63,
 Android 59) with the current workspace served by Metro.
+
+### Trip-container verification (23 September 2026)
+
+The selected title-band design passed TypeScript, scoped ESLint and all 100
+tests in the grouping, travel-day and imported-journey suites. The existing
+Maestro flows passed on the iOS 27 test simulator and Android API 37 emulator
+for a simple return plus an independent Portugal trip, connecting returns,
+USA → Canada → USA, the first connecting flight live, the Canada return live,
+the final flight home live, and a lone live flight. Both live shortcuts and
+trip-detail taps were checked. Android's clean-launch/onboarding smoke passed.
+
+Final light and dark multi-destination screenshots were inspected on both
+platforms. Android's rounded-background renderer slightly insets even a flat
+edge; a non-interactive fill at the joined edges removes that visible seam.
+The existing flight-card shadows retain their 4-point spacing below each row.
+
+The grouping flow now first returns to the stats action, so a retained scroll
+position cannot skip the first group. On Android it dismisses only the existing
+Expo Router development warning, as the core-screen flow already does. One
+iOS run required restarting Maestro after a stale accessibility-element error;
+the retry and remaining scenarios passed.
+
+Evidence is in `.maestro/out/trip-containers-20260923/`, with final appearance
+and lone-flight checks under `final/`. These were Debug 1.1.2 builds (iOS 63,
+Android 59) using the current Metro workspace. The original iOS simulator
+retains 82 journey rows and no fixtures; all 30 original Android journey IDs
+were verified after restoring its snapshot. Dedicated test fixtures were
+cleared and appearance settings restored. These checks are simulator/emulator
+coverage, not physical-device checks or a store release.

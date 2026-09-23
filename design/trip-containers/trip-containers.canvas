@@ -1,0 +1,95 @@
+{
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "text",
+      "x": 0,
+      "y": -190,
+      "width": 1380,
+      "height": 150,
+      "text": "# Trip containers · design options\n\nA filled border around each flag, title, date range, flights and stays. No full-width trip separator. Open design/trip-containers/canvas.html for eight scenarios, light/dark appearance and current comparison. Canvas only; app unchanged."
+    },
+    {
+      "id": "label-a",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 440,
+      "height": 100,
+      "text": "## A / Soft surface\n\nLight fill and quiet outline."
+    },
+    {
+      "id": "preview-a",
+      "type": "file",
+      "file": "design/trip-containers/previews/canada-a.png",
+      "x": 0,
+      "y": 120,
+      "width": 427,
+      "height": 1020
+    },
+    {
+      "id": "label-b",
+      "type": "text",
+      "x": 480,
+      "y": 0,
+      "width": 440,
+      "height": 100,
+      "text": "## B / Clear outline\n\nDeeper fill and stronger silver border."
+    },
+    {
+      "id": "preview-b",
+      "type": "file",
+      "file": "design/trip-containers/previews/canada-b.png",
+      "x": 480,
+      "y": 120,
+      "width": 427,
+      "height": 1020
+    },
+    {
+      "id": "label-c",
+      "type": "text",
+      "x": 960,
+      "y": 0,
+      "width": 440,
+      "height": 100,
+      "text": "## C / Title band · Selected\n\nUpdated: 12 px below the header, 16 px outer corners."
+    },
+    {
+      "id": "preview-c",
+      "type": "file",
+      "file": "design/trip-containers/previews/canada-c.png",
+      "x": 960,
+      "y": 120,
+      "width": 427,
+      "height": 1020
+    },
+    {
+      "id": "live-note",
+      "type": "text",
+      "x": 0,
+      "y": 1190,
+      "width": 1380,
+      "height": 100,
+      "text": "## The live behavior stays the same\n\nFirst flight expands inside its group. Later live flights retain the original row and both jump links. Only the flight border animates."
+    },
+    {
+      "id": "first-live",
+      "type": "file",
+      "file": "design/trip-containers/previews/first-live.png",
+      "x": 0,
+      "y": 1320,
+      "width": 1380,
+      "height": 1460
+    },
+    {
+      "id": "later-live",
+      "type": "file",
+      "file": "design/trip-containers/previews/later-live-group.png",
+      "x": 1440,
+      "y": 1320,
+      "width": 1380,
+      "height": 1460
+    }
+  ],
+  "edges": []
+}

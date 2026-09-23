@@ -1,0 +1,303 @@
+{
+  "reviewed": "2026-09-23",
+  "scope": "Canvas only. No application implementation or native testing.",
+  "checks": [
+    {
+      "label": "canada: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "canada: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "canada: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "canada: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "canada: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "canada: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "canada: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "return: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "return: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "return: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "return: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "return: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "return: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "return: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "connections: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "connections: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "connections: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "connections: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "connections: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "connections: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "connections: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "independent: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "independent: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "independent: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "independent: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "independent: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "independent: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "independent: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "first-live: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "first-live: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "first-live: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "first-live: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "first-live: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "first-live: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "first-live: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "later-live: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "later-live: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "later-live: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "later-live: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "later-live: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "later-live: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "later-live: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "oneway: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "oneway: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "oneway: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "oneway: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "oneway: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "oneway: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "oneway: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "finished: every flight once in its original group order",
+      "pass": true
+    },
+    {
+      "label": "finished: flag, title and dates inside each flat container",
+      "pass": true
+    },
+    {
+      "label": "finished: stays and connections retained",
+      "pass": true
+    },
+    {
+      "label": "finished: no full-width trip separator in any proposal",
+      "pass": true
+    },
+    {
+      "label": "finished: one live card and one countdown when live",
+      "pass": true
+    },
+    {
+      "label": "finished: all three proposals share identical inner content",
+      "pass": true
+    },
+    {
+      "label": "finished: no horizontal overflow",
+      "pass": true
+    },
+    {
+      "label": "YYZ to BOS remains in Canada and the resumed stay follows the US continued header",
+      "pass": true
+    },
+    {
+      "label": "A, B and C all have an enclosing fill and border",
+      "pass": true
+    },
+    {
+      "label": "Current reference still contains the independent-trip separator",
+      "pass": true
+    },
+    {
+      "label": "Current comparison can be opened without replacing an option",
+      "pass": true
+    },
+    {
+      "label": "First live flight expands under its group heading after the small stats summary",
+      "pass": true
+    },
+    {
+      "label": "Later live flight keeps the original full row with an upward link",
+      "pass": true
+    },
+    {
+      "label": "Only the live card and active row animate; the group border stays still",
+      "pass": true
+    },
+    {
+      "label": "Downward live shortcut reaches its row",
+      "pass": true
+    },
+    {
+      "label": "Upward row shortcut returns to live card",
+      "pass": true
+    },
+    {
+      "label": "Live border advances through its animation",
+      "pass": true
+    },
+    {
+      "label": "Reduced motion holds the live border still",
+      "pass": true
+    },
+    {
+      "label": "390px / canada: no page or preview overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / connections: no page or preview overflow",
+      "pass": true
+    },
+    {
+      "label": "390px / later-live: no page or preview overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / canada: no page or preview overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / connections: no page or preview overflow",
+      "pass": true
+    },
+    {
+      "label": "320px / later-live: no page or preview overflow",
+      "pass": true
+    },
+    {
+      "label": "No browser runtime errors",
+      "pass": true
+    }
+  ],
+  "runtimeErrors": []
+}

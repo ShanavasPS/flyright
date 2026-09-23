@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlyRight · Trip container options</title>
+<style>
+/* BASE_CSS */
+/* Option C is the selected treatment, with revised header spacing and corners. */
+:root { --group-strong:#A9B8CE; --sheen:linear-gradient(160deg,#FFFFFF,#FDFEFF 52%,#F2F7FE); --flight-edge:rgba(19,41,75,.06); }
+[data-theme=dark] { --group-strong:#5A6A7E; --sheen:linear-gradient(160deg,#182948,#101D34 52%,#0D1930); --flight-edge:rgba(242,246,251,.07); }
+.intro { padding:32px 0 24px; }
+.option-head { min-height:132px; }
+.option-tag { min-height:24px; }
+.phone { height:1020px; }
+.trip-group { position:relative; margin:0 -8px 8px; padding:8px; border-radius:32px; display:flex; flex-direction:column; gap:4px; isolation:isolate; }
+.trip-heading { margin:4px 0 0; min-height:28px; }
+.trip-heading strong { font-size:16px; }
+.trip-heading time { max-width:40%; font-size:12px; }
+.surface-a .trip-group { background:var(--field); box-shadow:inset 0 0 0 1px var(--line); }
+.surface-b .trip-group { background:var(--selected); box-shadow:inset 0 0 0 1px var(--group-strong); }
+.surface-c .trip-group { background:var(--field); border-radius:16px; margin-bottom:12px; box-shadow:inset 0 0 0 1px var(--line); }
+.surface-c .trip-heading { margin:-8px -8px 8px; padding:12px 8px; background:var(--selected); border-radius:16px 16px 0 0; }
+.surface-c .trip-group::after { content:''; position:absolute; inset:0; border:1px solid var(--line); border-radius:inherit; pointer-events:none; }
+.surface-current .trip-group { background:none; box-shadow:none; padding-top:0; padding-bottom:0; }
+.surface-current .trip-separator { margin:24px 0 8px; }
+.flight-card { padding:16px; gap:16px; background:var(--sheen); border:1px solid var(--flight-edge); }
+.flight-card .airline { width:40px; height:40px; border-radius:16px; background:var(--surface); }
+.flight-card .code { font-size:22px; line-height:26px; }
+.flight-card .route-time { font-size:13px; line-height:18px; }
+.route-city { font-size:12px; line-height:16px; }
+.flight-meta { font-size:13px; line-height:20px; }
+.flight-meta code { font:inherit; }
+.flight-state { font-size:12px; }
+.flight-card .route-mid { margin-top:12px; }
+.route-track { border-top-width:2px; }
+.stay-marker { padding:4px 0; font-size:14px; gap:8px; }
+.stay-marker .stay-label { font-size:12px; }
+.stay-marker:before,.stay-marker:after { background:var(--line); }
+.connection-marker { padding:4px 0 4px 64px; min-height:28px; font-size:12px; }
+.connection-marker:before { height:12px; }
+.live-card { padding:12px 16px; background:var(--sheen); }
+.countdown-line { margin:4px 0; }
+.countdown { font-size:38px; line-height:42px; }
+.seconds { font-size:18px; }
+.live-footer { margin-top:4px; padding-top:4px; }
+.hero-context { margin-top:4px; padding-top:4px; }
+.live-row { position:relative; border:1.5px solid color-mix(in srgb,var(--tint) 35%,transparent); border-radius:24px; background:var(--sheen); box-shadow:var(--shadow); }
+.live-row .flight-card { border:none; background:none; box-shadow:none; padding-top:0; }
+.live-row-action { display:flex; width:100%; align-items:center; justify-content:flex-end; color:var(--tint); min-height:44px; padding:4px 16px; font-size:14px; font-weight:700; }
+.stats-strip { margin-top:0; }
+.screen > .live-card + .stats-strip { margin-top:8px; }
+.stats-card { margin-bottom:0; }
+.section-label { margin:16px 0 8px; }
+.callout { min-height:0; padding:12px 0 0; font-size:13px; }
+.callout b { color:var(--heading); }
+.view-controls { flex-wrap:wrap; }
+.controls label { gap:8px; }
+.baseline-control { display:flex; align-items:center; gap:8px; font-size:12px; }
+.baseline-control input { accent-color:var(--tint); width:16px; height:16px; }
+.compare.with-current { grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px; }
+body:has(.with-current) .wrap { max-width:1880px; }
+.option[hidden] { display:none; }
+.notes { gap:32px; padding:24px 0; margin-top:24px; }
+.notes h2 { margin-bottom:8px; }
+.rule { margin-bottom:12px; }
+.sample-swatches { display:flex; gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
+.swatch { display:inline-flex; align-items:center; gap:6px; }
+.swatch i { width:16px; height:16px; border-radius:4px; border:1px solid var(--line); background:var(--field); }
+.swatch.strong i { background:var(--selected); border-color:var(--group-strong); }
+.swatch.band i { background:linear-gradient(var(--selected) 50%,var(--field) 50%); }
+.legend { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.legend .key { width:20px; height:16px; border:1px solid var(--group-strong); border-radius:5px; background:var(--field); }
+.legend .key.live { background:var(--surface); border:1.5px solid var(--tint); }
+@media(max-width:1790px) { .compare.with-current { grid-template-columns:repeat(2,minmax(0,1fr)); } .compare.with-current .option { max-width:430px; width:100%; margin:auto; } }
+@media(max-width:1190px) and (min-width:961px) { .compare { grid-template-columns:repeat(3, minmax(360px,1fr)); overflow-x:auto; padding-bottom:16px; } .compare.with-current { grid-template-columns:repeat(2,minmax(360px,1fr)); } }
+@media(max-width:960px) { .compare,.compare.with-current { grid-template-columns:1fr; } .option-head { min-height:0; } .phone { height:1020px; } }
+@media(max-width:420px) { .wrap { padding:0 8px; } .intro,.mast,.controls,.scenario-line,.notes,.feedback,.provenance,footer { margin-left:8px; margin-right:8px; } .option-head { padding-left:8px; padding-right:8px; } .flight-card { padding:16px; gap:16px; } .flight-card .airline { width:32px; height:32px; } .flight-meta { font-size:11px; } .flight-state { font-size:10px; } .stay-marker { gap:5px; font-size:12px; } .trip-heading strong { font-size:15px; } .trip-heading time { font-size:11px; } .route-mid { min-width:16px; } .flight-card .route { gap:4px; } .route-city { white-space:normal; } .hero-context { font-size:11px; } }
+@media print { .baseline-control,.legend { display:none; } .phone { height:auto; } .trip-group { break-inside:avoid; } .option-head { min-height:132px; } }
+</style>
+<!-- ICON_ASSETS -->
+</head>
+<body><div class="wrap">
+<header class="mast"><div class="brand"><img src="BRAND_ICON" alt="">FlyRight <span class="muted">/ Trip containers</span></div><span class="meta">Canvas review · 23 September 2026</span><button id="theme" class="outline" aria-pressed="false">Dark appearance</button></header>
+<section class="intro"><div><div class="eyebrow">One small change to the trip list</div><h1>Give each trip a home.</h1></div><p>A filled border around the flag, title, dates, flights and stays. Three treatments, with the same trip content and compact spacing.</p></section>
+<div class="controls"><label for="scenario">Example <select id="scenario"></select></label><div class="view-controls"><button class="outline" id="view-top" aria-pressed="false">Top of screen</button><button class="outline" id="view-groups" aria-pressed="true">Trip groups</button><button class="outline" id="view-live" aria-pressed="false" hidden>Live flight in its group</button></div><label class="baseline-control"><input id="baseline" type="checkbox"> Compare current</label></div>
+<p class="scenario-line" id="scenario-summary" aria-live="polite"></p>
+<main class="compare">
+<article class="option" data-option="current" hidden><div class="option-head"><div class="option-tag">00 / Current layout</div><h2>Open groups</h2><p>The existing heading and cards, with a separator only between independent trips.</p></div><div class="phone surface-current" id="phone-current"></div><p class="callout">A visual reconstruction of the current layout, for comparison.</p></article>
+<article class="option" data-option="a"><div class="option-head"><div class="option-tag">A / Soft surface</div><h2>Quiet, but together.</h2><p>A pale grey background and a fine outline around the whole trip.</p></div><div class="phone surface-a" id="phone-a"></div><p class="callout"><b>Closest to the current design.</b> The background does most of the grouping; the flight cards stay prominent.</p></article>
+<article class="option" data-option="b"><div class="option-head"><div class="option-tag">B / Clear outline</div><h2>A stronger boundary.</h2><p>A silver border and a slightly deeper blue-grey fill make each trip distinct.</p></div><div class="phone surface-b" id="phone-b"></div><p class="callout"><b>Easiest to distinguish.</b> The container is more visible, especially when several short trips sit together.</p></article>
+<article class="option" data-option="c"><div class="option-head"><div class="option-tag">C / Title band <span class="recommended">Selected · updated</span></div><h2>Let the header lead.</h2><p>More room below the header, with smaller corners around the trip.</p></div><div class="phone surface-c" id="phone-c"></div><p class="callout"><b>Updated spacing and corners.</b> A 12 px gap below the title band and a 16 px outer radius keep the first flight clear of the header.</p></article>
+</main>
+<section class="notes"><div><h2>Selected: C, with more breathing room.</h2><p class="rule">The title band now has 12 px of padding above and below its text, plus a 12 px gap before the first flight or stay. The trip container’s corners are reduced from 32 to 16 px.</p><div class="sample-swatches"><span class="swatch"><i></i>A · Soft surface</span><span class="swatch strong"><i></i>B · Clear outline</span><span class="swatch band"><i></i>C · Title band</span></div></div><div><h2>The container does the separating.</h2><p class="rule">No full-width trip divider in any proposal. Short stay accents and dotted connections remain. Each country group stays at the same level; the live animation stays on the active flight.</p><div class="legend"><span><i class="key"></i>Trip boundary · still</span><span><i class="key live"></i>Live flight · animated</span></div></div></section>
+<section class="feedback"><div><h2>Share this canvas.</h2><p>Send <a href="FlyRight-trip-containers-review.zip">the review ZIP</a>, or just canvas.html. It opens offline. The example and appearance are included in downloaded feedback.</p></div><div><label class="meta" for="feedback">Feedback</label><textarea id="feedback" placeholder="For example: A, with the border strength from B."></textarea><div class="feedback-actions"><button class="outline" id="download-feedback">Download feedback</button><span class="feedback-status" id="feedback-status" role="status">Nothing is sent automatically.</span></div></div></section>
+<p class="provenance">Design preview only · fictional June–July 2027 flights. Grouping, dates, connections, stays and live placement come from the app’s current presentation functions. These are reconstructed screens, not app screenshots; airline chips use the existing plane fallback and navigation materials are simplified. Scroll each phone to inspect it. Only the proposed trip container differs across A, B and C.</p>
+<footer><span>FlyRight design-system snapshot · 20 September 2026 · main@02c3dbd</span><span><a href="README.md">Design notes</a> · <a href="overview.png">Static overview</a> · <a href="trip-containers.canvas">Canvas board</a></span></footer>
+</div>
+<script>
+const scenarios = /* SCENARIOS */[];
+const flags = {US:'🇺🇸',CA:'🇨🇦',FI:'🇫🇮',GB:'🇬🇧',PT:'🇵🇹'};
+const options = ['current','a','b','c'];
+const params = new URLSearchParams(location.search);
+let scenarioId = scenarios.some(s=>s.id===params.get('scenario')) ? params.get('scenario') : 'canada';
+let viewMode = ['top','groups','live'].includes(params.get('view')) ? params.get('view') : 'groups';
+const scenario = ()=>scenarios.find(s=>s.id===scenarioId);
+/* PRIMITIVES */
+function normalFlight(f,s){
+  const gap=Math.round((Date.parse(f.scheduledDeparture.slice(0,10))-Date.parse(s.now.slice(0,10)))/86400000);
+  const label=gap===0?'Today':gap<0?`${-gap}d ago`:`in ${gap}d`;
+  return `<div class="flight-card" data-flight="${f.id}"><div class="airline" aria-hidden="true">${plane}</div><div class="flight-body"><div class="flight-meta"><span>${date(f.scheduledDeparture)} · <code>${f.number}</code></span><span class="flight-state">${f.id===s.heroId?'':label}</span></div>${route(f)}</div></div>`;
+}
+function liveCard(s,inline){
+  const f=s.hero,g=s.heroGroup.group;
+  return `<div class="live-card" ${inline?`data-flight="${f.id}"`:''} data-live-card tabindex="-1">${runningBorder()}<div class="live-top"><div class="airline-label"><span class="airline">${plane}</span><code>${f.number}</code></div><span class="live-dot">Live</span></div><div class="countdown-line"><div><div class="clock-label">${plane} DEPARTS IN</div><div class="countdown">${s.clock}<span class="seconds">:00</span></div><div class="units"><span>HRS</span><span>MIN</span></div></div><div class="gate"><small>GATE</small><strong>${s.gate}</strong></div></div>${route(f,true)}<div class="live-footer"><span>Open trip</span><span>›</span></div>${inline?'':`<button class="hero-context" data-jump="place"><span>${flags[g.country]} ${g.title}</span><span>View in trip ↓</span></button>`}</div>`;
+}
+function liveRow(f,s){return `<div class="live-row" data-live-row tabindex="-1">${runningBorder()}<button class="live-row-action" data-jump="top">View live card ↑</button>${normalFlight(f,s)}</div>`;}
+function list(s,option){
+  let result='';
+  for(const section of s.sections){
+    result+=`<div class="section-label">${section.title}</div>`;
+    let open=false;
+    for(const item of section.data){
+      if(item.kind==='header'){
+        if(open)result+='</div>';
+        result+=`<div class="trip-group" data-container="${item.group.id}">${heading(item.group,item.dates)}`;
+        open=true;
+      }else if(item.kind==='separator'){
+        if(open)result+='</div>';
+        open=false;
+        if(option==='current')result+='<div class="trip-separator"></div>';
+      }else if(item.kind==='stay')result+=stay(item.stay);
+      else{
+        if(item.connection)result+=connection(item.connection);
+        result+=item.hero?(s.heroGroup.isFirstFlight?liveCard(s,true):liveRow(item.journey,s)):normalFlight(item.journey,s);
+      }
+    }
+    if(open)result+='</div>';
+  }
+  return result;
+}
+function render(){
+  const s=scenario();
+  document.querySelector('#scenario').value=s.id;
+  document.querySelector('#scenario-summary').textContent=s.summary;
+  document.querySelector('#view-live').hidden=!s.hero;
+  if(viewMode==='live'&&!s.hero)viewMode='groups';
+  for(const option of options){
+    const top=s.hero?(!s.heroGroup.isFirstFlight?liveCard(s,false):'')+stats(true):stats(false);
+    document.querySelector('#phone-'+option).innerHTML=`<div class="status"><span>${s.time}</span><span class="hardware" aria-hidden="true">▮▮▮ ◒ ▰</span></div><div class="app-header"><div class="app-tools"><div class="avatar">MJ</div><div class="tool-glyphs" aria-hidden="true"><i class="bubble"></i><span class="add">+</span></div></div><div class="greeting">Welcome back, Maja</div><div class="app-eyebrow">${s.hero?'Flying today':s.id==='finished'?'Your travels':'Next trip'}</div></div><div class="screen" tabindex="0" aria-label="${option==='current'?'Current layout':'Option '+option.toUpperCase()} scrollable preview">${top}${list(s,option)}</div>${tabs()}`;
+  }
+  sizeRunningBorders();
+  applyView(false);
+  persistView();
+}
+function scrollToTarget(phone,target,smooth=true){
+  if(!target)return;
+  const scroll=phone.querySelector('.screen');
+  scroll.scrollTo({top:Math.max(0,target.getBoundingClientRect().top-scroll.getBoundingClientRect().top+scroll.scrollTop-8),behavior:smooth&&!matchMedia('(prefers-reduced-motion: reduce)').matches?'smooth':'instant'});
+}
+function applyView(smooth=true){
+  for(const option of options){
+    const phone=document.querySelector('#phone-'+option);
+    if(viewMode==='top')phone.querySelector('.screen').scrollTo({top:0,behavior:smooth?'smooth':'instant'});
+    else scrollToTarget(phone,viewMode==='live'?(phone.querySelector('[data-live-row]')||phone.querySelector('[data-live-card]')):phone.querySelector('.section-label'),smooth);
+  }
+  for(const mode of ['top','groups','live'])document.querySelector('#view-'+mode).setAttribute('aria-pressed',viewMode===mode);
+}
+function persistView(){const q=new URLSearchParams({scenario:scenarioId,view:viewMode,theme:document.documentElement.dataset.theme||'light',current:document.querySelector('#baseline').checked?'1':'0'});try{history.replaceState(null,'','?'+q);}catch{}}
+document.querySelector('#scenario').innerHTML=scenarios.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
+document.querySelector('#scenario').addEventListener('change',e=>{scenarioId=e.target.value;render();});
+for(const mode of ['top','groups','live'])document.querySelector('#view-'+mode).addEventListener('click',()=>{viewMode=mode;applyView();persistView();});
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-jump]');if(!btn)return;
+  const phone=btn.closest('.phone');
+  scrollToTarget(phone,phone.querySelector(btn.dataset.jump==='top'?'[data-live-card]':'[data-live-row]'));
+});
+function toggleCurrent(){const shown=document.querySelector('#baseline').checked;document.querySelector('[data-option=current]').hidden=!shown;document.querySelector('.compare').classList.toggle('with-current',shown);sizeRunningBorders();applyView(false);persistView();}
+document.querySelector('#baseline').addEventListener('change',toggleCurrent);
+document.querySelector('#theme').addEventListener('click',()=>{const dark=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dark?'dark':'light';document.querySelector('#theme').textContent=dark?'Light appearance':'Dark appearance';document.querySelector('#theme').setAttribute('aria-pressed',dark);persistView();});
+document.querySelector('#download-feedback').addEventListener('click',()=>{
+  const s=scenario();
+  const text=`FlyRight · Trip container review\nExample: ${s.label}\nAppearance: ${document.documentElement.dataset.theme||'light'}\nView: ${viewMode}\nCurrent comparison: ${document.querySelector('#baseline').checked}\n\n${document.querySelector('#feedback').value||'(No comment entered)'}\n\nOptions: A — Soft surface / B — Clear outline / C — Title band\n`;
+  const url=URL.createObjectURL(new Blob([text],{type:'text/plain'}));const link=document.createElement('a');link.href=url;link.download=`FlyRight-trip-container-feedback-${s.id}.txt`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);document.querySelector('#feedback-status').textContent='Feedback downloaded. Send that file with the review.';
+});
+if(params.get('theme')==='dark'){document.documentElement.dataset.theme='dark';document.querySelector('#theme').textContent='Light appearance';document.querySelector('#theme').setAttribute('aria-pressed','true');}
+document.querySelector('#baseline').checked=params.get('current')==='1';
+render();toggleCurrent();
+</script>
+</body></html>

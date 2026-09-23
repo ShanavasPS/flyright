@@ -1,4 +1,5 @@
 import { SymbolView } from 'expo-symbols';
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +9,36 @@ import type { Connection } from '@/services/connections';
 import { cityOf } from '@/services/timeline';
 import { flagEmoji } from '@/services/travel-recap';
 import type { TripGroup, TripStay } from '@/services/trip-groups';
+
+/** Join the virtualized rows into one filled trip container. Each flight keeps
+ * its own list key and measured position for live-card shortcuts and scrolling. */
+export function TripGroupFrame({ children, header, first, last }: {
+  children: ReactNode;
+  header?: boolean;
+  first?: boolean;
+  last?: boolean;
+}) {
+  const theme = useTheme();
+  const backgroundColor = header ? theme.backgroundSelected : theme.field;
+  return (
+    <View style={[
+      styles.frame,
+      header ? styles.frameHeader : styles.frameBody,
+      first && styles.frameFirst,
+      last && styles.frameLast,
+      { backgroundColor, borderColor: theme.hairline },
+    ]}>
+      {children}
+      {/* Android slightly insets a rounded background's flat edges too.
+          Fill that join so adjacent cells cannot expose a hairline seam. */}
+      {(header || last) && <View pointerEvents="none" style={[
+        styles.joinFill,
+        header ? styles.joinBottom : styles.joinTop,
+        { backgroundColor },
+      ]} />}
+    </View>
+  );
+}
 
 export function TripGroupHeading({ group, dates }: { group: TripGroup; dates: string }) {
   return (
@@ -55,13 +86,35 @@ export function TripConnectionMark({ connection }: { connection: Connection }) {
   );
 }
 
-export function IndependentTripSeparator() {
-  const theme = useTheme();
-  return <View testID="independent-trip-separator" style={[styles.separator, { backgroundColor: theme.textSecondary }]} />;
-}
-
 const styles = StyleSheet.create({
-  heading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
+  frame: {
+    marginHorizontal: -Spacing.two,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    // Include the border in the 8-point inset, preserving flight-card width.
+    paddingHorizontal: Spacing.two - 1,
+  },
+  frameHeader: {
+    borderTopWidth: 1,
+    borderTopLeftRadius: Spacing.three,
+    borderTopRightRadius: Spacing.three,
+    paddingTop: Spacing.two + Spacing.one - 1,
+    paddingBottom: Spacing.two + Spacing.one,
+  },
+  // Keep the gap with the preceding card so its shadow has room to fade.
+  frameBody: { paddingBottom: Spacing.one },
+  frameFirst: { paddingTop: Spacing.two + Spacing.one },
+  frameLast: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: Spacing.three,
+    borderBottomRightRadius: Spacing.three,
+    paddingBottom: Spacing.two - 1,
+    marginBottom: Spacing.two + Spacing.one,
+  },
+  joinFill: { position: 'absolute', left: 1, right: 1, height: 1 },
+  joinTop: { top: 0 },
+  joinBottom: { bottom: 0 },
+  heading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   title: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minWidth: 0 },
   flag: { fontSize: 22, lineHeight: 28 },
   name: { fontSize: 16, flexShrink: 1 },
@@ -74,5 +127,4 @@ const styles = StyleSheet.create({
   connectionText: { fontSize: 12, flexShrink: 1 },
   stem: { gap: 3, alignItems: 'center' },
   dot: { width: 2, height: 2, borderRadius: 1, opacity: 0.6 },
-  separator: { height: 1, opacity: 0.35, marginTop: Spacing.four, marginBottom: Spacing.two },
 });

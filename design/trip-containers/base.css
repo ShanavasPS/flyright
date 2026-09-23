@@ -1,0 +1,226 @@
+:root{color-scheme:light;--bg:#fff;--surface:#fff;--selected:#e8eef6;--line:#e3e8ef;--field:#f2f5f9;--text:#0b1424;--heading:#13294b;--muted:#5a6a7e;--tint:#1e6be0;--success:#0fa362;--warning:#a9720b;--ink:#0c1b36;--silver:#a9b8ce;--shadow:0 3px 10px rgba(11,21,32,.05)}
+
+[data-theme=dark]{color-scheme:dark;--bg:#070f20;--surface:#101d34;--selected:#1b2c4a;--line:#1b2c4a;--field:#101d34;--text:#f2f6fb;--heading:#f2f6fb;--muted:#8fa2bb;--tint:#4e9bf5;--success:#2fd68c;--warning:#f2b441;--shadow:none}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:500 16px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+button,select,textarea{font:inherit;color:inherit}
+button,a,select{touch-action:manipulation}
+button{cursor:pointer}
+button:hover{filter:brightness(.95)}
+button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--tint);outline-offset:3px}
+a{color:var(--tint);text-underline-offset:4px}
+h1,h2,h3,p{margin:0}
+code{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px}
+button{border:0;background:none}
+.wrap{max-width:1440px;padding:0 48px;margin:auto}
+.mast{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding:24px 0}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--heading)}
+.brand img{width:32px;height:32px;border-radius:8px}
+.muted{color:var(--muted)}
+.meta{font-size:12px;color:var(--muted)}
+.outline{border:1px solid var(--line);border-radius:999px;padding:8px 16px;min-height:44px;font-size:14px;background:var(--surface)}
+.intro{display:grid;grid-template-columns:1.2fr 1fr;gap:64px;padding:40px 0 32px;align-items:end}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+h1{font-size:34px;line-height:41px;color:var(--heading);letter-spacing:-1px;max-width:680px}
+.intro p{font-size:16px;color:var(--muted)}
+.controls{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.controls label{display:flex;align-items:center;gap:16px;font-size:14px;color:var(--muted)}
+select{border:1px solid var(--line);border-radius:16px;padding:8px 16px;background:var(--surface);min-height:44px;max-width:100%;font-size:14px;font-weight:600}
+.view-controls{display:flex;gap:8px}
+.view-controls button[aria-pressed=true]{background:var(--selected);border-color:var(--selected);color:var(--heading)}
+.scenario-line{padding:16px 0 24px;font-size:14px;color:var(--muted)}
+.scenario-line strong{color:var(--heading)}
+.compare{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px}
+.option-head{min-height:140px;display:flex;flex-direction:column;gap:8px}
+.option-tag{font-size:12px;color:var(--muted);font-weight:700;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.recommended{color:var(--tint);background:color-mix(in srgb,var(--tint) 8%,transparent);border-radius:8px;padding:4px 8px;white-space:nowrap}
+.option h2{font-size:24px;line-height:32px;letter-spacing:-.5px;color:var(--heading)}
+.option-head p{font-size:14px;color:var(--muted)}
+.phone{border:1px solid var(--line);border-radius:32px;background:var(--bg);overflow:hidden;position:relative;height:930px;display:flex;flex-direction:column;box-shadow:var(--shadow);font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+.status{display:flex;align-items:center;justify-content:space-between;padding:16px 24px 8px;font-weight:700;font-size:14px;height:48px;flex:none}
+.hardware{display:flex;gap:4px;align-items:center;color:var(--text);font-size:12px}
+.app-header{padding:8px 16px 16px;flex:none}
+.app-tools{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.avatar{display:grid;place-items:center;width:32px;height:32px;background:var(--tint);color:white;font-size:12px;font-weight:700;border-radius:999px}
+.tool-glyphs{color:var(--tint);display:flex;gap:24px;align-items:center}
+.add{font-size:30px;line-height:32px}
+.bubble{mask-image:var(--icon-updates);background:currentColor;width:23px;height:23px;mask-size:contain;mask-repeat:no-repeat}
+.greeting{font-size:27px;font-weight:700;color:var(--heading);line-height:34px;letter-spacing:-.7px}
+.app-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;margin-top:4px}
+.screen{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding:0 16px 24px;scroll-behavior:smooth}
+.screen:focus-visible{outline-offset:-3px}
+.footer-tabs{display:flex;align-items:center;justify-content:space-around;border-top:1px solid var(--line);padding:12px 4px 16px;background:var(--surface);flex:none}
+.footer-tabs span{font-size:10px;font-weight:600;display:flex;align-items:center;flex-direction:column;gap:4px;color:var(--muted)}
+.footer-tabs .active{color:var(--tint)}
+.tabicon{display:block;width:21px;height:21px;background:currentColor;mask-size:contain;mask-repeat:no-repeat;mask-position:center}
+.plane{display:inline-block;mask-image:var(--icon-journeys);mask-size:contain;mask-repeat:no-repeat;mask-position:center;background:currentColor;width:16px;height:16px;flex:none}
+.marker-icon{display:inline-block;width:16px;height:16px;flex:none;background:currentColor;mask-size:contain;mask-repeat:no-repeat;mask-position:center}
+.stay-icon{mask-image:var(--icon-stay)}
+.connection-icon{width:13px;height:13px;mask-image:var(--icon-connection)}
+.live-card{padding:20px;border:1px solid color-mix(in srgb,var(--tint) 35%,var(--surface));border-radius:24px;box-shadow:var(--shadow);background:var(--surface);position:relative}
+.live-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.airline-label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--heading)}
+.airline{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;color:var(--tint);flex:none}
+.live-dot{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--heading)}
+.live-dot:before{content:'';height:6px;width:6px;background:var(--success);border-radius:999px;box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 13%,transparent)}
+.countdown-line{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0}
+.clock-label{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--tint)}
+.clock-label .plane{width:12px;height:12px}
+.countdown{display:flex;align-items:baseline;font-size:48px;line-height:52px;font-weight:600;letter-spacing:-2px;color:var(--heading);font-variant-numeric:tabular-nums}
+.seconds{font-size:20px;letter-spacing:0;color:var(--muted)}
+.units{display:flex;justify-content:space-between;max-width:102px;font-size:9px;letter-spacing:1.5px;color:var(--muted)}
+.gate{text-align:right}
+.gate small{display:block;color:var(--muted);font-size:10px;letter-spacing:1.2px;font-weight:700}
+.gate strong{display:block;font-size:26px;color:var(--heading);line-height:32px}
+.route{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.code{font-size:30px;font-weight:700;line-height:36px;color:var(--heading);letter-spacing:-.5px}
+.route-end{text-align:right}
+.route-city{font-size:12px;color:var(--muted);line-height:18px;white-space:nowrap}
+.route-time{font-size:13px;color:var(--heading);font-weight:600;line-height:20px}
+.route-mid{flex:1;min-width:32px;text-align:center;color:var(--muted);font-size:11px;margin-top:16px}
+.route-track{height:3px;border-top:3px dotted var(--silver);position:relative;margin-bottom:8px}
+.route-track .plane{color:var(--tint);position:absolute;left:36%;top:-9px;background-color:var(--tint)}
+.live-card .route-time{color:var(--muted);font-weight:500}
+.live-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);margin-top:16px;padding-top:8px;font-size:12px;color:var(--muted);min-height:28px}
+.hero-context{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;color:var(--tint);text-align:left;border-top:1px solid var(--line);padding:10px 0 0;margin-top:8px;font-size:12px;font-weight:600;min-height:44px}
+.hero-context span:first-child{color:var(--heading)}
+.stats-strip{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:16px;background:linear-gradient(150deg,#1c3459,#0c1b36 62%,#091530);color:#f2f6fb;margin-top:12px;font-size:11px;font-weight:600}
+.stats-strip small{font-size:9px;color:#a9b8ce;display:block;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+.stats-card{background:linear-gradient(150deg,#1c3459,#0c1b36 62%,#091530);color:#f2f6fb;border-radius:24px;padding:24px;margin-bottom:24px}
+.stats-card small{font-size:10px;letter-spacing:1.2px;color:#a9b8ce;text-transform:uppercase}
+.stats-card strong{font-size:42px;line-height:52px;display:block;letter-spacing:-1px;font-weight:600}
+.stats-card p{font-size:12px;color:#a9b8ce;margin-top:8px}
+.section-label{margin:24px 0 8px;font-size:12px;font-weight:700;color:var(--muted)}
+.trip-heading{display:flex;align-items:center;gap:8px;margin:16px 0 8px;color:var(--heading);scroll-margin-top:8px}
+.trip-heading .flag{font-family:'Apple Color Emoji','Segoe UI Emoji',sans-serif;font-size:22px;line-height:28px;flex:none}
+.trip-heading strong{font-size:16px;line-height:20px;font-weight:700;flex:1;min-width:0}
+.trip-heading time{font-size:12px;color:var(--muted);line-height:16px;text-align:right;max-width:34%;font-variant-numeric:tabular-nums}
+.flight-card{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:24px;padding:16px 12px;background:var(--surface);box-shadow:var(--shadow)}
+.flight-card .airline{width:32px;height:32px}
+.flight-body{flex:1;min-width:0}
+.flight-meta{display:flex;align-items:center;justify-content:space-between;gap:4px;color:var(--muted);font-size:11px;margin-bottom:4px}
+.flight-card .code{font-size:26px;line-height:30px}
+.flight-card .route{gap:8px}
+.flight-card .route-mid{margin-top:14px}
+.flight-card .route-time{font-size:12px}
+.flight-state{font-weight:700;color:var(--heading);white-space:nowrap}
+.stay-marker{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;color:var(--heading);font-size:12px;line-height:20px}
+.stay-marker:before,.stay-marker:after{content:'';width:16px;height:1px;background:var(--line);flex:none}
+.stay-marker .stay-label{font-size:11px;color:var(--muted);white-space:nowrap}
+.stay-detail{min-width:0}
+.connection-marker{display:flex;gap:8px;align-items:center;padding:6px 0 6px 56px;min-height:32px;font-size:11px;color:var(--muted)}
+.connection-marker:before{content:'';height:20px;border-left:2px dotted color-mix(in srgb,var(--muted) 60%,transparent)}
+.trip-separator{height:1px;background:var(--muted);opacity:.35;margin:24px 0 8px}
+.live-placeholder{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:64px;border:1px solid color-mix(in srgb,var(--tint) 28%,var(--line));border-radius:16px;padding:12px 16px;background:var(--surface);text-align:left;scroll-margin-top:16px}
+.pointer-copy{min-width:0}
+.pointer-copy strong{display:block;color:var(--heading);font-size:14px;line-height:20px}
+.pointer-copy small{display:block;color:var(--muted);font-size:11px}
+.pointer-action{color:var(--tint);font-size:11px;font-weight:600;white-space:nowrap}
+.jump-live{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:48px;padding:8px 0 16px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;font-weight:600;color:var(--tint)}
+.jump-live .live-dot{font-size:12px}
+.callout{padding:16px 0 8px;font-size:14px;color:var(--muted);min-height:138px}
+.callout strong{color:var(--heading)}
+.tradeoff{border-top:1px solid var(--line);padding-top:12px;font-size:12px;color:var(--muted)}
+.tradeoff b{color:var(--heading)}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:64px;padding:32px 0;margin-top:32px;border-top:1px solid var(--line)}
+.notes h2{font-size:20px;line-height:28px;color:var(--heading);margin-bottom:16px}
+.rule{margin-bottom:16px;font-size:14px;color:var(--muted)}
+.rule strong{color:var(--heading);display:block;margin-bottom:4px}
+.timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.timeline>div{border-top:1px solid var(--line);padding-top:12px}
+.timeline b{display:block;font-size:14px;color:var(--heading);margin:8px 0}
+.timeline p{font-size:12px;color:var(--muted)}
+.step-num{font-size:12px;color:var(--muted)}
+.recommendation{margin-top:24px;font-size:14px;color:var(--muted)}
+.recommendation strong{color:var(--heading)}
+.provenance{font-size:12px;color:var(--muted);padding:24px 0;border-top:1px solid var(--line)}
+.feedback{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:24px 0;border-top:1px solid var(--line);align-items:start}
+.feedback h2{font-size:20px;color:var(--heading);margin-bottom:8px}
+.feedback p{font-size:14px;color:var(--muted)}
+textarea{width:100%;min-height:88px;border:1px solid var(--line);border-radius:16px;padding:12px 16px;background:var(--surface);font-size:14px;resize:vertical}
+.feedback-actions{display:flex;gap:12px;margin-top:8px;align-items:center}
+.feedback-status{font-size:12px;color:var(--muted)}
+footer{display:flex;justify-content:space-between;gap:24px;padding:24px 0 40px;font-size:12px;color:var(--muted)}
+.no-list{padding:24px 8px;font-size:12px;color:var(--muted);text-align:center}
+.focus-flash{outline:2px solid var(--tint);outline-offset:4px;border-radius:16px}
+
+@media(min-width:1600px){.wrap{max-width:1480px}
+.phone{height:970px}
+}
+
+@media(max-width:1190px){.wrap{padding:0 24px}
+.compare{gap:16px}
+.greeting{font-size:24px}
+.live-card{padding:16px}
+.flight-card{gap:8px;padding:12px 8px}
+.flight-card .airline{width:28px;height:28px}
+.flight-card .code{font-size:23px}
+.route-city{font-size:11px}
+.trip-heading strong{font-size:14px}
+.trip-heading time{font-size:11px}
+.stay-marker{gap:5px;font-size:11px}
+.option-head{min-height:164px}
+}
+
+@media(max-width:960px){.intro{grid-template-columns:1fr;gap:16px;padding:32px 0 24px}
+.controls{align-items:flex-start;flex-direction:column}
+.compare{grid-template-columns:1fr;gap:32px}
+.option{width:100%;max-width:430px;margin:auto}
+.option-head{min-height:0;padding-bottom:16px}
+.phone{height:900px}
+.greeting{font-size:27px}
+.flight-card{gap:12px;padding:16px 12px}
+.flight-card .code{font-size:26px}
+.flight-card .airline{width:32px;height:32px}
+.trip-heading strong{font-size:16px}
+.trip-heading time{font-size:12px}
+.stay-marker{gap:8px;font-size:12px}
+.callout{min-height:0;padding-bottom:16px}
+.notes{grid-template-columns:1fr;gap:24px}
+.feedback{grid-template-columns:1fr}
+.mast>.meta{display:none}
+.controls label{flex-wrap:wrap;gap:8px}
+.provenance{line-height:1.7}
+}
+
+@media(max-width:420px){.wrap{padding:0 16px}
+h1{font-size:30px;line-height:36px}
+.brand span{display:none}
+.view-controls{flex-wrap:wrap}
+.view-controls .outline{padding:8px 12px;font-size:12px}
+.flight-card{padding:12px 8px;gap:8px}
+.flight-card .code{font-size:24px}
+.flight-card .airline{width:28px;height:28px}
+.stay-marker{gap:5px;font-size:11px}
+.trip-heading strong{font-size:14px}
+.trip-heading time{font-size:11px}
+.timeline{gap:12px}
+.pointer-action{font-size:10px}
+footer{flex-direction:column;gap:8px}
+}
+
+.live-placeholder{position:relative}
+
+.running-border{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);pointer-events:none;overflow:visible;color:var(--tint)}
+
+.running-border rect{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-dasharray:30 70;animation:live-border-sweep 3.2s linear infinite;animation-delay:var(--sweep-delay,0s)}
+
+@keyframes live-border-sweep{from{stroke-dashoffset:0}
+to{stroke-dashoffset:-100}
+}
+
+@media(prefers-reduced-motion:reduce){.screen{scroll-behavior:auto}
+.running-border rect{animation:none;stroke-dasharray:none;opacity:.35}
+}
+
+@media print{.controls,.feedback,footer,.mast button{display:none}
+.wrap{max-width:none;padding:16px}
+.compare{grid-template-columns:repeat(3,1fr)}
+.phone{height:auto}
+.screen{overflow:visible}
+.option{max-width:none}
+.notes{break-before:page}
+.intro{padding:16px 0}
+.option-head{min-height:140px}
+}

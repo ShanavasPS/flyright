@@ -1,0 +1,2360 @@
+[
+  {
+    "id": "canada",
+    "label": "USA → Canada → USA",
+    "rows": [
+      {
+        "id": "out",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T14:00",
+        "scheduledArrival": "2027-06-01T15:55",
+        "duration": "8h 55m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "New York",
+        "fromCountry": "FI",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "canada-out",
+        "number": "AC701",
+        "fromCode": "LGA",
+        "toCode": "YYZ",
+        "scheduledDeparture": "2027-06-10T10:00",
+        "scheduledArrival": "2027-06-10T11:40",
+        "duration": "1h 40m",
+        "mode": "flight",
+        "fromCity": "New York",
+        "toCity": "Toronto",
+        "fromCountry": "US",
+        "toCountry": "CA",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "canada-back",
+        "number": "AC770",
+        "fromCode": "YYZ",
+        "toCode": "BOS",
+        "scheduledDeparture": "2027-06-14T14:00",
+        "scheduledArrival": "2027-06-14T15:40",
+        "duration": "1h 40m",
+        "mode": "flight",
+        "fromCity": "Toronto",
+        "toCity": "Boston",
+        "fromCountry": "CA",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "back",
+        "number": "AY8",
+        "fromCode": "BOS",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-06-23T18:00",
+        "scheduledArrival": "2027-06-24T08:00",
+        "duration": "7h",
+        "mode": "flight",
+        "fromCity": "Boston",
+        "toCity": "Helsinki",
+        "fromCountry": "US",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "now": "2027-05-01T09:00:00Z",
+    "summary": "Three separate groups. YYZ → BOS stays in Canada; the continued US stay comes after its own header.",
+    "heroId": null,
+    "time": "9:41",
+    "sections": [
+      {
+        "key": "upcoming",
+        "title": "Upcoming",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:out",
+            "group": {
+              "id": "visit:out",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T14:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-10T10:00",
+                "code": "LGA"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:out",
+                  "journey": {
+                    "id": "out",
+                    "number": "AY5",
+                    "fromCode": "HEL",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T14:00",
+                    "scheduledArrival": "2027-06-01T15:55",
+                    "duration": "8h 55m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "New York",
+                    "fromCountry": "FI",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:out:canada-out",
+                  "stay": {
+                    "id": "out:canada-out",
+                    "days": 9,
+                    "place": "the US",
+                    "fromId": "out",
+                    "toId": "canada-out"
+                  }
+                }
+              ]
+            },
+            "dates": "1–10 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:out:canada-out",
+            "stay": {
+              "id": "out:canada-out",
+              "days": 9,
+              "place": "the US",
+              "fromId": "out",
+              "toId": "canada-out"
+            }
+          },
+          {
+            "kind": "header",
+            "key": "header:visit:canada-out",
+            "group": {
+              "id": "visit:canada-out",
+              "title": "Canada trip",
+              "country": "CA",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-10T10:00",
+                "code": "LGA"
+              },
+              "end": {
+                "iso": "2027-06-14T15:40",
+                "code": "BOS"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:canada-out",
+                  "journey": {
+                    "id": "canada-out",
+                    "number": "AC701",
+                    "fromCode": "LGA",
+                    "toCode": "YYZ",
+                    "scheduledDeparture": "2027-06-10T10:00",
+                    "scheduledArrival": "2027-06-10T11:40",
+                    "duration": "1h 40m",
+                    "mode": "flight",
+                    "fromCity": "New York",
+                    "toCity": "Toronto",
+                    "fromCountry": "US",
+                    "toCountry": "CA",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:canada-out:canada-back",
+                  "stay": {
+                    "id": "canada-out:canada-back",
+                    "days": 4,
+                    "place": "Canada",
+                    "fromId": "canada-out",
+                    "toId": "canada-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:canada-back",
+                  "journey": {
+                    "id": "canada-back",
+                    "number": "AC770",
+                    "fromCode": "YYZ",
+                    "toCode": "BOS",
+                    "scheduledDeparture": "2027-06-14T14:00",
+                    "scheduledArrival": "2027-06-14T15:40",
+                    "duration": "1h 40m",
+                    "mode": "flight",
+                    "fromCity": "Toronto",
+                    "toCity": "Boston",
+                    "fromCountry": "CA",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "10–14 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:canada-out",
+            "journey": {
+              "id": "canada-out",
+              "number": "AC701",
+              "fromCode": "LGA",
+              "toCode": "YYZ",
+              "scheduledDeparture": "2027-06-10T10:00",
+              "scheduledArrival": "2027-06-10T11:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Toronto",
+              "fromCountry": "US",
+              "toCountry": "CA",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:canada-out:canada-back",
+            "stay": {
+              "id": "canada-out:canada-back",
+              "days": 4,
+              "place": "Canada",
+              "fromId": "canada-out",
+              "toId": "canada-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:canada-back",
+            "journey": {
+              "id": "canada-back",
+              "number": "AC770",
+              "fromCode": "YYZ",
+              "toCode": "BOS",
+              "scheduledDeparture": "2027-06-14T14:00",
+              "scheduledArrival": "2027-06-14T15:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "Toronto",
+              "toCity": "Boston",
+              "fromCountry": "CA",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "header",
+            "key": "header:continued:back",
+            "group": {
+              "id": "continued:back",
+              "title": "US trip continued",
+              "country": "US",
+              "continued": true,
+              "start": {
+                "iso": "2027-06-14T15:40",
+                "code": "BOS"
+              },
+              "end": {
+                "iso": "2027-06-24T08:00",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "stay",
+                  "key": "stay:canada-back:back",
+                  "stay": {
+                    "id": "canada-back:back",
+                    "days": 9,
+                    "place": "the US",
+                    "fromId": "canada-back",
+                    "toId": "back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:back",
+                  "journey": {
+                    "id": "back",
+                    "number": "AY8",
+                    "fromCode": "BOS",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-06-23T18:00",
+                    "scheduledArrival": "2027-06-24T08:00",
+                    "duration": "7h",
+                    "mode": "flight",
+                    "fromCity": "Boston",
+                    "toCity": "Helsinki",
+                    "fromCountry": "US",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "14–24 Jun"
+          },
+          {
+            "kind": "stay",
+            "key": "stay:canada-back:back",
+            "stay": {
+              "id": "canada-back:back",
+              "days": 9,
+              "place": "the US",
+              "fromId": "canada-back",
+              "toId": "back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:back",
+            "journey": {
+              "id": "back",
+              "number": "AY8",
+              "fromCode": "BOS",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T08:00",
+              "duration": "7h",
+              "mode": "flight",
+              "fromCity": "Boston",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": null,
+    "heroGroup": null
+  },
+  {
+    "id": "return",
+    "label": "Simple return",
+    "rows": [
+      {
+        "id": "out",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T14:00",
+        "scheduledArrival": "2027-06-01T15:55",
+        "duration": "8h 55m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "New York",
+        "fromCountry": "FI",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "direct-back",
+        "number": "AY6",
+        "fromCode": "JFK",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-06-23T18:00",
+        "scheduledArrival": "2027-06-24T09:00",
+        "duration": "8h",
+        "mode": "flight",
+        "fromCity": "New York",
+        "toCity": "Helsinki",
+        "fromCountry": "US",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "now": "2027-05-01T09:00:00Z",
+    "summary": "A single US container includes the outbound flight, the 22-day stay and the return home.",
+    "heroId": null,
+    "time": "9:41",
+    "sections": [
+      {
+        "key": "upcoming",
+        "title": "Upcoming",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:out",
+            "group": {
+              "id": "visit:out",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T14:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-24T09:00",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:out",
+                  "journey": {
+                    "id": "out",
+                    "number": "AY5",
+                    "fromCode": "HEL",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T14:00",
+                    "scheduledArrival": "2027-06-01T15:55",
+                    "duration": "8h 55m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "New York",
+                    "fromCountry": "FI",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:out:direct-back",
+                  "stay": {
+                    "id": "out:direct-back",
+                    "days": 22,
+                    "place": "the US",
+                    "fromId": "out",
+                    "toId": "direct-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:direct-back",
+                  "journey": {
+                    "id": "direct-back",
+                    "number": "AY6",
+                    "fromCode": "JFK",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-06-23T18:00",
+                    "scheduledArrival": "2027-06-24T09:00",
+                    "duration": "8h",
+                    "mode": "flight",
+                    "fromCity": "New York",
+                    "toCity": "Helsinki",
+                    "fromCountry": "US",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "1–24 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:out:direct-back",
+            "stay": {
+              "id": "out:direct-back",
+              "days": 22,
+              "place": "the US",
+              "fromId": "out",
+              "toId": "direct-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:direct-back",
+            "journey": {
+              "id": "direct-back",
+              "number": "AY6",
+              "fromCode": "JFK",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T09:00",
+              "duration": "8h",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": null,
+    "heroGroup": null
+  },
+  {
+    "id": "connections",
+    "label": "Return with a connection",
+    "rows": [
+      {
+        "id": "connection-a",
+        "number": "AY1331",
+        "fromCode": "HEL",
+        "toCode": "LHR",
+        "scheduledDeparture": "2027-06-01T09:00",
+        "scheduledArrival": "2027-06-01T10:10",
+        "duration": "3h 10m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "London",
+        "fromCountry": "FI",
+        "toCountry": "GB",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "connection-b",
+        "number": "BA175",
+        "fromCode": "LHR",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T12:10",
+        "scheduledArrival": "2027-06-01T15:00",
+        "duration": "7h 50m",
+        "mode": "flight",
+        "fromCity": "London",
+        "toCity": "New York",
+        "fromCountry": "GB",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "direct-back",
+        "number": "AY6",
+        "fromCode": "JFK",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-06-23T18:00",
+        "scheduledArrival": "2027-06-24T09:00",
+        "duration": "8h",
+        "mode": "flight",
+        "fromCity": "New York",
+        "toCity": "Helsinki",
+        "fromCountry": "US",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "now": "2027-05-01T09:00:00Z",
+    "summary": "The dotted London connection stays between its flights. The US stay starts only after arrival in New York.",
+    "heroId": null,
+    "time": "9:41",
+    "sections": [
+      {
+        "key": "upcoming",
+        "title": "Upcoming",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:connection-a",
+            "group": {
+              "id": "visit:connection-a",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T09:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-24T09:00",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:connection-a",
+                  "journey": {
+                    "id": "connection-a",
+                    "number": "AY1331",
+                    "fromCode": "HEL",
+                    "toCode": "LHR",
+                    "scheduledDeparture": "2027-06-01T09:00",
+                    "scheduledArrival": "2027-06-01T10:10",
+                    "duration": "3h 10m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "London",
+                    "fromCountry": "FI",
+                    "toCountry": "GB",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:connection-b",
+                  "journey": {
+                    "id": "connection-b",
+                    "number": "BA175",
+                    "fromCode": "LHR",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T12:10",
+                    "scheduledArrival": "2027-06-01T15:00",
+                    "duration": "7h 50m",
+                    "mode": "flight",
+                    "fromCity": "London",
+                    "toCity": "New York",
+                    "fromCountry": "GB",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:connection-b:direct-back",
+                  "stay": {
+                    "id": "connection-b:direct-back",
+                    "days": 22,
+                    "place": "the US",
+                    "fromId": "connection-b",
+                    "toId": "direct-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:direct-back",
+                  "journey": {
+                    "id": "direct-back",
+                    "number": "AY6",
+                    "fromCode": "JFK",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-06-23T18:00",
+                    "scheduledArrival": "2027-06-24T09:00",
+                    "duration": "8h",
+                    "mode": "flight",
+                    "fromCity": "New York",
+                    "toCity": "Helsinki",
+                    "fromCountry": "US",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "1–24 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:connection-a",
+            "journey": {
+              "id": "connection-a",
+              "number": "AY1331",
+              "fromCode": "HEL",
+              "toCode": "LHR",
+              "scheduledDeparture": "2027-06-01T09:00",
+              "scheduledArrival": "2027-06-01T10:10",
+              "duration": "3h 10m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "London",
+              "fromCountry": "FI",
+              "toCountry": "GB",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "flight",
+            "key": "flight:connection-b",
+            "journey": {
+              "id": "connection-b",
+              "number": "BA175",
+              "fromCode": "LHR",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T12:10",
+              "scheduledArrival": "2027-06-01T15:00",
+              "duration": "7h 50m",
+              "mode": "flight",
+              "fromCity": "London",
+              "toCity": "New York",
+              "fromCountry": "GB",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false,
+            "connection": {
+              "prevId": "connection-a",
+              "viaCode": "LHR",
+              "layover": "2h"
+            }
+          },
+          {
+            "kind": "stay",
+            "key": "stay:connection-b:direct-back",
+            "stay": {
+              "id": "connection-b:direct-back",
+              "days": 22,
+              "place": "the US",
+              "fromId": "connection-b",
+              "toId": "direct-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:direct-back",
+            "journey": {
+              "id": "direct-back",
+              "number": "AY6",
+              "fromCode": "JFK",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T09:00",
+              "duration": "8h",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": null,
+    "heroGroup": null
+  },
+  {
+    "id": "independent",
+    "label": "Two independent trips",
+    "rows": [
+      {
+        "id": "out",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T14:00",
+        "scheduledArrival": "2027-06-01T15:55",
+        "duration": "8h 55m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "New York",
+        "fromCountry": "FI",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "direct-back",
+        "number": "AY6",
+        "fromCode": "JFK",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-06-23T18:00",
+        "scheduledArrival": "2027-06-24T09:00",
+        "duration": "8h",
+        "mode": "flight",
+        "fromCity": "New York",
+        "toCity": "Helsinki",
+        "fromCountry": "US",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "portugal",
+        "number": "AY1739",
+        "fromCode": "HEL",
+        "toCode": "LIS",
+        "scheduledDeparture": "2027-07-09T12:00",
+        "scheduledArrival": "2027-07-09T14:50",
+        "duration": "4h 50m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "Lisbon",
+        "fromCountry": "FI",
+        "toCountry": "PT",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "portugal-back",
+        "number": "AY1740",
+        "fromCode": "LIS",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-07-16T15:30",
+        "scheduledArrival": "2027-07-16T22:10",
+        "duration": "4h 40m",
+        "mode": "flight",
+        "fromCity": "Lisbon",
+        "toCity": "Helsinki",
+        "fromCountry": "PT",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "now": "2027-05-01T09:00:00Z",
+    "summary": "US and Portugal have their own filled containers. The old full-width separator is removed.",
+    "heroId": null,
+    "time": "9:41",
+    "sections": [
+      {
+        "key": "upcoming",
+        "title": "Upcoming",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:out",
+            "group": {
+              "id": "visit:out",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T14:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-24T09:00",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:out",
+                  "journey": {
+                    "id": "out",
+                    "number": "AY5",
+                    "fromCode": "HEL",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T14:00",
+                    "scheduledArrival": "2027-06-01T15:55",
+                    "duration": "8h 55m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "New York",
+                    "fromCountry": "FI",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:out:direct-back",
+                  "stay": {
+                    "id": "out:direct-back",
+                    "days": 22,
+                    "place": "the US",
+                    "fromId": "out",
+                    "toId": "direct-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:direct-back",
+                  "journey": {
+                    "id": "direct-back",
+                    "number": "AY6",
+                    "fromCode": "JFK",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-06-23T18:00",
+                    "scheduledArrival": "2027-06-24T09:00",
+                    "duration": "8h",
+                    "mode": "flight",
+                    "fromCity": "New York",
+                    "toCity": "Helsinki",
+                    "fromCountry": "US",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "1–24 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:out:direct-back",
+            "stay": {
+              "id": "out:direct-back",
+              "days": 22,
+              "place": "the US",
+              "fromId": "out",
+              "toId": "direct-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:direct-back",
+            "journey": {
+              "id": "direct-back",
+              "number": "AY6",
+              "fromCode": "JFK",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T09:00",
+              "duration": "8h",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "separator",
+            "key": "separator:portugal"
+          },
+          {
+            "kind": "header",
+            "key": "header:visit:portugal",
+            "group": {
+              "id": "visit:portugal",
+              "title": "Portugal trip",
+              "country": "PT",
+              "continued": false,
+              "start": {
+                "iso": "2027-07-09T12:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-07-16T22:10",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:portugal",
+                  "journey": {
+                    "id": "portugal",
+                    "number": "AY1739",
+                    "fromCode": "HEL",
+                    "toCode": "LIS",
+                    "scheduledDeparture": "2027-07-09T12:00",
+                    "scheduledArrival": "2027-07-09T14:50",
+                    "duration": "4h 50m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "Lisbon",
+                    "fromCountry": "FI",
+                    "toCountry": "PT",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:portugal:portugal-back",
+                  "stay": {
+                    "id": "portugal:portugal-back",
+                    "days": 7,
+                    "place": "Portugal",
+                    "fromId": "portugal",
+                    "toId": "portugal-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:portugal-back",
+                  "journey": {
+                    "id": "portugal-back",
+                    "number": "AY1740",
+                    "fromCode": "LIS",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-07-16T15:30",
+                    "scheduledArrival": "2027-07-16T22:10",
+                    "duration": "4h 40m",
+                    "mode": "flight",
+                    "fromCity": "Lisbon",
+                    "toCity": "Helsinki",
+                    "fromCountry": "PT",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "9–16 Jul"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:portugal",
+            "journey": {
+              "id": "portugal",
+              "number": "AY1739",
+              "fromCode": "HEL",
+              "toCode": "LIS",
+              "scheduledDeparture": "2027-07-09T12:00",
+              "scheduledArrival": "2027-07-09T14:50",
+              "duration": "4h 50m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "Lisbon",
+              "fromCountry": "FI",
+              "toCountry": "PT",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:portugal:portugal-back",
+            "stay": {
+              "id": "portugal:portugal-back",
+              "days": 7,
+              "place": "Portugal",
+              "fromId": "portugal",
+              "toId": "portugal-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:portugal-back",
+            "journey": {
+              "id": "portugal-back",
+              "number": "AY1740",
+              "fromCode": "LIS",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-07-16T15:30",
+              "scheduledArrival": "2027-07-16T22:10",
+              "duration": "4h 40m",
+              "mode": "flight",
+              "fromCity": "Lisbon",
+              "toCity": "Helsinki",
+              "fromCountry": "PT",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": null,
+    "heroGroup": null
+  },
+  {
+    "id": "first-live",
+    "label": "First flight is live",
+    "rows": [
+      {
+        "id": "out",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T14:00",
+        "scheduledArrival": "2027-06-01T15:55",
+        "duration": "8h 55m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "New York",
+        "fromCountry": "FI",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "direct-back",
+        "number": "AY6",
+        "fromCode": "JFK",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-06-23T18:00",
+        "scheduledArrival": "2027-06-24T09:00",
+        "duration": "8h",
+        "mode": "flight",
+        "fromCity": "New York",
+        "toCity": "Helsinki",
+        "fromCountry": "US",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "heroId": "out",
+    "now": "2027-06-01T10:00:00Z",
+    "time": "13:00",
+    "gate": "42",
+    "clock": "1:00",
+    "summary": "Small travel summary first, then the US group with its expanded live flight. One flight card and no jump links.",
+    "sections": [
+      {
+        "key": "current",
+        "title": "Current trip",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:out",
+            "group": {
+              "id": "visit:out",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T14:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-24T09:00",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:out",
+                  "journey": {
+                    "id": "out",
+                    "number": "AY5",
+                    "fromCode": "HEL",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T14:00",
+                    "scheduledArrival": "2027-06-01T15:55",
+                    "duration": "8h 55m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "New York",
+                    "fromCountry": "FI",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:out:direct-back",
+                  "stay": {
+                    "id": "out:direct-back",
+                    "days": 22,
+                    "place": "the US",
+                    "fromId": "out",
+                    "toId": "direct-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:direct-back",
+                  "journey": {
+                    "id": "direct-back",
+                    "number": "AY6",
+                    "fromCode": "JFK",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-06-23T18:00",
+                    "scheduledArrival": "2027-06-24T09:00",
+                    "duration": "8h",
+                    "mode": "flight",
+                    "fromCity": "New York",
+                    "toCity": "Helsinki",
+                    "fromCountry": "US",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "1–24 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": true
+          },
+          {
+            "kind": "stay",
+            "key": "stay:out:direct-back",
+            "stay": {
+              "id": "out:direct-back",
+              "days": 22,
+              "place": "the US",
+              "fromId": "out",
+              "toId": "direct-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:direct-back",
+            "journey": {
+              "id": "direct-back",
+              "number": "AY6",
+              "fromCode": "JFK",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T09:00",
+              "duration": "8h",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": {
+      "id": "out",
+      "number": "AY5",
+      "fromCode": "HEL",
+      "toCode": "JFK",
+      "scheduledDeparture": "2027-06-01T14:00",
+      "scheduledArrival": "2027-06-01T15:55",
+      "duration": "8h 55m",
+      "mode": "flight",
+      "fromCity": "Helsinki",
+      "toCity": "New York",
+      "fromCountry": "FI",
+      "toCountry": "US",
+      "bookingReference": null,
+      "deletedAt": null
+    },
+    "heroGroup": {
+      "group": {
+        "id": "visit:out",
+        "title": "US trip",
+        "country": "US",
+        "continued": false,
+        "start": {
+          "iso": "2027-06-01T14:00",
+          "code": "HEL"
+        },
+        "end": {
+          "iso": "2027-06-24T09:00",
+          "code": "HEL"
+        },
+        "entries": [
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            }
+          },
+          {
+            "kind": "stay",
+            "key": "stay:out:direct-back",
+            "stay": {
+              "id": "out:direct-back",
+              "days": 22,
+              "place": "the US",
+              "fromId": "out",
+              "toId": "direct-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:direct-back",
+            "journey": {
+              "id": "direct-back",
+              "number": "AY6",
+              "fromCode": "JFK",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T09:00",
+              "duration": "8h",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            }
+          }
+        ]
+      },
+      "dates": "1–24 Jun",
+      "isFirstFlight": true
+    }
+  },
+  {
+    "id": "later-live",
+    "label": "Later flight is live",
+    "rows": [
+      {
+        "id": "out",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T14:00",
+        "scheduledArrival": "2027-06-01T15:55",
+        "duration": "8h 55m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "New York",
+        "fromCountry": "FI",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "canada-out",
+        "number": "AC701",
+        "fromCode": "LGA",
+        "toCode": "YYZ",
+        "scheduledDeparture": "2027-06-10T10:00",
+        "scheduledArrival": "2027-06-10T11:40",
+        "duration": "1h 40m",
+        "mode": "flight",
+        "fromCity": "New York",
+        "toCity": "Toronto",
+        "fromCountry": "US",
+        "toCountry": "CA",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "canada-back",
+        "number": "AC770",
+        "fromCode": "YYZ",
+        "toCode": "BOS",
+        "scheduledDeparture": "2027-06-14T14:00",
+        "scheduledArrival": "2027-06-14T15:40",
+        "duration": "1h 40m",
+        "mode": "flight",
+        "fromCity": "Toronto",
+        "toCity": "Boston",
+        "fromCountry": "CA",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "back",
+        "number": "AY8",
+        "fromCode": "BOS",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-06-23T18:00",
+        "scheduledArrival": "2027-06-24T08:00",
+        "duration": "7h",
+        "mode": "flight",
+        "fromCity": "Boston",
+        "toCity": "Helsinki",
+        "fromCountry": "US",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "heroId": "canada-back",
+    "now": "2027-06-14T17:00:00Z",
+    "time": "13:00",
+    "gate": "F62",
+    "clock": "1:00",
+    "summary": "The live card stays at the top. The full YYZ → BOS row remains inside Canada, with working links in both directions.",
+    "sections": [
+      {
+        "key": "current",
+        "title": "Current trip",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:out",
+            "group": {
+              "id": "visit:out",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T14:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-10T10:00",
+                "code": "LGA"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:out",
+                  "journey": {
+                    "id": "out",
+                    "number": "AY5",
+                    "fromCode": "HEL",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T14:00",
+                    "scheduledArrival": "2027-06-01T15:55",
+                    "duration": "8h 55m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "New York",
+                    "fromCountry": "FI",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:out:canada-out",
+                  "stay": {
+                    "id": "out:canada-out",
+                    "days": 9,
+                    "place": "the US",
+                    "fromId": "out",
+                    "toId": "canada-out"
+                  }
+                }
+              ]
+            },
+            "dates": "1–10 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:out:canada-out",
+            "stay": {
+              "id": "out:canada-out",
+              "days": 9,
+              "place": "the US",
+              "fromId": "out",
+              "toId": "canada-out"
+            }
+          },
+          {
+            "kind": "header",
+            "key": "header:visit:canada-out",
+            "group": {
+              "id": "visit:canada-out",
+              "title": "Canada trip",
+              "country": "CA",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-10T10:00",
+                "code": "LGA"
+              },
+              "end": {
+                "iso": "2027-06-14T15:40",
+                "code": "BOS"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:canada-out",
+                  "journey": {
+                    "id": "canada-out",
+                    "number": "AC701",
+                    "fromCode": "LGA",
+                    "toCode": "YYZ",
+                    "scheduledDeparture": "2027-06-10T10:00",
+                    "scheduledArrival": "2027-06-10T11:40",
+                    "duration": "1h 40m",
+                    "mode": "flight",
+                    "fromCity": "New York",
+                    "toCity": "Toronto",
+                    "fromCountry": "US",
+                    "toCountry": "CA",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:canada-out:canada-back",
+                  "stay": {
+                    "id": "canada-out:canada-back",
+                    "days": 4,
+                    "place": "Canada",
+                    "fromId": "canada-out",
+                    "toId": "canada-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:canada-back",
+                  "journey": {
+                    "id": "canada-back",
+                    "number": "AC770",
+                    "fromCode": "YYZ",
+                    "toCode": "BOS",
+                    "scheduledDeparture": "2027-06-14T14:00",
+                    "scheduledArrival": "2027-06-14T15:40",
+                    "duration": "1h 40m",
+                    "mode": "flight",
+                    "fromCity": "Toronto",
+                    "toCity": "Boston",
+                    "fromCountry": "CA",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "10–14 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:canada-out",
+            "journey": {
+              "id": "canada-out",
+              "number": "AC701",
+              "fromCode": "LGA",
+              "toCode": "YYZ",
+              "scheduledDeparture": "2027-06-10T10:00",
+              "scheduledArrival": "2027-06-10T11:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Toronto",
+              "fromCountry": "US",
+              "toCountry": "CA",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:canada-out:canada-back",
+            "stay": {
+              "id": "canada-out:canada-back",
+              "days": 4,
+              "place": "Canada",
+              "fromId": "canada-out",
+              "toId": "canada-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:canada-back",
+            "journey": {
+              "id": "canada-back",
+              "number": "AC770",
+              "fromCode": "YYZ",
+              "toCode": "BOS",
+              "scheduledDeparture": "2027-06-14T14:00",
+              "scheduledArrival": "2027-06-14T15:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "Toronto",
+              "toCity": "Boston",
+              "fromCountry": "CA",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": true
+          },
+          {
+            "kind": "header",
+            "key": "header:continued:back",
+            "group": {
+              "id": "continued:back",
+              "title": "US trip continued",
+              "country": "US",
+              "continued": true,
+              "start": {
+                "iso": "2027-06-14T15:40",
+                "code": "BOS"
+              },
+              "end": {
+                "iso": "2027-06-24T08:00",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "stay",
+                  "key": "stay:canada-back:back",
+                  "stay": {
+                    "id": "canada-back:back",
+                    "days": 9,
+                    "place": "the US",
+                    "fromId": "canada-back",
+                    "toId": "back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:back",
+                  "journey": {
+                    "id": "back",
+                    "number": "AY8",
+                    "fromCode": "BOS",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-06-23T18:00",
+                    "scheduledArrival": "2027-06-24T08:00",
+                    "duration": "7h",
+                    "mode": "flight",
+                    "fromCity": "Boston",
+                    "toCity": "Helsinki",
+                    "fromCountry": "US",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "14–24 Jun"
+          },
+          {
+            "kind": "stay",
+            "key": "stay:canada-back:back",
+            "stay": {
+              "id": "canada-back:back",
+              "days": 9,
+              "place": "the US",
+              "fromId": "canada-back",
+              "toId": "back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:back",
+            "journey": {
+              "id": "back",
+              "number": "AY8",
+              "fromCode": "BOS",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T08:00",
+              "duration": "7h",
+              "mode": "flight",
+              "fromCity": "Boston",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": {
+      "id": "canada-back",
+      "number": "AC770",
+      "fromCode": "YYZ",
+      "toCode": "BOS",
+      "scheduledDeparture": "2027-06-14T14:00",
+      "scheduledArrival": "2027-06-14T15:40",
+      "duration": "1h 40m",
+      "mode": "flight",
+      "fromCity": "Toronto",
+      "toCity": "Boston",
+      "fromCountry": "CA",
+      "toCountry": "US",
+      "bookingReference": null,
+      "deletedAt": null
+    },
+    "heroGroup": {
+      "group": {
+        "id": "visit:canada-out",
+        "title": "Canada trip",
+        "country": "CA",
+        "continued": false,
+        "start": {
+          "iso": "2027-06-10T10:00",
+          "code": "LGA"
+        },
+        "end": {
+          "iso": "2027-06-14T15:40",
+          "code": "BOS"
+        },
+        "entries": [
+          {
+            "kind": "flight",
+            "key": "flight:canada-out",
+            "journey": {
+              "id": "canada-out",
+              "number": "AC701",
+              "fromCode": "LGA",
+              "toCode": "YYZ",
+              "scheduledDeparture": "2027-06-10T10:00",
+              "scheduledArrival": "2027-06-10T11:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Toronto",
+              "fromCountry": "US",
+              "toCountry": "CA",
+              "bookingReference": null,
+              "deletedAt": null
+            }
+          },
+          {
+            "kind": "stay",
+            "key": "stay:canada-out:canada-back",
+            "stay": {
+              "id": "canada-out:canada-back",
+              "days": 4,
+              "place": "Canada",
+              "fromId": "canada-out",
+              "toId": "canada-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:canada-back",
+            "journey": {
+              "id": "canada-back",
+              "number": "AC770",
+              "fromCode": "YYZ",
+              "toCode": "BOS",
+              "scheduledDeparture": "2027-06-14T14:00",
+              "scheduledArrival": "2027-06-14T15:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "Toronto",
+              "toCity": "Boston",
+              "fromCountry": "CA",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            }
+          }
+        ]
+      },
+      "dates": "10–14 Jun",
+      "isFirstFlight": false
+    }
+  },
+  {
+    "id": "oneway",
+    "label": "Only one flight saved",
+    "rows": [
+      {
+        "id": "out",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T14:00",
+        "scheduledArrival": "2027-06-01T15:55",
+        "duration": "8h 55m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "New York",
+        "fromCountry": "FI",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "now": "2027-05-01T09:00:00Z",
+    "summary": "The flag, title, date and single flight share one container. No return or stay length is invented.",
+    "heroId": null,
+    "time": "9:41",
+    "sections": [
+      {
+        "key": "upcoming",
+        "title": "Upcoming",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:out",
+            "group": {
+              "id": "visit:out",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T14:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-01T15:55",
+                "code": "JFK"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:out",
+                  "journey": {
+                    "id": "out",
+                    "number": "AY5",
+                    "fromCode": "HEL",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T14:00",
+                    "scheduledArrival": "2027-06-01T15:55",
+                    "duration": "8h 55m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "New York",
+                    "fromCountry": "FI",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "1 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": null,
+    "heroGroup": null
+  },
+  {
+    "id": "finished",
+    "label": "Completed trip",
+    "rows": [
+      {
+        "id": "out",
+        "number": "AY5",
+        "fromCode": "HEL",
+        "toCode": "JFK",
+        "scheduledDeparture": "2027-06-01T14:00",
+        "scheduledArrival": "2027-06-01T15:55",
+        "duration": "8h 55m",
+        "mode": "flight",
+        "fromCity": "Helsinki",
+        "toCity": "New York",
+        "fromCountry": "FI",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "canada-out",
+        "number": "AC701",
+        "fromCode": "LGA",
+        "toCode": "YYZ",
+        "scheduledDeparture": "2027-06-10T10:00",
+        "scheduledArrival": "2027-06-10T11:40",
+        "duration": "1h 40m",
+        "mode": "flight",
+        "fromCity": "New York",
+        "toCity": "Toronto",
+        "fromCountry": "US",
+        "toCountry": "CA",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "canada-back",
+        "number": "AC770",
+        "fromCode": "YYZ",
+        "toCode": "BOS",
+        "scheduledDeparture": "2027-06-14T14:00",
+        "scheduledArrival": "2027-06-14T15:40",
+        "duration": "1h 40m",
+        "mode": "flight",
+        "fromCity": "Toronto",
+        "toCity": "Boston",
+        "fromCountry": "CA",
+        "toCountry": "US",
+        "bookingReference": null,
+        "deletedAt": null
+      },
+      {
+        "id": "back",
+        "number": "AY8",
+        "fromCode": "BOS",
+        "toCode": "HEL",
+        "scheduledDeparture": "2027-06-23T18:00",
+        "scheduledArrival": "2027-06-24T08:00",
+        "duration": "7h",
+        "mode": "flight",
+        "fromCity": "Boston",
+        "toCity": "Helsinki",
+        "fromCountry": "US",
+        "toCountry": "FI",
+        "bookingReference": null,
+        "deletedAt": null
+      }
+    ],
+    "now": "2027-06-25T09:00:00Z",
+    "summary": "The same three groups are kept together under 2027, with every flight in travel order.",
+    "heroId": null,
+    "time": "9:41",
+    "sections": [
+      {
+        "key": "2027",
+        "title": "2027",
+        "data": [
+          {
+            "kind": "header",
+            "key": "header:visit:out",
+            "group": {
+              "id": "visit:out",
+              "title": "US trip",
+              "country": "US",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-01T14:00",
+                "code": "HEL"
+              },
+              "end": {
+                "iso": "2027-06-10T10:00",
+                "code": "LGA"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:out",
+                  "journey": {
+                    "id": "out",
+                    "number": "AY5",
+                    "fromCode": "HEL",
+                    "toCode": "JFK",
+                    "scheduledDeparture": "2027-06-01T14:00",
+                    "scheduledArrival": "2027-06-01T15:55",
+                    "duration": "8h 55m",
+                    "mode": "flight",
+                    "fromCity": "Helsinki",
+                    "toCity": "New York",
+                    "fromCountry": "FI",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:out:canada-out",
+                  "stay": {
+                    "id": "out:canada-out",
+                    "days": 9,
+                    "place": "the US",
+                    "fromId": "out",
+                    "toId": "canada-out"
+                  }
+                }
+              ]
+            },
+            "dates": "1–10 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:out",
+            "journey": {
+              "id": "out",
+              "number": "AY5",
+              "fromCode": "HEL",
+              "toCode": "JFK",
+              "scheduledDeparture": "2027-06-01T14:00",
+              "scheduledArrival": "2027-06-01T15:55",
+              "duration": "8h 55m",
+              "mode": "flight",
+              "fromCity": "Helsinki",
+              "toCity": "New York",
+              "fromCountry": "FI",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:out:canada-out",
+            "stay": {
+              "id": "out:canada-out",
+              "days": 9,
+              "place": "the US",
+              "fromId": "out",
+              "toId": "canada-out"
+            }
+          },
+          {
+            "kind": "header",
+            "key": "header:visit:canada-out",
+            "group": {
+              "id": "visit:canada-out",
+              "title": "Canada trip",
+              "country": "CA",
+              "continued": false,
+              "start": {
+                "iso": "2027-06-10T10:00",
+                "code": "LGA"
+              },
+              "end": {
+                "iso": "2027-06-14T15:40",
+                "code": "BOS"
+              },
+              "entries": [
+                {
+                  "kind": "flight",
+                  "key": "flight:canada-out",
+                  "journey": {
+                    "id": "canada-out",
+                    "number": "AC701",
+                    "fromCode": "LGA",
+                    "toCode": "YYZ",
+                    "scheduledDeparture": "2027-06-10T10:00",
+                    "scheduledArrival": "2027-06-10T11:40",
+                    "duration": "1h 40m",
+                    "mode": "flight",
+                    "fromCity": "New York",
+                    "toCity": "Toronto",
+                    "fromCountry": "US",
+                    "toCountry": "CA",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                },
+                {
+                  "kind": "stay",
+                  "key": "stay:canada-out:canada-back",
+                  "stay": {
+                    "id": "canada-out:canada-back",
+                    "days": 4,
+                    "place": "Canada",
+                    "fromId": "canada-out",
+                    "toId": "canada-back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:canada-back",
+                  "journey": {
+                    "id": "canada-back",
+                    "number": "AC770",
+                    "fromCode": "YYZ",
+                    "toCode": "BOS",
+                    "scheduledDeparture": "2027-06-14T14:00",
+                    "scheduledArrival": "2027-06-14T15:40",
+                    "duration": "1h 40m",
+                    "mode": "flight",
+                    "fromCity": "Toronto",
+                    "toCity": "Boston",
+                    "fromCountry": "CA",
+                    "toCountry": "US",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "10–14 Jun"
+          },
+          {
+            "kind": "flight",
+            "key": "flight:canada-out",
+            "journey": {
+              "id": "canada-out",
+              "number": "AC701",
+              "fromCode": "LGA",
+              "toCode": "YYZ",
+              "scheduledDeparture": "2027-06-10T10:00",
+              "scheduledArrival": "2027-06-10T11:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "New York",
+              "toCity": "Toronto",
+              "fromCountry": "US",
+              "toCountry": "CA",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "stay",
+            "key": "stay:canada-out:canada-back",
+            "stay": {
+              "id": "canada-out:canada-back",
+              "days": 4,
+              "place": "Canada",
+              "fromId": "canada-out",
+              "toId": "canada-back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:canada-back",
+            "journey": {
+              "id": "canada-back",
+              "number": "AC770",
+              "fromCode": "YYZ",
+              "toCode": "BOS",
+              "scheduledDeparture": "2027-06-14T14:00",
+              "scheduledArrival": "2027-06-14T15:40",
+              "duration": "1h 40m",
+              "mode": "flight",
+              "fromCity": "Toronto",
+              "toCity": "Boston",
+              "fromCountry": "CA",
+              "toCountry": "US",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          },
+          {
+            "kind": "header",
+            "key": "header:continued:back",
+            "group": {
+              "id": "continued:back",
+              "title": "US trip continued",
+              "country": "US",
+              "continued": true,
+              "start": {
+                "iso": "2027-06-14T15:40",
+                "code": "BOS"
+              },
+              "end": {
+                "iso": "2027-06-24T08:00",
+                "code": "HEL"
+              },
+              "entries": [
+                {
+                  "kind": "stay",
+                  "key": "stay:canada-back:back",
+                  "stay": {
+                    "id": "canada-back:back",
+                    "days": 9,
+                    "place": "the US",
+                    "fromId": "canada-back",
+                    "toId": "back"
+                  }
+                },
+                {
+                  "kind": "flight",
+                  "key": "flight:back",
+                  "journey": {
+                    "id": "back",
+                    "number": "AY8",
+                    "fromCode": "BOS",
+                    "toCode": "HEL",
+                    "scheduledDeparture": "2027-06-23T18:00",
+                    "scheduledArrival": "2027-06-24T08:00",
+                    "duration": "7h",
+                    "mode": "flight",
+                    "fromCity": "Boston",
+                    "toCity": "Helsinki",
+                    "fromCountry": "US",
+                    "toCountry": "FI",
+                    "bookingReference": null,
+                    "deletedAt": null
+                  }
+                }
+              ]
+            },
+            "dates": "14–24 Jun"
+          },
+          {
+            "kind": "stay",
+            "key": "stay:canada-back:back",
+            "stay": {
+              "id": "canada-back:back",
+              "days": 9,
+              "place": "the US",
+              "fromId": "canada-back",
+              "toId": "back"
+            }
+          },
+          {
+            "kind": "flight",
+            "key": "flight:back",
+            "journey": {
+              "id": "back",
+              "number": "AY8",
+              "fromCode": "BOS",
+              "toCode": "HEL",
+              "scheduledDeparture": "2027-06-23T18:00",
+              "scheduledArrival": "2027-06-24T08:00",
+              "duration": "7h",
+              "mode": "flight",
+              "fromCity": "Boston",
+              "toCity": "Helsinki",
+              "fromCountry": "US",
+              "toCountry": "FI",
+              "bookingReference": null,
+              "deletedAt": null
+            },
+            "live": false,
+            "hero": false
+          }
+        ]
+      }
+    ],
+    "hero": null,
+    "heroGroup": null
+  }
+]

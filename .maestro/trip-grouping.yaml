@@ -10,6 +10,22 @@ appId: com.shanavasshaji.flyright
     visible: "Flights"
     timeout: 90000
 - openLink: "flyright://flights"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - runFlow:
+          when:
+            visible: "Can't perform a React state update.*"
+          commands:
+            - tapOn:
+                id: "logbox_dismiss_button_error"
+# A retained navigation stack can reopen partway down the itinerary. Start at
+# the existing stats action before looking for the first destination header.
+- scrollUntilVisible:
+    element: "All travel stats"
+    direction: UP
+    timeout: 30000
 - scrollUntilVisible:
     element: "US trip"
     direction: DOWN
@@ -25,7 +41,7 @@ appId: com.shanavasshaji.flyright
       - scrollUntilVisible:
           element: "Portugal trip"
           direction: DOWN
-      - assertVisible:
+      - assertNotVisible:
           id: "independent-trip-separator"
       - takeScreenshot: ${SHOTS}/separate-trip
       - scrollUntilVisible:

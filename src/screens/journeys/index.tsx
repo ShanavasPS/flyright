@@ -21,7 +21,7 @@ import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass
 import { TripRow } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
-import { IndependentTripSeparator, TripConnectionMark, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
+import { TripConnectionMark, TripGroupFrame, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
 import { PaneOutline } from '@/components/pane-placeholders';
 import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
@@ -180,7 +180,11 @@ export function Journeys() {
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
   // Keep the active flight in the complete, chronological itinerary.
   const tripSections = useMemo(
-    () => tripListSections(journeys ?? [], now, heroId),
+    () => tripListSections(journeys ?? [], now, heroId).map(section => ({
+      ...section,
+      // Filled destination containers now provide the boundary for every trip.
+      data: section.data.filter(item => item.kind !== 'separator'),
+    })),
     [journeys, now, heroId],
   );
   const heroGroup = useMemo(() => tripHeroGroup(journeys ?? [], now, heroId), [journeys, now, heroId]);
@@ -329,7 +333,7 @@ export function Journeys() {
             // automatic inset discovery can miss it. Reserve the tab safe
             // area explicitly, including when jumping to the very last row.
             contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'never' : 'automatic'}
-            contentContainerStyle={[styles.list, Platform.OS === 'ios' && { paddingBottom: insets.bottom + Spacing.three }]}
+            contentContainerStyle={[styles.list, styles.groupedList, Platform.OS === 'ios' && { paddingBottom: insets.bottom + Spacing.three }]}
             scrollIndicatorInsets={Platform.OS === 'ios' ? { bottom: insets.bottom } : undefined}
             stickySectionHeadersEnabled={false}
             maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
@@ -361,16 +365,31 @@ export function Journeys() {
                 {section.title}
               </ThemedText>
             }
-            renderItem={({ item }) => {
-              if (item.kind === 'header') return <TripGroupHeading group={item.group} dates={item.dates} />;
-              if (item.kind === 'stay') return <TripStayMark stay={item.stay} />;
-              if (item.kind === 'separator') return <IndependentTripSeparator />;
+            renderItem={({ item, index, section }) => {
+              if (item.kind === 'separator') return null;
+              if (item.kind === 'header') return (
+                <TripGroupFrame header>
+                  <TripGroupHeading group={item.group} dates={item.dates} />
+                </TripGroupFrame>
+              );
+              const first = section.data[index - 1]?.kind === 'header';
+              const next = section.data[index + 1];
+              const last = !next || next.kind === 'header';
+              if (item.kind === 'stay') return (
+                <TripGroupFrame first={first} last={last}>
+                  <TripStayMark stay={item.stay} />
+                </TripGroupFrame>
+              );
               if (item.hero && inlineHero) {
-                return <HomeHero journeys={journeys} stats={stats} variant="glance" snapshot={{ hero, now }} />;
+                return (
+                  <TripGroupFrame first={first} last={last}>
+                    <HomeHero journeys={journeys} stats={stats} variant="glance" snapshot={{ hero, now }} />
+                  </TripGroupFrame>
+                );
               }
               const row = item.journey;
               return (
-                <>
+                <TripGroupFrame first={first} last={last}>
                   {item.connection && <TripConnectionMark connection={item.connection} />}
                   <JourneyItem
                     row={row}
@@ -383,7 +402,7 @@ export function Journeys() {
                     onSelect={twoPane ? () => setSelectedId(row.id) : undefined}
                     selected={twoPane && detailId === row.id}
                   />
-                </>
+                </TripGroupFrame>
               );
             }}
           />
@@ -821,10 +840,13 @@ const styles = StyleSheet.create({
     // Breathing room in addition to the platform's tab-bar clearance.
     paddingBottom: Spacing.three,
   },
+  // Cell padding supplies the inner spacing without gaps in the group surface.
+  groupedList: { gap: 0 },
   sectionTitle: {
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginTop: Spacing.one,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.two,
   },
   rowPressed: {
     opacity: 0.9,
