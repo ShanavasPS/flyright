@@ -7,13 +7,17 @@ import { RouteLeg } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { TravelGlobe } from '@/components/travel-globe';
+import { TripGroupFrame, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
 import { TripRow } from '@/components/trip-row';
 import { UpdatesCard } from '@/components/trip-updates';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PublicSession } from '../../convex/liveShared';
 
-import type { RouteSource } from '@/services/geo';
+import { getAirport } from '@/services/airports';
+import { haversineKm, type RouteSource } from '@/services/geo';
+import type { JourneyRow } from '@/services/journeys';
+import { buildTripGroups, tripGroupDates } from '@/services/trip-groups';
 import type { TripUpdate } from '@/services/trip-updates';
 import { cityOf } from '@/services/timeline';
 import { layoverLabel } from '../../convex/itineraryShared';
@@ -49,6 +53,31 @@ export type PersonTrip = {
   scheduledDeparture: string;
   scheduledArrival: string;
 };
+
+/** Someone else's flight as the journal's own row shape, so the Flights tab's
+ * grouping reads it: `mode` decides whether a row is a flight at all, `id`
+ * keys every group, and the countries classify the trip. The server hands a
+ * follower seven whitelisted fields, and the airport table supplies the rest
+ * exactly as it does on the globe. */
+export function asJourneyRow(t: PersonTrip): JourneyRow {
+  const from = getAirport(t.fromCode);
+  const to = getAirport(t.toCode);
+  return {
+    id: t.journeyId,
+    mode: 'flight',
+    source: 'lookup',
+    fromCode: t.fromCode,
+    toCode: t.toCode,
+    fromCountry: from?.country ?? '',
+    toCountry: to?.country ?? '',
+    number: t.number,
+    carrier: t.carrier,
+    carrierCountry: '',
+    distanceKm: from && to ? Math.round(haversineKm(from.lat, from.lon, to.lat, to.lon)) : 0,
+    scheduledDeparture: t.scheduledDeparture,
+    scheduledArrival: t.scheduledArrival,
+  } as JourneyRow;
+}
 
 /** The live session as a follower is shown it — the server's public
  * whitelist, which is exactly what the card and its countdown read. */
@@ -186,11 +215,10 @@ export function PersonTravel({
     const gap = legInstant(leg.scheduledDeparture, leg.fromCode) - from;
     return Number.isFinite(gap) && gap > 0 ? `${layoverLabel(gap)} in ${cityOf(leg.fromCode)}` : null;
   };
-  const trip = (t: PersonTrip, i: number, list: PersonTrip[]) => (
+  const trip = (t: PersonTrip, prevId?: string) => (
     <Fragment key={t.journeyId}>
       {(() => {
-        const prev = list[i - 1];
-        const joint = connectionBetween(connections, prev && { id: prev.journeyId }, { id: t.journeyId });
+        const joint = connectionBetween(connections, prevId ? { id: prevId } : undefined, { id: t.journeyId });
         return joint ? <LayoverMark label={connectionLabel(joint)} /> : null;
       })()}
     <Pressable
@@ -203,6 +231,37 @@ export function PersonTravel({
     </Pressable>
     </Fragment>
   );
+
+  /** Their flights under the Flights tab's own destination groups: the faded
+   * flag, the city and the dates, with the stays between them. A flown list
+   * reads newest destination first, the way the viewer's own does. */
+  const grouped = (list: PersonTrip[], flown: boolean) => {
+    const byId = new Map(list.map((t) => [t.journeyId, t]));
+    const trips = buildTripGroups(list.map(asJourneyRow));
+    return (flown ? [...trips].reverse() : trips).flatMap((t) => {
+      const groups = flown ? [...t.groups].reverse() : t.groups;
+      return groups.map((g) => (
+        <Fragment key={`group:${g.id}`}>
+          <TripGroupFrame header country={g.country}>
+            <TripGroupHeading group={g} dates={tripGroupDates(g, now.getFullYear())} />
+          </TripGroupFrame>
+          {g.entries.map((entry, i) => {
+            const previous = g.entries[i - 1];
+            const row = entry.kind === 'flight' ? byId.get(entry.journey.id) : undefined;
+            return (
+              <TripGroupFrame key={entry.key} first={i === 0} last={i === g.entries.length - 1}>
+                {entry.kind === 'stay' ? (
+                  <TripStayMark stay={entry.stay} />
+                ) : row ? (
+                  trip(row, previous?.kind === 'flight' ? previous.journey.id : undefined)
+                ) : null}
+              </TripGroupFrame>
+            );
+          })}
+        </Fragment>
+      ));
+    });
+  };
 
   return (
     <>
@@ -310,7 +369,7 @@ export function PersonTravel({
         <>
           <Section label="Upcoming" />
           {upcoming.length ? (
-            upcoming.map(trip)
+            grouped(upcoming, false)
           ) : (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
               Nothing booked yet. You&apos;ll hear when {name} adds a trip.
@@ -323,7 +382,7 @@ export function PersonTravel({
       {p.past.length > 0 && (
         <>
           <Section label="Flown" />
-          {past.map(trip)}
+          {grouped(past, true)}
           {p.flown > p.past.length && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
               Showing the last {p.past.length} of {p.flown}.
