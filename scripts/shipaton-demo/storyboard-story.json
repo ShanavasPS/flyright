@@ -95,7 +95,7 @@
     },
     {
       "id": "07-globe",
-      "duration": 8,
+      "duration": 7,
       "chapter": "ON THE MAP",
       "headline": [
         "Her plane,",
@@ -105,7 +105,7 @@
         "A globe FlyRight drew itself",
         "Lit by the real sun"
       ],
-      "narration": "And on the World tab, her plane rides its own line across a globe FlyRight drew itself."
+      "narration": "On the World tab, her plane rides its own line across a globe FlyRight drew itself."
     },
     {
       "id": "07b-world",
@@ -116,7 +116,7 @@
         "she has been."
       ],
       "bullets": [
-        "Twenty trips, ten countries",
+        "Every route she has flown",
         "All on one globe"
       ],
       "narration": "And everywhere she's been, all over the world."
@@ -180,7 +180,7 @@
     },
     {
       "id": "12-belt",
-      "duration": 7,
+      "duration": 8,
       "chapter": "TOKYO",
       "headline": [
         "Wheels down.",
@@ -188,9 +188,9 @@
       ],
       "bullets": [
         "Landed, on the card",
-        "Baggage belt before the sign"
+        "The belt, before she looks for it"
       ],
-      "narration": "Wheels down in Tokyo — and her bags are on belt twelve, before the airport sign says so."
+      "narration": "Wheels down in Tokyo. FlyRight already tells her which belt her bags are on — no looking around for it."
     },
     {
       "id": "13-pro",
