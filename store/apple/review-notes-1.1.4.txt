@@ -1,0 +1,7 @@
+This update is display-only around subscriptions and the journal list. No new device permissions, no new paid features, no change to what Free and Pro include.
+
+Plans screen: each subscription card now shows the introductory offer configured in App Store Connect (currently a 14-day free trial on Monthly and Yearly), worded from the StoreKit product's introductory price, with "cancel anytime" and the renewal price that follows. The line appears only when StoreKit reports the account eligible for the offer; otherwise the card shows the plain price. The Lifetime non-consumable is unchanged. Continue free never purchases; the store's own confirmation sheet still governs the actual charge.
+
+Flights list: on the free plan, a flight that is currently in the air shows a running light around its row and a small "Live" marker instead of the "3h ago" countdown. Nothing else is added for free users — the live card, landing clock and plane position remain part of Pro exactly as before. Section labels are one point smaller with slightly more space above the first section.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. No purchase is required to review the free journal, map, following, existing claims or the plans screen.
