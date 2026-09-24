@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Local, repeatable production pipeline. No video or text leaves this Mac. */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -88,6 +88,8 @@ if (phase === 'all' || phase === 'prepare') {
         <text x="96" y="253" font-size="22" fill="#87C5FF" letter-spacing="3">${xml(scene.chapter)}</text>
         ${headline}${bullets}
         ${scene.note ? `<text x="96" y="803" font-size="19" fill="#96ADCA">${xml(scene.note)}</text>` : ''}
+        ${(scene.images ?? []).map((im) => `<image href="data:image/png;base64,${readFileSync(join(HERE, im.src)).toString('base64')}" x="${im.x}" y="${im.y}" width="${im.width}" height="${im.height}"/>`).join('')}
+        ${(scene.labels ?? []).map((l) => `<text x="${l.x}" y="${l.y}" font-size="${l.size ?? 26}" font-weight="${l.weight ?? 600}" fill="${l.fill ?? '#FFFFFF'}">${xml(l.text)}</text>`).join('')}
         <rect x="96" y="859" width="1094" height="119" rx="22" fill="#07162C" fill-opacity=".64"/>
         ${dots}<text x="1168" y="1034" text-anchor="end" font-size="18" fill="#A8BEDA">SHIPATON 2026</text>
         <rect x="${phone.x - 16}" y="${phone.y - 7}" width="${phone.width + 32}" height="${phone.height + 24}" rx="77" fill="#020812" fill-opacity=".28"/>
@@ -111,6 +113,14 @@ if (phase === 'all' || phase === 'prepare') {
   await writeFile(join(HERE, 'NARRATION.md'), script);
   await writeFile(join(HERE, 'TIMELINE.md'), `# 1:59 demo timeline\n\n| Time | Scene | What the viewer sees |\n| --- | --- | --- |\n${rows.join('\n')}\n`);
   console.log('Prepared branded backgrounds, timed script, and narration text.');
+}
+
+/** Integrated loudness of a voice file in LUFS, from ffmpeg's measurement pass. */
+function lufs(path) {
+  const probe = spawnSync(ffmpeg, ['-hide_banner', '-nostats', '-i', path, '-af', 'loudnorm=print_format=json', '-f', 'null', '-'], { encoding: 'utf8' });
+  const match = /"input_i"\s*:\s*"([-\d.]+)"/.exec(probe.stderr);
+  if (!match) throw new Error(`Could not measure loudness of ${path}`);
+  return Number(match[1]);
 }
 
 // macOS `say` is the default. DEMO_TTS=edge speaks through Microsoft's neural
@@ -190,7 +200,14 @@ if (phase === 'all' || phase === 'render') {
     const rawDuration = duration(raw);
     const speed = Math.min(1, scene.duration / rawDuration);
     const subtitles = assPath.replaceAll('\\', '\\\\').replaceAll(':', '\\:').replaceAll("'", "\\'");
-    const filter = `[1:v]setpts=${speed}*(PTS-STARTPTS),fps=30,scale=${phone.width}:${phone.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${phone.width}:${phone.height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,tpad=stop_mode=clone:stop_duration=${scene.duration},trim=duration=${scene.duration},format=rgba[screen];[3:v]format=gray[mask];[screen][mask]alphamerge[phone];[0:v][phone]overlay=${phone.x}:${phone.y}:shortest=1,subtitles='${subtitles}'[v];[2:a]aformat=channel_layouts=mono,loudnorm=I=-16:TP=-1.5:LRA=7,aresample=48000,aformat=channel_layouts=mono,adelay=350,apad,atrim=duration=${scene.duration}[a]`;
+    // Level each scene by a measured gain, not by loudnorm inside the filter:
+    // single-pass loudnorm needs a few seconds of programme to settle, and a
+    // four-second scene with two seconds of speech came out 17 dB under its
+    // neighbours — the "sound drops" in the first Maja cut. Measure the
+    // integrated loudness of the voice file, lift it to -16 LUFS, and let a
+    // limiter hold the peak at -1.5 dBTP. Every scene lands at the same level.
+    const gainDb = Math.max(-20, Math.min(30, -16 - lufs(join(OUT, 'audio', `${scene.id}.aiff`))));
+    const filter = `[1:v]setpts=${speed}*(PTS-STARTPTS),fps=30,scale=${phone.width}:${phone.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${phone.width}:${phone.height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,tpad=stop_mode=clone:stop_duration=${scene.duration},trim=duration=${scene.duration},format=rgba[screen];[3:v]format=gray[mask];[screen][mask]alphamerge[phone];[0:v][phone]overlay=${phone.x}:${phone.y}:shortest=1,subtitles='${subtitles}'[v];[2:a]aformat=channel_layouts=mono,volume=${gainDb.toFixed(2)}dB,alimiter=limit=0.841:level=false,aresample=48000,aformat=channel_layouts=mono,adelay=350,apad,atrim=duration=${scene.duration}[a]`;
     console.log(`Rendering ${scene.id} (${rawDuration.toFixed(2)}s capture → ${scene.duration}s edit)...`);
     run(ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-loop', '1', '-framerate', '30', '-i', join(OUT, 'graphics', `${scene.id}.png`), '-i', raw, '-i', join(OUT, 'audio', `${scene.id}.aiff`), '-loop', '1', '-framerate', '30', '-i', join(OUT, 'graphics', 'screen-mask.png'), '-filter_complex', filter, '-map', '[v]', '-map', '[a]', '-t', String(scene.duration), '-c:v', 'libx264', '-preset', 'fast', '-crf', '19', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-movflags', '+faststart', join(OUT, 'segments', `${scene.id}.mp4`)]);
   }

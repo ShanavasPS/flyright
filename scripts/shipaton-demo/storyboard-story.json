@@ -1,6 +1,6 @@
 {
   "title": "FlyRight — Maja's day",
-  "duration": 108,
+  "duration": 113,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
@@ -57,24 +57,26 @@
         "Her pass."
       ],
       "bullets": [
+        "Straight from the live card",
         "Saved on the phone",
         "Works in duty free too"
       ],
-      "narration": "At the gate, or in duty free, her boarding pass is one tap away."
+      "narration": "At the gate, or in duty free, she taps the pass right on the live card."
     },
     {
       "id": "05-seat",
-      "duration": 6,
-      "chapter": "ON BOARD",
+      "duration": 7,
+      "chapter": "GATE TO SEAT",
       "headline": [
-        "Walking",
-        "to her row."
+        "On the",
+        "Lock Screen."
       ],
       "bullets": [
+        "No unlocking",
         "Seat 24A",
-        "Booking TY9D3R"
+        "Still counting down"
       ],
-      "narration": "Walking to her row, she checks the seat. Twenty-four A."
+      "narration": "Walking from the gate to her row, she checks the seat on the Lock Screen. Twenty-four A."
     },
     {
       "id": "06-inair",
@@ -106,17 +108,18 @@
     },
     {
       "id": "08-postcard",
-      "duration": 6,
+      "duration": 8,
       "chapter": "OVER SIBERIA",
       "headline": [
         "A postcard",
         "to her people."
       ],
       "bullets": [
+        "Tap your own face on Updates",
         "A line or a photo",
         "To Clara, Noah and Tomas"
       ],
-      "narration": "Somewhere over Siberia, she writes a postcard to her people."
+      "narration": "Somewhere over Siberia, she taps her own face on Updates and writes a postcard to her people."
     },
     {
       "id": "09-updates",
@@ -185,10 +188,27 @@
       ],
       "bullets": [
         "Flights and following: free",
-        "Pro: the live day",
-        "Gate, delay, belt, postcards"
+        "Pro: gate, delay, belt, postcards"
       ],
-      "narration": "Keeping flights and following people is free. Pro is the live day: gate, delay, belt, and postcards."
+      "narration": "Keeping flights and following people is free. Pro is the live day: gate, delay, belt, and postcards.",
+      "images": [
+        {
+          "src": "brand/revenuecat-mark.png",
+          "x": 96,
+          "y": 706,
+          "width": 64,
+          "height": 64
+        }
+      ],
+      "labels": [
+        {
+          "x": 178,
+          "y": 749,
+          "text": "RevenueCat",
+          "size": 30,
+          "weight": 650
+        }
+      ]
     },
     {
       "id": "14-plans",
@@ -203,7 +223,25 @@
         "Through RevenueCat"
       ],
       "note": "Live store pricing shown",
-      "narration": "Her followers see all of it free. Monthly, yearly, or lifetime, through RevenueCat."
+      "narration": "Her followers see all of it free. Monthly, yearly, or lifetime, through RevenueCat.",
+      "images": [
+        {
+          "src": "brand/revenuecat-mark.png",
+          "x": 96,
+          "y": 706,
+          "width": 64,
+          "height": 64
+        }
+      ],
+      "labels": [
+        {
+          "x": 178,
+          "y": 749,
+          "text": "RevenueCat",
+          "size": 30,
+          "weight": 650
+        }
+      ]
     },
     {
       "id": "15-claims",
@@ -236,17 +274,39 @@
     },
     {
       "id": "17-close",
-      "duration": 4,
+      "duration": 6,
       "chapter": "FLYRIGHT",
       "headline": [
         "One place",
         "for the whole journey."
       ],
       "bullets": [
-        "FlyRight",
         "getflyright.com"
       ],
-      "narration": "FlyRight. One place for the whole journey."
+      "narration": "FlyRight. One place for the whole journey.",
+      "images": [
+        {
+          "src": "../../assets/images/icon.png",
+          "x": 96,
+          "y": 640,
+          "width": 112,
+          "height": 112
+        },
+        {
+          "src": "brand/badge-app-store.png",
+          "x": 236,
+          "y": 660,
+          "width": 216,
+          "height": 72
+        },
+        {
+          "src": "brand/badge-google-play.png",
+          "x": 468,
+          "y": 660,
+          "width": 242,
+          "height": 72
+        }
+      ]
     }
   ]
 }
