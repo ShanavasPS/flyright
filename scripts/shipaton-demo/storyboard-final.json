@@ -1,0 +1,249 @@
+{
+  "title": "FlyRight — one place for the whole journey",
+  "duration": 102.5,
+  "voice": "Samantha",
+  "voiceRate": 165,
+  "scenes": [
+    {
+      "id": "01-open",
+      "duration": 10,
+      "chapter": "YOUR TRAVEL BUDDY",
+      "headline": [
+        "Every flight.",
+        "One place."
+      ],
+      "bullets": [
+        "Through the trip",
+        "And long after"
+      ],
+      "narration": "Fly Right is the travel buddy you carry through a trip, and the journal you keep after it. Maja is flying Helsinki to Tokyo."
+    },
+    {
+      "id": "02-trip",
+      "duration": 6,
+      "chapter": "01 / THE TRIP",
+      "headline": [
+        "Everything,",
+        "in fixed places."
+      ],
+      "bullets": [
+        "Gate, seat, booking",
+        "How far she has flown"
+      ],
+      "narration": "Open the trip: gate, seat, booking, and how far she has already flown."
+    },
+    {
+      "id": "03-day",
+      "duration": 3.5,
+      "chapter": "02 / THE DAY",
+      "headline": [
+        "Each step,",
+        "as it happens."
+      ],
+      "bullets": [
+        "Progress through the day",
+        "A line for your people"
+      ],
+      "narration": "Each step, and room for the story."
+    },
+    {
+      "id": "04-pass",
+      "duration": 4,
+      "chapter": "03 / YOUR PASS",
+      "headline": [
+        "The pass,",
+        "saved offline."
+      ],
+      "bullets": [
+        "Ready at the gate",
+        "No signal needed"
+      ],
+      "narration": "Her boarding pass, saved offline."
+    },
+    {
+      "id": "05-add",
+      "duration": 4,
+      "chapter": "04 / ADD A FLIGHT",
+      "headline": [
+        "Number, scan,",
+        "or ticket."
+      ],
+      "bullets": [
+        "Look up a number",
+        "Scan a pass",
+        "Upload a ticket"
+      ],
+      "narration": "By number, by scan, or off a ticket."
+    },
+    {
+      "id": "06-manual",
+      "duration": 8,
+      "chapter": "05 / OR BY HAND",
+      "headline": [
+        "The day.",
+        "The airports."
+      ],
+      "bullets": [
+        "Any trip, any year",
+        "Choose who sees it"
+      ],
+      "narration": "Or add it yourself — the day, the airports, and who sees it. Your circle gets a heads-up."
+    },
+    {
+      "id": "07-postcards",
+      "duration": 8,
+      "chapter": "06 / YOUR PEOPLE",
+      "headline": [
+        "Postcards",
+        "from the air."
+      ],
+      "bullets": [
+        "Friends still flying",
+        "Friends just home"
+      ],
+      "narration": "Updates is where your people are — postcards from friends still in the air, and friends just home."
+    },
+    {
+      "id": "08-theirday",
+      "duration": 4,
+      "chapter": "07 / THEIR DAY",
+      "headline": [
+        "Follow it",
+        "step by step."
+      ],
+      "bullets": [
+        "Their itinerary",
+        "Their progress"
+      ],
+      "narration": "Open one and follow their whole day."
+    },
+    {
+      "id": "09-circle",
+      "duration": 6,
+      "chapter": "08 / THE CIRCLE",
+      "headline": [
+        "Who you follow.",
+        "Who follows you."
+      ],
+      "bullets": [
+        "Their next departure",
+        "Free on both sides"
+      ],
+      "narration": "Friends shows who you follow, and who follows you. Following is free."
+    },
+    {
+      "id": "10-world",
+      "duration": 10,
+      "chapter": "09 / YOUR WORLD",
+      "headline": [
+        "Every route.",
+        "On a real earth."
+      ],
+      "bullets": [
+        "Drawn in Skia",
+        "Twenty trips, ten countries"
+      ],
+      "narration": "Everywhere she has been sits on a globe we drew ourselves — twenty trips, twelve airports, ten countries."
+    },
+    {
+      "id": "11-poster",
+      "duration": 6,
+      "chapter": "10 / SHARE IT",
+      "headline": [
+        "Your world,",
+        "as a poster."
+      ],
+      "bullets": [
+        "Story or square",
+        "A glow where you fly most"
+      ],
+      "narration": "Share it as a poster, with a glow over the routes she flies most."
+    },
+    {
+      "id": "12-claim",
+      "duration": 4,
+      "chapter": "11 / IF IT GOES WRONG",
+      "headline": [
+        "What the",
+        "airline owes."
+      ],
+      "bullets": [
+        "The figure and the reason",
+        "EU261, in plain words"
+      ],
+      "note": "Sample delay · eligibility depends on the circumstances",
+      "narration": "Fly Right works out what the airline owes."
+    },
+    {
+      "id": "13-pro",
+      "duration": 12,
+      "chapter": "12 / FREE AND PRO",
+      "headline": [
+        "Free to keep.",
+        "Pro to travel."
+      ],
+      "bullets": [
+        "Live gate, delay and belt",
+        "Postcards to your circle",
+        "Followers see it free"
+      ],
+      "narration": "Keeping flights and following people is free. Pro adds the live gate, terminal, delay and belt, the plane on its route, and postcards — your followers see it all free."
+    },
+    {
+      "id": "14-reminder",
+      "duration": 4.5,
+      "chapter": "13 / NO WALL",
+      "headline": [
+        "A reminder,",
+        "not a paywall."
+      ],
+      "bullets": [
+        "Two days before take-off",
+        "Nothing starts automatically"
+      ],
+      "narration": "Not flying yet? A reminder, not a paywall."
+    },
+    {
+      "id": "15-plans",
+      "duration": 4.5,
+      "chapter": "14 / THE PLANS",
+      "headline": [
+        "Monthly. Yearly.",
+        "Lifetime."
+      ],
+      "bullets": [
+        "Powered by RevenueCat",
+        "Live store pricing"
+      ],
+      "narration": "Monthly, yearly or lifetime, through Revenue Cat."
+    },
+    {
+      "id": "16-yours",
+      "duration": 4,
+      "chapter": "15 / THE CLAIM",
+      "headline": [
+        "Yours to send.",
+        "Yours to keep."
+      ],
+      "bullets": [
+        "No commission",
+        "Not a law firm"
+      ],
+      "narration": "You send the claim. You keep every cent."
+    },
+    {
+      "id": "17-close",
+      "duration": 4,
+      "chapter": "FLYRIGHT",
+      "headline": [
+        "One place",
+        "for all of it."
+      ],
+      "bullets": [
+        "FlyRight",
+        "getflyright.com"
+      ],
+      "narration": "Fly Right. One place for the whole journey."
+    }
+  ]
+}
