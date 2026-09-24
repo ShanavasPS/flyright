@@ -20,7 +20,7 @@ import {
   providerConfigured,
   type ProviderResponse,
 } from '../../../convex/providerFetch';
-import { legDepartingOn, normalizeLeg, toIso } from '../../../convex/flightNormalize';
+import { legDepartingOn, normalizeLeg, stampHappened, toIso } from '../../../convex/flightNormalize';
 import { cacheExpiry, flightPhase, maySpend } from '../../../convex/providerShared';
 import { carrierFor } from '@/constants/carriers';
 import { lookupDay } from '../../../convex/lookupShared';
@@ -153,17 +153,18 @@ async function fetchInbound(
   if (!best) return null;
 
   const arr = best.arrival ?? {};
-  const landed = best.status === 'Arrived' || !!arr.actualTime?.utc || !!arr.runwayTime?.utc;
+  // Same reading as normalizeLeg: a runway stamp is an actual only once it
+  // has happened, an estimate before.
+  const stamp: string | undefined = arr.actualTime?.utc ?? arr.runwayTime?.utc;
+  const landed = best.status === 'Arrived' || stampHappened(stamp, best.status, ['Arrived'], Date.now());
   return {
     flight: (best.number as string | undefined)?.replace(/\s/g, '') ?? null,
     from: { code: best.departure?.airport?.iata ?? null },
     status: best.status ?? 'unknown',
     landed,
     scheduledArrival: toIso(arr.scheduledTime?.utc),
-    estimatedArrival: toIso(arr.predictedTime?.utc ?? arr.revisedTime?.utc),
-    actualArrival: toIso(
-      arr.actualTime?.utc ?? arr.runwayTime?.utc ?? (landed ? arr.revisedTime?.utc : null),
-    ),
+    estimatedArrival: toIso(arr.predictedTime?.utc ?? arr.revisedTime?.utc ?? (landed ? undefined : stamp)),
+    actualArrival: toIso(landed ? (stamp ?? arr.revisedTime?.utc) : null),
   };
 }
 

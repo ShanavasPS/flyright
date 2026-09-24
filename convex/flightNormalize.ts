@@ -127,6 +127,33 @@ const PREDICTED_SLIP_MIN = 15;
 /** Statuses that mean the aircraft is in the air. */
 const AIRBORNE = ['Departed', 'EnRoute', 'Approaching'];
 
+/** Statuses that say outright the flight has left the gate. */
+const LEFT = ['Departed', 'EnRoute', 'Approaching', 'Arrived', 'Diverted'];
+
+/** Statuses under which the flight is certainly still at its origin. A
+ * runway stamp on such a record is the provider's ESTIMATE — its spec
+ * defines `runwayTime` as "actual / estimated time on the runway", and a
+ * delayed Transavia leg carried its estimated touchdown (scheduled block
+ * plus the delay) three hours before take-off. Read as an actual, that
+ * said "Landed 17:06" to a traveller still at the gate (2026-09-24). */
+const AT_ORIGIN = ['Expected', 'CheckIn', 'Boarding', 'GateClosed', 'Delayed', 'Canceled', 'CanceledUncertain'];
+
+/** Whether a runway/actual stamp records something that has happened: the
+ * status says so outright, or the stamp is already behind the clock on a
+ * record that does not say the flight is still at the gate. */
+export function stampHappened(
+  stamp: string | undefined | null,
+  status: string | undefined,
+  saysDone: readonly string[],
+  now: number,
+): boolean {
+  if (!stamp) return false;
+  if (status && saysDone.includes(status)) return true;
+  if (status && AT_ORIGIN.includes(status)) return false;
+  const at = Date.parse(toIso(stamp) ?? '');
+  return Number.isFinite(at) && at <= now;
+}
+
 /** How long past its last expected arrival an airborne record is taken as
  * landed anyway. Some arrival feeds never close a flight out — Kochi left
  * an Etihad leg at "Departed" for three months — and without this the
@@ -137,10 +164,12 @@ const OVERDUE_AFTER_MS = 24 * 60 * 60 * 1000;
 /**
  * Normalize one provider leg.
  *
- * AeroDataBox's live fields: `runwayTime` is an actual (touchdown/takeoff),
- * `revisedTime` the airline's current estimate — which, once the flight has
- * landed, is the last known gate-arrival time (`actualTime` often never fills
- * in). `predictedTime` exists even for unflown flights.
+ * AeroDataBox's live fields: `runwayTime` is the touchdown/take-off time,
+ * actual once it has happened and an estimate before (stampHappened tells
+ * them apart); `revisedTime` the airline's current estimate — which, once
+ * the flight has landed, is the last known gate-arrival time. `predictedTime`
+ * exists even for unflown flights. `actualTime` is not in the provider's
+ * schema; it is read for records from tests and older captures only.
  */
 export function normalizeLeg(
   leg: any,
@@ -155,18 +184,25 @@ export function normalizeLeg(
   // Landed as reported, or landed because it must have: an airborne record
   // a day past its last expected arrival. The second kind has no arrival
   // time to read, so it carries no delay and earns no verdict.
-  const reported = leg.status === 'Arrived' || !!arr.actualTime?.utc || !!arr.runwayTime?.utc;
+  const arrStamp: string | undefined = arr.actualTime?.utc ?? arr.runwayTime?.utc;
+  const reported = leg.status === 'Arrived' || stampHappened(arrStamp, leg.status, ['Arrived'], now);
   const dueAt = arr.revisedTime?.utc ?? arr.predictedTime?.utc ?? arr.scheduledTime?.utc;
   const overdue =
     !reported && AIRBORNE.includes(leg.status) && !!dueAt && now - Date.parse(dueAt) > OVERDUE_AFTER_MS;
   const landed = reported || overdue;
-  const actualArrival =
-    arr.actualTime?.utc ?? arr.runwayTime?.utc ?? (reported ? arr.revisedTime?.utc : null);
+  const actualArrival = reported ? (arrStamp ?? arr.revisedTime?.utc) : null;
+  // A runway stamp that has not happened yet is the estimated touchdown —
+  // the only estimate some records carry, and what the delay reads off.
+  const runwayEstimate = reported ? undefined : arrStamp;
+
+  const depStamp: string | undefined = dep.actualTime?.utc ?? dep.runwayTime?.utc;
+  const departed = stampHappened(depStamp, leg.status, LEFT, now);
 
   const scheduled = arr.scheduledTime?.utc;
   const arrivalBasis = landed
     ? actualArrival
-    : (arr.revisedTime?.utc ?? (OPERATING.includes(leg.status) ? arr.predictedTime?.utc : null));
+    : (arr.revisedTime?.utc ??
+      (OPERATING.includes(leg.status) ? (arr.predictedTime?.utc ?? runwayEstimate) : null));
   const rawDelay =
     scheduled && arrivalBasis
       ? Math.max(0, Math.round((Date.parse(arrivalBasis) - Date.parse(scheduled)) / 60000))
@@ -198,9 +234,11 @@ export function normalizeLeg(
     baggageBelt: arr.baggageBelt ?? null,
     // AeroDataBox has no separate boarding time; the widget derives one.
     boardingTime: null,
-    estimatedDeparture: toIso(dep.predictedTime?.utc ?? dep.revisedTime?.utc),
-    actualDeparture: toIso(dep.actualTime?.utc ?? dep.runwayTime?.utc),
-    estimatedArrival: toIso(arr.predictedTime?.utc ?? arr.revisedTime?.utc),
+    estimatedDeparture: toIso(
+      dep.predictedTime?.utc ?? dep.revisedTime?.utc ?? (departed ? undefined : depStamp),
+    ),
+    actualDeparture: toIso(departed ? depStamp : null),
+    estimatedArrival: toIso(arr.predictedTime?.utc ?? arr.revisedTime?.utc ?? runwayEstimate),
     actualArrival: toIso(actualArrival),
     // A landed flight's last fix is history, not a position.
     position: landed ? null : normalizePosition(leg.location),

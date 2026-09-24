@@ -152,3 +152,88 @@ describe('normalizePosition', () => {
     expect(landed.position).toBeNull();
   });
 });
+
+describe('normalizeLeg — a runway stamp is an actual only once it has happened', () => {
+  // Transavia HV6592 SZG→AMS on 2026-09-24 as the provider reported it at
+  // 12:17Z, 23 minutes before its scheduled departure: delayed 46 minutes,
+  // with `arrival.runwayTime` already carrying the estimated touchdown
+  // (scheduled block plus the delay). The app read it as landed at 17:06
+  // while the traveller sat at the gate.
+  const atTheGate = Date.parse('2026-09-24T12:17:00Z');
+  const hv6592 = (status: string, extra: { departure?: object; arrival?: object } = {}) => ({
+    status,
+    departure: {
+      airport: { iata: 'SZG', countryCode: 'AT' },
+      scheduledTime: { utc: '2026-09-24 12:40Z' },
+      ...extra.departure,
+    },
+    arrival: {
+      airport: { iata: 'AMS', countryCode: 'NL' },
+      scheduledTime: { utc: '2026-09-24 14:20Z' },
+      runwayTime: { utc: '2026-09-24 15:06Z' },
+      ...extra.arrival,
+    },
+  });
+
+  it('does not land a delayed flight on its estimated touchdown', () => {
+    const facts = normalizeLeg(hv6592('Delayed'), 'HV6592', '2026-09-24', null, atTheGate);
+    expect(facts.landed).toBe(false);
+    expect(facts.actualArrival).toBeNull();
+    // The estimate is still worth showing, and the delay reads off it.
+    expect(facts.estimatedArrival).toBe('2026-09-24T15:06Z');
+    expect(facts.delayMinutes).toBe(46);
+  });
+
+  it('nor does it take off on an estimated runway departure', () => {
+    const facts = normalizeLeg(
+      hv6592('Delayed', { departure: { runwayTime: { utc: '2026-09-24 13:26Z' } } }),
+      'HV6592',
+      '2026-09-24',
+      null,
+      atTheGate,
+    );
+    expect(facts.actualDeparture).toBeNull();
+    expect(facts.estimatedDeparture).toBe('2026-09-24T13:26Z');
+  });
+
+  it('prefers the airline’s revised time to the runway estimate', () => {
+    const facts = normalizeLeg(
+      hv6592('Delayed', { arrival: { revisedTime: { utc: '2026-09-24 15:00Z' } } }),
+      'HV6592',
+      '2026-09-24',
+      null,
+      atTheGate,
+    );
+    expect(facts.landed).toBe(false);
+    expect(facts.estimatedArrival).toBe('2026-09-24T15:00Z');
+    expect(facts.delayMinutes).toBe(40);
+  });
+
+  it('keeps a stamp the status vouches for, even if the clock has not reached it', () => {
+    const facts = normalizeLeg(hv6592('Arrived'), 'HV6592', '2026-09-24', null, atTheGate);
+    expect(facts.landed).toBe(true);
+    expect(facts.actualArrival).toBe('2026-09-24T15:06Z');
+    expect(facts.delayMinutes).toBe(46);
+  });
+
+  it('takes a runway stamp behind the clock as the actual once the flight has left', () => {
+    const later = Date.parse('2026-09-24T15:30:00Z');
+    const facts = normalizeLeg(
+      hv6592('EnRoute', { departure: { runwayTime: { utc: '2026-09-24 13:31Z' } } }),
+      'HV6592',
+      '2026-09-24',
+      null,
+      later,
+    );
+    expect(facts.actualDeparture).toBe('2026-09-24T13:31Z');
+    expect(facts.landed).toBe(true);
+    expect(facts.actualArrival).toBe('2026-09-24T15:06Z');
+  });
+
+  it('never lands a flight the status still holds at the gate, whatever the stamp says', () => {
+    const later = Date.parse('2026-09-24T15:30:00Z');
+    const facts = normalizeLeg(hv6592('Boarding'), 'HV6592', '2026-09-24', null, later);
+    expect(facts.landed).toBe(false);
+    expect(facts.actualArrival).toBeNull();
+  });
+});
