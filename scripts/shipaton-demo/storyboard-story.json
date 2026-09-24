@@ -240,7 +240,7 @@
     },
     {
       "id": "13-pro",
-      "duration": 10,
+      "duration": 8,
       "chapter": "FREE AND PRO",
       "headline": [
         "Free to keep.",
@@ -250,7 +250,7 @@
         "Flights and following: free",
         "Pro: gate, delay, belt, postcards"
       ],
-      "narration": "Keeping flights and following people is free. Pro is the live day: gate, delay, belt, and postcards.",
+      "narration": "Flights and following people are free. Pro is the live day: gate, delay, belt, postcards.",
       "images": [
         {
           "src": "brand/revenuecat-mark.png",
@@ -272,7 +272,7 @@
     },
     {
       "id": "14-plans",
-      "duration": 8,
+      "duration": 10,
       "chapter": "THE PLANS",
       "headline": [
         "Her followers",
@@ -280,10 +280,11 @@
       ],
       "bullets": [
         "Monthly, yearly, lifetime",
+        "14-day free trial, cancel anytime",
         "Through RevenueCat"
       ],
-      "note": "Live store pricing shown",
-      "narration": "Her followers see all of it free. Monthly, yearly, or lifetime, through RevenueCat.",
+      "note": "Finnish App Store pricing",
+      "narration": "Her followers see all of it free. Monthly, yearly or lifetime, through RevenueCat \u2014 fourteen days free to start, cancel anytime.",
       "images": [
         {
           "src": "brand/revenuecat-mark.png",
