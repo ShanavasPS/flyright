@@ -1,6 +1,7 @@
 import { and, eq, isNull, or } from 'drizzle-orm';
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
+import { Platform } from 'react-native';
 
 import { db } from '@/db/client';
 import { fetchAppVersion, hasNewerRelease, installedVersion } from '@/hooks/use-app-version';
@@ -71,7 +72,14 @@ export async function registerFlightWatch(): Promise<void> {
       console.log('[flight-watch] background tasks unavailable, skipping registration');
       return;
     }
-    await BackgroundTask.registerTaskAsync(TASK_NAME, { minimumInterval: 60 });
+    // Android's travel-day notification has no server push behind it (the
+    // iOS Live Activity does), so the sweep is the only thing that brings
+    // it real facts between opens: WorkManager's floor, a quarter hour. The
+    // sweep only looks flights up inside their window; other runs are a
+    // database read.
+    await BackgroundTask.registerTaskAsync(TASK_NAME, {
+      minimumInterval: Platform.OS === 'android' ? 15 : 60,
+    });
   } catch (error) {
     console.warn('[flight-watch] register failed', error);
   }

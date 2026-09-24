@@ -3,4 +3,11 @@
        chip, lock-screen prominence). Unknown to API <36 installers, so harmless
        to declare unconditionally. -->
   <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+  <application>
+    <!-- Swaps the travel-day card at take-off and landing time while the app
+         is asleep (LiveUpdateNotifier arms it; inexact alarms, no permission). -->
+    <receiver
+      android:name="expo.modules.flyrightliveupdate.LiveUpdateAlarmReceiver"
+      android:exported="false" />
+  </application>
 </manifest>

@@ -32,6 +32,7 @@ import { getPushEnabled } from '@/services/notifications';
 import {
   EMPTY_FACTS,
   liveContent,
+  liveContentSchedule,
   travelWindow,
   type FlightFacts,
   type LiveContent,
@@ -270,7 +271,17 @@ async function doReconcile(): Promise<void> {
         // expo-notifications sticky that pre-module builds posted under this
         // id — a no-op everywhere else.
         void Notifications.dismissNotificationAsync(notificationId(j.id)).catch(() => {});
-        postTravelLiveUpdate(j.id, toLiveUpdate(content));
+        // With the cards for take-off and landing time, so the notification
+        // moves on by the timetable while the app is asleep — the OS ticks
+        // the countdown itself, and swaps the card when it runs out.
+        postTravelLiveUpdate(
+          j.id,
+          toLiveUpdate(content),
+          liveContentSchedule(j, state, facts, now, plan).map((item) => ({
+            at: item.at,
+            content: toLiveUpdate(item.content),
+          })),
+        );
       }
       Storage.setItemSync(postedKey(j.id), fingerprint);
       if (!row?.activityStartedAt) {

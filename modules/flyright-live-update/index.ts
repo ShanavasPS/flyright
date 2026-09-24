@@ -40,15 +40,30 @@ export interface LiveUpdateContent {
   tone?: 'normal' | 'boarding' | 'delay' | 'landed';
 }
 
+/** A card for later: what the notification should read from `at` (ms since
+ * epoch) on — the moment a countdown runs out, when "Departs in" has to
+ * become "Lands in" whether or not the app is running. */
+export interface ScheduledLiveUpdate {
+  at: number;
+  content: LiveUpdateContent;
+}
+
 const native = requireOptionalNativeModule<{
-  post(journeyId: string, content: LiveUpdateContent): void;
+  post(journeyId: string, content: LiveUpdateContent, scheduled: ScheduledLiveUpdate[]): void;
   end(journeyId: string, content: LiveUpdateContent | null): void;
   canPostPromoted(): boolean;
 }>('FlyRightLiveUpdate');
 
-/** Post or replace-in-place the journey's ongoing Live Update. */
-export function postTravelLiveUpdate(journeyId: string, content: LiveUpdateContent): void {
-  native?.post(journeyId, content);
+/** Post or replace-in-place the journey's ongoing Live Update, with the
+ * cards the OS should swap in by itself when each countdown runs out
+ * (inexact alarms; a card the traveller swiped away stays away). Every post
+ * replaces the previous schedule. */
+export function postTravelLiveUpdate(
+  journeyId: string,
+  content: LiveUpdateContent,
+  scheduled: ScheduledLiveUpdate[] = [],
+): void {
+  native?.post(journeyId, content, scheduled);
 }
 
 /** End the surface — with content, a dismissible final card lingers (the

@@ -13,6 +13,7 @@ import {
   landingDue,
   stageRules,
   liveContent,
+  liveContentSchedule,
   nextStage,
   rewindTo,
   stagePlan,
@@ -849,5 +850,54 @@ describe('a landing the traveller calls themselves', () => {
     expect(liveContent(manual, flying, EMPTY_FACTS, new Date('2026-08-25T09:30Z')).subtitle).toBe(
       'In the air',
     );
+  });
+});
+
+describe('liveContentSchedule — the cards for when the app is asleep', () => {
+  // HV6592-style day: the traveller opened the app at the gate and never
+  // again. The notification must still say "Lands in" once the flight has
+  // left and "Landed" once it is down, by the timetable.
+  const atTheGate = new Date('2026-08-25T07:40Z');
+
+  it('chains take-off, then landing, then stops', () => {
+    const plan = liveContentSchedule(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, atTheGate);
+    expect(plan.map((p) => new Date(p.at).toISOString())).toEqual([
+      '2026-08-25T08:01:01.000Z',
+      '2026-08-25T10:36:01.000Z',
+    ]);
+    const [aloft, down] = plan;
+    expect(aloft.content.clockLabel).toBe('LANDS IN');
+    expect(aloft.content.countdownKind).toBe('arrival');
+    expect(aloft.content.countdownEnd).toBe(Date.parse('2026-08-25T10:35Z'));
+    expect(aloft.content.gate).toBeNull();
+    expect(down.content.clockLabel).toBe('LANDED');
+    expect(down.content.countdownEnd).toBeNull();
+    expect(down.content.progress).toBe(1);
+  });
+
+  it('runs to the estimated clocks when the airline moved them', () => {
+    const late = facts({ estimatedDeparture: '2026-08-25T08:46Z', estimatedArrival: '2026-08-25T11:20Z', delayMinutes: 46 });
+    const plan = liveContentSchedule(journey(), EMPTY_TRAVEL_DAY, late, atTheGate);
+    expect(plan.map((p) => new Date(p.at).toISOString())).toEqual([
+      '2026-08-25T08:47:01.000Z',
+      '2026-08-25T11:21:01.000Z',
+    ]);
+    expect(plan[0].content.clockLabel).toBe('LANDS IN');
+    expect(plan[0].content.delayChip).toBe('+46 min');
+  });
+
+  it('retires the clock at arrival time for a recorded take-off, and has nothing once landed', () => {
+    // A recorded take-off never reads as landed by the timetable alone — the
+    // airline or a tap lands it — but the card still changes at arrival
+    // time: the countdown goes, so the chronometer cannot run past zero.
+    const aloft = { stage: 'departed' as const, stamps: { departed: '2026-08-25T08:05:00Z' } };
+    const plan = liveContentSchedule(journey(), aloft, EMPTY_FACTS, new Date('2026-08-25T09:00Z'));
+    expect(plan).toHaveLength(1);
+    expect(new Date(plan[0].at).toISOString()).toBe('2026-08-25T10:36:01.000Z');
+    expect(plan[0].content.clockLabel).toBe('LANDS IN');
+    expect(plan[0].content.countdownEnd).toBeNull();
+    expect(plan[0].content.headline).toBe('Landing now');
+    const down = { stage: 'landed' as const, stamps: { departed: '2026-08-25T08:05:00Z', landed: '2026-08-25T10:30:00Z' } };
+    expect(liveContentSchedule(journey(), down, EMPTY_FACTS, new Date('2026-08-25T10:40Z'))).toEqual([]);
   });
 });

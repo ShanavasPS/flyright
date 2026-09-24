@@ -23,3 +23,18 @@ describe('liveUpdateLines', () => {
     ).toBe('Lands in · Seat 14A');
   });
 });
+
+describe('liveUpdateLines — without a countdown the label names the moment', () => {
+  it('says "Departing now" and "Landing now" once the clock has retired', () => {
+    expect(liveUpdateLines({ clockLabel: 'DEPARTS IN', lead: null, delayChip: null, countdownEnd: null }).title).toBe('Departing now');
+    expect(
+      liveUpdateLines({ clockLabel: 'LANDS IN', lead: { label: 'SEAT', value: '14A', sub: '' }, delayChip: null, countdownEnd: null }).title,
+    ).toBe('Landing now · Seat 14A');
+  });
+
+  it('keeps "Departs in" while a countdown runs, and for callers that do not say', () => {
+    expect(liveUpdateLines({ clockLabel: 'DEPARTS IN', lead: null, delayChip: null, countdownEnd: 1_800_000_000_000 }).title).toBe('Departs in');
+    expect(liveUpdateLines({ clockLabel: 'DEPARTS IN', lead: null, delayChip: null }).title).toBe('Departs in');
+    expect(liveUpdateLines({ clockLabel: 'LANDED 17:08', lead: null, delayChip: null, countdownEnd: null }).title).toBe('Landed 17:08');
+  });
+});

@@ -978,3 +978,34 @@ export function liveContent(
     delayChip: lead.delayChip || null,
   };
 }
+
+/** A minute past a countdown's end presumedFlightStage moves the flight on
+ * by the timetable (the last minute is "Departing now"). */
+const PRESUMED_AFTER_MS = 60_000 + 1_000;
+
+/** The cards a surface should show at the moments its countdown runs out
+ * while the app may not be running: the Android notification's chronometer
+ * ticks by itself, but "DEPARTS IN" has to become "LANDS IN" at the
+ * departure and "LANDED" at the arrival without a reconcile (the iOS Live
+ * Activity gets the same from the server's clock push). Each entry is
+ * liveContent as of a minute past a countdown's end, when the timetable
+ * takes over; the chain stops once a card has no countdown. A later
+ * reconcile with real facts replaces the whole schedule. */
+export function liveContentSchedule(
+  j: TravelJourney,
+  state: TravelDayState,
+  facts: FlightFacts,
+  now: Date,
+  plan: StagePlan = DEFAULT_PLAN,
+  limit = 3,
+): { at: number; content: LiveContent }[] {
+  const out: { at: number; content: LiveContent }[] = [];
+  let content = liveContent(j, state, facts, now, plan);
+  while (content.countdownEnd !== null && out.length < limit) {
+    const at = content.countdownEnd + PRESUMED_AFTER_MS;
+    if (at <= now.getTime()) break;
+    content = liveContent(j, state, facts, new Date(at), plan);
+    out.push({ at, content });
+  }
+  return out;
+}

@@ -8,9 +8,9 @@ import type { LiveContent } from '@/services/travel-day';
  * number and no next-step sentence — the status-bar chip carries the
  * countdown itself. */
 export function liveUpdateLines(
-  content: Pick<LiveContent, 'clockLabel' | 'lead' | 'delayChip'>,
+  content: Pick<LiveContent, 'clockLabel' | 'lead' | 'delayChip'> & Partial<Pick<LiveContent, 'countdownEnd'>>,
 ): { title: string; text: string } {
-  const label = sentenceCase(content.clockLabel);
+  const label = sentenceCase(clockWord(content));
   // A value that already names itself ("Belt 7") needs no label before it.
   const fact = content.lead
     ? /^[A-Za-z]+\s/.test(content.lead.value)
@@ -20,6 +20,20 @@ export function liveUpdateLines(
   const title = [label, fact].filter(Boolean).join(' · ');
   const text = [content.delayChip, content.lead?.sub].filter(Boolean).join(' · ');
   return { title, text };
+}
+
+/** The notification draws the countdown itself (a chronometer in its
+ * header), so "DEPARTS IN" only reads right while there is one to draw.
+ * With no countdown left — the last minute, or a take-off recorded with
+ * no landing to count to yet — the label names the moment instead, the
+ * way the headline does: "Departing now" / "Landing now". A bare "Departs
+ * in" was what a traveller saw all flight (2026-09-24). */
+function clockWord(content: Pick<LiveContent, 'clockLabel'> & Partial<Pick<LiveContent, 'countdownEnd'>>): string {
+  if (content.countdownEnd !== undefined && content.countdownEnd === null) {
+    if (content.clockLabel === 'DEPARTS IN') return 'DEPARTING NOW';
+    if (content.clockLabel === 'LANDS IN') return 'LANDING NOW';
+  }
+  return content.clockLabel;
 }
 
 /** "DEPARTS IN" → "Departs in", "LANDED 17:08" → "Landed 17:08",
