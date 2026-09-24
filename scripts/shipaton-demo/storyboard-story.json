@@ -1,20 +1,21 @@
 {
   "title": "FlyRight — Maja's day",
-  "duration": 115,
+  "duration": 113,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
     {
       "id": "01-morning",
-      "duration": 6,
+      "duration": 7,
       "chapter": "THE MORNING",
       "headline": [
         "Tokyo,",
         "today."
       ],
       "bullets": [
+        "On the Lock Screen",
         "Counting down since breakfast",
-        "Gate already on the card"
+        "Terminal already on it"
       ],
       "narration": "Maja's flying to Tokyo today. FlyRight has been counting down since breakfast."
     },
@@ -152,32 +153,18 @@
       "narration": "Tap one of the followers, and you follow their whole day."
     },
     {
-      "id": "11-landed",
-      "duration": 5,
+      "id": "12-belt",
+      "duration": 7,
       "chapter": "TOKYO",
       "headline": [
-        "Wheels",
-        "down."
+        "Wheels down.",
+        "Belt twelve."
       ],
       "bullets": [
-        "She taps it",
-        "Her people hear first"
+        "Landed, on the card",
+        "Baggage belt before the sign"
       ],
-      "narration": "She lands, and taps it."
-    },
-    {
-      "id": "12-belt",
-      "duration": 5,
-      "chapter": "THE BELT",
-      "headline": [
-        "Belt twelve,",
-        "before the sign."
-      ],
-      "bullets": [
-        "Baggage belt on the card",
-        "Same card, whole day"
-      ],
-      "narration": "Bags on belt twelve, before the airport sign says so."
+      "narration": "Wheels down in Tokyo — and her bags are on belt twelve, before the airport sign says so."
     },
     {
       "id": "13-pro",
