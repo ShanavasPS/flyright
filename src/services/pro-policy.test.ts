@@ -1,7 +1,7 @@
 import { canSetProReminder, nextProTrip, proReminderTime } from '../../convex/proShared';
 import { freeFlightDetails } from '../../convex/flightAccess';
 import { liveMonitoring } from '../../convex/liveShared';
-import { planPrice, sortPlans } from './pro-plans';
+import { planHasTrial, planIntro, planPrice, sortPlans } from './pro-plans';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 const trip = (departure: string, arrival: string) => ({ fromCode: 'HEL', toCode: 'LHR', scheduledDeparture: departure, scheduledArrival: arrival });
@@ -54,4 +54,16 @@ it('puts monthly first without changing store prices or assuming a currency', ()
   expect(planPrice(sorted[0])).toBe('₹499.00 / month');
   expect(planPrice(sorted[1])).toBe('39,99 € / year');
   expect(planPrice(sorted[2])).toBe('¥12,000');
+});
+it('words the store’s intro offer from its own terms and says nothing without one', () => {
+  const plan = (introPrice: unknown) => ({ product: { priceString: '4,99 €', subscriptionPeriod: 'P1M', introPrice } }) as PurchasesPackage;
+  const trial = plan({ price: 0, priceString: '0,00 €', cycles: 1, period: 'P2W', periodUnit: 'WEEK', periodNumberOfUnits: 2 });
+  expect(planIntro(trial)).toBe('14 days free');
+  expect(planHasTrial(trial)).toBe(true);
+  const paid = plan({ price: 1.99, priceString: '1,99 €', cycles: 3, period: 'P1M', periodUnit: 'MONTH', periodNumberOfUnits: 1 });
+  expect(planIntro(paid)).toBe('1,99 € for the first 3 months');
+  expect(planHasTrial(paid)).toBe(false);
+  expect(planIntro(plan({ price: 0, priceString: '', cycles: 1, period: 'P1D', periodUnit: 'DAY', periodNumberOfUnits: 1 }))).toBe('1 day free');
+  expect(planIntro(plan(null))).toBeNull();
+  expect(planHasTrial(plan(null))).toBe(false);
 });

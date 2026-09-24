@@ -13,8 +13,8 @@ import { ProHeader, ProHero } from '@/components/pro-presentation';
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { entitledToPro, getAppUserId, getCurrentOffering, logInPurchases, purchase, restorePurchases } from '@/services/purchases';
-import { planName, planPrice, sortPlans } from '@/services/pro-plans';
+import { entitledToPro, getAppUserId, getCurrentOffering, introEligibility, logInPurchases, purchase, restorePurchases } from '@/services/purchases';
+import { planHasTrial, planIntro, planName, planPrice, sortPlans } from '@/services/pro-plans';
 
 /** Acquisition uses the store's actual packages and prices. Named subscriber
  * offerings still use RevenueCat's change-plan screen. */
@@ -35,21 +35,28 @@ export function ProPlans({ onClose, onUnlocked }: { onClose: () => void; onUnloc
   const insets = useSafeAreaInsets();
   const [plans, setPlans] = useState<PurchasesPackage[]>([]);
   const [selected, setSelected] = useState<string | null>(() => typeof params.packageId === 'string' ? params.packageId : null);
+  // Store product id → may this account still take the plan's intro offer.
+  const [eligible, setEligible] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
-  const load = useCallback(() => getCurrentOffering().then(offering => {
+  const load = useCallback(() => getCurrentOffering().then(async offering => {
     if (!mounted.current) return;
     const available = sortPlans(offering?.availablePackages ?? []);
     setPlans(available);
     setSelected(current => available.some(p => p.identifier === current) ? current : available[0]?.identifier ?? null);
     if (!available.length) setError('Plans are unavailable right now. Your flights are still saved.');
+    const withIntro = available.filter(p => p.product.introPrice).map(p => p.product.identifier);
+    const status = await introEligibility(withIntro).catch(() => ({}));
+    if (mounted.current) setEligible(status);
   }).catch(() => {
     if (mounted.current) setError('Couldn’t load prices. Check your connection and try again.');
   }).finally(() => { if (mounted.current) setLoading(false); }), []);
   useEffect(() => { mounted.current = true; void load(); return () => { mounted.current = false; }; }, [load]);
   const choice = plans.find(p => p.identifier === selected);
+  const intro = (p: PurchasesPackage) => eligible[p.product.identifier] ? planIntro(p) : null;
+  const choiceIntro = choice ? intro(choice) : null;
   async function buy() {
     if (!choice || busy) return;
     if (!userId) { signIn(); return; }
@@ -93,7 +100,8 @@ export function ProPlans({ onClose, onUnlocked }: { onClose: () => void; onUnloc
       <View style={styles.plans}>
         {plans.map(p => {
           const checked = selected === p.identifier;
-          return <Pressable key={p.identifier} accessibilityRole="radio" accessibilityLabel={`${planName(p)}, ${planPrice(p)}`} accessibilityState={{ checked, disabled: busy }} disabled={busy} onPress={() => setSelected(p.identifier)} style={({ pressed }) => [styles.plan, { borderColor: checked ? theme.tint : theme.hairline, backgroundColor: pressed ? theme.backgroundSelected : checked ? theme.tint + '08' : theme.backgroundElement }]}>
+          const offer = intro(p);
+          return <Pressable key={p.identifier} accessibilityRole="radio" accessibilityLabel={`${planName(p)}, ${offer ? `${offer}, then ` : ''}${planPrice(p)}`} accessibilityState={{ checked, disabled: busy }} disabled={busy} onPress={() => setSelected(p.identifier)} style={({ pressed }) => [styles.plan, { borderColor: checked ? theme.tint : theme.hairline, backgroundColor: pressed ? theme.backgroundSelected : checked ? theme.tint + '08' : theme.backgroundElement }]}>
             <View style={[styles.radio, { borderColor: checked ? theme.tint : theme.textSecondary, backgroundColor: checked ? theme.tint : 'transparent' }]} accessible={false} importantForAccessibility="no-hide-descendants">
               {checked && <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={14} weight="semibold" tintColor="#FFFFFF" />}
             </View>
@@ -102,6 +110,7 @@ export function ProPlans({ onClose, onUnlocked }: { onClose: () => void; onUnloc
                 <ThemedText type="smallBold" style={styles.planName}>{planName(p)}</ThemedText>
                 <ThemedText type="smallBold">{planPrice(p)}</ThemedText>
               </View>
+              {offer && <ThemedText type="smallBold" themeColor="tint">{offer}</ThemedText>}
               <ThemedText type="small" themeColor="textSecondary">{p.packageType === 'MONTHLY' ? 'For the month you fly.' : p.packageType === 'ANNUAL' ? 'For a year of going places.' : p.packageType === 'LIFETIME' ? 'One payment. No renewals.' : p.product.subscriptionPeriod ? 'Renews until cancelled.' : 'A one-time purchase.'}</ThemedText>
             </View>
           </Pressable>;
@@ -109,10 +118,12 @@ export function ProPlans({ onClose, onUnlocked }: { onClose: () => void; onUnloc
       </View>
       {choice && <>
         {!userId && <ThemedText type="small" themeColor="textSecondary">Sign in to keep Pro with your account.</ThemedText>}
-        <PrimaryButton label={busy ? 'Please wait…' : `Continue · ${planPrice(choice)}`} disabled={busy} onPress={() => void buy()} />
-        <ThemedText type="small" themeColor="textSecondary">{choice.product.subscriptionPeriod
-          ? 'Renews until cancelled in store settings. Pro stays active through your paid period. The store confirms any introductory offer before you pay.'
-          : `${choice.product.priceString}, one payment. No recurring subscription.`}</ThemedText>
+        <PrimaryButton label={busy ? 'Please wait…' : choiceIntro && planHasTrial(choice) ? `Start ${choiceIntro}` : `Continue · ${planPrice(choice)}`} disabled={busy} onPress={() => void buy()} />
+        <ThemedText type="small" themeColor="textSecondary">{choiceIntro
+          ? `${choiceIntro.charAt(0).toUpperCase()}${choiceIntro.slice(1)}, then ${planPrice(choice)} until cancelled in store settings. ${planHasTrial(choice) ? 'Cancel before the trial ends and nothing is charged.' : 'The store confirms the offer before you pay.'}`
+          : choice.product.subscriptionPeriod
+            ? 'Renews until cancelled in store settings. Pro stays active through your paid period. The store confirms any introductory offer before you pay.'
+            : `${choice.product.priceString}, one payment. No recurring subscription.`}</ThemedText>
       </>}
       <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} style={({ pressed }) => [styles.continueFree, { opacity: busy ? 0.5 : pressed ? 0.7 : 1 }]} onPress={onClose}><ThemedText type="smallBold" themeColor="tint">Continue free</ThemedText></Pressable>
       <View style={[styles.footer, { borderTopColor: theme.hairline }]}>

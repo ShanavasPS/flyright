@@ -46,6 +46,10 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   return null;
 }
 
+export async function introEligibility(_productIdentifiers: string[]): Promise<Record<string, boolean>> {
+  return {};
+}
+
 export async function getOfferingByIdentifier(
   _identifier: string,
 ): Promise<PurchasesOffering | null> {

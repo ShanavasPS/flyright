@@ -249,6 +249,26 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   return offerings.current;
 }
 
+/** Which of these products may show their introductory offer to this user.
+ * iOS asks RevenueCat (StoreKit knows whether the subscription group's trial
+ * was used); an unknown answer hides the offer so nobody is promised a trial
+ * the store then refuses. Play only returns offers the account is eligible
+ * for, so Android shows whatever the product carries. */
+export async function introEligibility(productIdentifiers: string[]): Promise<Record<string, boolean>> {
+  if (!configured || !productIdentifiers.length) return {};
+  if (Platform.OS !== 'ios') return Object.fromEntries(productIdentifiers.map((id) => [id, true]));
+  try {
+    const result = await Purchases.checkTrialOrIntroductoryPriceEligibility(productIdentifiers);
+    return Object.fromEntries(productIdentifiers.map((id) => [
+      id,
+      result[id]?.status === Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE,
+    ]));
+  } catch (e) {
+    console.warn('[purchases] intro eligibility failed', e);
+    return {};
+  }
+}
+
 /** A specific offering by identifier (e.g. OFFERING_CHANGE_PLAN), or null when
  * it doesn't exist or the SDK isn't configured — callers fall back to the
  * default offering's paywall. */
