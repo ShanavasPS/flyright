@@ -19,7 +19,11 @@ export function planIntro(p: PurchasesPackage): string | null {
   // A single stretch of trial reads better in days: "14 days", not "2 weeks".
   const [count, name] = unit === 'week' ? [intro.periodNumberOfUnits * intro.cycles * 7, 'day'] : [intro.periodNumberOfUnits * intro.cycles, unit];
   if (intro.price === 0) return `${count}-${name} free trial`;
-  return `${intro.priceString} for the first ${count} ${count === 1 ? name : `${name}s`}`;
+  const span = `for the first ${count} ${count === 1 ? name : `${name}s`}`;
+  // Several cycles means the intro price is charged per period (pay as you go);
+  // one cycle means it is the whole span's price (pay up front).
+  const each = intro.cycles > 1 ? ` / ${intro.periodNumberOfUnits === 1 ? unit : `${intro.periodNumberOfUnits} ${unit}s`}` : '';
+  return `${intro.priceString}${each} ${span}`;
 }
 export const planHasTrial = (p: PurchasesPackage) => (p.product.introPrice?.price ?? 1) === 0;
 export function planPrice(p: PurchasesPackage): string {

@@ -61,8 +61,10 @@ it('words the store’s intro offer from its own terms and says nothing without 
   expect(planIntro(trial)).toBe('14-day free trial');
   expect(planHasTrial(trial)).toBe(true);
   const paid = plan({ price: 1.99, priceString: '1,99 €', cycles: 3, period: 'P1M', periodUnit: 'MONTH', periodNumberOfUnits: 1 });
-  expect(planIntro(paid)).toBe('1,99 € for the first 3 months');
+  expect(planIntro(paid)).toBe('1,99 € / month for the first 3 months');
   expect(planHasTrial(paid)).toBe(false);
+  const upFront = plan({ price: 4.99, priceString: '4,99 €', cycles: 1, period: 'P3M', periodUnit: 'MONTH', periodNumberOfUnits: 3 });
+  expect(planIntro(upFront)).toBe('4,99 € for the first 3 months');
   expect(planIntro(plan({ price: 0, priceString: '', cycles: 1, period: 'P1D', periodUnit: 'DAY', periodNumberOfUnits: 1 }))).toBe('1-day free trial');
   expect(planIntro(plan(null))).toBeNull();
   expect(planHasTrial(plan(null))).toBe(false);
