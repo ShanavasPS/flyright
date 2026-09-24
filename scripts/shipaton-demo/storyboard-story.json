@@ -9,15 +9,33 @@
       "duration": 8,
       "chapter": "BEFORE THE FLIGHT",
       "headline": [
-        "Tokyo,",
-        "this evening."
+        "Meet Maja.",
+        "Tokyo, this evening."
       ],
       "bullets": [
         "On the Lock Screen",
         "Counting down all day",
         "She knows the terminal already"
       ],
-      "narration": "Maja's flying to Tokyo this evening. FlyRight has been counting down all day \u2014 she already knows which terminal to head to."
+      "narration": "Meet Maja. She's flying to Tokyo this evening. FlyRight's been counting down all day \u2014 she already knows her terminal.",
+      "images": [
+        {
+          "src": "brand/maja-avatar.png",
+          "x": 96,
+          "y": 786,
+          "width": 64,
+          "height": 64
+        }
+      ],
+      "labels": [
+        {
+          "x": 178,
+          "y": 829,
+          "text": "Maja Lindqvist \u00b7 Helsinki \u2192 Tokyo",
+          "size": 30,
+          "weight": 650
+        }
+      ]
     },
     {
       "id": "02-home",
