@@ -1,6 +1,6 @@
 {
   "title": "FlyRight — Maja's day",
-  "duration": 113,
+  "duration": 117,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
@@ -108,6 +108,20 @@
       "narration": "And on the World tab, her plane rides its own line across a globe FlyRight drew itself."
     },
     {
+      "id": "07b-world",
+      "duration": 4,
+      "chapter": "THE WORLD",
+      "headline": [
+        "Everywhere",
+        "she has been."
+      ],
+      "bullets": [
+        "Twenty trips, ten countries",
+        "All on one globe"
+      ],
+      "narration": "And everywhere she's been, all over the world."
+    },
+    {
       "id": "16-poster",
       "duration": 6,
       "chapter": "SHARE IT",
@@ -122,34 +136,19 @@
       "narration": "Or the whole of it as a poster, with a glow over the routes she flies most."
     },
     {
-      "id": "08-postcard",
-      "duration": 8,
-      "chapter": "OVER SIBERIA",
-      "headline": [
-        "A postcard",
-        "to her people."
-      ],
-      "bullets": [
-        "Tap your own face on Updates",
-        "A line or a photo",
-        "To Clara, Noah and Tomas"
-      ],
-      "narration": "Somewhere over Siberia, she taps her own face on Updates and writes a postcard to her people."
-    },
-    {
       "id": "09-updates",
       "duration": 8,
       "chapter": "HER PEOPLE",
       "headline": [
-        "Where it",
-        "lands."
+        "Updates",
+        "from her people."
       ],
       "bullets": [
         "Tomas, just home",
         "Clara, still in the air",
         "Every card carries the flight"
       ],
-      "narration": "It lands in Updates, next to Tomas, just home, and Clara, still in the air."
+      "narration": "On the Updates tab she catches up on her friends' trips — Tomas, just home, and Clara, still in the air."
     },
     {
       "id": "10-theirday",
@@ -164,6 +163,20 @@
         "Their steps, as they go"
       ],
       "narration": "Tap one of the followers, and you follow their whole day."
+    },
+    {
+      "id": "08-postcard",
+      "duration": 8,
+      "chapter": "HER OWN UPDATE",
+      "headline": [
+        "And she can",
+        "share hers."
+      ],
+      "bullets": [
+        "A line or a photo",
+        "To Clara, Noah and Tomas"
+      ],
+      "narration": "And she can share her own updates too — a line or a photo, straight to her people."
     },
     {
       "id": "12-belt",
