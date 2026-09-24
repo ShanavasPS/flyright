@@ -17,7 +17,7 @@
         "On the day",
         "And long after"
       ],
-      "narration": "Fly Right is the travel buddy you carry with you — before the trip, on the day, and long after it. Your flights, your people and your history, in one place."
+      "narration": "Fly Right is the travel buddy you carry with you, and the journal you keep after."
     },
     {
       "id": "02-live",
@@ -31,7 +31,7 @@
         "Gate and boarding time",
         "Counting to the second"
       ],
-      "narration": "One live card."
+      "narration": "Counting down."
     },
     {
       "id": "03-trip",
@@ -60,7 +60,7 @@
         "Saved on the phone",
         "No signal needed"
       ],
-      "narration": "Your boarding pass."
+      "narration": "Your pass."
     },
     {
       "id": "05-globe",
@@ -105,7 +105,7 @@
         "Longest flight, top destination",
         "Airline and aircraft"
       ],
-      "narration": "It all adds up into a history worth keeping: trips, airports, countries and kilometres. Travel stats go further — your longest flight, your top destination, and the airline and aircraft you fly most."
+      "narration": "It all adds up: trips, airports, countries. Travel stats add your longest flight, your top destination, and the airline you fly most."
     },
     {
       "id": "08-updates",
@@ -148,7 +148,7 @@
         "Their next departure",
         "Free on both sides"
       ],
-      "narration": "Open a friend and you get their trip and their photos. Friends shows who you follow and who follows you — free on both sides."
+      "narration": "Open a friend and you get their trip and their photos. Following is free, both ways."
     },
     {
       "id": "11-claim",
