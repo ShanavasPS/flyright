@@ -379,7 +379,9 @@ export function Journeys() {
               </View>
             }
             renderSectionHeader={({ section }) =>
-              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+              // The first label sits right under the stats card and needs a
+              // breath above it; the rest follow a card that already spaced itself.
+              <ThemedText type="smallBold" themeColor="textSecondary" style={[styles.sectionTitle, section === tripSections[0] && styles.firstSectionTitle]}>
                 {section.title}
               </ThemedText>
             }
@@ -865,16 +867,16 @@ const styles = StyleSheet.create({
   },
   // Cell padding supplies the inner spacing without gaps in the group surface.
   groupedList: { gap: 0 },
-  // A notch under the body size, and a breath of air above each section so
-  // the label reads as a heading rather than the previous card's caption.
+  // A notch under the body size, so the labels read as headings, not copy.
   sectionTitle: {
     fontSize: 13,
     lineHeight: 18,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginTop: Spacing.three,
+    marginTop: Spacing.two,
     marginBottom: Spacing.two,
   },
+  firstSectionTitle: { marginTop: Spacing.three },
   rowPressed: {
     opacity: 0.9,
   },
