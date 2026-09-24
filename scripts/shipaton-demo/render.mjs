@@ -11,7 +11,10 @@ import sharp from 'sharp';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
 const OUT = process.env.DEMO_OUT || join(HERE, 'output');
-const board = JSON.parse(await readFile(join(HERE, 'storyboard.json'), 'utf8'));
+// DEMO_BOARD names a different storyboard beside this one — the device cut
+// is a second edit of the same app, from a phone recording rather than the
+// simulator, so it carries its own scenes and its own length.
+const board = JSON.parse(await readFile(join(HERE, process.env.DEMO_BOARD || 'storyboard.json'), 'utf8'));
 const phase = process.argv[2] || 'all';
 // Keep the complete display inside a rounded, proportionate iPhone enclosure.
 // The capture includes its native Dynamic Island and home indicator.

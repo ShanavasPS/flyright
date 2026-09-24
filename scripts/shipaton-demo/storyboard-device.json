@@ -1,0 +1,183 @@
+{
+  "title": "FlyRight — one place for the whole trip",
+  "duration": 99,
+  "voice": "Samantha",
+  "voiceRate": 165,
+  "scenes": [
+    {
+      "id": "01-intro",
+      "duration": 7,
+      "chapter": "YOUR TRAVEL BUDDY",
+      "headline": [
+        "Every flight.",
+        "One place."
+      ],
+      "bullets": [
+        "Before you fly",
+        "On the day",
+        "And long after"
+      ],
+      "narration": "Fly Right is the travel buddy you carry with you — before the trip, on the day, and long after it. Your flights, your people and your history, in one place."
+    },
+    {
+      "id": "02-live",
+      "duration": 2,
+      "chapter": "01 / THE LIVE CARD",
+      "headline": [
+        "A card that",
+        "counts down."
+      ],
+      "bullets": [
+        "Gate and boarding time",
+        "Counting to the second"
+      ],
+      "narration": "One live card."
+    },
+    {
+      "id": "03-trip",
+      "duration": 11,
+      "chapter": "02 / THE TRIP",
+      "headline": [
+        "Everything,",
+        "in fixed places."
+      ],
+      "bullets": [
+        "Terminal, check-in, gate",
+        "Seat and booking",
+        "Every step of the day"
+      ],
+      "narration": "Open the trip and everything sits in fixed places: the countdown, the terminal, check-in and gate, your seat and booking, and each step of the day as you pass it."
+    },
+    {
+      "id": "04-pass",
+      "duration": 2,
+      "chapter": "03 / YOUR PASS",
+      "headline": [
+        "The pass,",
+        "one tap away."
+      ],
+      "bullets": [
+        "Saved on the phone",
+        "No signal needed"
+      ],
+      "narration": "Your boarding pass."
+    },
+    {
+      "id": "05-globe",
+      "duration": 11,
+      "chapter": "04 / THE GLOBE",
+      "headline": [
+        "Every route.",
+        "On a real earth."
+      ],
+      "bullets": [
+        "Drawn in Skia",
+        "Lit by the real sun",
+        "Your flight rides its line"
+      ],
+      "narration": "Every route you have flown sits on a globe we drew ourselves, lit by the real sun. The flight you are on rides its own line across it."
+    },
+    {
+      "id": "06-poster",
+      "duration": 11,
+      "chapter": "05 / SHARE IT",
+      "headline": [
+        "Your world,",
+        "as a poster."
+      ],
+      "bullets": [
+        "Story or square",
+        "Dark or light",
+        "A glow where you fly most"
+      ],
+      "narration": "Share your world as a poster — story or square, dark or light, with a glow over the corridors you fly most, drawn on the phone's own GPU."
+    },
+    {
+      "id": "07-world",
+      "duration": 13,
+      "chapter": "06 / YOUR HISTORY",
+      "headline": [
+        "A journal",
+        "that adds up."
+      ],
+      "bullets": [
+        "Trips, airports, countries",
+        "Longest flight, top destination",
+        "Airline and aircraft"
+      ],
+      "narration": "It all adds up into a history worth keeping: trips, airports, countries and kilometres. Travel stats go further — your longest flight, your top destination, and the airline and aircraft you fly most."
+    },
+    {
+      "id": "08-updates",
+      "duration": 15,
+      "chapter": "07 / YOUR PEOPLE",
+      "headline": [
+        "Postcards",
+        "from the air."
+      ],
+      "bullets": [
+        "Friends flying now",
+        "And just landed",
+        "Open their whole trip"
+      ],
+      "narration": "Updates is where your people are. Postcards from friends still in the air and just landed, each with the flight and the place it came from. Open one and you can follow their whole trip."
+    },
+    {
+      "id": "09-photos",
+      "duration": 7,
+      "chapter": "08 / THE PHOTOS",
+      "headline": [
+        "Tap it.",
+        "Fill the screen."
+      ],
+      "bullets": [
+        "A heart and a reply",
+        "Straight to the trip"
+      ],
+      "narration": "Tap a photo and it fills the screen, with a heart and a reply underneath."
+    },
+    {
+      "id": "10-friends",
+      "duration": 7,
+      "chapter": "09 / THE CIRCLE",
+      "headline": [
+        "Who you follow.",
+        "Who follows you."
+      ],
+      "bullets": [
+        "Their next departure",
+        "Free on both sides"
+      ],
+      "narration": "Open a friend and you get their trip and their photos. Friends shows who you follow and who follows you — free on both sides."
+    },
+    {
+      "id": "11-claim",
+      "duration": 7,
+      "chapter": "10 / IF IT GOES WRONG",
+      "headline": [
+        "What you",
+        "are owed."
+      ],
+      "bullets": [
+        "The figure and the reason",
+        "Raise the claim from the app"
+      ],
+      "note": "Sample delay · eligibility depends on the circumstances",
+      "narration": "If a flight runs late, Fly Right works out what you are owed and helps you raise the claim, from the app."
+    },
+    {
+      "id": "12-flights",
+      "duration": 6,
+      "chapter": "FLYRIGHT",
+      "headline": [
+        "One place",
+        "for all of it."
+      ],
+      "bullets": [
+        "FlyRight",
+        "getflyright.com"
+      ],
+      "narration": "It all comes back to Flights — every trip, grouped by where you went."
+    }
+  ]
+}
