@@ -42,11 +42,11 @@
         "before she needs it."
       ],
       "bullets": [
-        "Check-in Area 2",
-        "Gate 52, boarding time",
+        "Check-in area and gate",
+        "Boarding time",
         "Seat and booking"
       ],
-      "narration": "Check-in area two, gate fifty-two, boarding time. Everything, before she needs any of it."
+      "narration": "Check-in area, gate, boarding time. Everything, before she needs any of it."
     },
     {
       "id": "03-steps",
@@ -193,6 +193,21 @@
       "narration": "Wheels down in Tokyo. FlyRight already tells her which belt her bags are on — no looking around for it."
     },
     {
+      "id": "15-claims",
+      "duration": 5,
+      "chapter": "IF IT RUNS LATE",
+      "headline": [
+        "What she's",
+        "owed."
+      ],
+      "bullets": [
+        "The figure and the reason",
+        "Raise the claim from the app"
+      ],
+      "note": "Sample delay · eligibility depends on the circumstances",
+      "narration": "If it runs late, it works out what she's owed."
+    },
+    {
       "id": "13-pro",
       "duration": 10,
       "chapter": "FREE AND PRO",
@@ -256,21 +271,6 @@
           "weight": 650
         }
       ]
-    },
-    {
-      "id": "15-claims",
-      "duration": 5,
-      "chapter": "IF IT RUNS LATE",
-      "headline": [
-        "What she's",
-        "owed."
-      ],
-      "bullets": [
-        "The figure and the reason",
-        "Raise the claim from the app"
-      ],
-      "note": "Sample delay · eligibility depends on the circumstances",
-      "narration": "If it runs late, it works out what she's owed."
     },
     {
       "id": "17-close",
