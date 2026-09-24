@@ -7,17 +7,17 @@
     {
       "id": "01-morning",
       "duration": 8,
-      "chapter": "THE MORNING",
+      "chapter": "BEFORE THE FLIGHT",
       "headline": [
         "Tokyo,",
-        "today."
+        "this evening."
       ],
       "bullets": [
         "On the Lock Screen",
-        "Counting down since breakfast",
+        "Counting down all day",
         "She knows the terminal already"
       ],
-      "narration": "Maja's flying to Tokyo today. FlyRight has been counting down since breakfast — she already knows which terminal to head to."
+      "narration": "Maja's flying to Tokyo this evening. FlyRight has been counting down all day — she already knows which terminal to head to."
     },
     {
       "id": "02-home",
@@ -130,10 +130,10 @@
         "as a poster."
       ],
       "bullets": [
-        "Story or square",
+        "A trip, or all of it",
         "A glow where she flies most"
       ],
-      "narration": "Or the whole of it as a poster, with a glow over the routes she flies most."
+      "narration": "And she can share a trip, or her whole world, as a poster."
     },
     {
       "id": "09-updates",
