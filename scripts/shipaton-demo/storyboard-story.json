@@ -1,6 +1,6 @@
 {
   "title": "FlyRight — Maja's day",
-  "duration": 113,
+  "duration": 114,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
@@ -138,7 +138,7 @@
     },
     {
       "id": "10-theirday",
-      "duration": 4,
+      "duration": 5,
       "chapter": "THEIR DAY",
       "headline": [
         "Tap one.",
@@ -148,7 +148,7 @@
         "Their itinerary",
         "Their steps, as they go"
       ],
-      "narration": "Tap one, and you follow their whole day."
+      "narration": "Tap one of the followers, and you follow their whole day."
     },
     {
       "id": "11-landed",
