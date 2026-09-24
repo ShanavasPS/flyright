@@ -875,6 +875,21 @@ describe('liveContentSchedule — the cards for when the app is asleep', () => {
     expect(down.content.progress).toBe(1);
   });
 
+  it('still owes the next card from inside the last minute, when no countdown is left', () => {
+    // The background sweep happened to run 40 s before departure — the card
+    // says "Departing now" with no clock, and the take-off card must still
+    // be armed, or the notification sits on "Departing now" all flight.
+    const lastMinute = new Date('2026-08-25T07:59:20Z');
+    const nowCard = liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, lastMinute);
+    expect(nowCard.countdownEnd).toBeNull();
+    const plan = liveContentSchedule(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, lastMinute);
+    expect(plan.map((p) => new Date(p.at).toISOString())).toEqual([
+      '2026-08-25T08:01:01.000Z',
+      '2026-08-25T10:36:01.000Z',
+    ]);
+    expect(plan[0].content.clockLabel).toBe('LANDS IN');
+  });
+
   it('runs to the estimated clocks when the airline moved them', () => {
     const late = facts({ estimatedDeparture: '2026-08-25T08:46Z', estimatedArrival: '2026-08-25T11:20Z', delayMinutes: 46 });
     const plan = liveContentSchedule(journey(), EMPTY_TRAVEL_DAY, late, atTheGate);

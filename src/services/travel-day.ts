@@ -1000,10 +1000,23 @@ export function liveContentSchedule(
   limit = 3,
 ): { at: number; content: LiveContent }[] {
   const out: { at: number; content: LiveContent }[] = [];
+  let at = now.getTime();
   let content = liveContent(j, state, facts, now, plan);
-  while (content.countdownEnd !== null && out.length < limit) {
-    const at = content.countdownEnd + PRESUMED_AFTER_MS;
-    if (at <= now.getTime()) break;
+  while (out.length < limit) {
+    // The next moment the timetable moves the flight on: the departure
+    // until the wheels are up, the arrival in the air, nothing once down.
+    // Read off the flight's own clocks, not the countdown — a reconcile in
+    // the last minute before departure has no countdown left to show but
+    // still owes the card that follows.
+    const moment = content.tone === 'landed'
+      ? null
+      : content.clockLabel === 'LANDS IN'
+        ? content.arrivesAt
+        : content.departsAt;
+    if (moment === null) break;
+    const next = moment + PRESUMED_AFTER_MS;
+    if (next <= at) break;
+    at = next;
     content = liveContent(j, state, facts, new Date(at), plan);
     out.push({ at, content });
   }
