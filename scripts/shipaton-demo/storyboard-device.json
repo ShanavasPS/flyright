@@ -1,12 +1,12 @@
 {
   "title": "FlyRight — one place for the whole trip",
-  "duration": 99,
+  "duration": 114,
   "voice": "Samantha",
   "voiceRate": 165,
   "scenes": [
     {
       "id": "01-intro",
-      "duration": 7,
+      "duration": 8,
       "chapter": "YOUR TRAVEL BUDDY",
       "headline": [
         "Every flight.",
@@ -17,7 +17,7 @@
         "On the day",
         "And long after"
       ],
-      "narration": "Fly Right is the travel buddy you carry with you, and the journal you keep after."
+      "narration": "Fly Right is the travel buddy you carry through the trip, and the journal you keep after it."
     },
     {
       "id": "02-live",
@@ -35,7 +35,7 @@
     },
     {
       "id": "03-trip",
-      "duration": 11,
+      "duration": 13,
       "chapter": "02 / THE TRIP",
       "headline": [
         "Everything,",
@@ -64,7 +64,7 @@
     },
     {
       "id": "05-globe",
-      "duration": 11,
+      "duration": 13,
       "chapter": "04 / THE GLOBE",
       "headline": [
         "Every route.",
@@ -79,7 +79,7 @@
     },
     {
       "id": "06-poster",
-      "duration": 11,
+      "duration": 13,
       "chapter": "05 / SHARE IT",
       "headline": [
         "Your world,",
@@ -94,7 +94,7 @@
     },
     {
       "id": "07-world",
-      "duration": 13,
+      "duration": 15,
       "chapter": "06 / YOUR HISTORY",
       "headline": [
         "A journal",
@@ -105,11 +105,11 @@
         "Longest flight, top destination",
         "Airline and aircraft"
       ],
-      "narration": "It all adds up: trips, airports, countries. Travel stats add your longest flight, your top destination, and the airline you fly most."
+      "narration": "It all adds up into a history worth keeping: trips, airports, countries and kilometres. Travel stats add your longest flight, your top destination, and the airline and aircraft you fly most."
     },
     {
       "id": "08-updates",
-      "duration": 15,
+      "duration": 17,
       "chapter": "07 / YOUR PEOPLE",
       "headline": [
         "Postcards",
@@ -124,7 +124,7 @@
     },
     {
       "id": "09-photos",
-      "duration": 7,
+      "duration": 8,
       "chapter": "08 / THE PHOTOS",
       "headline": [
         "Tap it.",
@@ -138,7 +138,7 @@
     },
     {
       "id": "10-friends",
-      "duration": 7,
+      "duration": 8,
       "chapter": "09 / THE CIRCLE",
       "headline": [
         "Who you follow.",
@@ -148,11 +148,11 @@
         "Their next departure",
         "Free on both sides"
       ],
-      "narration": "Open a friend and you get their trip and their photos. Following is free, both ways."
+      "narration": "Open a friend and you get their trip and their photos. Following is free, on both sides."
     },
     {
       "id": "11-claim",
-      "duration": 7,
+      "duration": 8,
       "chapter": "10 / IF IT GOES WRONG",
       "headline": [
         "What you",
@@ -163,11 +163,11 @@
         "Raise the claim from the app"
       ],
       "note": "Sample delay · eligibility depends on the circumstances",
-      "narration": "If a flight runs late, Fly Right works out what you are owed and helps you raise the claim, from the app."
+      "narration": "If a flight runs late, Fly Right works out what you are owed and helps you raise the claim."
     },
     {
       "id": "12-flights",
-      "duration": 6,
+      "duration": 7,
       "chapter": "FLYRIGHT",
       "headline": [
         "One place",
