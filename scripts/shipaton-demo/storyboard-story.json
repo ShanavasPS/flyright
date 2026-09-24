@@ -1,6 +1,6 @@
 {
   "title": "FlyRight — Maja's day",
-  "duration": 119,
+  "duration": 113,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
@@ -79,21 +79,6 @@
       "narration": "At the gate, or in duty free, she taps the pass right on the live card."
     },
     {
-      "id": "05-seat",
-      "duration": 7,
-      "chapter": "GATE TO SEAT",
-      "headline": [
-        "On the",
-        "Lock Screen."
-      ],
-      "bullets": [
-        "No unlocking",
-        "Seat 24A",
-        "Still counting down"
-      ],
-      "narration": "Walking from the gate to her row, she checks the seat on the Lock Screen. Twenty-four A."
-    },
-    {
       "id": "06-inair",
       "duration": 7,
       "chapter": "IN THE AIR",
@@ -121,6 +106,20 @@
         "Lit by the real sun"
       ],
       "narration": "And on the World tab, her plane rides its own line across a globe FlyRight drew itself."
+    },
+    {
+      "id": "16-poster",
+      "duration": 6,
+      "chapter": "SHARE IT",
+      "headline": [
+        "Her world,",
+        "as a poster."
+      ],
+      "bullets": [
+        "Story or square",
+        "A glow where she flies most"
+      ],
+      "narration": "Or the whole of it as a poster, with a glow over the routes she flies most."
     },
     {
       "id": "08-postcard",
@@ -259,20 +258,6 @@
       ],
       "note": "Sample delay · eligibility depends on the circumstances",
       "narration": "If it runs late, it works out what she's owed."
-    },
-    {
-      "id": "16-poster",
-      "duration": 5,
-      "chapter": "AFTERWARDS",
-      "headline": [
-        "Every trip,",
-        "a poster."
-      ],
-      "bullets": [
-        "Story or square",
-        "A glow where she flies most"
-      ],
-      "narration": "And every trip becomes a poster she can share."
     },
     {
       "id": "17-close",
