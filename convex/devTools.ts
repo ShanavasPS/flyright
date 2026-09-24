@@ -7,6 +7,7 @@ import { armHeadsUp, createSession, materializeCircleFollows } from './liveHelpe
 import { sendFollowerPush } from './onesignal';
 import { safeAvatar } from './profileShared';
 import { firstNameKey, searchKey } from './circleShared';
+import { flightDay } from './airportZones';
 
 /**
  * Dev-only knobs, callable from the CLI alone (internal functions never
@@ -783,5 +784,117 @@ export const listCircleUsers = internalMutation({
       out.push({ userId, name: profile?.name ?? null });
     }
     return out;
+  },
+});
+
+/** Read-only picture of one account for answering a support request: the
+ * profile, Pro state, support threads with their messages, journeys around
+ * `since` with their recorded airport facts, the live sessions for them and
+ * the cached provider records those flights would have been served. Writes
+ * nothing; returns nothing about anyone else.
+ * `npx convex run --prod devTools:inspectUser '{"userId":"user_…","since":"2026-09-20"}'` */
+export const inspectUser = internalQuery({
+  args: { userId: v.string(), since: v.optional(v.string()) },
+  handler: async (ctx, { userId, since }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique();
+    const entitlement = await ctx.db
+      .query('entitlements')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    const threads = (await ctx.db.query('supportThreads').collect()).filter((t) => t.userId === userId);
+    const support = [];
+    for (const t of threads) {
+      const messages = await ctx.db
+        .query('supportMessages')
+        .withIndex('by_thread', (q) => q.eq('threadId', t._id))
+        .collect();
+      support.push({
+        createdAt: t.createdAt,
+        subject: t.subject,
+        platform: t.platform,
+        appVersion: t.appVersion,
+        messages: messages.map((m) => ({ at: m.createdAt, direction: m.direction, body: m.body })),
+      });
+    }
+    const journeys = (
+      await ctx.db
+        .query('journeys')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .collect()
+    )
+      .filter((r) => !since || r.scheduledDeparture >= since || r.updatedAt >= since)
+      .sort((a, b) => a.scheduledDeparture.localeCompare(b.scheduledDeparture))
+      .map((r) => ({
+        key: r.naturalKey,
+        source: r.source,
+        flight: r.number,
+        from: r.fromCode,
+        to: r.toCode,
+        dep: r.scheduledDeparture,
+        arr: r.scheduledArrival,
+        actualDeparture: r.actualDeparture ?? null,
+        actualArrival: r.actualArrival ?? null,
+        gate: r.gate ?? null,
+        terminal: r.terminal ?? null,
+        factsByUser: r.factsByUser ?? null,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        deletedAt: r.deletedAt,
+      }));
+    const sessions = (
+      await ctx.db
+        .query('liveSessions')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .collect()
+    )
+      .filter((s) => !since || s.scheduledDeparture >= since)
+      .map((s) => ({
+        key: s.naturalKey,
+        status: s.status,
+        flight: s.number,
+        dep: s.scheduledDeparture,
+        arr: s.scheduledArrival,
+        currentStage: s.currentStage,
+        stageTimes: s.stageTimes,
+        flightStatus: s.flightStatus,
+        delayMinutes: s.delayMinutes,
+        gate: s.gate,
+        estimatedDeparture: s.estimatedDeparture,
+        actualDeparture: s.actualDeparture,
+        estimatedArrival: s.estimatedArrival,
+        actualArrival: s.actualArrival,
+        lastCheckedAt: s.lastCheckedAt,
+        notifiedStages: s.notifiedStages,
+        activityId: s.activityId ? 'set' : null,
+        shareToken: s.shareToken ? 'set' : null,
+        pollScheduledId: s.pollScheduledId,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      }));
+    // What the provider said about each of these flights, as cached under
+    // the day the app would have asked about (the origin's local date).
+    const cache = [];
+    for (const j of journeys) {
+      if (!j.flight) continue;
+      const day = flightDay(j.dep, j.from);
+      for (const key of [`${j.flight}:${day}`, `${j.flight}:${day}:inb`]) {
+        const row = await ctx.db
+          .query('flightFacts')
+          .withIndex('by_key', (q) => q.eq('key', key))
+          .first();
+        if (row) cache.push({ key, phase: row.phase, fetchedAt: new Date(row.fetchedAt).toISOString(), payload: JSON.parse(row.payload) });
+      }
+    }
+    return {
+      profile: profile ? { name: profile.name, updatedAt: profile.updatedAt } : null,
+      pro: entitlement ? { proUntil: entitlement.proUntil, source: entitlement.source, updatedAt: entitlement.updatedAt } : null,
+      support,
+      journeys,
+      sessions,
+      cache,
+    };
   },
 });
