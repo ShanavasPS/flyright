@@ -113,6 +113,22 @@ if (phase === 'all' || phase === 'prepare') {
   console.log('Prepared branded backgrounds, timed script, and narration text.');
 }
 
+// macOS `say` is the default. DEMO_TTS=edge speaks through Microsoft's neural
+// voices instead (edge-tts on PATH or EDGE_TTS_BIN; DEMO_VOICE names the
+// voice, e.g. en-US-AndrewNeural): the first Shipaton cut used it because
+// Samantha reads a script like a timetable. The rate loop below still thinks
+// in words per minute; for edge that maps onto its percentage rate against
+// the storyboard's base rate, so the fitting logic is shared.
+const edge = process.env.DEMO_TTS === 'edge';
+const edgeBin = process.env.EDGE_TTS_BIN || 'edge-tts';
+function synth(voice, wpm, textPath, audioPath) {
+  if (!edge) return run('say', ['-v', voice, '-r', String(wpm), '-f', textPath, '-o', audioPath]);
+  const pct = Math.round((wpm / board.voiceRate - 1) * 100);
+  const mp3 = audioPath.replace(/\.aiff$/, '.mp3');
+  run(edgeBin, ['--voice', voice, `--rate=${pct >= 0 ? '+' : ''}${pct}%`, '-f', textPath, '--write-media', mp3]);
+  run(ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-i', mp3, '-ar', '48000', '-ac', '1', audioPath]);
+}
+
 if (phase === 'all' || phase === 'voice') {
   const timings = {};
   for (const scene of board.scenes) {
@@ -120,21 +136,21 @@ if (phase === 'all' || phase === 'voice') {
     const audioPath = join(OUT, 'audio', `${scene.id}.aiff`);
     const voice = process.env.DEMO_VOICE || board.voice;
     let rate = board.voiceRate;
-    run('say', ['-v', voice, '-r', String(rate), '-f', textPath, '-o', audioPath]);
+    synth(voice, rate, textPath, audioPath);
     const measured = duration(audioPath);
     if (measured < 0.1) throw new Error('Speech synthesis produced no audio; allow access to the macOS speech service.');
     const target = scene.duration - 1.0;
     const adjustedRate = Math.max(135, Math.min(195, Math.round(rate * measured / target)));
     if (Math.abs(adjustedRate - rate) > 4) {
       rate = adjustedRate;
-      run('say', ['-v', voice, '-r', String(rate), '-f', textPath, '-o', audioPath]);
+      synth(voice, rate, textPath, audioPath);
     }
     let finalDuration = duration(audioPath);
     // Speech timing is nonlinear: punctuation and pronunciation affect it.
     // Leave a small tail instead of ever cutting off the last spoken word.
     for (let attempt = 0; finalDuration > scene.duration - 0.55 && attempt < 3; attempt++) {
       rate = Math.ceil(rate * finalDuration / (scene.duration - 0.85)) + 2;
-      run('say', ['-v', voice, '-r', String(rate), '-f', textPath, '-o', audioPath]);
+      synth(voice, rate, textPath, audioPath);
       finalDuration = duration(audioPath);
     }
     if (finalDuration > scene.duration - 0.45) throw new Error(`${scene.id}: voice too long (${finalDuration}s); shorten narration.`);

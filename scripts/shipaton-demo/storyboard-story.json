@@ -1,0 +1,252 @@
+{
+  "title": "FlyRight — Maja's day",
+  "duration": 108,
+  "voice": "en-US-AndrewNeural",
+  "voiceRate": 165,
+  "scenes": [
+    {
+      "id": "01-morning",
+      "duration": 6,
+      "chapter": "THE MORNING",
+      "headline": [
+        "Tokyo,",
+        "today."
+      ],
+      "bullets": [
+        "Counting down since breakfast",
+        "Gate already on the card"
+      ],
+      "narration": "Maja's flying to Tokyo today. FlyRight has been counting down since breakfast."
+    },
+    {
+      "id": "02-terminal",
+      "duration": 7,
+      "chapter": "AT THE AIRPORT",
+      "headline": [
+        "She knows",
+        "before she's there."
+      ],
+      "bullets": [
+        "Terminal 2",
+        "Check-in Area 2",
+        "Gate 52, boards 12:10"
+      ],
+      "narration": "Terminal two, check-in area two, gate fifty-two. She knows before she gets there."
+    },
+    {
+      "id": "03-steps",
+      "duration": 8,
+      "chapter": "STEP BY STEP",
+      "headline": [
+        "Each step,",
+        "as she goes."
+      ],
+      "bullets": [
+        "Through immigration",
+        "On board",
+        "Her people see it live"
+      ],
+      "narration": "She taps each step as she goes, and Clara, Noah and Tomas see it as it happens."
+    },
+    {
+      "id": "04-pass",
+      "duration": 6,
+      "chapter": "AT THE GATE",
+      "headline": [
+        "One tap.",
+        "Her pass."
+      ],
+      "bullets": [
+        "Saved on the phone",
+        "Works in duty free too"
+      ],
+      "narration": "At the gate, or in duty free, her boarding pass is one tap away."
+    },
+    {
+      "id": "05-seat",
+      "duration": 6,
+      "chapter": "ON BOARD",
+      "headline": [
+        "Walking",
+        "to her row."
+      ],
+      "bullets": [
+        "Seat 24A",
+        "Booking TY9D3R"
+      ],
+      "narration": "Walking to her row, she checks the seat. Twenty-four A."
+    },
+    {
+      "id": "06-inair",
+      "duration": 6,
+      "chapter": "IN THE AIR",
+      "headline": [
+        "Now it counts",
+        "down to landing."
+      ],
+      "bullets": [
+        "Lands in 2:28",
+        "Six days in Japan"
+      ],
+      "narration": "In the air, the card keeps counting — down to landing now."
+    },
+    {
+      "id": "07-globe",
+      "duration": 8,
+      "chapter": "ON THE MAP",
+      "headline": [
+        "Her plane,",
+        "on its line."
+      ],
+      "bullets": [
+        "A globe FlyRight drew itself",
+        "Lit by the real sun"
+      ],
+      "narration": "And on the World tab, her plane rides its own line across a globe FlyRight drew itself."
+    },
+    {
+      "id": "08-postcard",
+      "duration": 6,
+      "chapter": "OVER SIBERIA",
+      "headline": [
+        "A postcard",
+        "to her people."
+      ],
+      "bullets": [
+        "A line or a photo",
+        "To Clara, Noah and Tomas"
+      ],
+      "narration": "Somewhere over Siberia, she writes a postcard to her people."
+    },
+    {
+      "id": "09-updates",
+      "duration": 8,
+      "chapter": "HER PEOPLE",
+      "headline": [
+        "Where it",
+        "lands."
+      ],
+      "bullets": [
+        "Tomas, just home",
+        "Clara, still in the air",
+        "Every card carries the flight"
+      ],
+      "narration": "It lands in Updates, next to Tomas, just home, and Clara, still in the air."
+    },
+    {
+      "id": "10-theirday",
+      "duration": 4,
+      "chapter": "THEIR DAY",
+      "headline": [
+        "Tap one.",
+        "Follow it."
+      ],
+      "bullets": [
+        "Their itinerary",
+        "Their steps, as they go"
+      ],
+      "narration": "Tap one, and you follow their whole day."
+    },
+    {
+      "id": "11-landed",
+      "duration": 5,
+      "chapter": "TOKYO",
+      "headline": [
+        "Wheels",
+        "down."
+      ],
+      "bullets": [
+        "She taps it",
+        "Her people hear first"
+      ],
+      "narration": "She lands, and taps it."
+    },
+    {
+      "id": "12-belt",
+      "duration": 5,
+      "chapter": "THE BELT",
+      "headline": [
+        "Belt twelve,",
+        "before the sign."
+      ],
+      "bullets": [
+        "Baggage belt on the card",
+        "Same card, whole day"
+      ],
+      "narration": "Bags on belt twelve, before the airport sign says so."
+    },
+    {
+      "id": "13-pro",
+      "duration": 10,
+      "chapter": "FREE AND PRO",
+      "headline": [
+        "Free to keep.",
+        "Pro to travel."
+      ],
+      "bullets": [
+        "Flights and following: free",
+        "Pro: the live day",
+        "Gate, delay, belt, postcards"
+      ],
+      "narration": "Keeping flights and following people is free. Pro is the live day: gate, delay, belt, and postcards."
+    },
+    {
+      "id": "14-plans",
+      "duration": 8,
+      "chapter": "THE PLANS",
+      "headline": [
+        "Her followers",
+        "see it free."
+      ],
+      "bullets": [
+        "Monthly, yearly, lifetime",
+        "Through RevenueCat"
+      ],
+      "note": "Live store pricing shown",
+      "narration": "Her followers see all of it free. Monthly, yearly, or lifetime, through RevenueCat."
+    },
+    {
+      "id": "15-claims",
+      "duration": 5,
+      "chapter": "IF IT RUNS LATE",
+      "headline": [
+        "What she's",
+        "owed."
+      ],
+      "bullets": [
+        "The figure and the reason",
+        "Raise the claim from the app"
+      ],
+      "note": "Sample delay · eligibility depends on the circumstances",
+      "narration": "If it runs late, it works out what she's owed."
+    },
+    {
+      "id": "16-poster",
+      "duration": 6,
+      "chapter": "AFTERWARDS",
+      "headline": [
+        "Every trip,",
+        "a poster."
+      ],
+      "bullets": [
+        "Story or square",
+        "A glow where she flies most"
+      ],
+      "narration": "And every trip becomes a poster she can share."
+    },
+    {
+      "id": "17-close",
+      "duration": 4,
+      "chapter": "FLYRIGHT",
+      "headline": [
+        "One place",
+        "for the whole journey."
+      ],
+      "bullets": [
+        "FlyRight",
+        "getflyright.com"
+      ],
+      "narration": "FlyRight. One place for the whole journey."
+    }
+  ]
+}
