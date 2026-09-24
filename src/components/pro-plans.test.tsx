@@ -113,6 +113,6 @@ it('offers the store trial only to an account the store says is eligible', async
   mockEligible = { flyright_pro_monthly: true };
   await act(async () => screen.unmount());
   await act(async () => { screen = create(<ProPlans onClose={mockClose} onUnlocked={mockUnlock} />); });
-  expect(labels()).toContain('Start 14 days free');
-  expect(screen.root.findAllByType(ThemedText).some(t => t.props.children === '14 days free')).toBe(true);
+  expect(labels()).toContain('Start 14-day free trial');
+  expect(screen.root.findAllByType(ThemedText).some(t => t.props.children === '14-day free trial · cancel anytime')).toBe(true);
 });

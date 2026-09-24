@@ -110,7 +110,7 @@ export function ProPlans({ onClose, onUnlocked }: { onClose: () => void; onUnloc
                 <ThemedText type="smallBold" style={styles.planName}>{planName(p)}</ThemedText>
                 <ThemedText type="smallBold">{planPrice(p)}</ThemedText>
               </View>
-              {offer && <ThemedText type="smallBold" themeColor="tint">{offer}</ThemedText>}
+              {offer && <ThemedText type="smallBold" themeColor="tint">{planHasTrial(p) ? `${offer} · cancel anytime` : offer}</ThemedText>}
               <ThemedText type="small" themeColor="textSecondary">{p.packageType === 'MONTHLY' ? 'For the month you fly.' : p.packageType === 'ANNUAL' ? 'For a year of going places.' : p.packageType === 'LIFETIME' ? 'One payment. No renewals.' : p.product.subscriptionPeriod ? 'Renews until cancelled.' : 'A one-time purchase.'}</ThemedText>
             </View>
           </Pressable>;
@@ -120,7 +120,9 @@ export function ProPlans({ onClose, onUnlocked }: { onClose: () => void; onUnloc
         {!userId && <ThemedText type="small" themeColor="textSecondary">Sign in to keep Pro with your account.</ThemedText>}
         <PrimaryButton label={busy ? 'Please wait…' : choiceIntro && planHasTrial(choice) ? `Start ${choiceIntro}` : `Continue · ${planPrice(choice)}`} disabled={busy} onPress={() => void buy()} />
         <ThemedText type="small" themeColor="textSecondary">{choiceIntro
-          ? `${choiceIntro.charAt(0).toUpperCase()}${choiceIntro.slice(1)}, then ${planPrice(choice)} until cancelled in store settings. ${planHasTrial(choice) ? 'Cancel before the trial ends and nothing is charged.' : 'The store confirms the offer before you pay.'}`
+          ? planHasTrial(choice)
+            ? `${choiceIntro.charAt(0).toUpperCase()}${choiceIntro.slice(1)} — cancel anytime before it ends and you pay nothing. After that ${planPrice(choice)} until cancelled in store settings.`
+            : `${choiceIntro.charAt(0).toUpperCase()}${choiceIntro.slice(1)}, then ${planPrice(choice)} until cancelled in store settings. The store confirms the offer before you pay.`
           : choice.product.subscriptionPeriod
             ? 'Renews until cancelled in store settings. Pro stays active through your paid period. The store confirms any introductory offer before you pay.'
             : `${choice.product.priceString}, one payment. No recurring subscription.`}</ThemedText>

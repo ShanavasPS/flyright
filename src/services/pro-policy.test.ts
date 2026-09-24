@@ -58,12 +58,12 @@ it('puts monthly first without changing store prices or assuming a currency', ()
 it('words the store’s intro offer from its own terms and says nothing without one', () => {
   const plan = (introPrice: unknown) => ({ product: { priceString: '4,99 €', subscriptionPeriod: 'P1M', introPrice } }) as PurchasesPackage;
   const trial = plan({ price: 0, priceString: '0,00 €', cycles: 1, period: 'P2W', periodUnit: 'WEEK', periodNumberOfUnits: 2 });
-  expect(planIntro(trial)).toBe('14 days free');
+  expect(planIntro(trial)).toBe('14-day free trial');
   expect(planHasTrial(trial)).toBe(true);
   const paid = plan({ price: 1.99, priceString: '1,99 €', cycles: 3, period: 'P1M', periodUnit: 'MONTH', periodNumberOfUnits: 1 });
   expect(planIntro(paid)).toBe('1,99 € for the first 3 months');
   expect(planHasTrial(paid)).toBe(false);
-  expect(planIntro(plan({ price: 0, priceString: '', cycles: 1, period: 'P1D', periodUnit: 'DAY', periodNumberOfUnits: 1 }))).toBe('1 day free');
+  expect(planIntro(plan({ price: 0, priceString: '', cycles: 1, period: 'P1D', periodUnit: 'DAY', periodNumberOfUnits: 1 }))).toBe('1-day free trial');
   expect(planIntro(plan(null))).toBeNull();
   expect(planHasTrial(plan(null))).toBe(false);
 });
