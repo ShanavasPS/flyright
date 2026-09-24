@@ -69,7 +69,7 @@ if (phase === 'all' || phase === 'prepare') {
   await sharp(Buffer.from(mask)).removeAlpha().png().toFile(join(OUT, 'graphics', 'screen-mask.png'));
   let start = 0;
   const rows = [];
-  let script = '# FlyRight — 1:59 Shipaton demo\n\nEnglish narration. Category focus: RevenueCat Design Award (editorial default; change the final scene if entering different categories).\n\n';
+  let script = '# FlyRight — 1:59 Shipaton demo\n\nEnglish narration. The cut leads with the free-versus-Pro boundary and the craft behind it; the closing scene names no single category, so it suits every entry.\n\n';
   for (const [index, scene] of board.scenes.entries()) {
     const icon = await sharp(join(ROOT, 'assets/images/icon.png')).resize(70, 70).png().toBuffer();
     const headline = scene.headline.map((line, i) => `<text x="96" y="${361 + i * 110}" font-size="92" font-weight="700" letter-spacing="-3">${xml(line)}</text>`).join('');

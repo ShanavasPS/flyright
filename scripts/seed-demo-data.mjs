@@ -8,6 +8,9 @@
  *   node scripts/seed-demo-data.mjs --android
  *   node scripts/seed-demo-data.mjs --db <path-to-flyright.db>
  *
+ * Pass --future to add a departure three weeks out, which the Pro offer needs
+ * before it will propose a take-off reminder (it wants 48h+ of lead time).
+ *
  * Pass --travel-day to move the upcoming flight to ~1h out and stamp it
  * through security, which is the state the Travel Day panel is captured in.
  * Without it the upcoming flight sits ~12h out, which is what the Flights,
@@ -78,6 +81,13 @@ const TRIPS = [
   ['demo-fra', 'Lufthansa', 'DE', 'LH400', 'FRA', 'JFK', now - 340 * DAY, 8.6],
 ];
 
+/** --future adds a departure far enough out (48h+) for the Pro offer to
+ *  propose a take-off reminder instead of a paywall. The demo video needs
+ *  that beat; the store panels are shot without it, so it stays opt-in. */
+if (flag('future')) {
+  TRIPS.splice(1, 0, ['demo-lis', 'Finnair', 'FI', 'AY1755', 'HEL', 'LIS', now + 24 * DAY, 5.0]);
+}
+
 /** The aircraft a looked-up flight records (type as the provider names it,
  *  and the registration), so the stats panel's aircraft card has something to
  *  show. Plausible types for each route; the two A350 legs share an airframe
@@ -85,6 +95,7 @@ const TRIPS = [
  *  read appear in the list. */
 const AIRCRAFT = {
   'demo-upcoming': ['Airbus A321', 'OH-LZR'],
+  'demo-lis': ['Airbus A321', 'OH-LZL'],
   'demo-mad': ['Airbus A320', 'OH-LXK'],
   'demo-arn': ['Airbus A320', 'OH-LXM'],
   'demo-jfk': ['Airbus A350-900', 'OH-LWA'],

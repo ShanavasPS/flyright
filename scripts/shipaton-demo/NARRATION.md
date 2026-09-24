@@ -1,40 +1,40 @@
 # FlyRight — 1:59 Shipaton demo
 
-English narration. Category focus: RevenueCat Design Award (editorial default; change the final scene if entering different categories).
+English narration. The cut leads with the free-versus-Pro boundary and the craft behind it; the closing scene names no single category, so it suits every entry.
 
-## 0:00–0:10 — YOUR TRAVEL BUDDY
+## 0:00–0:09 — YOUR TRAVEL BUDDY
 
-Meet Fly Right: your travel buddy on the day you fly, and your advocate when a flight goes wrong. Your flights, your people, and your memories, together.
+Fly Right is your travel buddy on the day you fly, and your advocate when the flight goes wrong. Keeping your flights costs nothing.
 
-## 0:10–0:23 — 01 / ADD YOUR FLIGHT
+## 0:09–0:22 — 01 / ADD YOUR FLIGHT
 
-Start with a flight number, scan a boarding pass, or import your airline's confirmation. Fly Right brings the journey into your travel journal, so the details you need are ready in one place.
+Start with a flight number, scan the boarding pass, or share the airline's confirmation and every leg imports itself. Add the same flight twice and it updates the trip instead of duplicating it.
 
-## 0:23–0:41 — 02 / TRAVEL DAY
+## 0:22–0:32 — 02 / TRIPS, NOT LEGS
 
-On travel day, open your flight to see the journey laid out step by step. Check-in, bags, security, and boarding all have their place. The timeline keeps your progress clear, while flight information stays alongside it. Less hunting through emails. More knowing what's next.
+Your flights group themselves into trips. The outbound and the return sit under one heading, with the city, its flag, the dates, and the days you spent there.
 
-## 0:41–0:54 — 03 / YOUR PEOPLE
+## 0:32–0:48 — 03 / TRAVEL DAY
 
-Travel is personal. Follow friends and family, see their upcoming journeys, and share the trips you choose. Your circle can follow along, with visibility controls that keep you in charge of what they see.
+On travel day, one card holds everything: the countdown to the second, check-in, gate, seat, and the belt your bags will arrive on. The same countdown runs on your Lock Screen with the app closed.
 
-## 0:54–1:08 — 04 / YOUR WORLD
+## 0:48–1:01 — 04 / YOUR PEOPLE — FREE
 
-Every flight becomes part of your world. Explore the routes you've flown, then open your travel statistics to see the distance, countries, and records behind your journeys. A growing picture of everywhere you've been.
+Following is free on both sides. Your family sees where you are, reads the postcards you send from the air, and never pays a cent to watch you land.
 
-## 1:08–1:20 — 05 / YOUR MEMORIES
+## 1:01–1:16 — 05 / YOUR WORLD
 
-And keep the details that made the trip yours. Add notes, a rating, photos, and seat details inside each flight. Your travel history becomes a journal you'll actually want to revisit.
+Every route you have flown lives on a globe we drew ourselves, lit by the real sun. Map kits will not zoom out far enough to show a life of flying, so this one is a shader.
 
-## 1:20–1:36 — 06 / WHEN PLANS GO WRONG
+## 1:16–1:30 — 06 / WHEN PLANS GO WRONG
 
-When a flight goes wrong, Fly Right helps you understand your options. This built-in example shows a four-hundred-euro compensation estimate and explains why. From the same screen, you can start preparing a claim, with guidance instead of a blank page.
+When a flight goes wrong, the rules engine says what you are owed, and why. Four hundred euros, the reason behind it, and a letter for the airline's own claim channel. Fly Right takes no cut.
 
-## 1:36–1:51 — 07 / POWERED BY REVENUECAT
+## 1:30–1:51 — 07 / POWERED BY REVENUECAT
 
-Fly Right Pro adds inbound-plane insights, a bigger circle, and claim tools. Revenue Cat powers the in-app paywall, with monthly, yearly, and lifetime options. Here, travellers compare plans and choose the upgrade that fits the way they fly.
+So what do you pay for? The day itself: live gate and delay updates, postcards, and claim preparation. Revenue Cat runs the plans. And if you are not flying yet, Fly Right offers a reminder two days before take-off instead of a paywall.
 
-## 1:51–1:59 — SHIPATON 2026 / DESIGN AWARD
+## 1:51–1:59 — SHIPATON 2026
 
-For Shipaton's Design Award: thoughtful mobile design, built around the traveller. Fly Right. Your travel day, taken care of.
+Free to remember. Pro when you travel. Fly Right, on the App Store and Google Play.
 

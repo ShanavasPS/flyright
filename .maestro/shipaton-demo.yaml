@@ -1,160 +1,234 @@
 # Real app capture; no reset, seed, purchase, invitation, or claim submission.
 # Run through scripts/shipaton-demo/record.sh for output directories and UDID.
-# Required fixtures: today's demo-upcoming and a flown demo-dxb with notes.
+# Required fixtures: scripts/seed-demo-data.mjs --future --travel-day, so the
+# journal has today's departure, the Madrid delay and a Lisbon trip three
+# weeks out (the Pro offer only proposes a reminder 48h+ before take-off).
+#
+# Navigation is taps, not deep links: a development build answers a custom
+# scheme with an "Open in FlyRight?" dialog, which must never land in a shot.
+# Selectors come from the accessibility labels the app already ships.
 appId: com.shanavasshaji.flyright
 ---
 - extendedWaitUntil:
     visible: "Flights"
     timeout: 90000
 - waitForAnimationToEnd
+
+# 01 — the app as it opens: your name, your next flight, your all-time card.
 - startRecording: ${DEMO_OUT}/raw/01-intro
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 9000
+      HOLD_MS: 8000
 - takeScreenshot: ${DEMO_OUT}/stills/01-intro
 - stopRecording
 
-- openLink: flyright://add-flight
+# 02 — the three ways in. The scan and upload buttons are on screen before a
+# number is typed, so the shot starts clean and types into it.
+- tapOn: "Add a flight, past or future"
 - extendedWaitUntil:
     visible: "Add Flight"
-    timeout: 15000
+    timeout: 20000
 - waitForAnimationToEnd
 - startRecording: ${DEMO_OUT}/raw/02-add
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 3000
+      HOLD_MS: 5000
 - tapOn: "AY1331 or LH873"
 - inputText: "AY1331"
 - hideKeyboard
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 3000
+      HOLD_MS: 5000
 - takeScreenshot: ${DEMO_OUT}/stills/02-add
 - stopRecording
-
-- tapOn: "Close"
-- extendedWaitUntil:
-    visible: "Flights"
-    timeout: 90000
 - tapOn:
-    id: travel-day-banner
+    point: "9%,9%"
 - extendedWaitUntil:
-    visible: "Trip progress"
-    timeout: 20000
-- scrollUntilVisible:
-    element: "Trip progress"
-    direction: DOWN
-    centerElement: true
+    visible: "Welcome back.*"
+    timeout: 30000
 - waitForAnimationToEnd
+
+# 03 — the grouped list: flags, cities, dates, days at the destination.
+- startRecording: ${DEMO_OUT}/raw/03-trips
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 3000
-- startRecording: ${DEMO_OUT}/raw/03-travel
-- runScript:
-    file: ../scripts/shipaton-demo/hold.js
-    env:
-      HOLD_MS: 6000
+      HOLD_MS: 2500
 - swipe:
-    start: "50%,75%"
-    end: "50%,60%"
-    duration: 1800
+    start: "50%,78%"
+    end: "50%,42%"
+    duration: 1600
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- swipe:
+    start: "50%,78%"
+    end: "50%,45%"
+    duration: 1600
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 2500
+- takeScreenshot: ${DEMO_OUT}/stills/03-trips
+- stopRecording
+
+# 04 — travel day: the one card with the countdown and everything known.
+- scrollUntilVisible:
+    element: ".*AY1331.*"
+    direction: UP
+    centerElement: true
+    timeout: 20000
+- tapOn: ".*AY1331.*"
+- extendedWaitUntil:
+    visible: ".*LHR.*"
+    timeout: 20000
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/04-travel
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
       HOLD_MS: 7000
-- takeScreenshot: ${DEMO_OUT}/stills/03-travel
-- stopRecording
-
-- openLink: flyright://people
-- extendedWaitUntil:
-    visible: "Friends|People"
-    timeout: 20000
-- waitForAnimationToEnd
-- startRecording: ${DEMO_OUT}/raw/04-people
+- swipe:
+    start: "50%,75%"
+    end: "50%,55%"
+    duration: 1800
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 5000
-- swipe:
-    start: "50%,77%"
-    end: "50%,60%"
-    duration: 1400
+      HOLD_MS: 6000
+- takeScreenshot: ${DEMO_OUT}/stills/04-travel
+- stopRecording
+
+# 05 — the people: friends' live cards, then the postcards they sent.
+# A trip page is pushed over the tab bar, so step back to it first.
+- tapOn:
+    point: "9%,9%"
+- extendedWaitUntil:
+    visible: "Welcome back.*"
+    timeout: 20000
+- tapOn: "Friends"
+- extendedWaitUntil:
+    visible: "Friends"
+    timeout: 20000
+- waitForAnimationToEnd
+- startRecording: ${DEMO_OUT}/raw/05-people
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 5500
+- tapOn: "Updates"
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
       HOLD_MS: 4000
-- takeScreenshot: ${DEMO_OUT}/stills/04-people
+- swipe:
+    start: "50%,75%"
+    end: "50%,52%"
+    duration: 1500
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3500
+- takeScreenshot: ${DEMO_OUT}/stills/05-people
 - stopRecording
 
-- openLink: flyright://world
+# 06 — the globe: turn it, then let it settle on the routes.
+- tapOn: "World"
 - extendedWaitUntil:
     visible: "World"
     timeout: 20000
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 9000
-- startRecording: ${DEMO_OUT}/raw/05-world
+      HOLD_MS: 8000
+- startRecording: ${DEMO_OUT}/raw/06-world
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 3000
 - swipe:
-    start: "50%,60%"
-    end: "60%,47%"
+    start: "50%,58%"
+    end: "62%,46%"
     duration: 1800
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 5000
-- takeScreenshot: ${DEMO_OUT}/stills/05-world
-- openLink: flyright://stats
-- extendedWaitUntil:
-    visible: "Travel stats"
-    timeout: 15000
-- runScript:
-    file: ../scripts/shipaton-demo/hold.js
-    env:
       HOLD_MS: 4000
-- stopRecording
-
-- openLink: flyright:///journey/demo-dxb
-- extendedWaitUntil:
-    visible: ".*DXB to LAX.*"
-    timeout: 20000
-- scrollUntilVisible:
-    element: "Your notes"
-    direction: DOWN
-    centerElement: true
-- waitForAnimationToEnd
-- startRecording: ${DEMO_OUT}/raw/06-journal
+- swipe:
+    start: "42%,62%"
+    end: "55%,50%"
+    duration: 1600
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 8000
-- takeScreenshot: ${DEMO_OUT}/stills/06-journal
+      HOLD_MS: 5000
+- takeScreenshot: ${DEMO_OUT}/stills/06-world
 - stopRecording
 
-- openLink: flyright:///journey/demo
+# 07 — the Madrid delay: the figure, the reason, the claim. The list is
+# re-entered from the top; "MAD" alone would match the row in the list, so the
+# assertion is a trip-page-only string.
+- launchApp:
+    stopApp: true
 - extendedWaitUntil:
-    visible: "You're owed.*"
-    timeout: 20000
+    visible: "Welcome back.*"
+    timeout: 90000
+- waitForAnimationToEnd
 - scrollUntilVisible:
-    element: "Generate my claim.*"
+    element: ".*AY954.*"
     direction: DOWN
     centerElement: true
+    visibilityPercentage: 40
+    timeout: 40000
+- tapOn: ".*AY954.*"
+- extendedWaitUntil:
+    visible: ".*Flew on.*"
+    timeout: 20000
 - waitForAnimationToEnd
 - startRecording: ${DEMO_OUT}/raw/07-claims
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 12000
+      HOLD_MS: 4000
+- scrollUntilVisible:
+    element: "You.re owed.*"
+    direction: DOWN
+    centerElement: true
+    visibilityPercentage: 60
+    timeout: 20000
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 9000
 - takeScreenshot: ${DEMO_OUT}/stills/07-claims
 - stopRecording
 
-- openLink: flyright://paywall
+# 08 — the quiet card on the trip, the plans behind it, and the reminder it
+# offers instead of a wall. Nothing is purchased and no reminder is saved.
+- launchApp:
+    stopApp: true
 - extendedWaitUntil:
-    visible: "Monthly"
+    visible: "Welcome back.*"
+    timeout: 90000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: ".*AY1755.*"
+    direction: DOWN
+    centerElement: true
+    visibilityPercentage: 40
+    timeout: 40000
+- tapOn: ".*AY1755.*"
+- extendedWaitUntil:
+    visible: ".*LIS.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Live updates off"
+    direction: DOWN
+    centerElement: true
     timeout: 20000
 - waitForAnimationToEnd
 - startRecording: ${DEMO_OUT}/raw/08-pro
@@ -162,36 +236,64 @@ appId: com.shanavasshaji.flyright
     file: ../scripts/shipaton-demo/hold.js
     env:
       HOLD_MS: 3500
-- tapOn: "Monthly"
+- tapOn: ".*See Pro for.*"
+- extendedWaitUntil:
+    visible: "What Pro adds"
+    timeout: 25000
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 2500
-- tapOn: "Yearly"
+      HOLD_MS: 4500
+- takeScreenshot: ${DEMO_OUT}/stills/08-pro-offer
+- tapOn: "See plans"
+- extendedWaitUntil:
+    visible: "Choose your plan"
+    timeout: 30000
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 3500
+      HOLD_MS: 6000
 - takeScreenshot: ${DEMO_OUT}/stills/08-pro
+- tapOn: "Continue free"
+- extendedWaitUntil:
+    visible: "Live updates off"
+    timeout: 20000
+- tapOn: ".*See Pro for.*"
+- extendedWaitUntil:
+    visible: "What Pro adds"
+    timeout: 25000
+- tapOn: "Remind me 2 days before this trip"
+- extendedWaitUntil:
+    visible: "Remind me before take-off"
+    timeout: 20000
+- runScript:
+    file: ../scripts/shipaton-demo/hold.js
+    env:
+      HOLD_MS: 6000
+- takeScreenshot: ${DEMO_OUT}/stills/08-pro-reminder
 - stopRecording
+- tapOn: "Not now"
 
-- swipe:
-    start: "50%,9%"
-    end: "50%,85%"
-    duration: 900
-- openLink: flyright://world
+# 09 — close on the globe. The offer closes back onto the trip page, which
+# is still pushed over the tab bar.
+- tapOn:
+    point: "9%,9%"
+- extendedWaitUntil:
+    visible: "Welcome back.*"
+    timeout: 20000
+- tapOn: "World"
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
       HOLD_MS: 6000
 - startRecording: ${DEMO_OUT}/raw/09-close
 - swipe:
-    start: "55%,48%"
-    end: "45%,58%"
-    duration: 1800
+    start: "55%,50%"
+    end: "44%,58%"
+    duration: 1900
 - runScript:
     file: ../scripts/shipaton-demo/hold.js
     env:
-      HOLD_MS: 7500
+      HOLD_MS: 7000
 - takeScreenshot: ${DEMO_OUT}/stills/09-close
 - stopRecording

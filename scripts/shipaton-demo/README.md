@@ -1,26 +1,75 @@
 # FlyRight Shipaton demo
 
-The revised deliverable is `output/ios26/flyright-shipaton-1m59s.mp4`: a 119-second, 1920 × 1080 video recorded in a **new iPhone 17 Pro simulator running iOS 26.5 (23F77)**. The native floating tab bar and glass controls come from the running app. The display keeps its original aspect ratio inside a rounded screen mask, slim metal bezel, and side buttons, with the complete phone visible. English synthesized narration and captions sit beside the app. H.264 video and AAC audio are suitable for uploading to YouTube or Vimeo. The same output folder contains editable captions (`flyright-shipaton.srt`), narration (`voiceover.wav`), and capture metadata (`capture.json`). The earlier iOS 18 export remains in `output/`.
+The current deliverable is `output/ios27/flyright-shipaton-1m59s.mp4`: a
+119-second, 1920 × 1080 cut recorded on an **iPhone 18 Pro simulator running
+iOS 27.0**, from a development build of **FlyRight 1.1.3 (65)** signed in as
+the store profile Maja Lindqvist. The display keeps its own aspect ratio
+inside a rounded screen mask, slim metal bezel and side buttons, with the
+complete phone visible. English synthesized narration and captions sit beside
+the app. H.264 video and AAC audio, ready for YouTube or Vimeo. The same
+folder holds editable captions (`flyright-shipaton.srt`), the narration track
+(`voiceover.wav`) and a nine-tile contact sheet (`qa-final.png`). The earlier
+iOS 26 cut of version 1.0.31 stays in `output/ios26/`.
 
-The story follows a traveller: add a flight → travel day → people → world and stats → journal → compensation example → Pro plans. See [the timed narration](NARRATION.md), [the shot timeline](TIMELINE.md), and [the editable storyboard](storyboard.json).
+This cut follows the 23 September pricing rework rather than the original
+feature tour: open on Flights → the three ways to add a flight → flights
+grouping themselves into destination trips → travel day → the people, free on
+both sides → the Skia globe → the Madrid delay and its 400 EUR verdict → the
+Pro offer, its RevenueCat plans and the take-off reminder it proposes instead
+of a wall → the close. See [the timed narration](NARRATION.md), [the shot
+timeline](TIMELINE.md) and [the editable storyboard](storyboard.json).
 
-The closing scene targets the **RevenueCat Design Award** as an editorial default. Replace that scene's category and narration if your submission targets a different award. The video shows the real RevenueCat paywall and plan selection; it does not show a completed transaction. The compensation scene uses the app's built-in demo verdict. The journeys and account shown are the simulator's existing sample data. No claim is submitted and no invitation is sent by the flow.
+The closing scene names **no single award category**, so the same file suits
+every entry. The Pro scene shows the real offering fetched by RevenueCat, and
+says on screen that it is a development build: a Release binary refuses the
+Test Store key, so the prices on camera are the test-store values, not store
+pricing. Nothing is purchased, no reminder is saved, no claim is submitted and
+no invitation is sent. The compensation figure is the seeded Madrid delay.
 
 ## Re-record
 
-Use a populated iOS 26 or later simulator, with the app past onboarding. This recording uses the local Release build of FlyRight 1.0.31 (44), built with the iOS 26.5 SDK and bundled JavaScript. Its API origin points to Metro on localhost:8081, which must remain running for API requests. The current flow expects a travel-day hero with today's itinerary and the existing `demo-dxb` journey with notes. The existing Dee test account supplies the sample journeys and circle. The new simulator's sample departure time and travel stages were prepared locally, backed up first, and marked synced so the fixture edits do not upload. Refresh those fixtures for a later recording; the capture flow deliberately does not seed or clear application data.
+Use a populated iOS 27 simulator with the app past onboarding, signed in as
+the store profile. This recording used the **FlyRight iOS 27 Social**
+simulator (iPhone 18 Pro) and a **development** build, because the paywall
+needs one: `initPurchases` only falls back to the RevenueCat Test Store key
+when `__DEV__` is set, and a Release build without platform keys shows "Plans
+are unavailable". Build it with `npx expo run:ios --device <udid>` and leave
+Metro running for the whole capture.
+
+Seed the journal first — the flow depends on all three fixtures:
+
+```bash
+node scripts/seed-demo-data.mjs --ios --sim <udid> --future --travel-day
+```
+
+`--travel-day` puts today's HEL→LHR departure about an hour out and stamps it
+through security; `--future` adds the Lisbon trip three weeks out, which the
+Pro offer needs before it will propose a take-off reminder (it wants 48h of
+lead time). The Madrid delay that carries the 400 EUR verdict is always
+seeded. Re-seed right before recording so the relative labels read correctly.
 
 ```bash
 xcrun simctl list devices booted
-DEMO_DEVICE=29707CA2-66F4-4475-BD93-DAE3BC6F8613 \
-DEMO_HIDE_LOADING=0 \
-DEMO_OUT="$PWD/scripts/shipaton-demo/output/ios26" \
+DEMO_DEVICE=AA6A8347-57FC-40E6-AA7B-27180F27DD47 \
+DEMO_HIDE_LOADING=1 \
+MAESTRO_DRIVER_STARTUP_TIMEOUT=240000 \
+DEMO_OUT="$PWD/scripts/shipaton-demo/output/ios27" \
 bash scripts/shipaton-demo/record.sh
 ```
 
 Always use an explicit UDID when multiple simulators are running. The script sets a clean 9:41 status bar and clears that override when it finishes. Each scene has its own MP4 and still image, making individual retakes easy. The [Maestro flow](../../.maestro/shipaton-demo.yaml) performs the taps, typing, scrolling, assertions, and local recordings.
 
 For a development build, the script uses LLDB to temporarily disable React Native's loading overlay in the simulator process, then restores it on exit. This fixes a recording-only blue “Refreshing…” banner that can be absent from screenshots. It changes no app source or stored data. For a Release build, set `DEMO_HIDE_LOADING=0` to skip the debugger step. On a new Mac, debugger access may require system permission.
+
+Three things about a development build cost a retake each, so the flow works
+around them. A custom-scheme deep link raises an "Open in FlyRight?" dialog,
+so the flow navigates by taps and never uses `openLink` inside a recording. A
+trip page is pushed over the tab bar, so a scene that ends on one must step
+back before it can tap another tab. And any `launchApp` restores the loading
+overlay, so `record.sh`'s LLDB step has to run *after* the last relaunch — if
+you re-shoot a scene by hand, disable the overlay again first or `verify.mjs`
+will catch the banner. Maestro matches a selector against the whole label, so
+use a regex like `.*Flew on.*` for text that sits inside a longer one.
 
 Keep Metro and the app source stable while recording. Do not run a second automation session on the same simulator during capture. Recordings omit navigation/loading between scenes and retain actual interactions within them. The editor fits long clips to their chapter and holds the final frame of shorter clips.
 
@@ -29,7 +78,7 @@ Keep Metro and the app source stable while recording. Do not run a second automa
 Dependencies: Node with the repository's `sharp` package installed, macOS `say`, and FFmpeg compiled with `libx264`, `libass`/the `subtitles` filter, and AAC. The renderer detects the FFmpeg binary available on the original recording machine; use `FFMPEG=/absolute/path/to/ffmpeg` to override it. Some minimal FFmpeg distributions omit subtitles support.
 
 ```bash
-export DEMO_OUT="$PWD/scripts/shipaton-demo/output/ios26"
+export DEMO_OUT="$PWD/scripts/shipaton-demo/output/ios27"
 node scripts/shipaton-demo/render.mjs prepare
 node scripts/shipaton-demo/render.mjs voice
 node scripts/shipaton-demo/render.mjs render
