@@ -1,12 +1,12 @@
 {
   "title": "FlyRight — Maja's day",
-  "duration": 113,
+  "duration": 119,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
     {
       "id": "01-morning",
-      "duration": 7,
+      "duration": 8,
       "chapter": "THE MORNING",
       "headline": [
         "Tokyo,",
@@ -15,24 +15,38 @@
       "bullets": [
         "On the Lock Screen",
         "Counting down since breakfast",
-        "Terminal already on it"
+        "She knows the terminal already"
       ],
-      "narration": "Maja's flying to Tokyo today. FlyRight has been counting down since breakfast."
+      "narration": "Maja's flying to Tokyo today. FlyRight has been counting down since breakfast, and she already knows which terminal to head to."
+    },
+    {
+      "id": "02-home",
+      "duration": 6,
+      "chapter": "AT THE AIRPORT",
+      "headline": [
+        "She opens",
+        "the app."
+      ],
+      "bullets": [
+        "The live card, right there",
+        "Gate already on it"
+      ],
+      "narration": "At the airport, she opens the app, and the live card is right there with her trip."
     },
     {
       "id": "02-terminal",
       "duration": 7,
-      "chapter": "AT THE AIRPORT",
+      "chapter": "THE TRIP",
       "headline": [
-        "She knows",
-        "before she's there."
+        "Everything,",
+        "before she needs it."
       ],
       "bullets": [
-        "Terminal 2",
         "Check-in Area 2",
-        "Gate 52, boards 12:10"
+        "Gate 52, boarding time",
+        "Seat and booking"
       ],
-      "narration": "Terminal two, check-in area two, gate fifty-two. She knows before she gets there."
+      "narration": "Check-in area two, gate fifty-two, boarding time. Everything, before she needs any of it."
     },
     {
       "id": "03-steps",
@@ -45,9 +59,9 @@
       "bullets": [
         "Through immigration",
         "On board",
-        "Her people see it live"
+        "Friends and family notified"
       ],
-      "narration": "She taps each step as she goes, and Clara, Noah and Tomas see it as it happens."
+      "narration": "She taps each step as she goes, and her friends and family get notified about every one."
     },
     {
       "id": "04-pass",
@@ -248,7 +262,7 @@
     },
     {
       "id": "16-poster",
-      "duration": 6,
+      "duration": 5,
       "chapter": "AFTERWARDS",
       "headline": [
         "Every trip,",
