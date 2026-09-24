@@ -2,6 +2,20 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-24 — backend + hosting hotfix: runway estimates read as actuals (no app release)
+
+Support check for an Android traveller (1.1.3 (63), Pro trial, no circle): a
+delayed Transavia leg read "Landed 17:06" before take-off, and the Android
+travel-day notification sat on "Departs in" with no time all flight.
+
+| Item | Observed result |
+| --- | --- |
+| Cause | AeroDataBox defines `runwayTime` as "actual / estimated time on the runway" (no `actualTime` field exists in its schema). `normalizeLeg` read every runway stamp as an actual, so a delayed flight's estimated touchdown landed it at the gate. |
+| Fix | `e3e47f5`: a runway stamp is an actual when the status vouches for it or it lies behind the clock on a record that does not hold the flight at its origin; before that it is the estimate (the delay still reads off it). Same reading for the inbound rotation leg. Six regression tests from the real record; **100 suites / 1,201 tests**, typecheck and eslint clean. |
+| Backend | `npm run release:deploy-backend` passed: 71 client functions on production and development. Also adds read-only `devTools:inspectUser` (`f84407e`) — one account's profile, Pro state, support threads, recent journeys, live sessions and cached provider records, by Clerk id. |
+| Hosting | Deployed and promoted (`flyright--af8n81912r`); `flyright.expo.app` and `getflyright.com` both serve `entry-a65dcf19aae5be35593cd570a3f43360.js`, matching the export. `.env.production.local` removed after deploying. |
+| Not fixed (needs an app release) | Android live notification: the countdown lives only in the Android 16 promoted chip, so the title reads a bare "Departs in" elsewhere; the surface is refreshed only by the app process (no server push path as on iOS); the lead label follows the recorded stage, not the timetable, so it never reaches "Lands in" without a provider take-off. Take-off/landing/gate pushes go to followers only, never the traveller. |
+
 ## 2026-09-23 (evening) — 1.1.3 build 66/63: flag headings and trip grouping
 
 Supersedes the held 1.1.3 builds below. The user resumed publication, asked for
