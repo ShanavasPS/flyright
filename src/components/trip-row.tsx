@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
+import { LiveDot } from '@/components/live-dot';
 import { RouteLeg } from '@/components/route-leg';
 import { BORDER_WIDTH, RunningBorder } from '@/components/running-border';
 import { SheenCard } from '@/components/sheen-card';
@@ -54,6 +55,7 @@ export function TripRow({
   eyebrowTone = 'tint',
   progress,
   live = false,
+  liveMark = false,
   highlight,
 }: {
   trip: RowTrip;
@@ -79,6 +81,11 @@ export function TripRow({
   /** In the air right now: the row wears the live card's running light and
    * counts down to the landing instead of saying how long ago it left. */
   live?: boolean;
+  /** The free plan's word for a flight in the air: the row wears the running
+   * light and says "Live" where the countdown would go, and nothing more —
+   * the landing clock, the plane's place on the line and the live card are
+   * Pro's. */
+  liveMark?: boolean;
   /** The active flight keeps its full row, with a shortcut to its live card.
    * Separate targets let both actions work with touch and screen readers. */
   highlight?: {
@@ -128,7 +135,9 @@ export function TripRow({
             {trip.number || trip.carrier}
           </ThemedText>
           {badge ??
-            (!highlight && (live ? (
+            (!highlight && (liveMark ? (
+              <LiveDot />
+            ) : live ? (
               // "2h ago" is the wrong fact while the flight is still in the
               // air, and "in 3h" is too coarse to look alive: the row runs
               // the live card's own clock, at the meta line's size.
@@ -181,12 +190,12 @@ export function TripRow({
       style={[
         styles.card,
         live && styles.liveCard,
-        live && { borderWidth: BORDER_WIDTH, borderColor: `${theme.tint}59` },
+        (live || liveMark) && { borderWidth: BORDER_WIDTH, borderColor: `${theme.tint}59` },
         selected && { borderWidth: 1, borderColor: theme.tint },
         highlight && styles.highlightCard,
         highlight && { borderWidth: BORDER_WIDTH, borderColor: `${highlight.color}59` },
       ]}>
-      {(live || highlight) && <RunningBorder color={highlight?.color ?? theme.tint} radius={Spacing.four} running={highlight?.running ?? true} />}
+      {(live || liveMark || highlight) && <RunningBorder color={highlight?.color ?? theme.tint} radius={Spacing.four} running={highlight?.running ?? true} />}
       {highlight ? (
         <>
           {highlight.action}

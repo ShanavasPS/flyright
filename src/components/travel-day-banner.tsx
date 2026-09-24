@@ -4,17 +4,15 @@ import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
-  cancelAnimation,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
-  withRepeat,
   withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { AirlineLogo } from '@/components/airline-logo';
+import { LiveDot } from '@/components/live-dot';
 import { BORDER_WIDTH, RunningBorder } from '@/components/running-border';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -471,30 +469,6 @@ function RoutePath({ progress, delayed }: { progress: number; delayed: boolean }
   );
 }
 
-/** Pulsing "live" marker — the quiet heartbeat that says this card updates.
- * Exported because the journal's "Live" heading wears the same one: a flight
- * in the air should look the same wherever the app draws it. */
-export function LiveDot() {
-  const reduceMotion = useReducedMotion();
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    if (reduceMotion) return;
-    pulse.value = withRepeat(withTiming(0.35, { duration: 1000 }), -1, true);
-    return () => cancelAnimation(pulse);
-  }, [pulse, reduceMotion]);
-  const theme = useTheme();
-  const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
-
-  return (
-    <View style={styles.liveRow}>
-      <Animated.View style={[styles.liveDot, { backgroundColor: theme.success }, style]} />
-      <ThemedText type="smallBold" style={[styles.liveLabel, { color: theme.success }]}>
-        Live
-      </ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   pressed: {
     opacity: 0.9,
@@ -520,22 +494,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  liveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  liveLabel: {
-    fontSize: 10,
-    lineHeight: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
   headerRight: {
     flexDirection: 'row',
@@ -743,3 +701,5 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
 });
+
+export { LiveDot };

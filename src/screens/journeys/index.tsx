@@ -413,6 +413,7 @@ export function Journeys() {
                     row={row}
                     now={now}
                     live={paid && item.live && !item.hero}
+                    liveMark={!paid && item.live}
                     hero={item.hero ? hero ?? undefined : undefined}
                     onViewLive={jumpToHero}
                     claim={claimByJourney.get(row.id)}
@@ -682,6 +683,7 @@ function JourneyItem({
   row,
   now,
   live,
+  liveMark,
   claim,
   owed,
   onSelect,
@@ -694,6 +696,8 @@ function JourneyItem({
   /** This flight is in the air: the row runs its light and counts down to
    * the landing (see TripRow). */
   live?: boolean;
+  /** Free plan, flight in the air: the light and the word, no clock. */
+  liveMark?: boolean;
   claim?: ClaimRow;
   owed?: Money;
   /** Two-pane mode: select into the detail pane instead of pushing a route. */
@@ -716,6 +720,7 @@ function JourneyItem({
       trip={row}
       now={now}
       live={live}
+      liveMark={liveMark}
       // Where it is along the route, so the plane sits where the flight is
       // rather than in the middle of the line.
       progress={content?.progress ?? (live ? legProgress(row, now) : undefined)}
