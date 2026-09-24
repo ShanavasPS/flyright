@@ -156,6 +156,44 @@ export const purgeFlightFacts = internalMutation({
   },
 });
 
+/** Open a live session on a screenshot account's own trip, at the stage it
+ * is already at — `npx convex run devTools:openLiveSession
+ * '{"userId":"user_…","naturalKey":"demo-hnd-1","stage":"departed","stamps":{"boarded":"…"}}'`.
+ *
+ * circleInternal.headsUp is the normal door, and it cannot be used here for
+ * two reasons: it refuses a departure that has already happened, and it
+ * pushes the circle. A demo journal is seeded after the fact, so the flight
+ * is mid-air the moment it exists and nobody should be told about it. This
+ * opens the session and nothing else; the circle still materializes, so the
+ * trip appears on a follower's surfaces the way a real one would. */
+export const openLiveSession = internalMutation({
+  args: {
+    userId: v.string(),
+    naturalKey: v.string(),
+    stage: v.union(v.string(), v.null()),
+    stamps: v.record(v.string(), v.string()),
+  },
+  handler: async (ctx, { userId, naturalKey, stage, stamps }) => {
+    assertStoreDemo(userId);
+    const journey = await ctx.db
+      .query('journeys')
+      .withIndex('by_user_key', (q) => q.eq('userId', userId).eq('naturalKey', naturalKey))
+      .unique();
+    if (!journey) throw new Error(`No journey ${naturalKey} for ${userId}`);
+    if (journey.deletedAt) throw new Error(`${naturalKey} is deleted`);
+    for (const open of await ctx.db
+      .query('liveSessions')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect()) {
+      if (open.naturalKey === naturalKey && open.status === 'active') {
+        await ctx.db.patch(open._id, { status: 'closed', updatedAt: new Date().toISOString() });
+      }
+    }
+    const session = await createSession(ctx, journey, { stage, stamps, activityId: null });
+    return { sessionId: session._id, shareToken: session.shareToken };
+  },
+});
+
 /** Arm (or re-arm) the heads-up for a journey — opens its live session at
  * once when departure is within a day. Dev only. */
 export const armJourney = internalMutation({
