@@ -2,6 +2,28 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-24 (evening) — Android-only 1.1.4 build 67: self-updating travel-day card (Play production)
+
+Android-only release, version string kept at **1.1.4** by the user's decision;
+iOS 1.1.4 (67) stays in review untouched — nothing in this build affects iOS.
+Triggered by an Android traveller's support report (card stuck on "Departs in"
+with no time; see the hotfix entry below for the server half).
+
+| Item | Observed result |
+| --- | --- |
+| Code | `da54f7c` (chronometer countdown, alarm-driven card swaps, 15-min sweep, "Departing now"/"Landing now"), `d1c3234` (schedule from the flight's clocks, not the countdown), `f8a3a48`/`dc5850c` (Play notes, version code). Full suite **100 suites / 1,206 tests**, typecheck and eslint clean; `release:preflight` passed. |
+| Backend | No server change in this build; production and development still carry the runway-estimate hotfix (71 client functions verified by the preflight). Hosting unchanged. |
+| Build | EAS Android **`7076559c-9440-4530-9e30-6b5078b17f43`**, 1.1.4 versionCode **67**, FINISHED 21:13 local. VersionCode 66 was burned by an upload that failed on local disk space (ENOSPC copying the project tarball) after the remote counter had moved; app.json re-synced to 67. |
+| Play upload | EAS submission `c58bd38e` **errored** with no reason in the CLI and Play showed no bundle 67. Uploaded the AAB myself through the publisher API (edit `09219562045001887187`, sha256 `c6cba495…`) and released it on **internal** (completed). |
+| Candidate gate (physical Pixel 9a, Android 17) | Universal APK from the store AAB (bundletool), non-debuggable, production Convex URL + `pk_live`, no dev URL. Reviewer account signed in (password flow; the Clerk password field must be tapped by position, the title "Enter password" also matches the field regex). `.maestro/release-signed-in.yaml` **passed**: two cold starts, account visible, Friends from the backend, retained trip `release-retained-photo-20260914` and its photo rendered, World rendered. Evidence in `~/Downloads/flyright-release-1.1.4-android-2026-09-24/candidate-pixel/`. |
+| Feature verification (Pixel 9a, Android 17) | Card posts with a count-down chronometer in the header and the Live Update chip; the take-off alarm swapped it to "Lands in" with the app process **dead** — Android cold-started the process for the broadcast at 20:59:12 local, the receiver ran 1.4 s later (debug build 67; release build cold start measured at 652 ms to first frame). "Landed" arrived from the background sweep. Also verified on the Pixel_9a emulator (17) and the API 33 emulator (header countdown "03:31", alarm swap). Screenshots in the Downloads folder above. |
+| Play production | Edit `04734834416504565126`: production track PUT with versionCode **67**, name `1.1.4 (67)`, en-US notes from `store/google/release-notes-1.1.4.txt` (483 chars), `status: completed`; re-read after commit shows **1.1.4 (67), completed**, replacing 1.1.3 (63). Public-store propagation not yet observed. |
+| iOS | Unchanged: 1.1.4 (67) `WAITING_FOR_REVIEW` from the morning entry. |
+| Local dev apps | Debug **1.1.4 (67)** on `emulator-5554` (Pixel_9a), verified from the installed binary. The physical Pixel now runs the **production candidate 1.1.4 (67)** signed in as the App Review account (its old 1.0.39 store install had to be removed for the debug build's signing key); it will update to the store build from Play. The API 33 emulator was shut down. |
+| Known gotchas | A Metro server started before the edits served stale JS for the module (restart with `--clear`); an emulator debug build's cold start for the alarm broadcast ANR'd (>15 s) while real hardware was fine; `expo run:android --device Pixel_9a` also installed onto the physical Pixel 9a; `am kill` is a no-op while a WorkManager job runs. |
+
+**Still open (product decisions):** take-off/landing/gate pushes go to followers only, never the traveller; the second card of a same-day connection.
+
 ## 2026-09-24 — backend + hosting hotfix: runway estimates read as actuals (no app release)
 
 Support check for an Android traveller (1.1.3 (63), Pro trial, no circle): a
