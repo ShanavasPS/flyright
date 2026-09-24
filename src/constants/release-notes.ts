@@ -15,6 +15,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.4',
+    date: '2026-09-24',
+    notes: [
+      'The plan cards now say what the store offers: a 14-day free trial on Monthly and Yearly, cancel anytime, with the price that follows spelled out — shown only when your store account is still eligible.',
+      'On the free plan, a flight that is in the air now wears the live light and says Live on its row, so you can see at a glance which trip is under way.',
+      'Section labels on Flights sit a touch smaller, with a little more room above the current trip.',
+      'Introductory prices that bill per period now read per period, so an offer is never mistaken for a total.',
+    ],
+  },
+  {
     version: '1.1.3',
     date: '2026-09-23',
     notes: [
