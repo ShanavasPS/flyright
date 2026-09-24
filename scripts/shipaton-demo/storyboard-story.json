@@ -1,6 +1,6 @@
 {
-  "title": "FlyRight — Maja's day",
-  "duration": 117,
+  "title": "FlyRight \u2014 Maja's day",
+  "duration": 113,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
@@ -17,7 +17,7 @@
         "Counting down all day",
         "She knows the terminal already"
       ],
-      "narration": "Maja's flying to Tokyo this evening. FlyRight has been counting down all day — she already knows which terminal to head to."
+      "narration": "Maja's flying to Tokyo this evening. FlyRight has been counting down all day \u2014 she already knows which terminal to head to."
     },
     {
       "id": "02-home",
@@ -39,14 +39,14 @@
       "chapter": "THE TRIP",
       "headline": [
         "Everything,",
-        "before she needs it."
+        "already on FlyRight."
       ],
       "bullets": [
         "Check-in area and gate",
         "Boarding time",
         "Seat and booking"
       ],
-      "narration": "Check-in area, gate, boarding time. Everything, before she needs any of it."
+      "narration": "Check-in area, gate, boarding time. Everything is already there for her on FlyRight."
     },
     {
       "id": "03-steps",
@@ -112,14 +112,13 @@
       "duration": 4,
       "chapter": "THE WORLD",
       "headline": [
-        "Everywhere",
-        "she has been."
+        "Every trip",
+        "she has flown."
       ],
       "bullets": [
-        "Every route she has flown",
-        "All on one globe"
+        "Every route, on one globe"
       ],
-      "narration": "And everywhere she's been, all over the world."
+      "narration": "And every trip she's flown, on one globe."
     },
     {
       "id": "16-poster",
@@ -137,18 +136,17 @@
     },
     {
       "id": "09-updates",
-      "duration": 8,
+      "duration": 6,
       "chapter": "HER PEOPLE",
       "headline": [
         "Updates",
         "from her people."
       ],
       "bullets": [
-        "Tomas, just home",
-        "Clara, still in the air",
+        "Friends in the air, and just home",
         "Every card carries the flight"
       ],
-      "narration": "On the Updates tab she catches up on her friends' trips — Tomas, just home, and Clara, still in the air."
+      "narration": "On the Updates tab she catches up on her friends' trips."
     },
     {
       "id": "10-theirday",
@@ -176,7 +174,7 @@
         "A line or a photo",
         "To Clara, Noah and Tomas"
       ],
-      "narration": "And she can share her own updates too — a line or a photo, straight to her people."
+      "narration": "And she can share her own updates too \u2014 a line or a photo, straight to her people."
     },
     {
       "id": "12-belt",
@@ -190,7 +188,7 @@
         "Landed, on the card",
         "The belt, before she looks for it"
       ],
-      "narration": "Wheels down in Tokyo. FlyRight already tells her which belt her bags are on — no looking around for it."
+      "narration": "Wheels down in Tokyo. FlyRight already tells her which belt her bags are on \u2014 no looking around for it."
     },
     {
       "id": "15-claims",
@@ -204,7 +202,7 @@
         "The figure and the reason",
         "Raise the claim from the app"
       ],
-      "note": "Sample delay · eligibility depends on the circumstances",
+      "note": "Sample delay \u00b7 eligibility depends on the circumstances",
       "narration": "If it runs late, it works out what she's owed."
     },
     {
@@ -274,7 +272,7 @@
     },
     {
       "id": "17-close",
-      "duration": 6,
+      "duration": 4,
       "chapter": "FLYRIGHT",
       "headline": [
         "One place",
