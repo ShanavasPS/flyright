@@ -1,6 +1,6 @@
 {
   "title": "FlyRight \u2014 Maja's day",
-  "duration": 113,
+  "duration": 119,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
@@ -135,6 +135,21 @@
       "narration": "And she can share a trip, or all of her trips, as a poster."
     },
     {
+      "id": "05-add",
+      "duration": 8,
+      "chapter": "ADDING A FLIGHT",
+      "headline": [
+        "Add a flight",
+        "three ways."
+      ],
+      "bullets": [
+        "Look it up by number",
+        "Upload a ticket",
+        "Scan a boarding pass"
+      ],
+      "narration": "Adding a flight is easy: look it up by number, upload a ticket, or scan a boarding pass."
+    },
+    {
       "id": "09-updates",
       "duration": 6,
       "chapter": "HER PEOPLE",
@@ -178,7 +193,7 @@
     },
     {
       "id": "12-belt",
-      "duration": 8,
+      "duration": 6,
       "chapter": "TOKYO",
       "headline": [
         "Wheels down.",
@@ -186,9 +201,9 @@
       ],
       "bullets": [
         "Landed, on the card",
-        "The belt, before she looks for it"
+        "The belt, already on it"
       ],
-      "narration": "Wheels down in Tokyo. FlyRight already tells her which belt her bags are on \u2014 no looking around for it."
+      "narration": "Wheels down in Tokyo. FlyRight already tells her which belt her bags are on."
     },
     {
       "id": "15-claims",
