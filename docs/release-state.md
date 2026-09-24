@@ -16,6 +16,38 @@ travel-day notification sat on "Departs in" with no time all flight.
 | Hosting | Deployed and promoted (`flyright--af8n81912r`); `flyright.expo.app` and `getflyright.com` both serve `entry-a65dcf19aae5be35593cd570a3f43360.js`, matching the export. `.env.production.local` removed after deploying. |
 | Not fixed (needs an app release) | Android live notification: the countdown lives only in the Android 16 promoted chip, so the title reads a bare "Departs in" elsewhere; the surface is refreshed only by the app process (no server push path as on iOS); the lead label follows the recorded stage, not the timetable, so it never reaches "Lands in" without a provider take-off. Take-off/landing/gate pushes go to followers only, never the traveller. |
 
+## 2026-09-24 — 1.1.4 build 67/65: trial on the plan cards, free-plan live row (iOS submitted; Android held on internal)
+
+The user asked for the full release, **explicitly skipped physical-device
+tests** (no phone was reachable either: `devicectl`/`adb` listed none), and
+mid-release said **"skip the android release for now"** because a bug is being
+fixed in another session — so Android stops at the internal track and Play
+production stays on 1.1.3 (63). iOS went through to `WAITING_FOR_REVIEW`.
+
+| Item | Observed result |
+| --- | --- |
+| Code | **1.1.4**, iOS **67**, Android versionCode **65**, bump `2d674ae` (notes in `src/constants/release-notes.ts`), versionCode re-sync `11122db`, store notes `c03bfbf`. Contents since 1.1.3: `planIntro`/`introEligibility` show the store's intro offer on the plan cards ("14-day free trial · cancel anytime", iOS only when RevenueCat reports ELIGIBLE; `46cef93`, `17c3df1`, `4fae3b6`), the free plan's in-air row wears the running light and a Live mark (`384bd95`), smaller section labels with air above the first (`676686c`, `cd62160`). |
+| Tests | `npm run release:preflight` passed: typecheck, backend-contract regressions, **100 suites / 1,195 tests**, production inventory. |
+| Backend | `npm run release:deploy-backend` passed: **71 referenced client functions** on production and development (no backend code changed this release). |
+| Hosting | Deployment `oh6xdgewav`; `flyright.expo.app` serves `entry-d4c540fa92dfe358bd501a2d7c23f603.js`, matching the export (alias moved). Bundle carries the production Convex URL and `pk_live`. `/api/app-version?version=1.1.3` → `{valid:true}` with no notes, correct until the store serves 1.1.4. `.env.production.local` removed. |
+| iOS | Local Xcode 27 build **67**, IPA verified `1.1.4 (67)`, `iphoneos27.0`, scene manifest present. EAS submission **`89e1c7e3-6a0c-451d-a578-17ef64ab280e`** FINISHED; ASC build **`38cb6792-a553-4b40-a06e-1afed97fc343` VALID**, attached to new version **`de7e1e2e-9f53-4a5d-bc1e-afbb6e35f49b`** (1.1.3 was already `READY_FOR_SALE`, so no in-review replacement was needed). Review submission **`1786c94b-507d-4139-be39-709f40820afa`** submitted 17:15 UTC: **`WAITING_FOR_REVIEW`**, `releaseType AFTER_APPROVAL`. |
+| Android | First EAS build `f13caa1f` (64) **errored** — "Gradle build daemon disappeared unexpectedly" on the EAS worker (same transient failure as 61 last release); its submission cancelled. Retry **`66b1d941-7fca-45ed-b361-ea53f7e75652`** versionCode **65** FINISHED, submission **`b4260f80-4a2a-4946-9ac5-bfe62596106f`** FINISHED to `internal`. **Not promoted to production** at the user's request; production remains 1.1.3 (63). |
+| Store metadata | What's New on localization **`95525fa1-3c42-45cc-b11c-5f1854dd2735`**; reviewer notes PATCHed on review detail **`04bc9fbe-1423-4213-a441-fe4f3cdb2a7a`**, demo account `appreview@getflyright.com` preserved. Files: `store/apple/whats-new-1.1.4.txt`, `store/apple/review-notes-1.1.4.txt`. Play notes (453 chars) drafted but unused. |
+| Screenshots | **Carried forward.** The only depicted change is the Flights section label (14 → 13 pt with 8 pt more above the first one); the plans screen and the free-plan live row are not in the listing. |
+| Native regression | `release:devices --mode native` passed on iOS sim `AA6A8347` (Debug 1.1.4/67) and `emulator-5554` Pixel_9a (Debug 1.1.4/65): **15 s / 13 s**, report `.maestro/out/release/2026-09-24T16-19-59.808Z/report.json`. A first Android attempt failed because the freshly built dev client launched without its Metro URL ("Unable to load script"); relaunching with `flyright://expo-development-client/?url=http://localhost:8081` over `adb reverse` fixed it. |
+| Candidate gate | **iOS passed** (run directly with `.maestro/release-signed-in.yaml`, since the runner insists on both platforms): production-configured Release **1.1.4 (67)** on iPhone 18 Pro `E2AC008A`, installed over the previous app, App Review account still signed in, two cold starts, Friends from the backend, retained trip `release-retained-photo-20260914` and its photo rendered, World rendered; 1 m 38 s; evidence `.maestro/out/release/ios-candidate-2026-09-24T17-10-38Z/`, copies in `~/Downloads/flyright-release-1.1.4-2026-09-24/`. **Android not run**: the store AAB was converted with bundletool and installed as 1.1.4 (65) on `FlyRight_Dev`/`emulator-5556`, but the reviewer sign-in did not complete before the user held the Android release. |
+| Physical devices | **Skipped at the user's explicit request.** No physical-phone coverage is claimed. |
+| Local dev apps | Debug **1.1.4 (67)** on `FlyRight iOS 27 Social` (`AA6A8347`) and Debug **1.1.4 (65)** on `emulator-5554` (Pixel_9a), both verified from the installed binaries. `FlyRight_Dev` (`emulator-5556`) still carries the re-signed 1.1.4 (65) candidate; restoring its debug build failed because the emulator went away during the release. |
+
+**Incident:** `pkill -f "expo start"` used to restart FlyRight's Metro also
+killed a Metro belonging to the user's other (Coinmotion) session; its iOS sim
+then hit FlyRight's 8081 and logged "coinmotion has not been registered". Kill
+Metro by pid from now on.
+
+**To finish Android later:** sign the reviewer in on the `FlyRight_Dev`
+candidate (or reinstall the APK set from `66b1d941`), run the candidate flow,
+then promote versionCode **65** to production with the drafted notes.
+
 ## 2026-09-23 (evening) — 1.1.3 build 66/63: flag headings and trip grouping
 
 Supersedes the held 1.1.3 builds below. The user resumed publication, asked for
