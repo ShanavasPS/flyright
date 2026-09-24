@@ -865,10 +865,14 @@ const styles = StyleSheet.create({
   },
   // Cell padding supplies the inner spacing without gaps in the group surface.
   groupedList: { gap: 0 },
+  // A notch under the body size, and a breath of air above each section so
+  // the label reads as a heading rather than the previous card's caption.
   sectionTitle: {
+    fontSize: 13,
+    lineHeight: 18,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginTop: Spacing.two,
+    marginTop: Spacing.three,
     marginBottom: Spacing.two,
   },
   rowPressed: {
