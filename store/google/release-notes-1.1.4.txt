@@ -1,0 +1,4 @@
+Plan cards now show the store's 14-day free trial on Monthly and Yearly, cancel anytime, with the price that follows spelled out.
+The travel-day card counts down on its own, moves to Lands in and Landed by itself while the app sleeps, and refreshes live facts every quarter hour.
+A delayed flight no longer reads as landed before it leaves: the airline's estimated landing is shown as an estimate.
+On the free plan, a flight in the air wears the live light and says Live on its row.
