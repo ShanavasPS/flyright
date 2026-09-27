@@ -4,6 +4,8 @@
  * without overlaps, moves, and the prompts that offer them. A day here is
  * always the departure airport's local calendar day (the day the Flights
  * list prints), as YYYY-MM-DD, so string comparison orders it. */
+import { chainLegs } from '../../convex/itineraryShared';
+
 import { airportZone, getAirport } from '@/services/airports';
 import { legInstant } from '@/services/connections';
 import { flightDay } from '@/services/dates';
@@ -104,12 +106,23 @@ export function homeOn(state: HomeBaseState, day: string): HomePeriod | null {
   return state.periods.find((p) => (p.from === null || p.from <= day) && (p.until === null || day <= p.until)) ?? null;
 }
 
-/** The automatic home: the city with the most take-offs among these rows. */
+/** The journal's flights door to door: a connection's legs as one flight
+ * from its first take-off to its last landing, under the first leg's id. A
+ * layover is not a take-off from home — counting it made Doha the home of
+ * anyone who connects there. */
+export function doorToDoor(rows: JourneyRow[]): JourneyRow[] {
+  const flights = rows.filter((r) => !r.deletedAt && r.mode === 'flight');
+  return chainLegs(flights, legInstant).map((legs) => {
+    const last = legs[legs.length - 1]!;
+    return legs.length === 1 ? legs[0]! : { ...legs[0]!, toCode: last.toCode, toCountry: last.toCountry, scheduledArrival: last.scheduledArrival };
+  });
+}
+
+/** The automatic home: the city most journeys take off from. */
 export function autoHome(rows: JourneyRow[]): (HomePlace & { departures: number; total: number }) | null {
   const counts = new Map<string, { place: HomePlace; count: number }>();
   let total = 0;
-  for (const row of rows) {
-    if (row.deletedAt || row.mode !== 'flight') continue;
+  for (const row of doorToDoor(rows)) {
     total += 1;
     const place = airportPlace(row.fromCode, row.fromCountry);
     const entry = counts.get(placeKey(place)) ?? { place, count: 0 };
@@ -131,7 +144,7 @@ export interface CurrentHome extends HomePlace {
 
 /** Today's home: the period covering today, else the automatic one. */
 export function currentHome(state: HomeBaseState, rows: JourneyRow[], today: string): CurrentHome | null {
-  const flights = rows.filter((r) => !r.deletedAt && r.mode === 'flight');
+  const flights = doorToDoor(rows);
   const period = homeOn(state, today);
   if (period) {
     const departures = flights.filter((r) => atHome(r.fromCode, period, r.fromCountry)).length;
@@ -222,8 +235,8 @@ export function markMove(state: HomeBaseState, to: HomePlace, day: string, previ
 }
 
 function pastFlights(rows: JourneyRow[], now: number): JourneyRow[] {
-  return rows
-    .filter((r) => !r.deletedAt && r.mode === 'flight' && legInstant(r.scheduledDeparture, r.fromCode) <= now)
+  return doorToDoor(rows)
+    .filter((r) => legInstant(r.scheduledDeparture, r.fromCode) <= now)
     .sort((a, b) => legInstant(a.scheduledDeparture, a.fromCode) - legInstant(b.scheduledDeparture, b.fromCode));
 }
 

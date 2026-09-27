@@ -67,6 +67,22 @@ describe('automatic home', () => {
     expect(autoHome(rows)).toMatchObject({ ...LON, departures: 3, total: 5 });
   });
 
+  it('never makes a connection hub the home', () => {
+    // Production 1.1.5 (70): Kochi–Helsinki trips via Doha made Doha the
+    // automatic home, since every connection took off from it.
+    const trip = (n: number, day: string, back: string) => [
+      flight(`${n}a`, 'COK', 'DOH', `${day}T04:15`, `${day}T06:05`),
+      flight(`${n}b`, 'DOH', 'HEL', `${day}T08:25`, `${day}T14:30`),
+      flight(`${n}c`, 'HEL', 'DOH', `${back}T17:30`, `${back}T23:40`),
+      flight(`${n}d`, 'DOH', 'COK', `${addDay(back)}T02:40`, `${addDay(back)}T09:45`),
+    ];
+    const addDay = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    const rows = [...trip(1, '2025-01-10', '2025-01-20'), ...trip(2, '2025-03-10', '2025-03-20'), flight('x', 'HEL', 'TLL', '2025-03-15T10:00', '2025-03-15T10:30')];
+    expect(autoHome(rows)).toMatchObject({ city: 'Helsinki', departures: 3, total: 5 });
+    expect(currentHome(EMPTY_HOME_BASE, rows, '2026-01-01')).toMatchObject({ city: 'Helsinki', source: 'auto' });
+    expect(autoHome(rows)?.city).not.toBe('Doha');
+  });
+
   it('keeps the first city on a tie and has nothing without flights', () => {
     expect(autoHome([flight('1', 'HEL', 'LHR', '2025-01-01T10:00', '2025-01-01T11:00'), flight('2', 'LHR', 'HEL', '2025-01-02T10:00', '2025-01-02T15:00')])).toMatchObject(HEL);
     expect(autoHome([])).toBeNull();
