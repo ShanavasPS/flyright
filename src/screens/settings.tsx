@@ -30,7 +30,9 @@ import { UpdateAvailableCard } from '@/components/update-available-card';
 import { CONVEX_URL } from '@/constants/config';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSignedOutNotice } from '@/hooks/use-signed-out-notice';
+import { useHomeContext } from '@/hooks/use-home-base';
 import { useTheme } from '@/hooks/use-theme';
+import { useJourneys } from '@/services/journeys';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import {
   getTravelDayEnabled,
@@ -159,6 +161,40 @@ function AccountCard() {
 /** Inset hairline between rows of a grouped card. */
 function RowSeparator() {
   return <ThemedView type="backgroundSelected" style={styles.separator} />;
+}
+
+/** Where trips start and end (docs/home-base.md): today's home, and the
+ * way into its screen. */
+function HomeBaseRow() {
+  const router = useRouter();
+  const theme = useTheme();
+  const { userId } = useAuth();
+  const { data: journeys } = useJourneys(userId);
+  const { current } = useHomeContext(userId, journeys);
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/home-base')}
+        testID="settings-home-base"
+        style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+        <View style={styles.rowLabel}>
+          <ThemedText>Home base</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">Where your trips start and end</ThemedText>
+        </View>
+        <ThemedText type="small" themeColor="textSecondary">
+          {current ? `${current.city}${current.source === 'auto' ? ' · Auto' : ''}` : 'Not set'}
+        </ThemedText>
+        <SymbolView
+          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+          size={14}
+          weight="bold"
+          tintColor={theme.textSecondary}
+        />
+      </Pressable>
+      <RowSeparator />
+    </>
+  );
 }
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
@@ -430,6 +466,7 @@ export function Settings() {
           <TripVisibilityRow />
           <DiscoverableRow />
 
+          <HomeBaseRow />
           <AppearanceRow />
 
           {billingAvailable && (

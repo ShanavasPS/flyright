@@ -15,26 +15,30 @@ import type { TripGroup, TripStay } from '@/services/trip-groups';
 
 /** Join the virtualized rows into one filled trip container. Each flight keeps
  * its own list key and measured position for live-card shortcuts and scrolling. */
-export function TripGroupFrame({ children, header, first, last, country }: {
+export function TripGroupFrame({ children, header, first, last, country, backdrop }: {
   children: ReactNode;
   header?: boolean;
   first?: boolean;
   last?: boolean;
   country?: string;
+  /** A header drawn over a picture (components/trip-cover) instead of the flag band. */
+  backdrop?: ReactNode;
 }) {
   const theme = useTheme();
   const scheme = useColorScheme();
   const band = scheme === 'dark' ? BAND_DARK : BAND_LIGHT;
-  const backgroundColor = header ? band : theme.field;
+  const backgroundColor = header ? (backdrop ? COVER_BASE : band) : theme.field;
   return (
     <View style={[
       styles.frame,
       header ? styles.frameHeader : styles.frameBody,
+      header && !!backdrop && styles.frameCover,
       first && styles.frameFirst,
       last && styles.frameLast,
       { backgroundColor, borderColor: theme.hairline },
     ]}>
-      {header && !!country && <TripGroupFlag country={country} tone={backgroundColor} />}
+      {header && backdrop}
+      {header && !backdrop && !!country && <TripGroupFlag country={country} tone={backgroundColor} />}
       {children}
       {/* Android slightly insets a rounded background's flat edges too.
           Fill that join so adjacent cells cannot expose a hairline seam. */}
@@ -58,6 +62,9 @@ const FLAG_PRESENCE = 1;
  * and black ones do (the UK's blue, the US canton, Germany's stripe). The date
  * ink moves with it — 5.6:1 light and 5.7:1 dark, both better than the 5.4:1
  * and 4.7:1 that secondary ink managed on the plain band. */
+/** Under a trip's photo, and the colour its scrim ends in: the join to the
+ * first flight never shows a band-coloured seam. */
+const COVER_BASE = '#0C1B36';
 const BAND_LIGHT = '#DCE5F0';
 const BAND_DATE_LIGHT = '#4A5A6E';
 const BAND_DARK = '#26395F';
@@ -73,7 +80,7 @@ const FLAG_WIDTH = '75%';
 
 /** The country's flag as an SVG string, or null for a code we have no art for
  * (the band then keeps its plain fill). */
-function flagArt(country: string): string | null {
+export function flagArt(country: string): string | null {
   const art = (COUNTRY_FLAGS as Record<string, string | undefined>)[country.toUpperCase()];
   return art ?? null;
 }
@@ -170,6 +177,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   // Keep the gap with the preceding card so its shadow has room to fade.
+  // Its content (components/trip-cover) sizes the header.
+  frameCover: { paddingTop: 0, paddingBottom: 0 },
   frameBody: { paddingBottom: Spacing.one },
   frameFirst: { paddingTop: Spacing.two + Spacing.one },
   frameLast: {

@@ -3,7 +3,7 @@
  * picker's cache URI is temporary), so a row's uri is either that file:// path
  * or, for photos that arrived through sync, its Convex storage URL. */
 
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -43,6 +43,19 @@ export function usePhotos(journeyId: string): TripPhotoRow[] | undefined {
       .where(and(eq(tripPhotos.journeyId, journeyId), isNull(tripPhotos.deletedAt)))
       .orderBy(asc(tripPhotos.createdAt)),
     [journeyId],
+  );
+  return data?.map(withCurrentPhotoUri);
+}
+
+/** Every photo of several flights (one trip), oldest first. */
+export function useTripPhotos(journeyIds: string[]): TripPhotoRow[] | undefined {
+  const { data } = useLiveRows(
+    db
+      .select()
+      .from(tripPhotos)
+      .where(and(inArray(tripPhotos.journeyId, journeyIds), isNull(tripPhotos.deletedAt)))
+      .orderBy(asc(tripPhotos.createdAt)),
+    [journeyIds.join(',')],
   );
   return data?.map(withCurrentPhotoUri);
 }

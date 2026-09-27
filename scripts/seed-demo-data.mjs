@@ -11,6 +11,10 @@
  * Pass --future to add a departure three weeks out, which the Pro offer needs
  * before it will propose a take-off reminder (it wants 48h+ of lead time).
  *
+ * Pass --home-base for a traveller who moved: Helsinki until about 13 months
+ * ago, then London, with one visit back to Helsinki — the journal the home
+ * base screens are tested with (docs/home-base.md). It replaces the demo trips.
+ *
  * Pass --travel-day to move the upcoming flight to ~1h out and stamp it
  * through security, which is the state the Travel Day panel is captured in.
  * Without it the upcoming flight sits ~12h out, which is what the Flights,
@@ -28,7 +32,8 @@ import { readFileSync, copyFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const PACKAGE = 'com.shanavasshaji.flyright';
+// FLYRIGHT_PACKAGE targets a side-by-side test install (e.g. `…flyright.homebase`).
+const PACKAGE = process.env.FLYRIGHT_PACKAGE || 'com.shanavasshaji.flyright';
 const AIRPORTS = JSON.parse(readFileSync(new URL('../assets/data/airports.json', import.meta.url)));
 
 const argv = process.argv.slice(2);
@@ -80,6 +85,26 @@ const TRIPS = [
   ['demo-sin', 'Finnair', 'FI', 'AY131', 'HEL', 'SIN', now - 288 * DAY, 11.6],
   ['demo-fra', 'Lufthansa', 'DE', 'LH400', 'FRA', 'JFK', now - 340 * DAY, 8.6],
 ];
+
+if (flag('home-base')) {
+  TRIPS.splice(0, TRIPS.length,
+    ['hb-h1', 'Finnair', 'FI', 'AY73', 'HEL', 'HND', now - 540 * DAY, 13],
+    ['hb-h2', 'Finnair', 'FI', 'AY74', 'HND', 'HEL', now - 526 * DAY, 13.5],
+    ['hb-h3', 'Finnair', 'FI', 'AY1661', 'HEL', 'MAD', now - 500 * DAY, 4.7],
+    ['hb-h4', 'Finnair', 'FI', 'AY1662', 'MAD', 'HEL', now - 496 * DAY, 4.5],
+    ['hb-h5', 'Finnair', 'FI', 'AY1571', 'HEL', 'CDG', now - 470 * DAY, 3.2],
+    ['hb-h6', 'Finnair', 'FI', 'AY1572', 'CDG', 'HEL', now - 467 * DAY, 3.1],
+    ['hb-move', 'Finnair', 'FI', 'AY1337', 'HEL', 'LHR', now - 410 * DAY, 3.2],
+    ['hb-l1', 'British Airways', 'GB', 'BA2574', 'LGW', 'MAD', now - 250 * DAY, 2.5],
+    ['hb-l2', 'British Airways', 'GB', 'BA2575', 'MAD', 'LGW', now - 246 * DAY, 2.5],
+    ['hb-l3', 'Finnair', 'FI', 'AY1332', 'LHR', 'HEL', now - 120 * DAY, 3],
+    ['hb-l4', 'Finnair', 'FI', 'AY1337', 'HEL', 'LHR', now - 114 * DAY, 3.2],
+    ['hb-l5', 'Lufthansa', 'DE', 'LH901', 'LHR', 'FRA', now - 80 * DAY, 1.5],
+    ['hb-l6', 'Lufthansa', 'DE', 'LH922', 'FRA', 'LHR', now - 78 * DAY, 1.7],
+    ['hb-l7', 'British Airways', 'GB', 'BA8751', 'LCY', 'CDG', now - 40 * DAY, 1.3],
+    ['hb-l8', 'British Airways', 'GB', 'BA8752', 'CDG', 'LCY', now - 38 * DAY, 1.3],
+  );
+}
 
 /** --future adds a departure far enough out (48h+) for the Pro offer to
  *  propose a take-off reminder instead of a paywall. The demo video needs
@@ -226,7 +251,7 @@ function seed(dbPath) {
   }
 
   const trip = TRIPS.find(([id]) => id === DELAYED_TRIP);
-  db.prepare(
+  if (trip) db.prepare(
     `INSERT INTO disruptions (id, journey_id, type, delay_minutes, notice_days, extraordinary, detected_at)
      VALUES (?,?,?,?,?,?,?)`,
   ).run(

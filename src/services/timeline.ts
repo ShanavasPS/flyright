@@ -230,8 +230,15 @@ function top(counts: Map<string, number>): { key: string; count: number } | null
   return best;
 }
 
+/** A set home base (services/home-base): today's home and, per flight, the
+ * home it counts from. Absent = Automatic, the city with most take-offs. */
+export interface RecapHome {
+  current: { city: string; departures: number } | null;
+  at?: (row: JourneyRow) => { city: string } | null;
+}
+
 /** Everything the Travel stats screen shows, in one pass over the rows. */
-export function travelRecap(rows: JourneyRow[]): TravelRecap {
+export function travelRecap(rows: JourneyRow[], homeBase?: RecapHome): TravelRecap {
   const base = travelStats(rows);
   const airports = new Set<string>();
   const airlineCounts = new Map<string, number>();
@@ -265,8 +272,15 @@ export function travelRecap(rows: JourneyRow[]): TravelRecap {
     if (!shortest || row.distanceKm < shortest.distanceKm) shortest = row;
   }
 
-  const home = top(departureCities);
-  const away = new Map([...arrivalCities].filter(([city]) => city !== home?.key));
+  const auto = top(departureCities);
+  const home = homeBase?.current ? { key: homeBase.current.city, count: homeBase.current.departures } : auto;
+  // A landing is "away" unless it is the home the traveller had then.
+  const away = new Map<string, number>();
+  for (const row of rows) {
+    const city = cityOf(row.toCode);
+    const then = homeBase?.at?.(row)?.city ?? home?.key;
+    if (city !== then) bump(away, city);
+  }
   // All-arrivals fallback covers the one-way traveller whose every landing is "home".
   const destination = top(away) ?? top(arrivalCities);
   const busiest = yearCounts.size > 1 ? top(yearCounts) : null;

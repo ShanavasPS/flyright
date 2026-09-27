@@ -7,7 +7,8 @@ import { RouteLeg } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { TravelGlobe } from '@/components/travel-globe';
-import { TripGroupFrame, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
+import { TripCoverHeader } from '@/components/trip-cover';
+import { TripGroupFrame, TripStayMark } from '@/components/trip-group-mark';
 import { TripRow } from '@/components/trip-row';
 import { UpdatesCard } from '@/components/trip-updates';
 import { Spacing } from '@/constants/theme';
@@ -232,8 +233,8 @@ export function PersonTravel({
     </Fragment>
   );
 
-  /** Their flights under the Flights tab's own destination groups: the faded
-   * flag, the city and the dates, with the stays between them. A flown list
+  /** Their flights under the Flights tab's own destination groups: the
+   * destination's photo with the city, dates and flag, with the stays between them. A flown list
    * reads newest destination first, the way the viewer's own does. */
   const grouped = (list: PersonTrip[], flown: boolean) => {
     const byId = new Map(list.map((t) => [t.journeyId, t]));
@@ -242,9 +243,7 @@ export function PersonTravel({
       const groups = flown ? [...t.groups].reverse() : t.groups;
       return groups.map((g) => (
         <Fragment key={`group:${g.id}`}>
-          <TripGroupFrame header country={g.country}>
-            <TripGroupHeading group={g} dates={tripGroupDates(g, now.getFullYear())} />
-          </TripGroupFrame>
+          <TripCoverHeader friend group={g} dates={tripGroupDates(g, now.getFullYear())} />
           {g.entries.map((entry, i) => {
             const previous = g.entries[i - 1];
             const row = entry.kind === 'flight' ? byId.get(entry.journey.id) : undefined;

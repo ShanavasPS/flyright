@@ -6,8 +6,13 @@ import { chainLegs } from '../../convex/itineraryShared';
 import { airportZone, countryName, getAirport } from '@/services/airports';
 import { connectionsInto, legInstant, type Connection } from '@/services/connections';
 import { flightDay } from '@/services/dates';
+import type { HomePlace } from '@/services/home-base';
 import type { JourneyRow } from '@/services/journeys';
 import { cityOf, groupJourneys } from '@/services/timeline';
+
+/** The home a flight counts from (services/home-base), or null for
+ * Automatic, where a trip runs from its first departure back to it. */
+export type HomeAt = (row: JourneyRow) => HomePlace | null;
 
 const DAY_MS = 86_400_000;
 /** Avoid joining unrelated one-way flights months apart without a shared
@@ -58,9 +63,9 @@ export interface TripHeroGroup { group: TripGroup; dates: string; isFirstFlight:
 
 /** The active itinerary sorts first. Its first flight expands in place;
  * a later live flight keeps a shortcut between its row and the top card. */
-export function tripHeroGroup(rows: JourneyRow[], now: Date, heroId: string | null): TripHeroGroup | undefined {
+export function tripHeroGroup(rows: JourneyRow[], now: Date, heroId: string | null, homeAt?: HomeAt): TripHeroGroup | undefined {
   if (!heroId) return undefined;
-  for (const trip of buildTripGroups(rows)) {
+  for (const trip of buildTripGroups(rows, homeAt)) {
     const group = trip.groups.find(g => g.entries.some(e => e.kind === 'flight' && e.journey.id === heroId));
     if (group) return { group, dates: tripGroupDates(group, now.getFullYear()), isFirstFlight: trip.journeys[0]!.id === heroId };
   }
@@ -231,15 +236,70 @@ function flattenVisits(route: Direction[], international: boolean): TripGroup[] 
   return groups;
 }
 
-export function buildTripGroups(rows: JourneyRow[]): TravelTrip[] {
+/** Whether a place is the home: its city, or for an international trip its
+ * country — landing in Boston ends a trip that left from JFK. */
+function isHome(p: HomePlace, home: HomePlace, international: boolean): boolean {
+  if (p.city === home.city && (!p.country || !home.country || p.country === home.country)) return true;
+  return international && !!p.country && p.country === home.country;
+}
+
+/** The home in force when a direction lands, read on its arrival day. */
+function homeOnArrival(d: Direction, homeAt: HomeAt): HomePlace | null {
+  const leg = last(d);
+  return homeAt({ ...leg, scheduledDeparture: leg.scheduledArrival || leg.scheduledDeparture, fromCode: leg.toCode });
+}
+
+function homeTheDayBefore(d: Direction, homeAt: HomeAt): HomePlace | null {
+  const leg = first(d);
+  const day = Date.parse(`${leg.scheduledDeparture.slice(0, 10)}T00:00:00Z`);
+  if (!Number.isFinite(day)) return null;
+  const before = new Date(day - DAY_MS).toISOString().slice(0, 10);
+  return homeAt({ ...leg, scheduledDeparture: `${before}${leg.scheduledDeparture.slice(10)}` });
+}
+
+/** One flight on its own: a move, or a return whose outbound was never logged. */
+function singleGroupTrip(d: Direction, id: string, title: string, place: Place): TravelTrip {
+  const group: TripGroup = {
+    id, title, country: place.country, continued: false,
+    start: departure(first(d)), end: arrival(last(d)),
+    entries: d.legs.map(journey => ({ kind: 'flight' as const, key: `flight:${journey.id}`, journey })),
+  };
+  return { id: first(d).id, journeys: d.legs, groups: [group] };
+}
+
+export function buildTripGroups(rows: JourneyRow[], homeAt?: HomeAt): TravelTrip[] {
   const ordered = directions(rows.filter(row => !row.deletedAt));
   const trips: TravelTrip[] = [];
   for (let i = 0; i < ordered.length;) {
     const start = ordered[i++]!;
     const international = !!start.from.country && !!start.to.country && start.from.country !== start.to.country;
+    const known = homeAt && first(start).mode === 'flight' ? homeAt(first(start)) : null;
+    if (known && homeAt) {
+      const fromHome = isHome(start.from, known, false);
+      const next = homeOnArrival(start, homeAt);
+      // The move day already belongs to the new home, so the old one is read
+      // the day before: leaving it for the new one is a move, not a trip.
+      const before = homeTheDayBefore(start, homeAt);
+      if (before && next && isHome(start.from, before, false) && !isHome(next, before, false) && isHome(start.to, next, false)) {
+        trips.push(singleGroupTrip(start, `move:${first(start).id}`, `Moved to ${destinationName(start.to, false)}`, start.to));
+        continue;
+      }
+      // Flying home with no outbound logged: it belongs to where it came from.
+      if (!fromHome && isHome(start.to, known, international)) {
+        trips.push(singleGroupTrip(start, `return:${first(start).id}`, destinationName(start.from, false), start.from));
+        continue;
+      }
+    }
     const home = placeKey(start.from, international);
+    const returned = (d: Direction) => {
+      if (known && homeAt) {
+        const then = homeOnArrival(d, homeAt) ?? known;
+        return isHome(d.to, then, international);
+      }
+      return placeKey(d.to, international) === home;
+    };
     const route = [start];
-    while (i < ordered.length && placeKey(route[route.length - 1]!.to, international) !== home) {
+    while (i < ordered.length && !returned(route[route.length - 1]!)) {
       const next = ordered[i]!;
       if (!canFollow(route[route.length - 1]!, next, international)) break;
       route.push(next);
@@ -271,11 +331,11 @@ export function tripGroupDates(group: TripGroup, currentYear: number): string {
 /** Classify the complete trip before highlighting its active flight row.
  * A trip remains current between its flights and through the hero's arrival
  * window. Flights stay in travel order; completed trips are newest first. */
-export function tripListSections(rows: JourneyRow[], now: Date, heroId: string | null = null): TripListSection[] {
+export function tripListSections(rows: JourneyRow[], now: Date, heroId: string | null = null, homeAt?: HomeAt): TripListSection[] {
   const visible = rows.filter(r => !r.deletedAt);
   const phase = new Map(groupJourneys(visible, now).flatMap(s => s.data.map(r => [r.id, s.key] as const)));
   const connections = connectionsInto(rows.filter(r => !r.deletedAt));
-  const filed = buildTripGroups(rows).map(trip => {
+  const filed = buildTripGroups(rows, homeAt).map(trip => {
     const keys = trip.journeys.map(r => phase.get(r.id));
     const year = calendarDay(departure(trip.journeys[0]!))?.slice(0, 4) ?? 'undated';
     const hasHero = trip.journeys.some(r => r.id === heroId);

@@ -91,6 +91,20 @@ export function searchAirports(query: string, limit = 6): Airport[] {
     .slice(0, limit);
 }
 
+/** Every airport of a city ("London", "GB" → LHR, LGW, STN, LCY, …), major
+ * hubs first — the airports a home base covers (services/home-base). The
+ * city is the name without its parenthesised part, as cityOf() prints it. */
+export function cityAirports(city: string, country: string): string[] {
+  const want = city.trim().toUpperCase();
+  const out: [string, number][] = [];
+  for (const [iata, tuple] of Object.entries(AIRPORTS)) {
+    if (country && tuple[2] !== country) continue;
+    if (tuple[3].replace(/\s*\(.*$/, '').toUpperCase() !== want) continue;
+    out.push([iata, tuple[4] ?? 0]);
+  }
+  return out.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([iata]) => iata);
+}
+
 /** IATA → IANA zone, unpacked once from the zone-keyed table (see
  * scripts/build-airport-timezones.mjs) on the first lookup that needs it. */
 let zoneCache: Record<string, string> | null = null;

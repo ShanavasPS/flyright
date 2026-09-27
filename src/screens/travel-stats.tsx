@@ -16,6 +16,8 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { HomeBaseCard } from '@/components/home-base';
+import { useHomeContext } from '@/hooks/use-home-base';
 import { useJourneys } from '@/services/journeys';
 import { cityOf, travelRecap } from '@/services/timeline';
 import {
@@ -37,7 +39,8 @@ export function TravelStats() {
   const { userId } = useAuth();
   const { data: journeys, error } = useJourneys(userId);
   const rows = useMemo(() => journeys ?? [], [journeys]);
-  const recap = useMemo(() => travelRecap(rows), [rows]);
+  const home = useHomeContext(userId, rows);
+  const recap = useMemo(() => travelRecap(rows, home.recap), [rows, home.recap]);
   const airlines = useMemo(() => airlineRanks(rows), [rows]);
   const aircraft = useMemo(() => aircraftRanks(rows), [rows]);
   const makers = useMemo(() => makerRanks(aircraft), [aircraft]);
@@ -80,6 +83,8 @@ export function TravelStats() {
           airports={recap.airports}
           since={recap.firstYear}
         />
+
+        <HomeBaseCard home={home.current} onPress={() => router.push('/home-base')} />
 
         {recap.longest && (
           <>
@@ -136,13 +141,6 @@ export function TravelStats() {
         )}
 
         <View style={styles.tiles}>
-          {recap.homeCity && (
-            <MiniTile
-              label="Home base"
-              value={recap.homeCity.city}
-              caption={plural(recap.homeCity.departures, 'take-off')}
-            />
-          )}
           {recap.busiestYear ? (
             <MiniTile
               label="Busiest year"

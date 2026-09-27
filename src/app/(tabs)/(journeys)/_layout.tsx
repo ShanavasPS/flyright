@@ -71,6 +71,18 @@ export default function JourneysStack() {
       {/* The name sits in the bar, not in the page: it is reached from the
           avatar, so the bar is where iOS puts it, and a navigation title is
           the right size for it. No hairline under it either. */}
+      {/* Where the traveller lives, and since when (docs/home-base.md). */}
+      {/* Every trip to a city, under its photo: a trip header on Flights
+          opens it. Draws under the status bar like Home base. */}
+      <Stack.Screen name="destination" options={{ title: 'Destination', headerShown: false }} />
+      {/* The two Home base pages draw the city's photo under the status bar
+          with their own back button (components/home-base CollapsingHero). */}
+      <Stack.Screen name="home-base" options={{ title: 'Home base', headerShown: false }} />
+      <Stack.Screen
+        name="home-base-city"
+        options={{ title: 'Choose a city', headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen name="home-base-period" options={{ title: 'Home period', headerShown: false }} />
       <Stack.Screen
         name="settings"
         options={{ title: 'Profile', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}

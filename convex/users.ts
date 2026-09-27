@@ -193,6 +193,12 @@ export const purge = internalMutation({
       for (const row of quota) await ctx.db.delete(row._id);
     }
 
+    // Where they lived, and the photos they chose for their trips.
+    for (const table of ['homeBases', 'tripCovers'] as const) {
+      const own = await ctx.db.query(table).withIndex('by_user', (q) => q.eq('userId', userId)).collect();
+      for (const row of own) await ctx.db.delete(row._id);
+    }
+
     return rows.length;
   },
 });

@@ -556,13 +556,13 @@ export function RankRow({
   );
 }
 
-/** Airport codes as small chips; `strong` marks one (the home base). */
-export function CodeChips({ codes, strong }: { codes: string[]; strong?: string | null }) {
+/** Airport codes as small chips; `strong` marks the home base's airports. */
+export function CodeChips({ codes, strong }: { codes: string[]; strong?: string | readonly string[] | null }) {
   const theme = useTheme();
   return (
     <View style={styles.codeChips}>
       {codes.map((code) => {
-        const on = code === strong;
+        const on = Array.isArray(strong) ? strong.includes(code) : code === strong;
         return (
           <View
             key={code}

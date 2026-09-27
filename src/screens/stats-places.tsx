@@ -9,6 +9,8 @@ import { CodeChips, DestinationCard, ListHeadline, RankRow } from '@/components/
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useHomeContext } from '@/hooks/use-home-base';
+import { cityAirports } from '@/services/airports';
 import { useJourneys } from '@/services/journeys';
 import { travelRecap } from '@/services/timeline';
 import { destinationDetail, placeGroups, plural, type PlaceSort } from '@/services/travel-recap';
@@ -29,24 +31,20 @@ export function StatsPlaces() {
   const [sort, setSort] = useState<PlaceSort>('visits');
   const rows = useMemo(() => journeys ?? [], [journeys]);
   const groups = useMemo(() => placeGroups(rows, sort), [rows, sort]);
-  const recap = useMemo(() => travelRecap(rows), [rows]);
+  const homeContext = useHomeContext(userId, rows);
+  const recap = useMemo(() => travelRecap(rows, homeContext.recap), [rows, homeContext.recap]);
   const destination = useMemo(
     () => (recap.topDestination ? destinationDetail(rows, recap.topDestination.city) : null),
     [rows, recap.topDestination],
   );
   const [now] = useState(() => new Date());
-  // The airport most departed from is home; its country reads in take-offs.
-  const home = useMemo(() => {
-    let best: { iata: string; country: string; takeoffs: number } | null = null;
-    for (const group of groups) {
-      for (const airport of group.airports) {
-        if (!best || airport.takeoffs > best.takeoffs) {
-          best = { iata: airport.iata, country: group.country, takeoffs: airport.takeoffs };
-        }
-      }
-    }
-    return best;
-  }, [groups]);
+  // Today's home base (set, or the city with most take-offs): its country
+  // reads in take-offs and every airport of the city is marked.
+  const homeBase = homeContext.current;
+  const home = useMemo(
+    () => (homeBase ? { country: homeBase.country, airports: cityAirports(homeBase.city, homeBase.country) } : null),
+    [homeBase],
+  );
 
   if (error) return <DataErrorState error={error} />;
   if (!journeys) return <LoadingState />;
@@ -90,7 +88,7 @@ export function StatsPlaces() {
                   {group.cities.join(' · ')}
                   {isHome ? ' · your home base' : ''}
                 </ThemedText>
-                <CodeChips codes={group.airports.map((a) => a.iata)} strong={home?.iata} />
+                <CodeChips codes={group.airports.map((a) => a.iata)} strong={home?.airports} />
               </RankRow>
             );
           })}

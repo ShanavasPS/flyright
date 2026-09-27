@@ -12,6 +12,43 @@ export default defineSchema({
     introductionSeen: v.boolean(),
     homeDismissed: v.boolean(),
   }).index('by_user', ['userId']),
+  /** Where the traveller lives, and since when (docs/home-base.md). The
+   * phone is the source of truth; the newest `updatedAt` wins. */
+  homeBases: defineTable({
+    userId: v.string(),
+    periods: v.array(v.object({
+      id: v.string(),
+      city: v.string(),
+      country: v.string(),
+      from: v.union(v.string(), v.null()),
+      until: v.union(v.string(), v.null()),
+    })),
+    dismissed: v.array(v.string()),
+    updatedAt: v.number(),
+  }).index('by_user', ['userId']),
+  /** Trips whose photo on Flights was changed (convex/tripCovers.ts). */
+  tripCovers: defineTable({
+    userId: v.string(),
+    covers: v.array(v.object({
+      groupId: v.string(),
+      kind: v.union(v.literal('none'), v.literal('photo')),
+      photoId: v.union(v.string(), v.null()),
+    })),
+    updatedAt: v.number(),
+  }).index('by_user', ['userId']),
+  /** One Wikipedia photo per home base city, shared by everyone living there
+   * (convex/cityPhoto.ts). `pending` while a lookup runs; `none` = nothing usable. */
+  cityPhotos: defineTable({
+    key: v.string(),
+    status: v.union(v.literal('ok'), v.literal('none'), v.literal('pending')),
+    url: v.union(v.string(), v.null()),
+    width: v.union(v.number(), v.null()),
+    height: v.union(v.number(), v.null()),
+    credit: v.union(v.string(), v.null()),
+    licence: v.union(v.string(), v.null()),
+    page: v.union(v.string(), v.null()),
+    fetchedAt: v.number(),
+  }).index('by_key', ['key']),
   proReminders: defineTable({
     userId: v.string(),
     journeyKey: v.string(),

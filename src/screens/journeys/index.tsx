@@ -25,7 +25,8 @@ import { MicroLabel, PassAction, PassCard, PassDivider } from '@/components/pass
 import { TripRow } from '@/components/trip-row';
 import { SignedOutNoticeCard } from '@/components/signed-out-notice-card';
 import { SupportUnreadBadge } from '@/components/support-unread-badge';
-import { TripConnectionMark, TripGroupFrame, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
+import { TripCoverHeader } from '@/components/trip-cover';
+import { TripConnectionMark, TripGroupFrame, TripStayMark } from '@/components/trip-group-mark';
 import { PaneOutline } from '@/components/pane-placeholders';
 import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { ThemedText } from '@/components/themed-text';
@@ -64,6 +65,10 @@ import {
   pushRemindDue,
 } from '@/services/onboarding';
 import { tripHeroGroup, tripListSections, type TripListItem, type TripListSection } from '@/services/trip-groups';
+import { HomeNudgeCard } from '@/components/home-base';
+import { useHomeContext } from '@/hooks/use-home-base';
+import { autoHome, departureDay, markMove, nudgeFor, placeKey } from '@/services/home-base';
+import { dismissHomePrompt, updateHomeBase } from '@/services/home-base-store';
 import { hasLanded, liveContent } from '@/services/travel-day';
 import { factsFor } from '@/services/travel-day-lifecycle';
 import { welcomeFor } from '@/services/welcome';
@@ -187,16 +192,27 @@ export function Journeys() {
     [journeys, heroId, now],
   );
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
+  const homeContext = useHomeContext(userId, journeys);
   // Keep the active flight in the complete, chronological itinerary.
   const tripSections = useMemo(
-    () => tripListSections(journeys ?? [], now, heroId).map(section => ({
+    () => tripListSections(journeys ?? [], now, heroId, homeContext.homeAt).map(section => ({
       ...section,
       // Filled destination containers now provide the boundary for every trip.
       data: section.data.filter(item => item.kind !== 'separator'),
     })),
-    [journeys, now, heroId],
+    [journeys, now, heroId, homeContext.homeAt],
   );
-  const heroGroup = useMemo(() => tripHeroGroup(journeys ?? [], now, heroId), [journeys, now, heroId]);
+  const heroGroup = useMemo(() => tripHeroGroup(journeys ?? [], now, heroId, homeContext.homeAt), [journeys, now, heroId, homeContext.homeAt]);
+  // "Is London home now?" — once, when recent take-offs point elsewhere.
+  const nudge = useMemo(
+    () => (homeContext.state.loaded && journeys ? nudgeFor(homeContext.state, journeys, now) : null),
+    [homeContext.state, journeys, now],
+  );
+  const acceptNudge = () => {
+    if (!nudge || !journeys) return;
+    const before = autoHome(journeys.filter(r => departureDay(r) < nudge.since));
+    updateHomeBase(userId, s => ({ periods: markMove(s, nudge, nudge.since, before) }));
+  };
   const listRef = useRef<SectionList<TripListItem, TripListSection>>(null);
   const listHeaderHeight = useRef(0);
   const [anchoredViewer, setAnchoredViewer] = useState<string | null>(null);
@@ -369,6 +385,15 @@ export function Journeys() {
             ListHeaderComponent={
               <View onLayout={event => { listHeaderHeight.current = event.nativeEvent.layout.height; }}>
                 <SignedOutNoticeCard next="/" />
+                {nudge && (
+                  <View style={styles.nudge}>
+                    <HomeNudgeCard
+                      nudge={nudge}
+                      onYes={acceptNudge}
+                      onNo={() => dismissHomePrompt(userId, `nudge:${placeKey(nudge)}`)}
+                    />
+                  </View>
+                )}
                 {proTrip && <ProTripCard key={userId ?? 'guest'} trip={proTrip} home />}
                 {/* A first live flight expands inside its group beneath the
                     small summary. A later flight gets the linked top card.
@@ -387,11 +412,7 @@ export function Journeys() {
             }
             renderItem={({ item, index, section }) => {
               if (item.kind === 'separator') return null;
-              if (item.kind === 'header') return (
-                <TripGroupFrame header country={item.group.country}>
-                  <TripGroupHeading group={item.group} dates={item.dates} />
-                </TripGroupFrame>
-              );
+              if (item.kind === 'header') return <TripCoverHeader group={item.group} dates={item.dates} />;
               const first = section.data[index - 1]?.kind === 'header';
               const next = section.data[index + 1];
               const last = !next || next.kind === 'header';
@@ -767,6 +788,10 @@ function JourneyItem({
 }
 
 const styles = StyleSheet.create({
+  nudge: {
+    paddingHorizontal: Spacing.three,
+    marginBottom: Spacing.three,
+  },
   container: {
     flex: 1,
   },

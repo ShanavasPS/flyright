@@ -21,6 +21,11 @@ export const PRIVATE_ROUTE_PARAMS = [
   'userId',
   'updateId',
   'photoId',
+  // A trip on Flights and its flights (trip-photo).
+  'group',
+  'journeys',
+  'cityJourneys',
+  'groupLabel',
   // A trip's facts.
   'flight',
   'date',
@@ -33,6 +38,9 @@ export const PRIVATE_ROUTE_PARAMS = [
   'delay',
   // Names, files and copy written about the traveller.
   'name',
+  // Where a home base is: where the traveller lives.
+  'city',
+  'country',
   'handle',
   'uri',
   'path',
@@ -60,5 +68,6 @@ export const PUBLIC_ROUTE_PARAMS = [
   'scan',
   'step',
   'tab',
+  'target',
   'via',
 ] as const;

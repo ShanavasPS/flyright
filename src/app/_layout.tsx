@@ -12,6 +12,8 @@ import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
 import { PhotoSync } from "@/components/photo-sync";
 import { ProPreferencesSync } from "@/components/pro-preferences-sync";
+import { HomeBaseSync } from "@/components/home-base-sync";
+import { TripCoversSync } from "@/components/trip-covers-sync";
 import { EntitlementSync } from "@/components/entitlement-sync";
 import { ProfileSync } from "@/components/profile-sync";
 import { TravelDaySync } from "@/components/travel-day-sync";
@@ -142,6 +144,8 @@ function CloudSync({ children }: { children: React.ReactNode }) {
       <PushIdentitySync />
       <EntitlementSync />
       <ProPreferencesSync />
+      <HomeBaseSync />
+      <TripCoversSync />
       {children}
     </ConvexProviderWithClerk>
   );
@@ -257,6 +261,26 @@ function RootLayout() {
                   headerShown: false,
                   sheetGrabberVisible: true,
                   sheetAllowedDetents: [0.97],
+                }}
+              />
+              {/* A trip's picture on Flights: your trip photos, Wikipedia's, or the flag. */}
+              <Stack.Screen
+                name="trip-photo"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.75],
+                }}
+              />
+              {/* A home base city's picture: Wikipedia's, your own, or the flag. */}
+              <Stack.Screen
+                name="home-photo"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.6],
                 }}
               />
               {/* Read-only view of the sent claim email/letter snapshot. */}

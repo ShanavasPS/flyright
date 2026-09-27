@@ -69,6 +69,10 @@ import {
   useJourneys,
   type JourneyRow,
 } from '@/services/journeys';
+import { MoveCard } from '@/components/home-base';
+import { useHomeContext } from '@/hooks/use-home-base';
+import { airportPlace, autoHome, departureDay, markMove, moveCandidate } from '@/services/home-base';
+import { dismissHomePrompt, updateHomeBase } from '@/services/home-base-store';
 import { ProTripCard } from '@/components/pro-trip-card';
 import { hasPro, useProLocked } from '@/services/purchases';
 import { shiftLabel } from '@/services/schedule-change';
@@ -143,6 +147,19 @@ export function JourneyDetail({
   const journey = isDemo ? DEMO_JOURNEY : row ? toDomainJourney(row) : null;
   // The whole journal, for the trip-log facts ("3rd time in Japan").
   const { data: journal } = useJourneys(userId);
+  // "Was this the flight you moved on?" (docs/home-base.md).
+  const homeContext = useHomeContext(userId, journal);
+  const moveTo = useMemo(
+    () => (row && journal && homeContext.state.loaded && !embedded ? moveCandidate(homeContext.state, journal, row, new Date(now)) : null),
+    [row, journal, homeContext.state, embedded, now],
+  );
+  const answerMove = (moved: boolean) => {
+    if (!row || !moveTo) return;
+    if (!moved) return dismissHomePrompt(userId, `move:${row.id}`);
+    const day = departureDay(row);
+    const before = autoHome((journal ?? []).filter(r => departureDay(r) < day));
+    updateHomeBase(userId, s => ({ periods: markMove(s, moveTo, day, before) }));
+  };
 
   // Only 'lookup' rows track a live flight; manual journal entries and the
   // demo must never hit the status API.
@@ -509,6 +526,15 @@ export function JourneyDetail({
           eyebrow={!card}
           action={!card && embedded ? inlineActions : null}
         />
+
+        {moveTo && row && (
+          <MoveCard
+            to={moveTo}
+            from={airportPlace(row.fromCode, row.fromCountry)}
+            onYes={() => answerMove(true)}
+            onNo={() => answerMove(false)}
+          />
+        )}
 
         {!isDemo && row && proLocked && <ProTripCard trip={row} />}
         {!proLocked && status.data && (() => {
