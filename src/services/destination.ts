@@ -10,12 +10,14 @@ export const isMoveGroup = (group: TripGroup) => group.id.startsWith('move:');
 export const groupFlights = (group: TripGroup): JourneyRow[] =>
   group.entries.flatMap((e) => (e.kind === 'flight' ? [e.journey] : []));
 
-/** Where a trip went: its first flight's arrival city; a move's new home.
- * `from` is where that flight left. */
+/** Where a trip went: the place the group is named after; a move's new home.
+ * Never its first flight's arrival, which is a layover when that flight
+ * connects (HEL via DOH read as Qatar) and the next stop for a resumed
+ * visit. `from` is where the first flight left. */
 export function tripDestination(group: TripGroup): { place: HomePlace; from: HomePlace | null } {
   const first = groupFlights(group)[0];
   return {
-    place: first ? airportPlace(first.toCode, first.toCountry) : { city: group.title, country: group.country },
+    place: group.code ? airportPlace(group.code, group.country) : { city: group.title, country: group.country },
     from: first ? airportPlace(first.fromCode, first.fromCountry) : null,
   };
 }

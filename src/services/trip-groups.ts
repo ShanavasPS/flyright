@@ -38,6 +38,10 @@ export type TripGroupEntry =
 export interface TripGroup {
   id: string;
   title: string;
+  /** The airport code of the place the group is named after — the visit's
+   * final destination, not where its first flight happens to land (a
+   * connection), nor where it leaves from (a resumed visit, a return). */
+  code: string;
   country: string;
   continued: boolean;
   start: Moment;
@@ -196,7 +200,7 @@ function flattenVisits(route: Direction[], international: boolean): TripGroup[] 
       // which read oddly above the visit it continued once finished trips were
       // reversed.
       id, title: destinationName(p, false),
-      country: p.country, continued, start, end: start, entries: [],
+      code: p.code, country: p.country, continued, start, end: start, entries: [],
     };
     seen.add(key);
     groups.push(group);
@@ -260,7 +264,7 @@ function homeTheDayBefore(d: Direction, homeAt: HomeAt): HomePlace | null {
 /** One flight on its own: a move, or a return whose outbound was never logged. */
 function singleGroupTrip(d: Direction, id: string, title: string, place: Place): TravelTrip {
   const group: TripGroup = {
-    id, title, country: place.country, continued: false,
+    id, title, code: place.code, country: place.country, continued: false,
     start: departure(first(d)), end: arrival(last(d)),
     entries: d.legs.map(journey => ({ kind: 'flight' as const, key: `flight:${journey.id}`, journey })),
   };

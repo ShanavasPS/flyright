@@ -1,5 +1,6 @@
 import { getAirport } from './airports';
 import type { JourneyRow } from './journeys';
+import { tripDestination } from './destination';
 import { buildTripGroups, tripGroupDates, tripHeroGroup, tripListSections } from './trip-groups';
 
 const NOW = new Date('2027-05-01T12:00:00Z');
@@ -130,6 +131,26 @@ describe('trip grouping from the current journal', () => {
     expect(titles(rows)).toEqual(['New York', 'Toronto', 'New York']);
     expect(buildTripGroups(rows)[0]!.groups[2]).toMatchObject({ country: 'US', continued: true });
     expect(flights(rows)).toEqual(rows.map(r => r.id));
+  });
+
+  it('names, flags and photographs a visit by its destination, never its layover', () => {
+    // Production 1.1.5: a Helsinki trip via Doha read as Qatar, Portland via
+    // Amsterdam as the Netherlands — the header took the first leg's arrival.
+    const toDoha = flight('to-doha', 'MNL', 'DOH', '2027-06-01T08:00', '2027-06-01T12:00');
+    const toHelsinki = flight('to-helsinki', 'DOH', 'HEL', '2027-06-01T14:00', '2027-06-01T19:30');
+    const toAmsterdam = flight('to-amsterdam', 'HEL', 'AMS', '2027-07-01T08:00', '2027-07-01T09:40');
+    const toPortland = flight('to-portland', 'AMS', 'PDX', '2027-07-01T12:00', '2027-07-01T13:30');
+    const places = (rows: JourneyRow[]) => buildTripGroups(rows).flatMap(t => t.groups.map(g => [g.title, tripDestination(g).place]));
+    expect(places([toDoha, toHelsinki])).toEqual([['Helsinki', { city: 'Helsinki', country: 'FI' }]]);
+    expect(places([toAmsterdam, toPortland])).toEqual([['Portland', { city: 'Portland', country: 'US' }]]);
+    expect(tripDestination(buildTripGroups([toAmsterdam, toPortland])[0]!.groups[0]!).from).toEqual({ city: 'Helsinki', country: 'FI' });
+  });
+
+  it('places a resumed visit at its own city, not the next stop', () => {
+    const returnToNewYork = flight('return-to-new-york', 'YYZ', 'LGA', '2027-06-14T14:00', '2027-06-14T15:40');
+    const home = flight('home', 'JFK', 'HEL', '2027-06-23T18:00', '2027-06-24T08:00');
+    const groups = buildTripGroups([out, canadaOut, returnToNewYork, home])[0]!.groups;
+    expect(groups.map(g => [g.title, tripDestination(g).place.city])).toEqual([['New York', 'New York'], ['Toronto', 'Toronto'], ['New York', 'New York']]);
   });
 
   it('keeps an international return to another home city under the destination heading', () => {
