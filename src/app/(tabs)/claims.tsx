@@ -1,7 +1,10 @@
-import { useMarkInteractive } from '@/hooks/use-mark-interactive';
+import { LazyTab } from '@/components/lazy-tab';
 import { Claims } from '@/screens/claims';
 
 export default function ClaimsRoute() {
-  useMarkInteractive();
-  return <Claims />;
+  return (
+    <LazyTab>
+      <Claims />
+    </LazyTab>
+  );
 }

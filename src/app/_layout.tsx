@@ -46,7 +46,8 @@ import { useVersionGate } from "@/hooks/use-version-gate";
 import { initAnalytics, useAnalyticsScreenTracking } from "@/services/analytics";
 import { PRIVATE_ROUTE_PARAMS } from "@/services/observe-config";
 import { reportUnhandledRejections } from "@/services/unhandled-rejections";
-import { registerFlightWatch } from "@/services/flight-watch";
+import { runStartupProbe } from "@/services/startup-probe";
+import { defineFlightWatchTask, registerFlightWatch } from "@/services/flight-watch";
 import { useDbReady } from "@/services/journeys";
 import {
   initNotificationLifecycle,
@@ -111,6 +112,9 @@ Observe.configure({
   integrations: { "expo-router": { filteredParams: [...PRIVATE_ROUTE_PARAMS] } },
 });
 reportUnhandledRejections();
+// Background tasks are defined at module scope (see flight-watch).
+defineFlightWatchTask();
+runStartupProbe();
 
 // Before first render for the same reason — a post-mount apply would flash
 // the system theme before snapping to the user's chosen one.
@@ -183,9 +187,9 @@ function RootLayout() {
     initPurchases();
     initNotifications();
     initNotificationLifecycle();
-    // Importing flight-watch also defines its background task (global-scope
-    // contract); registration + a reconcile pass heal any schedule drift
-    // from runs the app missed while closed.
+    // The task itself is defined at module scope above; registration + a
+    // reconcile pass heal any schedule drift from runs the app missed while
+    // closed.
     void registerFlightWatch();
     void reconcileNotifications();
   }, []);

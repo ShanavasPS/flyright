@@ -1,11 +1,10 @@
+import { LazyTab } from '@/components/lazy-tab';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CONVEX_URL } from '@/constants/config';
-import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 import { People } from '@/screens/people';
 
 export default function PeopleRoute() {
-  useMarkInteractive();
   // Convex hooks need the provider; a build without a deployment (dev with
   // an empty env) has no circles at all.
   if (!CONVEX_URL) {
@@ -15,5 +14,9 @@ export default function PeopleRoute() {
       </ThemedView>
     );
   }
-  return <People />;
+  return (
+    <LazyTab>
+      <People />
+    </LazyTab>
+  );
 }

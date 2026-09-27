@@ -1,0 +1,193 @@
+diff --git a/node_modules/react-native/Libraries/Components/AccessibilityInfo/legacySendAccessibilityEvent.android.js b/node_modules/react-native/Libraries/Components/AccessibilityInfo/legacySendAccessibilityEvent.android.js
+index b476177..268c958 100644
+--- a/node_modules/react-native/Libraries/Components/AccessibilityInfo/legacySendAccessibilityEvent.android.js
++++ b/node_modules/react-native/Libraries/Components/AccessibilityInfo/legacySendAccessibilityEvent.android.js
+@@ -8,7 +8,9 @@
+  * @format
+  */
+ 
+-import UIManager from '../../ReactNative/UIManager';
++// Loaded on first use: in bridgeless mode loading UIManager asks native for
++// the constants of every registered view manager (see NativeComponentRegistry).
++const getUIManager = () => require('../../ReactNative/UIManager').default;
+ import nullthrows from 'nullthrows';
+ 
+ /**
+@@ -20,15 +22,15 @@ function legacySendAccessibilityEvent(
+   eventType: string,
+ ): void {
+   if (eventType === 'focus') {
+-    nullthrows(UIManager.sendAccessibilityEvent)(
++    nullthrows(getUIManager().sendAccessibilityEvent)(
+       reactTag,
+-      UIManager.getConstants().AccessibilityEventTypes.typeViewFocused,
++      getUIManager().getConstants().AccessibilityEventTypes.typeViewFocused,
+     );
+   }
+   if (eventType === 'click') {
+-    nullthrows(UIManager.sendAccessibilityEvent)(
++    nullthrows(getUIManager().sendAccessibilityEvent)(
+       reactTag,
+-      UIManager.getConstants().AccessibilityEventTypes.typeViewClicked,
++      getUIManager().getConstants().AccessibilityEventTypes.typeViewClicked,
+     );
+   }
+ }
+diff --git a/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js b/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js
+index c8392ea..24a2b4f 100644
+--- a/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js
++++ b/node_modules/react-native/Libraries/Components/ScrollView/ScrollView.js
+@@ -35,7 +35,9 @@ import * as ReactNativeFeatureFlags from '../../../src/private/featureflags/Reac
+ import AnimatedImplementation from '../../Animated/AnimatedImplementation';
+ import FrameRateLogger from '../../Interaction/FrameRateLogger';
+ import {findNodeHandle} from '../../ReactNative/RendererProxy';
+-import UIManager from '../../ReactNative/UIManager';
++// Loaded on first use: in bridgeless mode loading UIManager asks native for
++// the constants of every registered view manager (see NativeComponentRegistry).
++const getUIManager = () => require('../../ReactNative/UIManager').default;
+ import flattenStyle from '../../StyleSheet/flattenStyle';
+ import splitLayoutProps from '../../StyleSheet/splitLayoutProps';
+ import StyleSheet from '../../StyleSheet/StyleSheet';
+@@ -969,7 +971,7 @@ class ScrollView extends React.Component<ScrollViewProps, ScrollViewState> {
+       }
+ 
+       if (typeof nodeHandle === 'number') {
+-        UIManager.measureLayout(
++        getUIManager().measureLayout(
+           nodeHandle,
+           nullthrows(findNodeHandle<$FlowFixMe>(this)),
+           // $FlowFixMe[method-unbinding] added when improving typing for this parameters
+diff --git a/node_modules/react-native/Libraries/Components/Touchable/Touchable.js b/node_modules/react-native/Libraries/Components/Touchable/Touchable.js
+index 23358c3..30fd207 100644
+--- a/node_modules/react-native/Libraries/Components/Touchable/Touchable.js
++++ b/node_modules/react-native/Libraries/Components/Touchable/Touchable.js
+@@ -17,7 +17,9 @@ import type {
+ } from '../../Types/CoreEventTypes';
+ 
+ import {PressabilityDebugView} from '../../Pressability/PressabilityDebug';
+-import UIManager from '../../ReactNative/UIManager';
++// Loaded on first use: in bridgeless mode loading UIManager asks native for
++// the constants of every registered view manager (see NativeComponentRegistry).
++const getUIManager = () => require('../../ReactNative/UIManager').default;
+ import Platform from '../../Utilities/Platform';
+ import SoundManager from '../Sound/SoundManager';
+ import BoundingDimensions from './BoundingDimensions';
+@@ -696,7 +698,7 @@ const TouchableMixinImpl = {
+     }
+ 
+     if (typeof responderID === 'number') {
+-      UIManager.measure(responderID, this._handleQueryLayout);
++      getUIManager().measure(responderID, this._handleQueryLayout);
+     } else {
+       responderID.measure(this._handleQueryLayout);
+     }
+diff --git a/node_modules/react-native/Libraries/NativeComponent/NativeComponentRegistry.js b/node_modules/react-native/Libraries/NativeComponent/NativeComponentRegistry.js
+index deedfb0..6d14d98 100644
+--- a/node_modules/react-native/Libraries/NativeComponent/NativeComponentRegistry.js
++++ b/node_modules/react-native/Libraries/NativeComponent/NativeComponentRegistry.js
+@@ -14,8 +14,13 @@ import type {
+   ViewConfig,
+ } from '../Renderer/shims/ReactNativeTypes';
+ 
+-import getNativeComponentAttributes from '../ReactNative/getNativeComponentAttributes';
+-import UIManager from '../ReactNative/UIManager';
++// Required lazily: every host component (View, Text…) imports this module,
++// and loading UIManager in bridgeless mode asks native for the constants of
++// every registered view manager — tens of ms on the first render, for native
++// view configs that static view configs make unnecessary.
++function getNativeComponentAttributes(name: string): any {
++  return require('../ReactNative/getNativeComponentAttributes').default(name);
++}
+ import * as ReactNativeViewConfigRegistry from '../Renderer/shims/ReactNativeViewConfigRegistry';
+ import * as StaticViewConfigValidator from './StaticViewConfigValidator';
+ import {createViewConfig} from './ViewConfig';
+@@ -149,7 +154,10 @@ export function getWithFallback_DEPRECATED<Config extends {...}>(
+ 
+ function hasNativeViewConfig(name: string): boolean {
+   invariant(getRuntimeConfig == null, 'Unexpected invocation!');
+-  return UIManager.getViewManagerConfig(name) != null;
++  return (
++    require('../ReactNative/UIManager').default.getViewManagerConfig(name) !=
++    null
++  );
+ }
+ 
+ /**
+diff --git a/node_modules/react-native/Libraries/Pressability/Pressability.js b/node_modules/react-native/Libraries/Pressability/Pressability.js
+index 8e04ee5..d8004ad 100644
+--- a/node_modules/react-native/Libraries/Pressability/Pressability.js
++++ b/node_modules/react-native/Libraries/Pressability/Pressability.js
+@@ -18,7 +18,9 @@ import type {
+ 
+ import * as ReactNativeFeatureFlags from '../../src/private/featureflags/ReactNativeFeatureFlags';
+ import SoundManager from '../Components/Sound/SoundManager';
+-import UIManager from '../ReactNative/UIManager';
++// Loaded on first use: in bridgeless mode loading UIManager asks native for
++// the constants of every registered view manager (see NativeComponentRegistry).
++const getUIManager = () => require('../ReactNative/UIManager').default;
+ import {type RectOrSize, normalizeRect} from '../StyleSheet/Rect';
+ import {type PointerEvent} from '../Types/CoreEventTypes';
+ import Platform from '../Utilities/Platform';
+@@ -803,7 +805,7 @@ export default class Pressability {
+     }
+ 
+     if (typeof this._responderID === 'number') {
+-      UIManager.measure(this._responderID, this._measureCallback);
++      getUIManager().measure(this._responderID, this._measureCallback);
+     } else {
+       this._responderID.measure(this._measureCallback);
+     }
+diff --git a/node_modules/react-native/Libraries/Text/TextNativeComponent.js b/node_modules/react-native/Libraries/Text/TextNativeComponent.js
+index 11c8691..fea49f9 100644
+--- a/node_modules/react-native/Libraries/Text/TextNativeComponent.js
++++ b/node_modules/react-native/Libraries/Text/TextNativeComponent.js
+@@ -15,7 +15,9 @@ import type {TextProps} from './TextProps';
+ 
+ import {enablePreparedTextLayout} from '../../src/private/featureflags/ReactNativeFeatureFlags';
+ import {createViewConfig} from '../NativeComponent/ViewConfig';
+-import UIManager from '../ReactNative/UIManager';
++// Loaded on first use: in bridgeless mode loading UIManager asks native for
++// the constants of every registered view manager (see NativeComponentRegistry).
++const getUIManager = () => require('../ReactNative/UIManager').default;
+ import createReactNativeComponentClass from '../Renderer/shims/createReactNativeComponentClass';
+ 
+ export type NativeTextProps = Readonly<{
+@@ -82,7 +84,7 @@ export const NativeText: HostComponent<NativeTextProps> =
+   ) as any;
+ 
+ export const NativeVirtualText: HostComponent<NativeTextProps> =
+-  !global.RN$Bridgeless && !UIManager.hasViewManagerConfig('RCTVirtualText')
++  !global.RN$Bridgeless && !getUIManager().hasViewManagerConfig('RCTVirtualText')
+     ? NativeText
+     : (createReactNativeComponentClass('RCTVirtualText', () =>
+         createViewConfig(virtualTextViewConfig),
+diff --git a/node_modules/react-native/Libraries/Utilities/codegenNativeComponent.js b/node_modules/react-native/Libraries/Utilities/codegenNativeComponent.js
+index cb5ece9..cf1c71f 100644
+--- a/node_modules/react-native/Libraries/Utilities/codegenNativeComponent.js
++++ b/node_modules/react-native/Libraries/Utilities/codegenNativeComponent.js
+@@ -12,8 +12,14 @@
+ 
+ import type {HostComponent} from '../../src/private/types/HostComponent';
+ 
+-import requireNativeComponent from '../../Libraries/ReactNative/requireNativeComponent';
+-import UIManager from '../ReactNative/UIManager';
++// Required lazily: build-time codegen replaces calls to this function with
++// static view configs but leaves the import behind, so a module that merely
++// imports it must not load UIManager — in bridgeless mode that asks native
++// for the constants of every registered view manager.
++const UIManager = {
++  hasViewManagerConfig: (name: string): boolean =>
++    require('../ReactNative/UIManager').default.hasViewManagerConfig(name),
++};
+ 
+ // TODO: import from CodegenSchema once workspaces are enabled
+ type NativeComponentOptions = Readonly<{
+@@ -64,6 +70,8 @@ function codegenNativeComponent<Props extends {...}>(
+     }
+   }
+ 
++  const requireNativeComponent =
++    require('../../Libraries/ReactNative/requireNativeComponent').default;
+   return requireNativeComponent<Props>(
+     // $FlowFixMe[incompatible-type]
+     componentNameInUse,

@@ -1,7 +1,10 @@
-import { useMarkInteractive } from '@/hooks/use-mark-interactive';
+import { LazyTab } from '@/components/lazy-tab';
 import { World } from '@/screens/world';
 
 export default function WorldRoute() {
-  useMarkInteractive();
-  return <World />;
+  return (
+    <LazyTab>
+      <World />
+    </LazyTab>
+  );
 }

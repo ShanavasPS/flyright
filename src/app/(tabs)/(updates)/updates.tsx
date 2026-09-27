@@ -1,7 +1,10 @@
-import { useMarkInteractive } from '@/hooks/use-mark-interactive';
+import { LazyTab } from '@/components/lazy-tab';
 import { Updates } from '@/screens/updates';
 
 export default function UpdatesRoute() {
-  useMarkInteractive();
-  return <Updates />;
+  return (
+    <LazyTab>
+      <Updates />
+    </LazyTab>
+  );
 }

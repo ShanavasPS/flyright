@@ -31,19 +31,25 @@ const HOUR_MS = 3_600_000;
 const WATCH_BEFORE_MS = 36 * HOUR_MS;
 const WATCH_AFTER_MS = 12 * HOUR_MS;
 
-// Global scope by contract: TaskManager must know the task when the app is
-// launched headless for a background run, before any component mounts.
-TaskManager.defineTask(TASK_NAME, async () => {
-  try {
-    // First: it never throws, so a failed flight sweep can't skip it.
-    await badgeStoreUpdate();
-    await checkTrackedFlights();
-    return BackgroundTask.BackgroundTaskResult.Success;
-  } catch (error) {
-    console.warn('[flight-watch] sweep failed', error);
-    return BackgroundTask.BackgroundTaskResult.Failed;
-  }
-});
+/** Defines the background sweep. Global scope by contract: TaskManager must
+ * know the task when the app is launched headless for a background run,
+ * before any component mounts — so the root layout calls this at module
+ * scope. It is a call rather than an import side effect because imports are
+ * lazy on native (babel.config.js): an import alone would not run it. */
+export function defineFlightWatchTask() {
+  if (TaskManager.isTaskDefined(TASK_NAME)) return;
+  TaskManager.defineTask(TASK_NAME, async () => {
+    try {
+      // First: it never throws, so a failed flight sweep can't skip it.
+      await badgeStoreUpdate();
+      await checkTrackedFlights();
+      return BackgroundTask.BackgroundTaskResult.Success;
+    } catch (error) {
+      console.warn('[flight-watch] sweep failed', error);
+      return BackgroundTask.BackgroundTaskResult.Failed;
+    }
+  });
+}
 
 /** A newer release on the store badges the app icon while the app is shut
  * — before, the badge (and Settings' own) appeared only once the app had
