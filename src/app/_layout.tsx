@@ -44,6 +44,8 @@ import { UpdateRequired } from "@/components/update-required";
 import { Colors } from "@/constants/theme";
 import { useVersionGate } from "@/hooks/use-version-gate";
 import { initAnalytics, useAnalyticsScreenTracking } from "@/services/analytics";
+import { PRIVATE_ROUTE_PARAMS } from "@/services/observe-config";
+import { reportUnhandledRejections } from "@/services/unhandled-rejections";
 import { registerFlightWatch } from "@/services/flight-watch";
 import { useDbReady } from "@/services/journeys";
 import {
@@ -105,8 +107,10 @@ LogBox.ignoreLogs([
 // percentile.
 Observe.configure({
   dispatchingEnabled: Device.isDevice && !isTestLab,
-  integrations: { "expo-router": true },
+  // Tokens, ids and trip facts stay on the phone (services/observe-config).
+  integrations: { "expo-router": { filteredParams: [...PRIVATE_ROUTE_PARAMS] } },
 });
+reportUnhandledRejections();
 
 // Before first render for the same reason — a post-mount apply would flash
 // the system theme before snapping to the user's chosen one.

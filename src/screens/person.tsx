@@ -29,6 +29,7 @@ import { useReactToUpdate } from '@/hooks/use-react-to-update';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /**
  * A person in your circle, and their travel — the page a row in People opens.
@@ -59,6 +60,8 @@ export function Person({
   const leaveThePage = onGone ?? (() => router.back());
   const theme = useTheme();
   const data = useQuery(api.circle.person, { userId });
+  // Embedded in the People split view, the page is People's, which marks itself.
+  useMarkInteractive(!embedded && data !== undefined);
   const setMuted = useMutation(api.circle.setMuted);
   const setClose = useMutation(api.circle.setClose);
   const leave = useMutation(api.circle.leave);

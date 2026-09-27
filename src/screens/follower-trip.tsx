@@ -27,6 +27,7 @@ import { haversineKm } from '@/services/geo';
 import { adaptPublicSession, travellerEyebrow, tripDone } from '@/services/public-session';
 import { lookupDayFor } from '@/services/schedule-change-lifecycle';
 import { hasLanded, type TravelStage } from '@/services/travel-day';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /**
  * One trip of somebody whose circle you're in — everything a follower may
@@ -58,6 +59,7 @@ export function FollowerTrip({
     ownerId,
     journeyId: journeyId as Id<'journeys'>,
   });
+  useMarkInteractive(result !== undefined);
   const react = useReactToUpdate();
   const scrollRef = useRef<ScrollView>(null);
   // Where the posts sit, and whether the page still owes the reader that

@@ -12,12 +12,14 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /** Settings → Blocked people. The only list a blocked person still appears
  * in: search, circles and share pages all act as if they had left. */
 export function BlockedPeople() {
   const theme = useTheme();
   const people = useQuery(api.safety.blockedPeople, {});
+  useMarkInteractive(people !== undefined);
   const unblock = useMutation(api.safety.unblock);
 
   const confirmUnblock = (userId: string, name: string) =>

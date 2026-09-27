@@ -17,6 +17,7 @@ import {
   isPurchasesConfigured,
   reportPurchase,
 } from '@/services/purchases';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /**
  * Acquisition uses ProPlans with RevenueCat's actual store packages. Named
@@ -44,6 +45,8 @@ export function Paywall() {
   const wantsOffering = typeof offeringId === 'string' && offeringId.length > 0;
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [resolving, setResolving] = useState(wantsOffering);
+  // The plans list marks itself; an offering variant is ready once resolved.
+  useMarkInteractive(wantsOffering && !resolving);
 
   // Funnel step for the purchase events below: one per presentation.
   useEffect(() => {

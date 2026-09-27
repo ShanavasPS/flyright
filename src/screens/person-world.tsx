@@ -13,6 +13,7 @@ import { WorldCanvas } from '@/screens/world';
 import { getAirport } from '@/services/airports';
 import { haversineKm } from '@/services/geo';
 import type { JourneyRow } from '@/services/journeys';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /**
  * A followed person's travel, on the same map the traveller sees.
@@ -32,6 +33,7 @@ import type { JourneyRow } from '@/services/journeys';
 export function PersonWorld({ userId, focusJourneyId }: { userId: string; focusJourneyId?: string }) {
   const router = useRouter();
   const data = useQuery(api.circle.person, { userId });
+  useMarkInteractive(data !== undefined);
   // Arriving from one of their trips opens on that leg; "All travels" clears
   // it, exactly as it does for your own. Local state, not the module store
   // the tab uses — two maps must not fight over one focus.

@@ -15,6 +15,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entitledToPro, getAppUserId, getCurrentOffering, introEligibility, logInPurchases, purchase, restorePurchases } from '@/services/purchases';
 import { planHasTrial, planIntro, planName, planPrice, sortPlans } from '@/services/pro-plans';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /** Acquisition uses the store's actual packages and prices. Named subscriber
  * offerings still use RevenueCat's change-plan screen. */
@@ -38,6 +39,8 @@ export function ProPlans({ onClose, onUnlocked }: { onClose: () => void; onUnloc
   // Store product id → may this account still take the plan's intro offer.
   const [eligible, setEligible] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  // Interactive once the store's plans (or its error) are on screen.
+  useMarkInteractive(!loading);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);

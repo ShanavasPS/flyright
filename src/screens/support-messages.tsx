@@ -14,6 +14,7 @@ import { CONVEX_URL } from '@/constants/config';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMessageTime } from '@/services/support';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /**
  * Settings → Contact support, and the home screen's messages button, for a
@@ -64,6 +65,7 @@ function ThreadList() {
   const theme = useTheme();
   const { isSignedIn } = useAuth();
   const threads = useQuery(api.support.myThreads, isSignedIn ? {} : 'skip');
+  useMarkInteractive(!isSignedIn || threads !== undefined);
 
   // A skipped query never resolves, so the signed-out case (which only
   // reaches here by deep link — Settings and the home button send anonymous

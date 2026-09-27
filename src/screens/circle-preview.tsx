@@ -29,6 +29,7 @@ import { trackEvent } from '@/services/analytics';
 import { formatDayLabel } from '@/services/dates';
 import { setJourneyVisibility } from '@/services/journeys';
 import type { TripVisibility } from '@/services/trip-visibility';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 type Tier = 'close' | 'rest';
 
@@ -63,6 +64,7 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
   const shownTier: Tier =
     tier ?? (openedOn ? (openedOn.close ? 'close' : 'rest') : close ? 'close' : 'rest');
   const data = shownTier === 'close' ? closeData : restData;
+  useMarkInteractive(data !== undefined);
   const inTier = followers.filter((f) => (shownTier === 'close') === f.close);
   // The member shown must belong to the tier; otherwise the first who does.
   const wanted = member === undefined ? memberId ?? null : member;

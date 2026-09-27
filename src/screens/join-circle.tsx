@@ -20,6 +20,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { trackEvent } from '@/services/analytics';
 import { requestPushPermission } from '@/services/notifications';
 import { clearPendingFollow, markPendingFollow, pendingFollowFor } from '@/services/pending-follow';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /** The invite page behind getflyright.com/i/<token>: "Sam invited you to
  * follow their trips". Accepting files a follow request Sam allows in
@@ -35,6 +36,7 @@ export function JoinCircle({ token }: { token: string }) {
   // redeemed with a Convex identity, so that is the signal to wait for.
   const { isAuthenticated } = useConvexAuth();
   const invite = useQuery(api.circle.inviteByToken, { token });
+  useMarkInteractive(invite !== undefined);
   const accept = useMutation(api.circle.accept);
   // Files the attempt when the owner's circle turned out to be full, so it
   // waits in their People tab and they are told once. Without it the tap

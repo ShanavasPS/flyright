@@ -19,11 +19,13 @@ import { useJourneys, type JourneyRow } from '@/services/journeys';
 import { useProPreferences } from '@/services/pro-prompts';
 import { billingAvailable, useHasPro } from '@/services/purchases';
 import { showFlash } from '@/services/flash';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 export function ProOffer() {
   const { journeyId, feature, next, step } = useLocalSearchParams<{ journeyId?: string; feature?: string; next?: string; step?: string }>();
   const { userId } = useAuth();
   const { data: journeys } = useJourneys(userId);
+  useMarkInteractive();
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();

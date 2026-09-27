@@ -21,6 +21,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMessageTime } from '@/services/support';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /** One support conversation: the traveler's messages on the right, support's
  * replies (which arrive by email, see convex/support.ts) on the left, and a
@@ -28,6 +29,7 @@ import { formatMessageTime } from '@/services/support';
 export function SupportThread({ threadId }: { threadId: Id<'supportThreads'> }) {
   const theme = useTheme();
   const data = useQuery(api.support.thread, { threadId });
+  useMarkInteractive(data !== undefined);
   const reply = useMutation(api.support.reply);
   const markRead = useMutation(api.support.markRead);
   const scrollRef = useRef<ScrollView>(null);

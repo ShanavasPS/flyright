@@ -34,6 +34,7 @@ import {
   sessionProgress,
   travellerEyebrow,
 } from '@/services/public-session';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 
 /** The public "follow this trip" page behind getflyright.com/t/<token> —
  * reactive on web for anyone, and the in-app follower view with a Follow
@@ -45,6 +46,7 @@ export function FollowTrip({ token, sessionId }: { token?: string; sessionId?: I
   const tokenResult = useQuery(api.live.byToken, token ? { token } : 'skip');
   const followedResult = useQuery(api.live.byFollow, sessionId && isAuthenticated ? { sessionId } : 'skip');
   const result = sessionId ? followedResult : tokenResult;
+  useMarkInteractive(result !== undefined);
   const tripPath = sessionId ? `/following/${sessionId}` : `/t/${token}`;
   const follow = useMutation(api.live.follow);
   const react = useReactToUpdate();
