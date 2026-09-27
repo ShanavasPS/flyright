@@ -93,6 +93,9 @@ Read before starting; each cost time or a store build once.
 - Maestro and Argent cannot drive the same device at once: `stop-simulator-server` for that device before a Maestro run.
 - Argent's simulator transport can die mid-session ("CoreDevice HID transport is dead"): `stop-simulator-server`, then retry the same call.
 
+**Form sheets (iOS 26+)**
+- react-native-screens wraps every formSheet's content in its own safe-area view on iOS 26+; a ScrollView under a flex wrapper collapses to zero height there and the sheet opens empty (1.1.5 (71)'s photo pickers). A sheet screen has no ScrollView or returns one as its root — `src/services/form-sheets.test.ts` enforces it, and the device matrix opens both photo sheets and asserts their options are visible. Any new sheet must be opened on an iOS 26+ device before release; "the screen loads" never covers what it presents.
+
 **Store assets**
 - Clear app data before signing a screenshot device in to the store profile (guest trips merge into the account), and reset any test edits on that profile afterwards (Maja's home base was left on London from testing).
 - App Store Connect rejects a screenshot reorder that also removes one: delete the old screenshot, then PATCH the order.

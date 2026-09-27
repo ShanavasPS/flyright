@@ -7,7 +7,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 import { CityThumb, photoCredit } from '@/components/city-photo';
@@ -22,6 +22,9 @@ import { useCityPhoto } from '@/services/city-photo';
 import { importPhotos, PhotoPermissionError, pickImages, useTripPhotos } from '@/services/photos';
 import { usePlacePhoto } from '@/components/trip-cover';
 import { cityCoverKey, setTripCover, useTripCovers } from '@/services/trip-covers';
+
+/** Tiles offered: two rows of four with the add tile on the smallest phones. */
+const MAX_PHOTOS = 7;
 
 export function TripPhoto() {
   const { userId } = useAuth();
@@ -41,6 +44,12 @@ export function TripPhoto() {
   const cover = useTripCovers(userId).covers[key];
   const wiki = useCityPhoto(place, { wikiOnly: true });
   const cityPhoto = usePlacePhoto(forTrip ? place : null);
+  // The newest photos, with the chosen one always among them.
+  const newest = [...(photos ?? [])].reverse();
+  const chosen = cover?.kind === 'photo' ? newest.find((p) => p.id === cover.photoId) : undefined;
+  const offered = chosen
+    ? [chosen, ...newest.filter((p) => p !== chosen)].slice(0, MAX_PHOTOS)
+    : newest.slice(0, MAX_PHOTOS);
   const credit = photoCredit(wiki);
   const art = flagArt(place.country);
 
@@ -68,7 +77,11 @@ export function TripPhoto() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      {/* Plain layout on purpose: a vertical ScrollView inside a formSheet is
+          captured by the sheet (claim-letter.tsx), and on iOS 26+ it collapsed
+          to zero height under the sheet's safe-area wrapper — the sheet came
+          up empty in 1.1.5. The content fits the sheet. */}
+      <View style={styles.content}>
         <View style={styles.header}>
           <ThemedText type="subtitle" themeColor="heading" style={styles.grow} accessibilityRole="header" numberOfLines={2}>
             Photo for {params.title ?? place.city}
@@ -98,8 +111,10 @@ export function TripPhoto() {
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>
           {forTrip ? 'Your photos from this trip' : `Your photos from ${place.city}`}
         </ThemedText>
+        {/* Two rows at most, so the sheet never needs to scroll: the newest
+            photos, then the add tile. */}
         <View style={styles.grid}>
-          {(photos ?? []).map((p) => {
+          {offered.map((p) => {
             const on = cover?.kind === 'photo' && cover.photoId === p.id;
             return (
               <Pressable
@@ -163,7 +178,7 @@ export function TripPhoto() {
             {check(cover?.kind === 'none')}
           </Pressable>
         </SheenCard>
-      </ScrollView>
+      </View>
     </ThemedView>
   );
 }

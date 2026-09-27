@@ -64,6 +64,19 @@ tags:
             - assertVisible: "(?i)trips (to|from) .*"
             - assertNotVisible: "No trips here yet."
             - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-destination
+            # The photo sheet's options must be on screen, not just mounted:
+            # 1.1.5 (71) opened an empty sheet on iOS 26+.
+            - tapOn:
+                id: "hero-change-photo"
+            - extendedWaitUntil:
+                visible:
+                  id: "trip-photo-wiki"
+                timeout: 15000
+            - assertVisible:
+                id: "trip-photo-none"
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-trip-photo-sheet
+            - tapOn:
+                id: "trip-photo-done"
             - tapOn:
                 id: "home-hero-back"
       - runFlow:
@@ -108,6 +121,17 @@ tags:
                 timeout: 15000
             - assertNotVisible: "Not set yet"
             - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-home-base
+            - tapOn:
+                id: "home-base-change-photo"
+            - extendedWaitUntil:
+                visible:
+                  id: "home-photo-wiki"
+                timeout: 15000
+            - assertVisible:
+                id: "home-photo-none"
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-home-photo-sheet
+            - tapOn:
+                id: "home-photo-done"
       - runFlow:
           when:
             true: ${TRIPS === 'without'}

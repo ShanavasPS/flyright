@@ -3,7 +3,7 @@
 import { useAuth } from '@clerk/expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 import { CityThumb, photoCredit } from '@/components/city-photo';
@@ -60,7 +60,11 @@ export function HomePhoto() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      {/* Plain layout on purpose: a vertical ScrollView inside a formSheet is
+          captured by the sheet (claim-letter.tsx), and on iOS 26+ it collapsed
+          to zero height under the sheet's safe-area wrapper — the sheet came
+          up empty in 1.1.5. The content fits the sheet. */}
+      <View style={styles.content}>
         <View style={styles.header}>
           <ThemedText type="subtitle" themeColor="heading" style={styles.grow} accessibilityRole="header">Photo for {city}</ThemedText>
           <Pressable accessibilityRole="button" hitSlop={12} onPress={() => router.back()} testID="home-photo-done">
@@ -124,7 +128,7 @@ export function HomePhoto() {
         <ThemedText type="small" themeColor="textSecondary">
           Wikipedia&apos;s photo is downloaded once and kept on this phone, with its photographer and licence shown as the licence asks. Your own photo stays on this phone.
         </ThemedText>
-      </ScrollView>
+      </View>
     </ThemedView>
   );
 }
