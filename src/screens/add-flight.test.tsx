@@ -9,6 +9,7 @@ import { parseBcbp } from '@/services/bcbp';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { useAddFlightDraft } from '@/services/add-flight-draft';
 import { addJourney, saveImportedJourney, type JourneyRow } from '@/services/journeys';
+import { Observe } from 'expo-observe';
 import { AddFlight } from './add-flight';
 
 let mockSignedIn = false;
@@ -117,6 +118,46 @@ it('offers sign-in at the limit and retries the same flight under the new accoun
   expect(lookupFlight).toHaveBeenCalledTimes(2);
   expect(lookupFlight).toHaveBeenLastCalledWith('AY1331', '2026-09-14');
   expect(screen!.root.findAllByType(PassAction).some(action => action.props.label === 'Track this flight →')).toBe(true);
+});
+
+describe('reporting a failed lookup', () => {
+  const failure = () => jest.mocked(Observe.logEvent).mock.calls
+    .filter(([name]) => name === 'flight.lookup_failed');
+
+  it('says why: status, code, airline and the day relative to today', async () => {
+    jest.setSystemTime(new Date('2026-09-12T12:00:00'));
+    jest.mocked(lookupFlight).mockRejectedValueOnce(
+      new FlightLookupError('No flight found for that number and day.', 404),
+    );
+    await mount();
+    expect(failure()).toHaveLength(1);
+    expect(failure()[0][1]).toEqual({
+      severity: 'warn',
+      body: 'No flight found for that number and day.',
+      attributes: {
+        known: true, status: 404, code: 'http', flight: 'AY1331', airline: 'AY',
+        carrierListed: true, daysFromToday: 2, signedIn: false,
+      },
+    });
+  });
+
+  it('tells an unknown airline and a dropped connection apart from a provider miss', async () => {
+    useAddFlightDraft.getState().reset({ flightNumber: 'QQ1', flightInput: 'QQ1', date: '2026-09-14' });
+    jest.mocked(lookupFlight).mockRejectedValueOnce(new TypeError('Network request failed'));
+    mockSignedIn = true;
+    await mount();
+    expect(failure()[0][1]?.attributes).toMatchObject({
+      known: false, status: 0, code: 'network', airline: 'QQ', carrierListed: false, signedIn: true,
+    });
+  });
+
+  it('keeps the server error code when there is one', async () => {
+    jest.mocked(lookupFlight).mockRejectedValueOnce(
+      new FlightLookupError("You've used today's 5 guest lookups.", 429, 'guest_quota_exceeded'),
+    );
+    await mount();
+    expect(failure()[0][1]?.attributes).toMatchObject({ status: 429, code: 'guest_quota_exceeded' });
+  });
 });
 
 describe('scanning a codeshare boarding pass', () => {

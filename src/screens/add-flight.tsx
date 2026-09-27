@@ -579,14 +579,30 @@ export function AddFlight({ step }: { step: Step }) {
         Date.parse(flight.scheduledArrival) < today.getTime() - 6 * 3_600_000));
 
   // Funnel drop-off signal: they typed a flight and we couldn't show it.
+  // The attributes say why — the CLI and dashboard filter on attributes, not
+  // the body — so a provider gap (404 on a real airline), a spent budget and
+  // a typo read differently. The day is relative, never the date itself.
   useEffect(() => {
     if (!lookup.error) return;
+    const error = lookup.error;
+    const known = error instanceof FlightLookupError;
     Observe.logEvent('flight.lookup_failed', {
       severity: 'warn',
-      body: lookup.error.message,
-      attributes: { known: lookup.error instanceof FlightLookupError },
+      body: error.message,
+      attributes: {
+        known,
+        status: known ? error.status : 0,
+        code: (known && error.code) || (known ? 'http' : 'network'),
+        flight: flightNumber ?? '',
+        airline: flightNumber?.slice(0, 2) ?? '',
+        carrierListed: !!flightNumber && flightNumber.slice(0, 2) in CARRIERS,
+        daysFromToday: date
+          ? Math.round((Date.parse(date) - Date.parse(localDateString(new Date()))) / 86_400_000)
+          : 0,
+        signedIn: !!isSignedIn,
+      },
     });
-  }, [lookup.error]);
+  }, [lookup.error]); // eslint-disable-line react-hooks/exhaustive-deps -- once per failure, with the inputs that caused it
 
   const track = async () => {
     if (!flight || !routeKnown) return;

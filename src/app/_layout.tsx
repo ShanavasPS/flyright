@@ -17,7 +17,9 @@ import { ProfileSync } from "@/components/profile-sync";
 import { TravelDaySync } from "@/components/travel-day-sync";
 import { CONVEX_URL } from "@/constants/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Device from "expo-device";
 import { Observe, ObserveRoot } from "expo-observe";
+import { isTestLab } from "../../modules/flyright-test-lab";
 import {
   DarkTheme,
   DefaultTheme,
@@ -97,7 +99,12 @@ LogBox.ignoreLogs([
 
 // Must run at module scope, before any screen mounts — configure() throws if
 // called after mount. Release builds only; debug builds collect but don't send.
+// Travellers' phones only: release builds on simulators/emulators (store
+// shots, release checks) and Play's pre-launch robots on Firebase Test Lab
+// were most of the slowest startups and some of the events, and skewed every
+// percentile.
 Observe.configure({
+  dispatchingEnabled: Device.isDevice && !isTestLab,
   integrations: { "expo-router": true },
 });
 
