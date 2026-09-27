@@ -14,11 +14,14 @@ Reuse existing pairing. If connectivity or unlocking requires the user, request 
 ```sh
 npm run release:deploy-backend
 npm run release:preflight
+npm run release:journal
 ```
 
 `release:deploy-backend` deploys production and development, then reads both deployed function inventories. `release:preflight` runs TypeScript, the backend-check regression tests, the full Jest suite (including photo paths, photo sync, migrations/row loading, Wallet and imports), and a fresh production inventory check. Every command must exit zero.
 
 `release:backend` is the standalone read-only production check. It discovers API references from the actual app source, including platform-specific components, and compares them with Convex's deployed public functions. It fails on missing functions, the wrong deployment URL, authentication/network errors, and unresolved dynamic references. Its regression test removes the exact startup query that failed in 1.0.34. See [Convex function-spec](https://docs.convex.dev/cli/reference/function-spec).
+
+`release:journal` runs the app's own trip grouping, trip headers and automatic home base over a real journal pulled read-only from production (`devTools:inspectItinerary`, default the owner's profile; pass another name as `-- "<name>"`). The pulled file lives in the OS temp dir with mode 600 and is deleted after the run. It fails when a trip header's place is not the city it is named after, or the home is a city no journey leaves from. Added after 1.1.5 (69) reached TestFlight showing the owner's connecting trips under their layover (Helsinki via Doha read as Qatar) and Doha as home: fixtures had no connections, the real journal did. Extend `scripts/journal-check/journal.test.ts` whenever a release changes how journal data turns into places, groups or totals — it costs seconds and needs no build.
 
 The inventory proves functions exist and are public; it cannot prove their implementation or validators match the local code. That is why a successful deployment and signed-in candidate checks are also required. Do not replace deployment with code generation or reuse a previous inventory report.
 
@@ -54,6 +57,17 @@ The 1.0.35 candidate flow passed on the iOS simulator and Android emulator on 20
 The Maestro flow cold-starts twice, waits for the expected signed-in account, loads People data from the backend, opens the retained journey/photo, and checks the World screen. It never uses `clearState` or `clearKeychain`. Set up/log into the dedicated account before this gate; do not point it at a personal account. Check screenshots to confirm the retained photo renders correctly. Restore local dev binaries after any release-build testing.
 
 Use the existing `.maestro/` feature flows for changed areas: Wallet/PDF/photo intake, live activities, invites, journal editing, support and purchases. Document fixture setup and any required device interaction. A base smoke pass does not replace testing the feature changed in that release. Do not send support messages, invite real people or make purchases merely to satisfy a smoke test.
+
+## Account and journal matrix (since 1.1.5)
+
+Every release also runs the four account/journal states on the physical Pixel 9a and iPhone 15 Pro, on the production-configured candidate: **signed out with no trips, signed out with trips, signed in with no trips, signed in with trips.** The user asked for this on 2026-09-27 (1.1.5, which added home base, trip photo headers and city pages that behave differently in each state).
+
+- Signed in with trips: the App Review account `appreview@getflyright.com` and its retained trip (above).
+- Signed in with no trips: the dedicated production account **`release-empty@getflyright.com`** ("Release Test", Clerk `user_3JuiNYMtSEzF1mJRgVyjGMX6uMN`, created 2026-09-27 with the Clerk CLI). Its password was generated then and lives only in the release session's scratchpad; reset it with `clerk api /users/<id> -X PATCH --instance prod` if lost. Never add trips to it.
+- Signed out: sign out from Settings. With no trips = the guest journal is empty; with trips = add one past flight as a guest, run, then delete it **before** signing back in (a guest's data carries over to an account that has none).
+- Restore the App Review account at the end so the retained-photo gate keeps its state.
+
+Run `.maestro/release-matrix.yaml` once per state (`-e ACCOUNT_STATE=… -e TRIPS=with|without -e ACCOUNT_EMAIL=<escaped>`). Per state and over two cold starts it checks Flights (trip photo headers and a city page, or the empty journal), Travel stats and its Home base card, the Settings home base row and screen, Friends and World. Maestro cannot drive a physical iPhone: there the same states are walked with Argent on USB (sign-in typing, taps, screenshots) alongside the XCTest tab gate. Record each state per device in `release-state.md`.
 
 ## Unlocking the phones for a run
 

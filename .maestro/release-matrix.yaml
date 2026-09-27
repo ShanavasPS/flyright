@@ -1,0 +1,173 @@
+# The release account/journal matrix: signed in or out, with or without
+# trips. Run once per state on each target (physical Pixel, iOS simulator);
+# the physical iPhone runs the same checks through tests/physical-ios.
+# Keeps app data, account and permissions: put the app in the state first
+# (see docs/release-checks.md, "Account and journal matrix"), then:
+#   maestro --device <serial-or-udid> test \
+#     -e ACCOUNT_STATE=signed-in|signed-out -e TRIPS=with|without \
+#     -e SHOTS=<output-directory> .maestro/release-matrix.yaml
+# Checks per state, over two cold starts: Flights (trip photo headers and a
+# destination page, or the empty journal), Travel stats and its Home base
+# card, the Settings home base row and Home base screen, Friends and World.
+appId: com.shanavasshaji.flyright
+tags:
+  - release
+---
+- assertTrue: ${ACCOUNT_STATE === 'signed-in' || ACCOUNT_STATE === 'signed-out'}
+- assertTrue: ${TRIPS === 'with' || TRIPS === 'without'}
+- repeat:
+    times: 2
+    commands:
+      - launchApp:
+          clearState: false
+          permissions: {}
+      - extendedWaitUntil:
+          visible: "Flights"
+          timeout: 90000
+      - runFlow:
+          when:
+            visible: "Can't perform a React state update.*"
+          commands:
+            - tapOn:
+                id: "logbox_dismiss_button_error"
+      - assertNotVisible: "Something went wrong"
+
+      # Flights: photo headers and a city page, or the empty journal.
+      - runFlow:
+          when:
+            true: ${TRIPS === 'with'}
+          commands:
+            - scrollUntilVisible:
+                element:
+                  id: "trip-group-.*"
+                direction: DOWN
+                timeout: 30000
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-flights
+            - tapOn:
+                id: "trip-group-.*"
+            - extendedWaitUntil:
+                visible:
+                  id: "destination-screen"
+                timeout: 15000
+            - assertVisible: "(?i)trips (to|from) .*"
+            - assertNotVisible: "No trips here yet."
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-destination
+            - tapOn:
+                id: "home-hero-back"
+      - runFlow:
+          when:
+            true: ${TRIPS === 'without' && ACCOUNT_STATE === 'signed-in'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Add your first flight."
+                timeout: 30000
+      - runFlow:
+          when:
+            true: ${TRIPS === 'without' && ACCOUNT_STATE === 'signed-out'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Where have you flown?"
+                timeout: 30000
+      - runFlow:
+          when:
+            true: ${TRIPS === 'without'}
+          commands:
+            - assertNotVisible:
+                id: "trip-group-.*"
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-flights
+
+      # Travel stats: the Home base card with trips, the empty note without.
+      - openLink: "flyright://stats"
+      - runFlow:
+          when:
+            true: ${TRIPS === 'with'}
+          commands:
+            - scrollUntilVisible:
+                element:
+                  id: "home-base-change"
+                direction: DOWN
+                timeout: 20000
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-stats
+            - tapOn:
+                id: "home-base-change"
+            - extendedWaitUntil:
+                visible:
+                  id: "home-base-screen"
+                timeout: 15000
+            - assertNotVisible: "Not set yet"
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-home-base
+      - runFlow:
+          when:
+            true: ${TRIPS === 'without'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Log a flight and your stats will start adding up here."
+                timeout: 20000
+            - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-stats
+
+      # Settings: account state and the Home base row.
+      - openLink: "flyright://settings"
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-in'}
+          commands:
+            - extendedWaitUntil:
+                visible: ".*${ACCOUNT_EMAIL}.*"
+                timeout: 30000
+            - assertNotVisible: "Sign in or create account"
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-out'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Sign in or create account"
+                timeout: 30000
+      - scrollUntilVisible:
+          element:
+            id: "settings-home-base"
+          direction: DOWN
+          timeout: 20000
+      - runFlow:
+          when:
+            true: ${TRIPS === 'without'}
+          commands:
+            - assertVisible: ".*Not set.*"
+      - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-settings
+      - tapOn:
+          id: "settings-home-base"
+      - extendedWaitUntil:
+          visible:
+            id: "home-base-screen"
+          timeout: 15000
+      - runFlow:
+          when:
+            true: ${TRIPS === 'without'}
+          commands:
+            - assertVisible: "Not set yet"
+      - assertNotVisible: "Something went wrong"
+      - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-home-base-settings
+
+      # Friends and World load for every state.
+      - openLink: "flyright://people"
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-in'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Following.*|Nobody's following you yet|.*invite.*"
+                timeout: 30000
+      - runFlow:
+          when:
+            true: ${ACCOUNT_STATE === 'signed-out'}
+          commands:
+            - extendedWaitUntil:
+                visible: "Sign in to invite"
+                timeout: 30000
+      - assertNotVisible: ".*Could not find public function.*"
+      - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-friends
+      - openLink: "flyright://world"
+      - extendedWaitUntil:
+          visible: "Showing .*|Your world map awaits"
+          timeout: 30000
+      - assertNotVisible: "Something went wrong"
+      - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-world
