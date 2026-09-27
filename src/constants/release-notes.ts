@@ -15,6 +15,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.5',
+    date: '2026-09-27',
+    notes: [
+      'FlyRight opens much faster, above all on Android, where your flights now appear in about half the time.',
+      'The other tabs get ready the first time you open them, so starting the app only does the work for the screen in front of you.',
+      "The app's performance reports no longer carry trip details, share links or names from the screens you visit.",
+      "When a flight can't be found, the report now says why, so gaps in flight data get fixed sooner.",
+    ],
+  },
+  {
     version: '1.1.4',
     date: '2026-09-24',
     notes: [
