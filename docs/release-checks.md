@@ -79,7 +79,7 @@ Read before starting; each cost time or a store build once.
 **Before the builds**
 - Free disk first: a local iOS build needs ~15 GB (`df -h /System/Volumes/Data`). Safe to clear: `npm cache clean --force`, `android/app/build`, `~/Library/Caches/Homebrew/downloads`, old IPAs/APKs in the scratchpad, leftover `$TMPDIR/eas-build-local-nodejs/*`.
 - Gradle's heap comes from `plugins/with-gradle-memory.js` (4 GB); never hand-edit `android/gradle.properties`, prebuild overwrites it.
-- Poll EAS builds with a deadline. An Android build sat IN_PROGRESS for over an hour; cancel a superseded build (`eas build:cancel <id>`) rather than wait. There is no `eas submission:view` — read the build's `processingState` from App Store Connect instead.
+- Poll EAS builds with a deadline. An Android build sat IN_PROGRESS for over an hour; cancel a superseded build (`eas build:cancel <id>`) rather than wait. "Gradle build daemon disappeared unexpectedly" on an EAS Android build is a transient worker kill (1.1.4's first build, 61, 1.1.5's 72): retry, then re-sync `android.versionCode` in app.json to the number the retry took. The build log is Brotli-compressed JSON lines (`zlib.brotliDecompressSync`), linked from `eas build:view <id> --json` → `logFiles`. There is no `eas submission:view` — read the build's `processingState` from App Store Connect instead.
 
 **Physical iPhone**
 - Run only `testAllTabsAcrossTwoColdStarts` (`-only-testing`, see tests/physical-ios/README.md); the other tests in the scheme are demo captures that fail without their setup.
@@ -103,7 +103,7 @@ Read before starting; each cost time or a store build once.
 **Production data lookups**
 - `devTools:inspectItinerary` matches the profile's display name (the owner is "Shanavas", not "Shanavas Shaji"). Read-only; keep the output in a temp file, never commit it.
 
-**Shell:** zsh does not word-split `$VAR` holding a command, expands a leading `=`, and choked on a regex `until` loop — use a function or `bash -c` for scripted loops.
+**Shell:** zsh does not word-split `$VAR` holding a command, expands a leading `=`, and choked on a regex `until` loop — use a function or `bash -c` for scripted loops. macOS has no `timeout`: put the deadline inside the loop (`end=$((SECONDS+5400)); while [ $SECONDS -lt $end ]; …`).
 
 ## Unlocking the phones for a run
 
