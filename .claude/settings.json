@@ -8,7 +8,8 @@
       "Bash(stripe projects:*)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "mcp__argent"
     ]
   }
 }
