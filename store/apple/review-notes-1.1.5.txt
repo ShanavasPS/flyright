@@ -1,0 +1,11 @@
+What's new to review:
+
+Home base. Travel stats has a Home base card (with a photo of the city); tap it, or Settings > Home base. Change city picks a city in one tap (Undo appears for a few seconds). "Add a period" records an earlier home with from/until months. Trips on Flights then start and end at the home the traveller had at the time, and the flight they moved on shows as "Moved to <city>". The home base is private: followers never see it. It syncs to the signed-in account.
+
+Trip photos and city pages. Each trip on Flights opens with a photo of its destination. The photo comes from Wikipedia/Wikimedia Commons (looked up once per city by our server; the photographer and licence are shown on the photo), or the flag when none is available. Tapping a trip opens a page with every trip to that city; the photo button there lets the traveller keep Wikipedia's photo, pick one of their own trip photos (the existing photo-library picker used by the trip journal), or show no photo. Followers' trips show the Wikipedia photo only.
+
+Also: faster startup (screens and tabs load when first used) and performance reports that no longer record route parameters.
+
+No new device permissions, no change to what Free and Pro include, and no change to purchases.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. The review account already has trips, so the photos, city pages and home base can be seen right after signing in.

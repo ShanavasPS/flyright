@@ -1,0 +1,4 @@
+Set your home base: your city, or the places you've lived and when. Trips count from the home you had then, and a move shows as "Moved to London".
+Every trip opens with a photo of where you went. Tap it for all your trips to that city, and change the photo for all or just one. Friends' trips show photos too.
+FlyRight opens much faster, above all on Android.
+Performance reports no longer carry trip details, share links or names.

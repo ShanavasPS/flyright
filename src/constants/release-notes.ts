@@ -18,10 +18,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     version: '1.1.5',
     date: '2026-09-27',
     notes: [
+      'Set your home base: pick your city, or add the places you lived and when, and every trip counts from the home you had then. A move shows as "Moved to London" instead of one long trip.',
+      "Every trip on Flights opens with a photo of where you went. Tap it to see all your trips to that city, and change the photo for all of them or just one — your own trip photos come first.",
+      "Your friends' trips show the same photos.",
       'FlyRight opens much faster, above all on Android, where your flights now appear in about half the time.',
-      'The other tabs get ready the first time you open them, so starting the app only does the work for the screen in front of you.',
       "The app's performance reports no longer carry trip details, share links or names from the screens you visit.",
-      "When a flight can't be found, the report now says why, so gaps in flight data get fixed sooner.",
     ],
   },
   {

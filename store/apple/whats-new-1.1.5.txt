@@ -1,0 +1,7 @@
+Set your home base. Pick your city, or add the places you've lived and when, and every trip counts from the home you had then. A move now shows as "Moved to London" instead of one long trip.
+
+Every trip on Flights opens with a photo of where you went. Tap it to see all your trips to that city, and change the photo for all of them or just one — your own trip photos come first. Your friends' trips show the same photos.
+
+FlyRight also opens much faster: the screen you open on is the only one built at launch, and the other tabs get ready the first time you visit them.
+
+The app's performance reports no longer carry trip details, share links or names from the screens you visit.
