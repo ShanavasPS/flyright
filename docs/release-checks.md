@@ -64,10 +64,43 @@ Every release also runs the four account/journal states on the physical Pixel 9a
 
 - Signed in with trips: the App Review account `appreview@getflyright.com` and its retained trip (above).
 - Signed in with no trips: the dedicated production account **`release-empty@getflyright.com`** ("Release Test", Clerk `user_3JuiNYMtSEzF1mJRgVyjGMX6uMN`, created 2026-09-27 with the Clerk CLI). Its password was generated then and lives only in the release session's scratchpad; reset it with `clerk api /users/<id> -X PATCH --instance prod` if lost. Never add trips to it.
-- Signed out: sign out from Settings. With no trips = the guest journal is empty; with trips = add one past flight as a guest, run, then delete it **before** signing back in (a guest's data carries over to an account that has none).
+- Signed out: sign out from Settings. With no trips = the guest journal is empty; with trips = add a past **connecting** trip as a guest (e.g. COK→DOH then DOH→HEL within 24 h, not a single direct flight), run with `-e EXPECT_PLACE=Helsinki -e LAYOVER_PLACE=Qatar`, then delete both legs **before** signing back in (a guest's data carries over to an account that has none). A direct flight cannot exercise connections, layovers or door-to-door counting — that gap let 1.1.5 (69) reach TestFlight.
+- Assert meaning, not presence: "a header exists" passed on 69 while every connecting trip showed its layover. Each state's screenshots are read for the right city, flag, photo and home base, not just a loaded screen.
 - Restore the App Review account at the end so the retained-photo gate keeps its state.
 
 Run `.maestro/release-matrix.yaml` once per state (`-e ACCOUNT_STATE=… -e TRIPS=with|without -e ACCOUNT_EMAIL=<escaped>`). Per state and over two cold starts it checks Flights (trip photo headers and a city page, or the empty journal), Travel stats and its Home base card, the Settings home base row and screen, Friends and World. Maestro cannot drive a physical iPhone: there the same states are walked with Argent on USB (sign-in typing, taps, screenshots) alongside the XCTest tab gate. Record each state per device in `release-state.md`.
+
+## Known blockers and lessons (1.1.5, builds 69–71, 2026-09-27)
+
+Read before starting; each cost time or a store build once.
+
+**Find bugs before building.** `npm run release:journal` (real production journal through the app's logic) and a production-config Release on the simulator signed in to real data come *before* the store builds. A bug found on a phone after upload costs a whole build cycle (~1 h per platform); 69 and 70 were both superseded that way.
+
+**Before the builds**
+- Free disk first: a local iOS build needs ~15 GB (`df -h /System/Volumes/Data`). Safe to clear: `npm cache clean --force`, `android/app/build`, `~/Library/Caches/Homebrew/downloads`, old IPAs/APKs in the scratchpad, leftover `$TMPDIR/eas-build-local-nodejs/*`.
+- Gradle's heap comes from `plugins/with-gradle-memory.js` (4 GB); never hand-edit `android/gradle.properties`, prebuild overwrites it.
+- Poll EAS builds with a deadline. An Android build sat IN_PROGRESS for over an hour; cancel a superseded build (`eas build:cancel <id>`) rather than wait. There is no `eas submission:view` — read the build's `processingState` from App Store Connect instead.
+
+**Physical iPhone**
+- Run only `testAllTabsAcrossTwoColdStarts` (`-only-testing`, see tests/physical-ios/README.md); the other tests in the scheme are demo captures that fail without their setup.
+- "Developer App Certificate is not trusted" over Wi-Fi: retry over USB first. Argent refuses a Wi-Fi-only phone (`transport is localNetwork`) — it needs the cable.
+- A TestFlight install of the candidate is a valid release binary for the gate (store-signed, production config) and is faster than an ad hoc build.
+
+**Simulators and emulators**
+- Sign-in typing: Argent's `keyboard` maps `+ _ @` through the host's Swedish layout on some simulators (typed `maja+x@y` came out ``maja`x"y``) and `paste`/`simctl pbcopy` can silently do nothing. Switch the simulator keyboard to English (US) and use the on-screen `@`, or sign in on a simulator that already has the account.
+- Android emulator under heavy load (load average ~58) lost its system services ("Can't find service: package"). Restart it with Argent's `boot-device` — a hand-launched `emulator` without its gRPC flag cannot be driven by Argent afterwards.
+- `adb input text` drops characters under load: type one character at a time and read the field back (`uiautomator dump`) before continuing. Clear a field with `KEYCODE_MOVE_END` then repeated `KEYCODE_DEL`; Ctrl+A did not select everything.
+- Maestro and Argent cannot drive the same device at once: `stop-simulator-server` for that device before a Maestro run.
+- Argent's simulator transport can die mid-session ("CoreDevice HID transport is dead"): `stop-simulator-server`, then retry the same call.
+
+**Store assets**
+- Clear app data before signing a screenshot device in to the store profile (guest trips merge into the account), and reset any test edits on that profile afterwards (Maja's home base was left on London from testing).
+- App Store Connect rejects a screenshot reorder that also removes one: delete the old screenshot, then PATCH the order.
+
+**Production data lookups**
+- `devTools:inspectItinerary` matches the profile's display name (the owner is "Shanavas", not "Shanavas Shaji"). Read-only; keep the output in a temp file, never commit it.
+
+**Shell:** zsh does not word-split `$VAR` holding a command, expands a leading `=`, and choked on a regex `until` loop — use a function or `bash -c` for scripted loops.
 
 ## Unlocking the phones for a run
 

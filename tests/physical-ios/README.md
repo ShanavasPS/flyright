@@ -17,6 +17,7 @@ xcodebuild test \
   -project tests/physical-ios/FlyRightPhysicalUITests.xcodeproj \
   -scheme FlyRightPhysicalUITests \
   -destination 'platform=iOS,id=00008130-0008642C0204001C' \
+  -only-testing:FlyRightPhysicalUITests/FlyRightPhysicalUITests/testAllTabsAcrossTwoColdStarts \
   -destination-timeout 30 \
   -parallel-testing-enabled NO \
   -test-timeouts-enabled YES \
@@ -41,6 +42,8 @@ xcrun xcresulttool get test-results summary \
 Read the attachment manifest to identify the named screenshots. **Inspect the actual images** for every tab, especially the map and trip list. Copy useful screenshots to Downloads. A green XCTest assertion alone does not establish that map tiles, photos or all visual content rendered correctly. Check crash logs again, record the installed version/build, source commit/dirty state, account state, test result and any coverage gaps in a dated report and `docs/release-state.md`.
 
 This is a core tab smoke test, not proof that every feature works. Either existing account state is supported and is preserved; the Settings screenshot establishes which was observed. Signed-in production backend behavior and a retained trip/photo across an upgrade remain separate release gates. Camera scanning, Wallet, purchases, push delivery and Live Activities need their own affected-feature checks.
+
+`-only-testing` matters: the scheme also holds demo-capture tests (`testCapture*`, `testSwitchAccount`) that need their own environment and fail without it; they are not the release gate. If Xcode reports "the Developer App Certificate is not trusted" while the phone is on Wi-Fi, plug in USB and retry before touching Settings — on 2026-09-27 the same helper was rejected wirelessly and passed unchanged over USB.
 
 ## Established status
 

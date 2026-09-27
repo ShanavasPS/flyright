@@ -6,6 +6,9 @@
 #   maestro --device <serial-or-udid> test \
 #     -e ACCOUNT_STATE=signed-in|signed-out -e TRIPS=with|without \
 #     -e SHOTS=<output-directory> .maestro/release-matrix.yaml
+# With trips, also pass EXPECT_PLACE / LAYOVER_PLACE for a connecting trip
+# (e.g. Helsinki / Qatar for COK-DOH-HEL): its header must name the city and
+# its country, never the layover's (the 1.1.5 (69) bug). Use "none" to skip.
 # Checks per state, over two cold starts: Flights (trip photo headers and a
 # destination page, or the empty journal), Travel stats and its Home base
 # card, the Settings home base row and Home base screen, Friends and World.
@@ -42,6 +45,15 @@ tags:
                   id: "trip-group-.*"
                 direction: DOWN
                 timeout: 30000
+            - runFlow:
+                when:
+                  true: ${typeof EXPECT_PLACE !== 'undefined' && EXPECT_PLACE !== 'none'}
+                commands:
+                  - scrollUntilVisible:
+                      element: "(?i).*${EXPECT_PLACE}.*"
+                      direction: DOWN
+                      timeout: 30000
+                  - assertNotVisible: "(?i).*${LAYOVER_PLACE}.*"
             - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-flights
             - tapOn:
                 id: "trip-group-.*"
