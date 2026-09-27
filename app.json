@@ -58,7 +58,7 @@
           }
         ]
       },
-      "buildNumber": "71"
+      "buildNumber": "72"
     },
     "android": {
       "package": "com.shanavasshaji.flyright",
@@ -184,7 +184,7 @@
           ]
         }
       ],
-      "versionCode": 71
+      "versionCode": 72
     },
     "web": {
       "output": "server",
