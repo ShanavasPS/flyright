@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
+import { CityPhotoCard } from '@/components/city-photo-card';
 import { RecordGlobe } from '@/components/record-globe';
 import { RouteLeg } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
@@ -23,12 +24,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { formatDayLabelWithYear } from '@/services/dates';
 import type { JourneyRow } from '@/services/journeys';
-import { useFlagTint, useLogoTint } from '@/services/logo-tint';
+import { useLogoTint } from '@/services/logo-tint';
 import { airlineOf, formatKm } from '@/services/timeline';
 import {
   aroundEarth,
   countryName,
-  flagEmoji,
   formatStars,
   localClockAt,
   plural,
@@ -234,57 +234,19 @@ export function DestinationCard({
   compact?: boolean;
   onPress?: () => void;
 }) {
-  const theme = useTheme();
-  const primary = destination.codes[0];
-  const clock = localClockAt(primary, now);
+  const clock = localClockAt(destination.codes[0], now);
   const country = countryName(destination.country);
-  const flag = flagEmoji(destination.country);
-  const tint = useFlagTint(destination.country);
-  const gradient = tint
-    ? `linear-gradient(160deg, ${tint.base} 0%, ${tint.base} 40%, ${tint.light} 100%)`
-    : `linear-gradient(160deg, #0C1B36 0%, #1C3459 55%, ${theme.tint} 100%)`;
+  // The same card as the Home base above it: the city under its own photo.
   return (
-    <Pressable
-      accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={`${label}: ${destination.city}, ${country}, ${plural(destination.landings, 'landing')}${clock ? `, ${clock} there now` : ''}.`}
+    <CityPhotoCard
+      place={{ city: destination.city, country: destination.country }}
+      label={label}
+      meta={`${country} · ${plural(destination.landings, 'landing')}${clock ? ` · ${clock} there now` : ''}`}
+      chips={<CodeChips codes={destination.codes} />}
+      compact={compact}
       onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => [
-        styles.themed,
-        compact && styles.themedCompact,
-        { experimental_backgroundImage: gradient, opacity: pressed ? 0.92 : 1 },
-      ]}>
-      {!!flag && (
-        <Text style={[styles.flagWatermark, compact && styles.flagWatermarkCompact]} accessible={false}>
-          {flag}
-        </Text>
-      )}
-      <Text style={styles.themedMicro}>
-        {label}
-        {clock ? ` · ${clock} there now` : ''}
-      </Text>
-      <Text style={[styles.themedName, compact && styles.themedNameCompact]} numberOfLines={1} adjustsFontSizeToFit>
-        {destination.city}
-      </Text>
-      {!compact && (
-        <Text style={styles.themedSub}>
-          {country} · {plural(destination.landings, 'landing')}
-        </Text>
-      )}
-      <View style={styles.themedBottom}>
-        <View style={styles.chips}>
-          {destination.codes.map((code) => (
-            <View key={code} style={styles.chip}>
-              <Text style={styles.chipText}>{code}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.themedStat}>
-          <Text style={styles.themedStatValue}>{destination.landings}</Text>
-          <Text style={styles.themedStatLabel}>{destination.landings === 1 ? 'landing' : 'landings'}</Text>
-        </View>
-      </View>
-    </Pressable>
+      accessibilityLabel={`${label}: ${destination.city}, ${country}, ${plural(destination.landings, 'landing')}${clock ? `, ${clock} there now` : ''}.`}
+    />
   );
 }
 
@@ -806,19 +768,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: -10,
     top: -6,
-  },
-  flagWatermark: {
-    position: 'absolute',
-    right: -6,
-    top: -14,
-    fontSize: 116,
-    lineHeight: 130,
-    opacity: 0.3,
-  },
-  flagWatermarkCompact: {
-    fontSize: 88,
-    lineHeight: 100,
-    top: -10,
   },
   airlineTop: {
     flexDirection: 'row',

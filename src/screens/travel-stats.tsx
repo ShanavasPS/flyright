@@ -16,8 +16,10 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { CountryDaysCard } from '@/components/country-days-card';
 import { HomeBaseCard } from '@/components/home-base';
 import { useHomeContext } from '@/hooks/use-home-base';
+import { countryDays, countryDayYears } from '@/services/country-days';
 import { useJourneys } from '@/services/journeys';
 import { cityOf, travelRecap } from '@/services/timeline';
 import {
@@ -51,6 +53,14 @@ export function TravelStats() {
   // Frozen per visit: the destination's sky is the hour it was when the
   // screen opened, not a clock that ticks over while reading.
   const [now] = useState(() => new Date());
+  // This year so far, or the latest year with days in it.
+  const daysYear = useMemo(() => {
+    for (const year of countryDayYears(rows, now.getTime())) {
+      const y = countryDays(rows, year, home.homeOnDay, now.getTime());
+      if (y.countries.some((c) => !c.home) || y.notSureDays) return y;
+    }
+    return null;
+  }, [rows, home.homeOnDay, now]);
 
   if (error) return <DataErrorState error={error} />;
   if (!journeys) return <LoadingState />;
@@ -85,6 +95,12 @@ export function TravelStats() {
         />
 
         <HomeBaseCard home={home.current} onPress={() => router.push('/home-base')} />
+        {daysYear && (
+          <CountryDaysCard
+            year={daysYear}
+            onPress={() => router.push({ pathname: '/stats/places', params: { tab: 'days', year: String(daysYear.year) } })}
+          />
+        )}
 
         {recap.longest && (
           <>

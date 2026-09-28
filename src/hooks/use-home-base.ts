@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { currentHome, groupingHome, homeLookup, type CurrentHome, type HomeBaseState } from '@/services/home-base';
+import { currentHome, groupingHome, homeByDay, homeLookup, type CurrentHome, type HomeBaseState, type HomePlace } from '@/services/home-base';
 import { useHomeBase } from '@/services/home-base-store';
 import type { JourneyRow } from '@/services/journeys';
 import { localDateString } from '@/services/dates';
@@ -16,6 +16,8 @@ export interface HomeContext {
   homeAt: HomeAt | undefined;
   /** For travelRecap: undefined while Automatic keeps its own rule. */
   recap: RecapHome | undefined;
+  /** The home on a calendar day, for days by country. */
+  homeOnDay: (day: string) => HomePlace | null;
 }
 
 /** The home base as the screens use it (docs/home-base.md). */
@@ -31,6 +33,6 @@ export function useHomeContext(userId: string | null | undefined, rows: JourneyR
     const recap: RecapHome | undefined = set
       ? { current: current ? { city: current.city, departures: current.departures } : null, at: set }
       : undefined;
-    return { state, current, homeAt, recap };
+    return { state, current, homeAt, recap, homeOnDay: homeByDay(state, journal) };
   }, [state, rows, today]);
 }

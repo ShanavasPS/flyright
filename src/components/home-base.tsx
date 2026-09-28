@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
 import { CityPhotoFill, PhotoCredit, photoCredit } from '@/components/city-photo';
+import { CityPhotoCard } from '@/components/city-photo-card';
 import { CodeChips } from '@/components/stats-cards';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -23,7 +24,6 @@ import { flagArt } from '@/components/trip-group-mark';
 import { useTheme } from '@/hooks/use-theme';
 import { cityAirports, countryName } from '@/services/airports';
 import type { CityPhoto } from '@/services/city-photo';
-import { usePlacePhoto } from '@/components/trip-cover';
 import type { CurrentHome, HomePlace, Nudge } from '@/services/home-base';
 
 function HouseMark({ size = 44 }: { size?: number }) {
@@ -52,41 +52,20 @@ export function homeReason(home: CurrentHome): string {
  * count as home. The whole card opens the Home base screen, which carries
  * the reason and the history. */
 export function HomeBaseCard({ home, onPress }: { home: CurrentHome | null; onPress: () => void }) {
-  const theme = useTheme();
-  const place = home ? { city: home.city, country: home.country } : null;
-  const photo = usePlacePhoto(place);
-  if (!home || !place) return null;
+  if (!home) return null;
   const airports = cityAirports(home.city, home.country);
   const badge = home.source === 'auto' ? 'Auto' : 'Set by you';
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Home base: ${home.city}, ${countryName(home.country)}, ${badge}. Change`}
+    <CityPhotoCard
+      place={{ city: home.city, country: home.country }}
+      label="Home base"
+      action="Change"
+      meta={`${home.country ? `${countryName(home.country)} · ` : ''}${badge}`}
+      chips={airports.length > 0 ? <CodeChips codes={airports} strong={airports} /> : undefined}
       onPress={onPress}
-      testID="home-base-change">
-      <SheenCard style={styles.photoCard}>
-        <View style={styles.banner}>
-          <CityPhotoFill place={place} photo={photo} />
-          <View style={[StyleSheet.absoluteFill, { experimental_backgroundImage: `linear-gradient(180deg, ${theme.backgroundElement}00 35%, ${theme.backgroundElement} 100%)` }]} />
-          <View style={styles.pill}>
-            <ThemedText type="smallBold" style={styles.pillText}>HOME BASE</ThemedText>
-          </View>
-          <PhotoCredit photo={photo} style={styles.cardCredit} />
-        </View>
-        <View style={styles.cardBody}>
-          <View style={styles.headline}>
-            <View style={styles.grow}>
-              <ThemedText type="subtitle" themeColor="heading" numberOfLines={1} adjustsFontSizeToFit>{home.city}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {home.country ? `${countryName(home.country)} · ` : ''}{badge}
-              </ThemedText>
-            </View>
-            <ThemedText type="link" themeColor="tint">Change</ThemedText>
-          </View>
-          {airports.length > 0 && <CodeChips codes={airports} strong={airports} />}
-        </View>
-      </SheenCard>
-    </Pressable>
+      accessibilityLabel={`Home base: ${home.city}, ${countryName(home.country)}, ${badge}. Change`}
+      testID="home-base-change"
+    />
   );
 }
 
@@ -257,11 +236,7 @@ const styles = StyleSheet.create({
   house: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   actions: { gap: Spacing.two, marginTop: Spacing.one },
   action: { minHeight: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.two },
-  photoCard: { padding: 0, gap: 0, overflow: 'hidden' },
-  banner: { height: 112, overflow: 'hidden' },
-  pill: { position: 'absolute', left: Spacing.three, top: Spacing.three, borderRadius: 8, paddingHorizontal: Spacing.two, paddingVertical: 3, backgroundColor: 'rgba(7,15,32,0.55)' },
   pillText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
-  cardBody: { gap: Spacing.two, paddingHorizontal: Spacing.four, paddingBottom: Spacing.four, marginTop: -Spacing.four },
   collapsing: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden', zIndex: 2 },
   photoLayer: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   heroScrim: { experimental_backgroundImage: 'linear-gradient(180deg, rgba(7,15,32,0.55) 0%, rgba(7,15,32,0.1) 30%, rgba(7,15,32,0.1) 45%, rgba(7,15,32,0.88) 100%)' },
@@ -278,5 +253,4 @@ const styles = StyleSheet.create({
   miniFlag: { width: 21, height: 14, borderRadius: 3, overflow: 'hidden' },
   heroSubText: { color: 'rgba(214,227,244,0.95)', flexShrink: 1 },
   credit: { position: 'absolute', right: Spacing.three, maxWidth: '55%', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(7,15,32,0.45)' },
-  cardCredit: { position: 'absolute', right: Spacing.three, top: Spacing.three + 2, maxWidth: '55%', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(7,15,32,0.45)' },
 });

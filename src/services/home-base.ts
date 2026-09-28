@@ -201,6 +201,21 @@ export function groupingHome(state: HomeBaseState, rows: JourneyRow[], now = Dat
   return () => home;
 }
 
+/** The home on a calendar day, for day counts (services/country-days): the
+ * same rule as groupingHome — set periods, with no home on a day none of
+ * them covers, else the automatic home for every day. */
+export function homeByDay(state: HomeBaseState, rows: JourneyRow[], now = Date.now()): (day: string) => HomePlace | null {
+  if (state.periods.length) {
+    return (day) => {
+      const p = homeOn(state, day);
+      return p ? { city: p.city, country: p.country } : null;
+    };
+  }
+  const auto = autoHome(rows, now);
+  const home = auto ? { city: auto.city, country: auto.country } : null;
+  return () => home;
+}
+
 export interface UpsertResult {
   periods: HomePeriod[];
   /** What happened to neighbours, for the editor to say before saving. */

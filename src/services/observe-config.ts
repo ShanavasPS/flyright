@@ -70,4 +70,6 @@ export const PUBLIC_ROUTE_PARAMS = [
   'tab',
   'target',
   'via',
+  // A calendar year being read (Places › Days); the country beside it stays private.
+  'year',
 ] as const;

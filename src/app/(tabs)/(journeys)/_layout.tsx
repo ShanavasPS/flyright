@@ -49,6 +49,8 @@ export default function JourneysStack() {
       />
       {/* One type's page names itself after the type. */}
       <Stack.Screen name="stats/aircraft/[model]" options={{ headerBackButtonDisplayMode: 'minimal' }} />
+      {/* One country's days in a year names itself after the country. */}
+      <Stack.Screen name="stats/days/[country]" options={{ headerBackButtonDisplayMode: 'minimal' }} />
       {/* Adding a flight, one screen per step, pushed over My travels so the
         back chevron and swipe return to what was already entered (the draft
         they share is services/add-flight-draft). The details screen sets its
