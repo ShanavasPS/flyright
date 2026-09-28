@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { dayCount } from '@/components/country-days-card';
+import { dayCount, inCountry } from '@/components/country-days-card';
 import { daySpan, YearChips } from '@/components/country-days-list';
 import { DataErrorState, LoadingState } from '@/components/data-state';
 import { SheenCard } from '@/components/sheen-card';
@@ -42,7 +42,7 @@ export function StatsCountryDays({ country, initialYear }: { country: string; in
         <View style={styles.headline}>
           <ThemedText type="display" themeColor="heading">{dayCount(days)}</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            in {name} in {year}{data.partial ? ' so far' : ''}
+            in {inCountry(country, name)} in {year}{data.partial ? ' so far' : ''}
             {stays.length > 1 ? `, over ${stays.length} stays` : ''}
             {entry?.home ? ' · your home base' : ''}
           </ThemedText>
@@ -64,7 +64,7 @@ export function StatsCountryDays({ country, initialYear }: { country: string; in
         ))}
         {!stays.length && (
           <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
-            No days in {name} in {year}.
+            No days in {inCountry(country, name)} in {year}.
           </ThemedText>
         )}
         <ThemedText type="small" themeColor="textSecondary" style={styles.note}>

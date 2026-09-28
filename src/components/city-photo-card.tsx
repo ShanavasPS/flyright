@@ -69,7 +69,7 @@ export function CityPhotoCard({
         <View style={styles.bottom}>
           <ThemedText type="subtitle" themeColor="heading" numberOfLines={1} adjustsFontSizeToFit>{place.city}</ThemedText>
           <View style={styles.meta}>
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.shrink}>{meta}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.shrink}>{meta}</ThemedText>
             {chips}
           </View>
         </View>

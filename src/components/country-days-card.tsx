@@ -12,6 +12,11 @@ import type { YearDays } from '@/services/country-days';
 const ABROAD = ['#38C8D8', '#FF8A65', '#F2B441', '#4E9BF5', '#A78BFA'];
 const NOT_SURE = '#A9B8CE';
 
+/** A country as it reads after "in": "the United Kingdom", "Finland". */
+export function inCountry(code: string, name: string): string {
+  return ['US', 'GB', 'NL', 'PH', 'AE', 'CZ', 'DO', 'BS', 'CF', 'GM', 'KM', 'MV', 'SC'].includes(code) ? `the ${name}` : name;
+}
+
 export function dayCount(n: number): string {
   return `${n.toLocaleString()} ${n === 1 ? 'day' : 'days'}`;
 }
@@ -42,7 +47,7 @@ export function CountryDaysCard({ year, onPress }: { year: YearDays; onPress: ()
   const abroad = year.countries.filter((c) => !c.home);
   const top = abroad.slice(0, 3);
   const period = year.partial ? `${year.year} so far` : String(year.year);
-  const lead = home ? `${dayCount(home.days)} in ${home.name}` : `${abroad.length} ${abroad.length === 1 ? 'country' : 'countries'}`;
+  const lead = home ? `${dayCount(home.days)} in ${inCountry(home.country, home.name)}` : `${abroad.length} ${abroad.length === 1 ? 'country' : 'countries'}`;
   const rest = [
     home ? `${year.abroadDays.toLocaleString()} abroad` : null,
     year.notSureDays ? `${year.notSureDays} not sure` : null,
