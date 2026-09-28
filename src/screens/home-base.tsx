@@ -96,7 +96,7 @@ export function HomeBase() {
   };
 
   const useAutomatic = () => {
-    Alert.alert('Use automatic?', 'Your homes over time are removed, and FlyRight counts from the city you take off from most.', [
+    Alert.alert('Use automatic?', 'Your homes over time are removed, and FlyRight counts from the city you fly from and spend time in between trips.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Use automatic', style: 'destructive', onPress: () => updateHomeBase(userId, () => ({ periods: [] })) },
     ]);
@@ -191,7 +191,7 @@ export function HomeBase() {
             {periods.length === 0 && (
               <View style={styles.row}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  No periods yet. Automatic counts every trip from the city you take off from most. Add a period for a place you lived before.
+                  No periods yet. Automatic counts every trip from the city you fly from and spend time in between trips. Add a period for a place you lived before.
                 </ThemedText>
               </View>
             )}

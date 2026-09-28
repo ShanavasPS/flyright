@@ -118,20 +118,45 @@ export function doorToDoor(rows: JourneyRow[]): JourneyRow[] {
   });
 }
 
-/** The automatic home: the city most journeys take off from. */
-export function autoHome(rows: JourneyRow[]): (HomePlace & { departures: number; total: number }) | null {
-  const counts = new Map<string, { place: HomePlace; count: number }>();
-  let total = 0;
-  for (const row of doorToDoor(rows)) {
-    total += 1;
-    const place = airportPlace(row.fromCode, row.fromCountry);
-    const entry = counts.get(placeKey(place)) ?? { place, count: 0 };
-    entry.count += 1;
-    counts.set(placeKey(place), entry);
-  }
-  let best: { place: HomePlace; count: number } | null = null;
-  for (const entry of counts.values()) if (!best || entry.count > best.count) best = entry;
-  return best ? { ...best.place, departures: best.count, total } : null;
+/** The automatic home: the city the traveller leaves from and lives in. Each
+ * city scores its take-offs plus the days spent on the ground there between
+ * trips — landing and next taking off from the same city — a week counting
+ * as much as one take-off. Take-offs alone made a hub home: a London
+ * traveller whose US trips all ended in Dallas had seven departures from DFW
+ * against six from Heathrow, though the months between trips were spent in
+ * London. Days alone fail the other way: a journal of outbound flights only
+ * (the flights home never logged) shows no time at home at all, and one
+ * readable week in Los Angeles would win. A gap whose next flight leaves
+ * from another city (a road trip, a flight not logged) says nothing about
+ * where the time went and is not counted, and neither is time still to come.
+ */
+const DAYS_PER_TAKE_OFF = 7;
+
+export function autoHome(rows: JourneyRow[], now = Date.now()): (HomePlace & { departures: number; total: number; days: number }) | null {
+  const flights = doorToDoor(rows)
+    .slice()
+    .sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
+  const counts = new Map<string, { place: HomePlace; count: number; days: number }>();
+  const entry = (place: HomePlace) => {
+    const key = placeKey(place);
+    const found = counts.get(key) ?? { place, count: 0, days: 0 };
+    counts.set(key, found);
+    return found;
+  };
+  flights.forEach((row, i) => {
+    entry(airportPlace(row.fromCode, row.fromCountry)).count += 1;
+    const next = flights[i + 1];
+    if (!next) return;
+    const landed = airportPlace(row.toCode, row.toCountry);
+    if (placeKey(landed) !== placeKey(airportPlace(next.fromCode, next.fromCountry))) return;
+    // Only time already spent: a planned stay abroad next month is not home yet.
+    const ground = (Math.min(Date.parse(next.scheduledDeparture), now) - Date.parse(row.scheduledArrival || row.scheduledDeparture)) / DAY_MS;
+    if (Number.isFinite(ground) && ground > 0) entry(landed).days += ground;
+  });
+  const score = (e: { count: number; days: number }) => e.count + e.days / DAYS_PER_TAKE_OFF;
+  let best: { place: HomePlace; count: number; days: number } | null = null;
+  for (const e of counts.values()) if (!best || score(e) > score(best)) best = e;
+  return best ? { ...best.place, departures: best.count, total: flights.length, days: Math.round(best.days) } : null;
 }
 
 export interface CurrentHome extends HomePlace {
@@ -140,6 +165,8 @@ export interface CurrentHome extends HomePlace {
   /** Take-offs from this city in the whole journal. */
   departures: number;
   total: number;
+  /** Automatic only: days spent here between trips (0 when none could be read). */
+  days?: number;
 }
 
 /** Today's home: the period covering today, else the automatic one. */
@@ -151,7 +178,7 @@ export function currentHome(state: HomeBaseState, rows: JourneyRow[], today: str
     return { city: period.city, country: period.country, source: 'set', period, departures, total: flights.length };
   }
   const auto = autoHome(flights);
-  return auto ? { city: auto.city, country: auto.country, source: 'auto', period: null, departures: auto.departures, total: auto.total } : null;
+  return auto ? { city: auto.city, country: auto.country, source: 'auto', period: null, departures: auto.departures, total: auto.total, days: auto.days } : null;
 }
 
 /** The home a flight counts from, as a lookup by instant (ms) for trip

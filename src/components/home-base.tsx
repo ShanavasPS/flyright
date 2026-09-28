@@ -42,7 +42,9 @@ function plural(n: number, word: string) {
 /** Why this city is home, for the Home base screen. */
 export function homeReason(home: CurrentHome): string {
   return home.source === 'auto'
-    ? `Picked automatically: ${home.departures} of your ${plural(home.total, 'take-off')} were from ${home.city}. Wrong place? Change it.`
+    ? home.days
+      ? `Picked automatically: ${home.departures} of your ${plural(home.total, 'take-off')} were from ${home.city}, and you spent ${plural(home.days, 'day')} there between trips. Wrong place? Change it.`
+      : `Picked automatically: ${home.departures} of your ${plural(home.total, 'take-off')} were from ${home.city}. Wrong place? Change it.`
     : `You set ${home.city} as home. Your stats, places and trips count from here.`;
 }
 

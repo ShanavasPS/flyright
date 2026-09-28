@@ -78,9 +78,66 @@ describe('automatic home', () => {
     ];
     const addDay = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
     const rows = [...trip(1, '2025-01-10', '2025-01-20'), ...trip(2, '2025-03-10', '2025-03-20'), flight('x', 'HEL', 'TLL', '2025-03-15T10:00', '2025-03-15T10:30')];
-    expect(autoHome(rows)).toMatchObject({ city: 'Helsinki', departures: 3, total: 5 });
-    expect(currentHome(EMPTY_HOME_BASE, rows, '2026-01-01')).toMatchObject({ city: 'Helsinki', source: 'auto' });
+    // Home is where the time between trips goes: ~48 days in Kochi between
+    // the two Helsinki visits (10 days each) — never the hub.
+    expect(autoHome(rows)).toMatchObject({ city: 'Kochi', total: 5 });
+    expect(currentHome(EMPTY_HOME_BASE, rows, '2026-01-01')).toMatchObject({ city: 'Kochi', source: 'auto' });
     expect(autoHome(rows)?.city).not.toBe('Doha');
+  });
+
+  it('counts days on the ground, not take-offs: a transit city is not home', () => {
+    // A London traveller whose US trips all end in Dallas (1.1.6, a real
+    // journal): seven take-offs from DFW against six from LHR made Dallas home.
+    const rows = [
+      flight('1', 'LHR', 'CLT', '2026-02-08T11:45', '2026-02-08T21:05'),
+      flight('2', 'CLT', 'DFW', '2026-02-11T23:14', '2026-02-12T01:05'),
+      flight('3', 'DFW', 'LHR', '2026-02-15T02:30', '2026-02-15T11:40'),
+      flight('4', 'LHR', 'DFW', '2026-05-01T13:45', '2026-05-02T00:10'),
+      flight('5', 'DFW', 'MKE', '2026-05-04T01:33', '2026-05-04T03:57'),
+      flight('6', 'MKE', 'DFW', '2026-05-06T10:00', '2026-05-06T12:30'),
+      flight('7', 'DFW', 'LHR', '2026-05-08T02:40', '2026-05-08T11:50'),
+      flight('8', 'LHR', 'DFW', '2026-08-15T15:25', '2026-08-16T01:39'),
+      flight('9', 'DFW', 'LHR', '2026-08-23T02:40', '2026-08-23T11:50'),
+    ];
+    const home = autoHome(rows);
+    expect(home).toMatchObject({ ...LON });
+    expect(home!.departures).toBeLessThan(rows.filter((r) => r.fromCode === 'DFW').length);
+    expect(home!.days).toBeGreaterThan(150);
+  });
+
+  it('never counts a stay that has not happened yet', () => {
+    // 18 days so far at home in Helsinki (to "today", 28 Sep); a planned month
+    // in Dallas from 1 Oct would outweigh it if future time counted.
+    const rows = [
+      flight('1', 'HEL', 'LHR', '2026-09-01T10:00', '2026-09-01T11:00'),
+      flight('2', 'LHR', 'HEL', '2026-09-10T10:00', '2026-09-10T15:00'),
+      flight('3', 'HEL', 'DFW', '2026-10-01T10:00', '2026-10-01T20:00'),
+      flight('4', 'DFW', 'HEL', '2026-10-31T10:00', '2026-11-01T08:00'),
+    ];
+    expect(autoHome(rows, Date.parse('2026-09-28T00:00:00Z'))).toMatchObject({ ...HEL });
+    // Once that month has been spent, Dallas is where the time went.
+    expect(autoHome(rows, Date.parse('2026-12-01T00:00:00Z'))?.city).toBe('Dallas-Fort Worth');
+  });
+
+  it('keeps a home whose flights back were never logged', () => {
+    // Only outbound flights from Helsinki: no time there can be read, and one
+    // week in Los Angeles between two onward flights must not win.
+    const rows = [
+      ...['01', '02', '03', '04', '05', '06'].map((m, i) => flight(`h${i}`, 'HEL', 'CDG', `2026-${m}-10T10:00`, `2026-${m}-10T12:00`)),
+      flight('a', 'DXB', 'LAX', '2025-11-02T10:00', '2025-11-02T20:00'),
+      flight('b', 'LAX', 'NRT', '2025-11-10T10:00', '2025-11-11T10:00'),
+    ];
+    expect(autoHome(rows, Date.parse('2026-09-28T00:00:00Z'))).toMatchObject({ ...HEL });
+  });
+
+  it('falls back to take-offs when no time on the ground can be read', () => {
+    // Every next flight leaves from another city: no gap says where time went.
+    const rows = [
+      flight('1', 'HEL', 'LHR', '2025-01-01T10:00', '2025-01-01T11:00'),
+      flight('2', 'HEL', 'CDG', '2025-02-01T10:00', '2025-02-01T12:00'),
+      flight('3', 'ARN', 'HEL', '2025-03-01T10:00', '2025-03-01T11:00'),
+    ];
+    expect(autoHome(rows)).toMatchObject({ ...HEL, departures: 2, days: 0 });
   });
 
   it('keeps the first city on a tie and has nothing without flights', () => {

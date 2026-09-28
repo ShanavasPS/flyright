@@ -20,7 +20,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { cityAirports, countryName, searchAirports } from '@/services/airports';
 import { useCityPhoto } from '@/services/city-photo';
 import { localDateString } from '@/services/dates';
-import { airportPlace, placeKey, samePlace, setCurrentHome, type HomePlace } from '@/services/home-base';
+import { airportPlace, autoHome, placeKey, samePlace, setCurrentHome, type HomePlace } from '@/services/home-base';
 import { changeHomeWithUndo, usePeriodDraft } from '@/services/home-base-store';
 import { useJourneys } from '@/services/journeys';
 
@@ -85,6 +85,8 @@ export function HomeBaseCity() {
 
   const searching = !!query.trim();
   const options = searching ? searched : fromFlights;
+  // The same city the Home base card shows, not merely the most take-offs.
+  const automatic = useMemo(() => autoHome(rows), [rows]);
 
   const pick = (place: HomePlace | 'auto') => {
     if (forDraft) {
@@ -138,7 +140,7 @@ export function HomeBaseCity() {
         {!forDraft && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Automatic: the city you take off from most${chosen === 'auto' ? ', current' : ''}`}
+            accessibilityLabel={`Automatic: the city you fly from and spend time in${chosen === 'auto' ? ', current' : ''}`}
             onPress={() => pick('auto')}
             testID="home-city-automatic"
             style={({ pressed }) => [styles.auto, { borderColor: chosen === 'auto' ? theme.tint : theme.hairline, backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement }]}>
@@ -147,7 +149,7 @@ export function HomeBaseCity() {
             </View>
             <View style={styles.grow}>
               <ThemedText type="smallBold" themeColor="heading">Automatic</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">The city you take off from most{fromFlights[0] ? ` · ${fromFlights[0].city} now` : ''}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">The city you fly from and spend time in{automatic ? ` · ${automatic.city} now` : ''}</ThemedText>
             </View>
             {chosen === 'auto' ? currentTag : chevron}
           </Pressable>
