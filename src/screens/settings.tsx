@@ -71,8 +71,11 @@ function renewalLine(expirationDate: string | null, willRenew: boolean): string 
   return willRenew ? `Renews ${date}` : `Expires ${date}`;
 }
 
+/** The plan's short name. A grant made in RevenueCat (`rc_promo_…`) is
+ * "Complimentary"; any other product the table doesn't know is just "Pro" —
+ * a raw store id squeezed the row's own label into a sliver. */
 const planLabel = (productId: string) =>
-  PLAN_LABELS[productId.split(':')[0]] ?? productId;
+  PLAN_LABELS[productId.split(':')[0]] ?? (productId.startsWith('rc_promo') ? 'Complimentary' : 'Pro');
 
 /** "1.0.0 (6)" from the installed binary; falls back to the JS config
  * version on web, where native version APIs return null. */
@@ -482,7 +485,7 @@ export function Settings() {
                     </ThemedText>
                   )}
                 </View>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.rowValue}>
                   {pro ? planLabel(pro.productIdentifier) : 'Free plan'}
                 </ThemedText>
                 {chevron}
@@ -593,6 +596,11 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     gap: Spacing.half,
+  },
+  /** A value beside a row's label never takes the label's room. */
+  rowValue: {
+    flexShrink: 1,
+    maxWidth: '45%',
   },
   separator: {
     height: StyleSheet.hairlineWidth,
