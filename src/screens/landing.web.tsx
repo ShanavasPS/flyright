@@ -66,6 +66,7 @@ const SHOTS = {
     claims: require('@/assets/images/landing/claims.png'),
     steps: require('@/assets/images/landing/steps.png'),
     updates: require('@/assets/images/landing/updates.png'),
+    updatesTab: require('@/assets/images/landing/updates-tab.png'),
     share: require('@/assets/images/landing/share.png'),
   },
   dark: {
@@ -79,6 +80,7 @@ const SHOTS = {
     claims: require('@/assets/images/landing/dark/claims.png'),
     steps: require('@/assets/images/landing/dark/steps.png'),
     updates: require('@/assets/images/landing/dark/updates.png'),
+    updatesTab: require('@/assets/images/landing/dark/updates-tab.png'),
     share: require('@/assets/images/landing/dark/share.png'),
   },
 };
@@ -110,6 +112,12 @@ const FEATURES: { shot: ShotName; eyebrow: string; title: string; body: string; 
     eyebrow: 'TRIP UPDATES',
     title: 'A photo from the window, for the people who care',
     body: 'Share a line or photo with Pro, from your flight day until a day after landing. Your people read and reply for free.',
+  },
+  {
+    shot: 'updatesTab',
+    eyebrow: 'UPDATES',
+    title: 'Everyone’s trip, in one place',
+    body: 'See who is in the air right now and every photo or line they send from inside a trip. Heart it or reply, for free.',
   },
   {
     shot: 'people',
