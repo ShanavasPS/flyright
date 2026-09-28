@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { planLabel } from '@/services/plan-label';
 import {
   OFFERING_CHANGE_PLAN,
   beginRefundRequest,
@@ -37,14 +38,6 @@ const STORE_LABELS: Record<string, string> = {
 
 /** "Monthly" from any store's product id shape ('monthly',
  * 'flyright_pro_monthly', 'flyright_pro:monthly'). */
-function planLabel(productId: string): string {
-  const id = productId.toLowerCase();
-  if (id.includes('lifetime')) return 'Lifetime';
-  if (id.includes('year')) return 'Yearly';
-  if (id.includes('month')) return 'Monthly';
-  return productId;
-}
-
 function statusLine(expirationDate: string | null, willRenew: boolean): string {
   if (!expirationDate) return 'Lifetime access — yours forever.';
   const date = new Date(expirationDate).toLocaleDateString();

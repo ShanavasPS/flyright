@@ -33,6 +33,7 @@ import { useSignedOutNotice } from '@/hooks/use-signed-out-notice';
 import { useHomeContext } from '@/hooks/use-home-base';
 import { useTheme } from '@/hooks/use-theme';
 import { useJourneys } from '@/services/journeys';
+import { planLabel } from '@/services/plan-label';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import {
   getTravelDayEnabled,
@@ -59,23 +60,11 @@ import {
   useProEntitlement,
 } from '@/services/purchases';
 
-const PLAN_LABELS: Record<string, string> = {
-  monthly: 'Monthly',
-  yearly: 'Yearly',
-  lifetime: 'Lifetime',
-};
-
 function renewalLine(expirationDate: string | null, willRenew: boolean): string {
   if (!expirationDate) return 'Lifetime access — yours forever';
   const date = new Date(expirationDate).toLocaleDateString();
   return willRenew ? `Renews ${date}` : `Expires ${date}`;
 }
-
-/** The plan's short name. A grant made in RevenueCat (`rc_promo_…`) is
- * "Complimentary"; any other product the table doesn't know is just "Pro" —
- * a raw store id squeezed the row's own label into a sliver. */
-const planLabel = (productId: string) =>
-  PLAN_LABELS[productId.split(':')[0]] ?? (productId.startsWith('rc_promo') ? 'Complimentary' : 'Pro');
 
 /** "1.0.0 (6)" from the installed binary; falls back to the JS config
  * version on web, where native version APIs return null. */
