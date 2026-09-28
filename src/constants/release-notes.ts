@@ -15,6 +15,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.6',
+    date: '2026-09-28',
+    notes: [
+      'Keep your booking with the trip: when you add flights from a PDF or a picture, FlyRight can keep the document on each trip, so you can open it at the airport — even offline. Only you can see it.',
+      'Arrival dates read from bookings are right. A later date printed beside a flight — like a fare\'s "not valid after" — is no longer taken as the day it lands, and the flight time on the booking now settles it.',
+      'With that, the days you spend somewhere between flights add up correctly again for trips added from a booking.',
+      'On Android, opening a kept document shows it in your PDF viewer instead of the share sheet.',
+    ],
+  },
+  {
     version: '1.1.5',
     date: '2026-09-27',
     notes: [
