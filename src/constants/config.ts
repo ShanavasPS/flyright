@@ -19,18 +19,17 @@ export const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL ?? '';
 // points at the store listings instead.
 export const WEB_PURCHASE_LINK = process.env.EXPO_PUBLIC_WEB_PURCHASE_LINK ?? '';
 
-/** Cheapest plan in the fallback currency, for copy that can't ask the
+/** The Pro offer in the fallback currency, for copy that can't ask the
  * visitor's locale. Hand-kept: the authoritative prices live in the
- * RevenueCat default offering's web products (as of 2026-09-02, EUR:
- * $rc_monthly €1.99/mo intro ×3 then €4.99 / $rc_annual €19.99 first year
- * then €29.99 / $rc_lifetime €49.99 via flyright_pro_lifetime_web_v2), each
- * priced in 18 currencies — Web Billing picks the visitor's, EUR is the
- * fallback. Web Billing prices are immutable once saved, so a price change
- * means a new product swapped into the offering. The web funnel renders
- * services/web-pricing.ts instead, which localizes the same numbers.
- * NOTE: the App Store and Play plans dropped their intro prices for a 14-day
- * free trial on 2026-09-12; only Web Billing still sells the intro products. */
-export const PRO_PRICE_FROM = 'from €1.99/month';
+ * RevenueCat default offering (as of 2026-09-28, EUR: $rc_monthly €4.99 /
+ * $rc_annual €29.99, each with a 14-day free trial for people who have never
+ * subscribed, on the App Store, Google Play and the web alike; $rc_lifetime
+ * €49.99), each web product priced in 18 currencies — Web Billing picks the
+ * visitor's, EUR is the fallback. Web Billing prices are immutable once
+ * saved, so a price change means a new product swapped into the offering.
+ * The web funnel renders services/web-pricing.ts instead, which localizes
+ * the same numbers. */
+export const PRO_PRICE_FROM = '14-day free trial, then €4.99/month';
 
 // Layers (growth analytics / install attribution) app id — see
 // src/services/analytics.ts. Empty → the SDK never initializes and every

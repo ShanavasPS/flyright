@@ -1,35 +1,37 @@
-/** The web funnel's "from …/month" teaser, in the visitor's currency.
+/** The web funnel's price line, in the visitor's currency.
  *
  * Hand-kept mirror of the RevenueCat Web Billing prices (FlyRight Web app,
- * default offering, monthly intro product `flyright_pro_monthly_intro_web`):
- * the checkout itself resolves the currency from the visitor's location, so
- * this only has to be close enough that the teaser and the checkout agree.
- * Unknown regions fall back to EUR, exactly like Web Billing does.
- * Re-check when the dashboard prices change. Full ladder per currency (EUR):
- * monthly 4.99 (intro 1.99 ×3) · yearly 29.99 (intro 19.99 first year) ·
- * lifetime 49.99 (flyright_pro_lifetime_web_v2, since 2026-09-02).
- * Web only: the store plans replaced their intro prices with a 14-day free
- * trial on 2026-09-12. */
+ * default offering, monthly product `flyright_pro_monthly_trial_web`): the
+ * checkout itself resolves the currency from the visitor's location, so this
+ * only has to be close enough that the page and the checkout agree. Unknown
+ * regions fall back to EUR, exactly like Web Billing does. Re-check when the
+ * dashboard prices change. Full ladder per currency (EUR): monthly 4.99 ·
+ * yearly 29.99, both with a 14-day free trial for people who have never
+ * subscribed · lifetime 49.99 (flyright_pro_lifetime_web_v2). Since
+ * 2026-09-28 the web sells the same trial as the App Store and Google Play
+ * (the €1.99 / €19.99 intro products are retired from the offering). */
 
-export const MONTHLY_INTRO_PRICE: Record<string, number> = {
-  EUR: 1.99,
-  USD: 1.99,
-  GBP: 1.79,
-  CAD: 2.99,
-  AUD: 2.99,
-  NZD: 3.49,
-  AED: 7.99,
-  SAR: 7.99,
-  QAR: 7.99,
-  SEK: 25,
-  NOK: 25,
-  DKK: 15,
-  CHF: 1.9,
-  JPY: 300,
-  SGD: 2.98,
-  HKD: 15,
-  PLN: 8.99,
-  CZK: 49,
+export const TRIAL_DAYS = 14;
+
+export const MONTHLY_PRICE: Record<string, number> = {
+  EUR: 4.99,
+  USD: 4.99,
+  GBP: 4.49,
+  CAD: 6.99,
+  AUD: 7.99,
+  NZD: 8.99,
+  AED: 19.99,
+  SAR: 19.99,
+  QAR: 19.99,
+  SEK: 59,
+  NOK: 59,
+  DKK: 39,
+  CHF: 4.9,
+  JPY: 800,
+  SGD: 6.98,
+  HKD: 38,
+  PLN: 21.99,
+  CZK: 129,
 };
 
 /** ISO region → currency, for the regions where a Web Billing price exists. */
@@ -61,20 +63,23 @@ export function currencyForLocale(locale: string | undefined): string {
   return (region && REGION_CURRENCY[region]) || 'EUR';
 }
 
-/** 'from €1.99/month' / 'from $1.99/month' / 'from ¥300/month'. */
-export function proPriceFrom(locale: string | undefined): string {
+/** '€4.99' / '$4.99' / '¥800' — the monthly price after the trial. */
+export function proMonthlyPrice(locale: string | undefined): string {
   const currency = currencyForLocale(locale);
-  const amount = MONTHLY_INTRO_PRICE[currency] ?? MONTHLY_INTRO_PRICE.EUR;
-  let formatted: string;
+  const amount = MONTHLY_PRICE[currency] ?? MONTHLY_PRICE.EUR;
   try {
-    formatted = new Intl.NumberFormat(locale || 'en', {
+    return new Intl.NumberFormat(locale || 'en', {
       style: 'currency',
       currency,
       minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
       maximumFractionDigits: 2,
     }).format(amount);
   } catch {
-    formatted = `${amount} ${currency}`;
+    return `${amount} ${currency}`;
   }
-  return `from ${formatted}/month`;
+}
+
+/** '14-day free trial, then €4.99/month'. */
+export function proTrialLine(locale: string | undefined): string {
+  return `${TRIAL_DAYS}-day free trial, then ${proMonthlyPrice(locale)}/month`;
 }

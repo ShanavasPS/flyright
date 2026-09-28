@@ -17,7 +17,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabel, localDateString } from '@/services/dates';
 import { normalizeFlightNumber } from '@/services/flight-lookup';
-import { proPriceFrom } from '@/services/web-pricing';
+import { proMonthlyPrice, TRIAL_DAYS } from '@/services/web-pricing';
 
 /** getflyright.com's front page. The app as it is — a travel buddy for the
  * day you fly, with the EU261 claim as the moment it pays for itself — told
@@ -430,7 +430,7 @@ function ClaimsBand({ compact }: { compact: boolean }) {
 function Pro({ compact }: { compact: boolean }) {
   const theme = useTheme();
   const router = useRouter();
-  const price = proPriceFrom(useClientLocale());
+  const monthly = proMonthlyPrice(useClientLocale());
   return (
     <Section style={{ paddingBottom: 72 }}>
       <Reveal
@@ -466,10 +466,13 @@ function Pro({ compact }: { compact: boolean }) {
         </View>
         <View style={{ flex: 0.8, gap: Spacing.two }}>
           <ThemedText themeColor="heading" style={styles.price}>
-            {price}
+            {TRIAL_DAYS} days free
+          </ThemedText>
+          <ThemedText type="smallBold" themeColor="heading">
+            Then {monthly}/month, or save with a yearly plan
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Monthly, annual and lifetime · available offers confirmed at checkout
+            The same trial on the web, the App Store and Google Play · lifetime also available · cancel anytime
           </ThemedText>
           <Pressable
             accessibilityRole="link"

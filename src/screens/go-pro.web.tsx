@@ -10,7 +10,8 @@ import { ThemedText } from '@/components/themed-text';
 import { WEB_PURCHASE_LINK } from '@/constants/config';
 import { STORE_URLS } from '@/constants/store-links';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { proPriceFrom } from '@/services/web-pricing';
+import { useClientLocale } from '@/hooks/use-client-value';
+import { proTrialLine } from '@/services/web-pricing';
 
 /** Web checkout step: sign in with Clerk, then hand off to the RevenueCat Web
  * Purchase Link keyed by the Clerk user id. Clerk id = RevenueCat app_user_id
@@ -25,6 +26,9 @@ const BENEFITS = [
 
 export function GoPro() {
   const { isLoaded, isSignedIn, user } = useUser();
+  // Through the client-value hook, not navigator.language in render: the
+  // static export was baking the build machine's currency into the HTML.
+  const locale = useClientLocale();
 
   return (
     <SiteChrome>
@@ -37,7 +41,7 @@ export function GoPro() {
             Free to remember. Pro when you travel.
           </ThemedText>
           <ThemedText type="smallBold" themeColor="textSecondary">
-            {proPriceFrom(navigator.language)} · annual and lifetime at checkout · cancel anytime
+            {proTrialLine(locale)} · annual and lifetime at checkout · cancel anytime
           </ThemedText>
         </View>
 

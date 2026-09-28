@@ -1,4 +1,4 @@
-import { currencyForLocale, proPriceFrom } from './web-pricing';
+import { currencyForLocale, proMonthlyPrice, proTrialLine } from './web-pricing';
 
 describe('currencyForLocale', () => {
   it('maps regions with a Web Billing price', () => {
@@ -16,12 +16,12 @@ describe('currencyForLocale', () => {
   });
 });
 
-describe('proPriceFrom', () => {
-  it('formats the intro price in the visitor currency', () => {
-    expect(proPriceFrom('en-US')).toBe('from $1.99/month');
-    expect(proPriceFrom('en-GB')).toBe('from £1.79/month');
-    expect(proPriceFrom('en')).toBe('from €1.99/month');
-    expect(proPriceFrom('en-JP')).toBe('from ¥300/month');
-    expect(proPriceFrom('en-SE')).toMatch(/^from (SEK\s25|25\skr)\/month$/);
+describe('proTrialLine', () => {
+  it('states the trial and the monthly price in the visitor currency', () => {
+    expect(proTrialLine('en-US')).toBe('14-day free trial, then $4.99/month');
+    expect(proTrialLine('en-GB')).toBe('14-day free trial, then £4.49/month');
+    expect(proTrialLine('en')).toBe('14-day free trial, then €4.99/month');
+    expect(proMonthlyPrice('en-JP')).toBe('¥800');
+    expect(proMonthlyPrice('en-SE')).toMatch(/^(SEK\s59|59\skr)$/);
   });
 });
