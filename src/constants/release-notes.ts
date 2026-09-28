@@ -15,6 +15,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.7',
+    date: '2026-09-28',
+    notes: [
+      'See how many days you spent in each country every year, from Travel stats. A day counts if you were there for any part of it, as tax treaties and the US count, and the UK shows its midnights too. Days around a missing flight are marked "not sure", never guessed.',
+      'Trips read the way you think of them: a stay abroad says "13 days in the US", one at home names the city — based on where you lived at the time. A flight home no longer shows up as a trip of its own when the flight out was never added.',
+      "Your friends see your trips grouped the way you do.",
+      'Documents kept with a trip open right inside FlyRight on iPhone, and copies you share have readable names.',
+      'Fresh Home base and Top destination cards with their city photo, a white plane on the globe that is easier to spot, and Settings shows your plan as Monthly or Yearly.',
+    ],
+  },
+  {
     version: '1.1.6',
     date: '2026-09-28',
     notes: [
