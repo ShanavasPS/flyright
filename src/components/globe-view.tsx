@@ -681,8 +681,10 @@ function PlaneGlyph({
   });
   return (
     <Group transform={transform} opacity={opacity}>
-      <Path path={PLANE_PATH} color={colors.background} style="stroke" strokeWidth={3} strokeJoin="round" />
-      <Path path={PLANE_PATH} color={colors.tint} />
+      {/* A white plane outlined in the route's blue, in both themes: filled
+          blue it matched the line it flies along and sank into dark land. */}
+      <Path path={PLANE_PATH} color={colors.tint} style="stroke" strokeWidth={2.5} strokeJoin="round" />
+      <Path path={PLANE_PATH} color="#FFFFFF" />
     </Group>
   );
 }
