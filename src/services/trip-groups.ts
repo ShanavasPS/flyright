@@ -111,7 +111,13 @@ function calendarDay(m: Moment): string | null {
   return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === day ? day : null;
 }
 
-function stayBetween(a: Direction, b: Direction, international: boolean): TripStay | null {
+/** A stay is named after its country when that country is abroad from the
+ * home the traveller had when they landed ("13 days in the US" for a London
+ * home), and after its city at home ("3 days in Manchester"). With no home
+ * known, a stay that lands in a city and leaves from it again is that city,
+ * and only a stay that leaves from another city (in at JFK, out at BOS) is
+ * named after the country. */
+function stayBetween(a: Direction, b: Direction, international: boolean, homeThen?: HomePlace | null): TripStay | null {
   if (placeKey(a.to, international) !== placeKey(b.from, international)) return null;
   const from = arrival(last(a));
   const to = departure(first(b));
@@ -120,11 +126,11 @@ function stayBetween(a: Direction, b: Direction, international: boolean): TripSt
   if (!start || !end || !(at(to) > at(from))) return null;
   const days = Math.round((Date.parse(end) - Date.parse(start)) / DAY_MS);
   if (days < 0) return null;
-  // Landing in a city and leaving from it again is a stay in that city, even
-  // on an international trip. Only a stay that lands in one city and leaves
-  // from another (in at JFK, out at BOS) is named after the country.
   const oneCity = placeKey(a.to, false) === placeKey(b.from, false);
-  return { id: `${last(a).id}:${first(b).id}`, days, place: stayPlace(a.to, international && !oneCity), fromId: last(a).id, toId: first(b).id };
+  const abroad = homeThen
+    ? !!a.to.country && !!homeThen.country && a.to.country !== homeThen.country
+    : international && !oneCity;
+  return { id: `${last(a).id}:${first(b).id}`, days, place: stayPlace(a.to, abroad), fromId: last(a).id, toId: first(b).id };
 }
 
 /** Where a direction leaves the traveller in time. A hand-typed flight often
@@ -188,7 +194,7 @@ function directions(rows: JourneyRow[]): Direction[] {
     });
 }
 
-function flattenVisits(route: Direction[], international: boolean, home?: HomePlace | null): TripGroup[] {
+function flattenVisits(route: Direction[], international: boolean, home?: HomePlace | null, homeAt?: HomeAt): TripGroup[] {
   const groups: TripGroup[] = [];
   // Bookkeeping only: the rendered groups are always flat. A return closes
   // the destination it leaves; the resumed visit starts before its stay.
@@ -223,7 +229,7 @@ function flattenVisits(route: Direction[], international: boolean, home?: HomePl
       // The previous direction may have returned to an earlier city.
       // Only create the resumed group if there is a later flight to show.
       current ??= makeGroup(direction.from, arrival(last(previous)), `continued:${first(direction).id}`);
-      const stay = stayBetween(previous, direction, international);
+      const stay = stayBetween(previous, direction, international, homeAt ? homeOnArrival(previous, homeAt) : null);
       if (stay) {
         current.entries.push({ kind: 'stay', key: `stay:${stay.id}`, stay });
         current.end = departure(first(direction));
@@ -319,7 +325,7 @@ export function buildTripGroups(rows: JourneyRow[], homeAt?: HomeAt): TravelTrip
       route.push(next);
       i++;
     }
-    trips.push({ id: first(start).id, journeys: route.flatMap(d => d.legs), groups: flattenVisits(route, international, known) });
+    trips.push({ id: first(start).id, journeys: route.flatMap(d => d.legs), groups: flattenVisits(route, international, known, homeAt) });
   }
   return trips;
 }

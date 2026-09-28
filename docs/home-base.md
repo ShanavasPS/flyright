@@ -83,9 +83,14 @@ that has none.
    - after a move, a flight to a former home is an ordinary destination with
      its stay.
    Without a home (an empty journal, or a day no set period covers) grouping
-   is exactly as before. A stay is named after its city when the traveller
-   lands in a city and leaves from it again, and after the country only when
-   they leave from another city (in at JFK, out at BOS).
+   is exactly as before.
+   - **Stay names follow the home at the time:** a stay abroad from the home
+     the traveller had when they landed is named after its country ("13 days
+     in the US" for a London home), a stay in the home country after its city
+     ("3 days in Manchester"). Someone who lived in Dallas in 2022 sees "4
+     days in Los Angeles" for that year. With no home known, a stay that lands
+     in a city and leaves from it again is that city, and one that leaves from
+     another city (in at JFK, out at BOS) is its country.
 6. **Stats.** Travel stats shows today's home and its take-offs, or the
    automatic city. Top destination skips arrivals into the home the traveller
    had then. Places reads take-offs for today's home country and marks every
