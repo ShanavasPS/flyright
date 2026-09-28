@@ -48,6 +48,11 @@ export interface ImportedSegment {
   /** Departure day, 'YYYY-MM-DD'. Null only when no date could be tied to the leg. */
   date: string | null;
   arrivalDate: string | null;
+  /** The flight time the document prints for the leg ("Duration: 10:25",
+   * "Travel Time : 2 h 35 m"), in minutes — the one figure that pins the
+   * arrival to its day across time zones (see legSchedule). Absent or null
+   * when the page gives none. */
+  duration?: number | null;
   /** Local clock times 'HH:mm' as printed, or null. */
   depTime: string | null;
   arrTime: string | null;
@@ -129,14 +134,47 @@ const AIRCRAFT_CONTEXT = /(AIRBUS|BOEING|EMBRAER|BOMBARDIER|AIRCRAFT|EQUIPMENT|A
  * (A320)"): read as a designator, "A320" is Aegean flight 20. */
 const AIRFRAME = /^(?:A3(?:18|19|20|21|30|40|50|80)|A2[01]N|B7(?:37|47|57|67|77|87)|B3[89]M|B77[WL]|E1(?:70|75|90|95)|E2(?:90|95))$/;
 
-/** Dates that are about the ticket, not the trip. */
+/** Dates that are about the ticket, not the trip. A fare's validity is
+ * spelled out as often as it is coded: "Not valid after 16 Oct 2026" beside
+ * a leg sat nearer the next flight number than that flight's own date and
+ * became its departure day. */
 const NOT_A_TRAVEL_DATE =
-  /(NVA|NVB|EXPIR\w*|ISSUED?|ISSUE DATE|[ÉE]MISSION|DATE\s*:|TICKETED|BOOKED|PRINTED|STATUS\s*:|STARTING|VALID\s+UNTIL|UNTIL|PURCHASED|PAID\s+ON|PAYMENT DATE|\bAS OF|BORN|BIRTH|DOB)[\W\d]{0,8}$/i;
+  /(NVA|NVB|NOT\s+VALID\s+(?:BEFORE|AFTER|ON)|VALID(?:ITY)?\s+(?:UNTIL|TO|THRU|THROUGH|FROM)|VALIDITY|GOOD\s+(?:FOR\s+TRAVEL\s+)?(?:UNTIL|THRU|THROUGH)|USE\s+BY|EXPIR\w*|ISSUED?|ISSUE DATE|[ÉE]MISSION|DATE\s*:|TICKETED|BOOKED|PRINTED|STATUS\s*:|STARTING|UNTIL|PURCHASED|PAID\s+ON|PAYMENT DATE|\bAS OF|BORN|BIRTH|DOB)[\W\d]{0,8}$/i;
 
 /** Of those, the ones that say when the document was made — the booking,
  * issue or print date. A leg printed without a year is dated from these:
  * the trip is after the ticket was issued, and within a year of it. */
 const DOCUMENT_DATE = /(ISSUED?|ISSUE DATE|[ÉE]MISSION|DATE\s*:|TICKETED|BOOKED|BOOKING|PRINTED|PURCHASED|PAID\s+ON|PAYMENT DATE)[\W\d]{0,8}$/i;
+
+/** A leg's flight time: labelled ("Duration: 04:20", "Travel Time : 2 h 35 m",
+ * "Flight time 9h 15m") or the bare "1h 42min" a confirmation prints beside the
+ * route. Never a total, a layover or a connection — those are time on the
+ * ground or across legs. */
+const LABELLED_DURATION_RE = /(?<!TOTAL\s{0,3})\b(?:DURATION|TRAVEL\s+TIME|FLIGHT\s+TIME|FLYING\s+TIME)\s*:?\s*(?:(\d{1,2})\s*:\s*(\d{2})\b|(\d{1,2})\s*h(?:rs?|ours?)?\s*(?:(\d{1,2})\s*m(?:in(?:utes?|s)?)?)?\b)/i;
+const BARE_DURATION_RE = /\b(\d{1,2})\s?h\s?(\d{1,2})\s?m(?:in(?:utes?|s)?)?\b(?!\s*(?:\W{0,3})(?:LAYOVER|CONNECTION|STOPOVER|TRANSFER))/i;
+
+/** Minutes of flight time printed in a leg's own text, or null. */
+export function findDuration(text: string): number | null {
+  const labelled = LABELLED_DURATION_RE.exec(text);
+  const minutes = labelled
+    ? labelled[1] != null
+      ? Number(labelled[1]) * 60 + Number(labelled[2])
+      : Number(labelled[3]) * 60 + Number(labelled[4] ?? 0)
+    : (() => {
+        const bare = BARE_DURATION_RE.exec(text);
+        if (!bare) return null;
+        const before = text.slice(Math.max(0, bare.index - 24), bare.index);
+        // "Total travel time 23h 05m", "Layover in Doha 2h 10m": the label
+        // before the figure, however it goes on, says it is not a flight.
+        if (/(TOTAL|LAYOVER|CONNECTION|STOPOVER|TRANSFER)[A-Z\s:]{0,20}$/i.test(before)) return null;
+        return Number(bare[1]) * 60 + Number(bare[2]);
+      })();
+  // The page's own statement, so the bound only refuses nonsense: a leg under
+  // a quarter of an hour, or a whole trip's days. A long flight that stops
+  // under one number (QF1 Sydney–Singapore–London, ~24 h) must survive it;
+  // legSchedule still checks the result against the route's distance.
+  return minutes != null && minutes >= 15 && minutes <= 36 * 60 ? minutes : null;
+}
 
 /** Times that are durations or totals, not a departure/arrival. */
 const NOT_A_CLOCK = /(DURATION|TRAVEL TIME|FLIGHT TIME|FLYING TIME|TOTAL|LAYOVER|CONNECTION|BOARDING(?:\s+TIME)?(?:\s+FLIGHT\s+NO)?|CHECK[- ]?IN\s+(CLOSES|OPENS|BY|DEADLINE))\W{0,12}$/i;
@@ -268,12 +306,13 @@ function legsFromRouteBlocks(
   let prevEnd = 0;
   for (const [i, block] of blocks.entries()) {
     const flight = flights[i];
+    const start = prevEnd;
     const own = dates.filter((d) => d.index >= prevEnd && d.end <= block.index);
     const clocks = times.filter((t) => t.index >= prevEnd && t.end <= block.index).slice(-2);
     prevEnd = block.end;
     const departure = own[0];
     if (!departure || clocks.length < 2) return null;
-    const arrival = own.find((d) => d.value > departure.value) ?? null;
+    const arrival = own.find((d) => d.value > departure.value && d.value <= nextDay(nextDay(departure.value))) ?? null;
     const [dep, arr] = clocks;
     const seat = new RegExp(`\\b${flight.slice(0, 2)} ?${Number(flight.slice(2))}\\s+(\\d{1,3}[A-K])\\b`).exec(text);
     legs.push({
@@ -281,6 +320,7 @@ function legsFromRouteBlocks(
       flight,
       date: departure.value,
       arrivalDate: arrival?.value ?? (arr.value < dep.value ? nextDay(departure.value) : departure.value),
+      duration: findDuration(text.slice(start, block.end)),
       depTime: dep.value,
       arrTime: arr.value,
       fromCode: block.from,
@@ -1054,7 +1094,12 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     // itinerary table repeats the departure day in its validity columns
     // ("Ok 28Nov 28Nov"), and taking that as the arrival buried the
     // overnight legs on their departure day.
-    const arrival = after.find((d) => d.value > departure.value) ?? null;
+    // And no more than two days on (westbound over the date line): a later
+    // date beside the row is a fare's "not valid after" or the next leg's
+    // day, and taking it as the arrival made a ten-hour LHR→DFW land twelve
+    // days later.
+    const arrival =
+      after.find((d) => d.value > departure.value && d.value <= nextDay(nextDay(departure.value))) ?? null;
     let arrivalDate = arrival?.value ?? null;
 
     const window = text.slice(from, to);
@@ -1135,6 +1180,7 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
       flight: anchor.flight,
       date: departure.value,
       arrivalDate,
+      duration: findDuration(text.slice(anchor.end, to)),
       depTime,
       arrTime,
       fromCode: airports[0] ?? null,

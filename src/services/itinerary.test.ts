@@ -22,7 +22,7 @@ import {
   QATAR_RECEIPT_PDFKIT,
   QATAR_RECEIPT_PHOTO,
 } from './__fixtures__/itinerary-documents';
-import { extractItinerary, extractSegmentsFromText } from './itinerary';
+import { extractItinerary, extractSegmentsFromText, findDuration } from './itinerary';
 
 // Every fixture was shared in the season it describes.
 const TODAY = new Date(2026, 8, 4, 12); // 4 Sep 2026
@@ -212,6 +212,94 @@ describe('extractItinerary — documents with no boarding-pass code', () => {
     const { boardingPassBarcodes, ticketNumbers } = extractItinerary(pages, TODAY);
     expect(boardingPassBarcodes).toBe(0);
     expect(ticketNumbers).toEqual([]);
+  });
+});
+
+describe('findDuration', () => {
+  it.each([
+    ['Duration: 04:20', 260],
+    ['Travel Time : 2 h 35 m', 155],
+    ['DL1559 Boeing 737-900 Duration 1h 18m', 78],
+    ['San Francisco, CA SFO 1h 42min | Nonstop | 413 miles', 102],
+    ['Flight time 9h 15m', 555],
+    ['Flying time: 10 hours 25 minutes', 625],
+    ['QF1 SYD-SIN-LHR Duration: 24h 35m', 1475],
+  ])('reads the flight time in %s', (text, minutes) => {
+    expect(findDuration(text)).toBe(minutes);
+  });
+
+  it.each([
+    'Total travel time 23h 05m',
+    'Layover 2h 10m in Doha',
+    '2h 10m layover in Doha',
+    'Connection time: 01:15',
+    'Boarding time 13:55',
+    'Duration: 40h 00m',
+  ])('takes no flight time from %s', (text) => {
+    expect(findDuration(text)).toBeNull();
+  });
+});
+
+describe('extractItinerary — the flight time a leg prints', () => {
+  it('carries it on the leg, for the arrival to be pinned by', () => {
+    const [leg] = extractSegmentsFromText(AA_RECEIPT_PDFKIT.map((p) => p.text).join('\n'), TODAY);
+    expect(leg).toMatchObject({ flight: 'AA3018', depTime: '23:59', arrTime: '04:34', duration: 155 });
+  });
+});
+
+describe('extractItinerary — a fare validity date between two legs', () => {
+  // The validity line after one leg sits nearer the next flight number than
+  // that flight's own date, and used to become its departure day.
+  const LEGS = `AA CONFIRMATION CODE: ANSXYZ
+Flight Depart Arrive
+American Airlines
+79
+London Heathrow (LHR)
+October 4, 2026 02:45 PM
+Dallas/ Fort Worth (DFW)
+07:10 PM
+Not valid after October 16, 2026
+American Airlines
+80
+Dallas/ Fort Worth (DFW)
+October 17, 2026 09:35 PM
+London Heathrow (LHR)
+October 18, 2026 12:50 PM`;
+
+  it('dates every leg by its own day', () => {
+    const legs = extractSegmentsFromText(LEGS, new Date(2026, 8, 28, 12));
+    expect(legs.map((s) => [s.flight, s.date, s.depTime])).toEqual([
+      ['AA79', '2026-10-04', '14:45'],
+      ['AA80', '2026-10-17', '21:35'],
+    ]);
+  });
+
+  it.each(['Not valid before', 'Valid until', 'Valid through', 'Validity', 'Good for travel until', 'Use by'])(
+    'never takes a date labelled "%s" as a flight day',
+    (label) => {
+      const text = LEGS.replace('Not valid after', label);
+      const legs = extractSegmentsFromText(text, new Date(2026, 8, 28, 12));
+      expect(legs.map((s) => s.date)).not.toContain('2026-10-16');
+    },
+  );
+});
+
+describe('extractItinerary — a later date beside the row', () => {
+  // A round trip whose outbound row ends in the fare's "not valid after"
+  // date. Read as the arrival, it landed a ten-hour LHR→DFW twelve days
+  // later — the stay before the return shrank to one day (1.1.5, a
+  // traveller's AA79/AA80).
+  const ROUND_TRIP = `Booking reference ANSXYZ
+Date Flight From To Departs Arrives
+04 Oct 2026 AA79 London Heathrow (LHR) Dallas/Fort Worth (DFW) 14:45 19:10 Not valid after 16 Oct 2026
+17 Oct 2026 AA80 Dallas/Fort Worth (DFW) London Heathrow (LHR) 21:35 12:50`;
+
+  it('keeps an arrival within two days of the departure', () => {
+    const legs = extractSegmentsFromText(ROUND_TRIP, new Date(2026, 8, 28, 12));
+    expect(legs.map((s) => [s.flight, s.date, s.arrivalDate])).toEqual([
+      ['AA79', '2026-10-04', '2026-10-04'],
+      ['AA80', '2026-10-17', '2026-10-18'],
+    ]);
   });
 });
 
