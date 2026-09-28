@@ -119,11 +119,12 @@ export async function latestUpdate(
 
 /** Whether a stored file is still shown by a journal photo or an update
  * other than `except` — the two rows share bytes, so a delete of either
- * must leave the file for the other. */
+ * must leave the file for the other. A kept booking document counts too:
+ * uploads.prune frees every ticket's file nothing here claims. */
 export async function storageInUse(
   ctx: MutationCtx,
   storageId: Id<'_storage'>,
-  except: { photo?: Id<'tripPhotos'>; update?: Id<'tripUpdates'> } = {},
+  except: { photo?: Id<'tripPhotos'>; update?: Id<'tripUpdates'>; document?: Id<'tripDocuments'> } = {},
 ): Promise<boolean> {
   const photos = await ctx.db
     .query('tripPhotos')
@@ -134,7 +135,12 @@ export async function storageInUse(
     .query('tripUpdates')
     .withIndex('by_storage', (q) => q.eq('storageId', storageId))
     .collect();
-  return updates.some((u) => u._id !== except.update);
+  if (updates.some((u) => u._id !== except.update)) return true;
+  const documents = await ctx.db
+    .query('tripDocuments')
+    .withIndex('by_storage', (q) => q.eq('storageId', storageId))
+    .collect();
+  return documents.some((d) => d._id !== except.document && !d.deletedAt);
 }
 
 /** One person behind a heart, as the owner's "Liked by" list shows them. */

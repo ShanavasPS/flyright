@@ -115,6 +115,30 @@ export const tripPhotos = sqliteTable('trip_photos', {
   syncedAt: text('synced_at'),
 });
 
+/** The booking document a trip was imported from, kept when the traveller
+ *  leaves "Keep the document" on. The file lives in the app's document
+ *  directory (file:// uri) on the phone that imported it, or at its Convex
+ *  storage URL on another device until it is opened there. One row and one
+ *  copy of the file per trip. Syncs like tripPhotos. */
+export const tripDocuments = sqliteTable('trip_documents', {
+  id: text('id').primaryKey(),
+  journeyId: text('journey_id').notNull().references(() => journeys.id),
+  /** See journeys.userId. */
+  userId: text('user_id'),
+  uri: text('uri').notNull(),
+  /** The file name as it was shared. */
+  name: text('name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  size: integer('size').notNull(),
+  /** Convex _storage id after upload; null while local-only. */
+  storageId: text('storage_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+  /** See journeys.syncedAt. */
+  syncedAt: text('synced_at'),
+});
+
 export const travelDay = sqliteTable('travel_day', {
   journeyId: text('journey_id').primaryKey().references(() => journeys.id),
   /** Furthest TravelStage reached; null before the first tap. */

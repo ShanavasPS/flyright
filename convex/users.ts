@@ -129,6 +129,13 @@ export const purge = internalMutation({
     for (const p of photos) {
       await ctx.db.delete(p._id);
     }
+    // Their kept booking documents; the files go with ownedFiles below.
+    for (const d of await ctx.db
+      .query('tripDocuments')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect()) {
+      await ctx.db.delete(d._id);
+    }
     for (const u of updates) {
       // The replies under it go with it: nobody should be able to read a
       // thread whose post is gone.

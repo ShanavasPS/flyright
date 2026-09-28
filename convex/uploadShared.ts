@@ -1,5 +1,14 @@
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 export const MAX_PHOTO_PIXELS = 40_000_000;
+/** The import screen's own cap on a shared document (document-imports.ts). */
+export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
+
+/** A kept booking document: a PDF, or a picture of a pass. Never HTML or
+ * SVG — the file is served back from our storage domain. */
+export function documentType(bytes: Uint8Array): string | null {
+  if (bytes.length >= 5 && [37, 80, 68, 70, 45].every((b, i) => bytes[i] === b)) return 'application/pdf';
+  return imageType(bytes);
+}
 
 /** Accept raster formats only; never serve HTML or SVG as a journal image. */
 export function imageType(bytes: Uint8Array): string | null {

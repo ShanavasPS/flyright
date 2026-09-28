@@ -21,6 +21,7 @@ import {
 } from '@/components/pass-card';
 import { PrimaryButton } from '@/components/primary-button';
 import { AudienceRow, useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
+import { ThemedSwitch } from '@/components/themed-switch';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
@@ -29,7 +30,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
-import { dayOffset, formatDayLabel, formatTime, localDateString, zonedTimestamp } from '@/services/dates';
+import { dayOffset, formatDayLabel, formatTime, localDateString } from '@/services/dates';
 import { recordDelay } from '@/services/disruptions';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { importStatus } from '@/services/import-status';
@@ -41,8 +42,9 @@ import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 import { importedJourneyPatch, matchingImportedJourney } from '@/services/imported-journeys';
 import { confirmImportedJourney } from '@/services/confirm-imported-journey';
-import { legSchedule } from '@/services/leg-schedule';
+import { legSchedule, plausibleArrivalDate } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
+import { keepDocument } from '@/services/trip-documents';
 import { requestPushPermission } from '@/services/notifications';
 import {
   type DocumentKind,
@@ -69,7 +71,7 @@ type Phase =
   | { kind: 'unreadable'; message: string }
   | { kind: 'review'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
   | { kind: 'saving'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
-  | { kind: 'added'; count: number; attached: number; tracked: number };
+  | { kind: 'added'; count: number; attached: number; tracked: number; kept?: number };
 
 /** The provider remembers about a year back and schedules run ~11 months
  * ahead; outside that a lookup is a guaranteed 404, so skip the round trip. */
@@ -156,9 +158,18 @@ export function ImportDocument() {
   const [pinned, setPinned] = useState<Set<string>>(new Set());
   const today = useMemo(() => new Date(), []);
 
-  // Read once per file. The copy is ours (the share Inbox, the picker's cache)
-  // and deleted as soon as it has been parsed — the app keeps neither the PDF
-  // nor the picture.
+  // The copy is ours (the share Inbox, the picker's cache). A PDF or picture
+  // stays until this screen closes, so it can be kept with the trips when
+  // "Keep the document" is on; otherwise nothing of it outlives the import.
+  useEffect(() => {
+    if (!document) return;
+    document.retain();
+    return () => document.release();
+  }, [document]);
+  const keepable = kind === 'pdf' || kind === 'image';
+  const [keepFile, setKeepFile] = useState(true);
+
+  // Read once per file.
   useEffect(() => {
     if (!document) return;
     let cancelled = false;
@@ -307,7 +318,26 @@ export function ImportDocument() {
       return next;
     });
 
+  // Every flight in the document is already in Flights, so nothing is left
+  // to add — but the document itself may still be wanted on those trips.
+  const alreadyIds = rows.filter((r) => r.already && !r.selected && r.existingId).map((r) => r.existingId!);
+  const keepOnly = keepable && keepFile && pendingCount === 0 && selectedRows.length === 0 && alreadyIds.length > 0;
+
   const saving = useRef(false);
+  const keepOnTrips = async () => {
+    const source = document?.keep();
+    if (!keepOnly || !source || saving.current) return;
+    saving.current = true;
+    try {
+      setPhase((current) => (current.kind === 'review' ? { ...current, kind: 'saving' } : current));
+      const kept = await keepDocument(alreadyIds, userId, source);
+      trackEvent('document_kept', { trips: kept, only: true });
+      setPhase({ kind: 'added', count: 0, attached: 0, tracked: 0, kept });
+    } catch {
+      setPhase((current) => (current.kind === 'saving' ? { ...current, kind: 'review' } : current));
+      Alert.alert('Could not keep the document', 'Please try again.');
+    } finally { saving.current = false; }
+  };
   const save = async () => {
     // Lookups finish one at a time. Saving the ready subset would close the
     // document and silently leave later legs behind, even though they were
@@ -331,10 +361,13 @@ export function ImportDocument() {
       let tracked = 0;
       const now = new Date().toISOString();
       let attached = 0;
+      // Every trip this document ended up in, new or already there.
+      const tripIds: string[] = [];
       for (const { segment, plan, attachable, existingId } of selectedRows) {
         const confirmedId = confirmedIds.get(segment.key);
         if ((attachable && existingId) || confirmedId) {
-          await saveImportedJourney(segment, null, userId, confirmedId);
+          const saved = await saveImportedJourney(segment, null, userId, confirmedId);
+          tripIds.push(saved.id);
           attached += 1;
           trackEvent('boarding_pass_attached', { via: 'document' });
           continue;
@@ -375,6 +408,7 @@ export function ImportDocument() {
             createdAt: now,
           };
           const saved = await saveImportedJourney(segment, row, userId);
+          tripIds.push(saved.id);
           if (!saved.created) { attached += 1; continue; }
           if (flight.delayMinutes != null) await recordDelay(row.id, flight.delayMinutes);
           if (!flight.landed) tracked += 1;
@@ -386,14 +420,17 @@ export function ImportDocument() {
           const depClock = segment.depTime ?? '12:00';
           const arrClock = segment.arrTime ?? (segment.depTime ? estimatedArrival(depClock, distanceKm) : depClock);
           const arrivalDay =
-            segment.arrivalDate ??
+            plausibleArrivalDate(segment.date, segment.arrivalDate) ??
             (arrClock < depClock ? localDateString(new Date(`${segment.date}T12:00:00`), 1) : segment.date);
-          // The printed clocks pinned to their airports, the same rule the
-          // lookup rows follow (see legSchedule) — a journal leg is still a
-          // flight at a place, not a clock on the phone. Estimated or
-          // placeholder clocks stay bare, as the add-flight form keeps them.
-          const pinnedDep = segment.depTime ? zonedTimestamp(segment.date, depClock, airportZone(from.iata)) : null;
-          const pinnedArr = segment.arrTime ? zonedTimestamp(arrivalDay, arrClock, airportZone(to.iata)) : null;
+          // The printed clocks pinned to their airports by the rule the lookup
+          // rows follow (legSchedule) — a journal leg is still a flight at a
+          // place, not a clock on the phone, and a printed arrival no flight
+          // of this departure could make is dropped for the clocks' own day.
+          // Estimated or placeholder clocks stay bare, as the add-flight form
+          // keeps them.
+          const printed = legSchedule({ ...segment, fromCode: from.iata, toCode: to.iata }, null);
+          const pinnedDep = segment.depTime ? printed.departure : null;
+          const pinnedArr = segment.arrTime ? printed.arrival : null;
           const carrier = operator ?? (segment.flight ? carrierFor(segment.flight) : null);
           const saved = await saveImportedJourney(segment, {
             id: `${segment.flight ?? 'TRIP'}-${from.iata}-${to.iata}-${segment.date}`,
@@ -413,9 +450,19 @@ export function ImportDocument() {
             ...details,
             createdAt: now,
           }, userId);
+          tripIds.push(saved.id);
           if (!saved.created) { attached += 1; continue; }
           trackEvent('flight_added', { source: 'manual', via: 'document' });
         }
+      }
+      // The trips are saved; a document that cannot be kept must not undo that.
+      // The document goes on every trip it names — the ones already in
+      // Flights too, not only those this import added.
+      const source = keepable && keepFile ? document?.keep() : null;
+      if (source && tripIds.length) {
+        await keepDocument([...tripIds, ...alreadyIds], userId, source)
+          .then((kept) => trackEvent('document_kept', { trips: kept }))
+          .catch(() => Observe.logEvent('document.keep_failed', { severity: 'warn' }));
       }
       setPhase({ kind: 'added', count: selectedRows.length - attached, attached, tracked });
       Observe.logEvent('document.flights_added', {
@@ -490,7 +537,7 @@ export function ImportDocument() {
   const containerStyle = [styles.container, { paddingTop: Math.max(insets.top, Spacing.four) }];
 
   if (phase.kind === 'added') {
-    const { count, attached, tracked } = phase;
+    const { count, attached, tracked, kept = 0 } = phase;
     return (
       <ThemedView style={[...containerStyle, styles.centered]} testID="import-added">
         <Animated.View entering={ZoomIn.springify()} style={styles.addedBadge}>
@@ -502,7 +549,9 @@ export function ImportDocument() {
             />
           </View>
           <ThemedText type="subtitle" themeColor="heading">
-            {count === 0
+            {count === 0 && attached === 0
+              ? 'Document kept'
+              : count === 0
               ? attached === 1
                 ? 'Travel code saved'
                 : `Travel codes saved on ${attached} trips`
@@ -511,7 +560,11 @@ export function ImportDocument() {
                 : `${count} flights added`}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.addedSub}>
-            {count === 0
+            {count === 0 && attached === 0
+              ? kept > 0
+                ? 'Open it from the trip page whenever you need it.'
+                : 'Your trips already had this document.'
+              : count === 0
               ? "Saved on the trip page. Open the code when you need it at the airport."
               : tracked > 0
                 ? "They're in Flights — we'll watch the upcoming ones for delays and anything you're owed."
@@ -639,14 +692,17 @@ export function ImportDocument() {
                 onPress={() => chooseAudience(audience, setAudience)}
               />
             )}
+            {keepable && <KeepDocumentRow value={keepFile} onChange={setKeepFile} />}
             <PrimaryButton
               label={
                 phase.kind === 'saving'
-                  ? 'Adding…'
+                  ? keepOnly ? 'Keeping…' : 'Adding…'
                   : !authLoaded || journeys === undefined
                     ? 'Checking your flights…'
                   : pendingCount > 0
                     ? `Checking flights… ${segments.length - pendingCount} of ${segments.length}`
+                  : keepOnly
+                    ? 'Keep the document →'
                   : selectedRows.length === 0
                     ? 'Nothing selected'
                     : selectedRows.every((r) => r.attachable)
@@ -657,13 +713,39 @@ export function ImportDocument() {
                         ? 'Add 1 flight →'
                         : `Add ${selectedRows.length} flights →`
               }
-              disabled={phase.kind === 'saving' || pendingCount > 0 || selectedRows.length === 0}
-              onPress={save}
+              disabled={phase.kind === 'saving' || pendingCount > 0 || (selectedRows.length === 0 && !keepOnly)}
+              onPress={keepOnly ? keepOnTrips : save}
             />
           </View>
         </>
       )}
     </ThemedView>
+  );
+}
+
+/** Whether the document goes with the trips it made, to open again from the
+ * trip (at the airport, offline). On unless the traveller turns it off; only
+ * they can see it. */
+function KeepDocumentRow({ value, onChange }: { value: boolean; onChange: (keep: boolean) => void }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.keepRow, { backgroundColor: theme.field }]}>
+      <View style={[styles.keepDisc, { backgroundColor: `${theme.tint}1A` }]}>
+        <SymbolView name={{ ios: 'doc.text', android: 'description', web: 'description' }} size={15} weight="semibold" tintColor={theme.tint} />
+      </View>
+      <View style={styles.keepText}>
+        <ThemedText type="smallBold">Keep the document with the trip</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Open it from the trip later. Only you can see it.
+        </ThemedText>
+      </View>
+      <ThemedSwitch
+        testID="keep-document"
+        accessibilityLabel="Keep the document with the trip"
+        value={value}
+        onValueChange={onChange}
+      />
+    </View>
   );
 }
 
@@ -879,6 +961,22 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingTop: Spacing.two,
   },
+  keepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.one,
+    borderRadius: 12,
+  },
+  keepDisc: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keepText: { flex: 1, gap: 2 },
   rowGroup: {
     gap: Spacing.two,
   },

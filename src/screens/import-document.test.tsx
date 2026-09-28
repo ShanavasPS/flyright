@@ -7,10 +7,20 @@ import { FINNAIR_RECEIPT } from '@/services/__fixtures__/itinerary-documents';
 import { CODESHARE_PASS, CODESHARE_TRIP } from '@/services/__fixtures__/codeshare';
 import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/flight-lookup';
 import { extractItinerary } from '@/services/itinerary';
+import { legSchedule } from '@/services/leg-schedule';
 import { saveImportedJourney, type JourneyRow } from '@/services/journeys';
+import { keepDocument } from '@/services/trip-documents';
+import { ThemedSwitch } from '@/components/themed-switch';
 import { ImportDocument } from './import-document';
 
-const mockDocument = { kind: 'pdf', name: 'five-flights.pdf', read: jest.fn() };
+const mockDocument = {
+  kind: 'pdf',
+  name: 'five-flights.pdf',
+  read: jest.fn(),
+  keep: jest.fn(() => ({ uri: 'file:///cache/document-imports/handle', name: 'five-flights.pdf' })),
+  retain: jest.fn(),
+  release: jest.fn(),
+};
 let mockSignedIn = true;
 let mockJourneys: JourneyRow[] = [];
 jest.mock('@clerk/expo', () => ({
@@ -49,6 +59,7 @@ jest.mock('@/components/trip-audience', () => ({
 }));
 jest.mock('@/services/analytics', () => ({ trackEvent: jest.fn() }));
 jest.mock('@/services/disruptions', () => ({ recordDelay: jest.fn() }));
+jest.mock('@/services/trip-documents', () => ({ keepDocument: jest.fn().mockResolvedValue(1) }));
 jest.mock('@/services/trip-visibility-default', () => ({ getDefaultTripVisibility: () => 'private' }));
 jest.mock('@/services/notification-lifecycle', () => ({ reconcileNotifications: jest.fn() }));
 jest.mock('@/services/notifications', () => ({ requestPushPermission: jest.fn().mockResolvedValue(undefined) }));
@@ -130,6 +141,110 @@ it('waits for all five PDF trips, then saves them without any scrolling', async 
   expect(button().props.label).toBe('Add 5 flights →');
   await pressAdd();
   expect(savedFlights()).toEqual(segments.map(segment => segment.flight));
+});
+
+describe('keeping the document with the trips', () => {
+  const addAll = async () => {
+    await mount();
+    await finish(0, 1, 2, 3, 4);
+    jest.mocked(saveImportedJourney).mockImplementation(async (segment) => ({ id: `trip-${segment.flight}`, created: true }));
+  };
+
+  it('keeps the PDF with every trip it made', async () => {
+    await addAll();
+    await pressAdd();
+    expect(keepDocument).toHaveBeenCalledWith(
+      segments.map((segment) => `trip-${segment.flight}`),
+      'traveller',
+      { uri: 'file:///cache/document-imports/handle', name: 'five-flights.pdf' },
+    );
+  });
+
+  it('keeps nothing when the traveller turns it off', async () => {
+    await addAll();
+    await act(async () => screen!.root.findByType(ThemedSwitch).props.onValueChange(false));
+    await pressAdd();
+    expect(saveImportedJourney).toHaveBeenCalledTimes(5);
+    expect(keepDocument).not.toHaveBeenCalled();
+  });
+
+  it('still saves the trips when the document cannot be kept', async () => {
+    jest.mocked(keepDocument).mockRejectedValueOnce(new Error('disk full'));
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    await addAll();
+    await pressAdd();
+    expect(saveImportedJourney).toHaveBeenCalledTimes(5);
+    expect(alert).not.toHaveBeenCalled();
+  });
+
+  /** The document's legs as trips already in Flights, every detail the
+   * document carries already on them — nothing left for this import to add. */
+  const alreadyInFlights = (indices: number[]): JourneyRow[] =>
+    indices.map((i) => {
+      const segment = segments[i]!;
+      const schedule = legSchedule(segment, null);
+      return {
+        id: `trip-${segment.flight}`, mode: 'flight', number: segment.flight,
+        fromCode: segment.fromCode, toCode: segment.toCode,
+        scheduledDeparture: schedule.departure, scheduledArrival: schedule.arrival,
+        seat: segment.seat, bookingReference: segment.pnr,
+        passCode: segment.pass?.code ?? null, passFormat: segment.pass?.format ?? null,
+        ticketCode: segment.ticket?.code ?? null, ticketFormat: segment.ticket?.format ?? null,
+        deletedAt: null,
+      } as unknown as JourneyRow;
+    });
+
+  it('keeps the document on the trips when every flight is already in Flights', async () => {
+    mockJourneys = alreadyInFlights([0, 1, 2, 3, 4]);
+    await mount();
+    await finish(0, 1, 2, 3, 4);
+    expect(button().props.label).toBe('Keep the document →');
+    expect(button().props.disabled).toBe(false);
+    jest.mocked(keepDocument).mockReturnValueOnce(new Promise(() => {}));
+    act(() => { void button().props.onPress(); });
+    expect(button().props.label).toBe('Keeping…');
+    await act(async () => screen!.unmount());
+    screen = undefined;
+    jest.mocked(keepDocument).mockClear();
+    await mount();
+    await finish(0, 1, 2, 3, 4);
+    await pressAdd();
+    expect(saveImportedJourney).not.toHaveBeenCalled();
+    expect(keepDocument).toHaveBeenCalledWith(
+      segments.map((segment) => `trip-${segment.flight}`),
+      'traveller',
+      expect.objectContaining({ name: 'five-flights.pdf' }),
+    );
+  });
+
+  it('has nothing to do there once the traveller turns keeping off', async () => {
+    mockJourneys = alreadyInFlights([0, 1, 2, 3, 4]);
+    await mount();
+    await finish(0, 1, 2, 3, 4);
+    await act(async () => screen!.root.findByType(ThemedSwitch).props.onValueChange(false));
+    expect(button().props.label).toBe('Nothing selected');
+    expect(button().props.disabled).toBe(true);
+  });
+
+  it('keeps it on the trips already there as well as the new ones', async () => {
+    mockJourneys = alreadyInFlights([0, 1]);
+    await mount();
+    await finish(0, 1, 2, 3, 4);
+    jest.mocked(saveImportedJourney).mockImplementation(async (segment) => ({ id: `trip-${segment.flight}`, created: true }));
+    await pressAdd();
+    expect(saveImportedJourney).toHaveBeenCalledTimes(3);
+    expect(jest.mocked(keepDocument).mock.calls[0]![0].slice().sort()).toEqual(
+      segments.map((segment) => `trip-${segment.flight}`).sort(),
+    );
+  });
+
+  it('lets go of the file when the screen closes', async () => {
+    await mount();
+    expect(mockDocument.retain).toHaveBeenCalled();
+    await act(async () => screen!.unmount());
+    screen = undefined;
+    expect(mockDocument.release).toHaveBeenCalled();
+  });
 });
 
 it('guards the save handler against adding only the first three completed trips', async () => {

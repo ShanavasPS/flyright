@@ -30,6 +30,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { TripCard } from '@/components/trip-card';
+import { TripDocuments } from '@/components/trip-documents';
 import { TripPhotos } from '@/components/trip-photos';
 import { useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
 import { TripShareActions } from '@/components/trip-share';
@@ -859,6 +860,7 @@ function JournalBlock({
       )}
       {tripAge > 0 && <RatingRow row={row} />}
       <TripPhotos journeyId={row.id} userId={userId} />
+      <TripDocuments journeyId={row.id} />
       <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={onEditNotes} />
     </View>
   );

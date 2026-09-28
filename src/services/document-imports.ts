@@ -5,7 +5,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { documentKind, readDocument, type PdfContents } from '../../modules/flyright-document-import';
 
 const MAX_BYTES = 20 * 1024 * 1024;
-const entries = new Map<string, { uri: string; name: string; mimeType: string; expires: number; children?: string[]; reading?: Promise<PdfContents> }>();
+const entries = new Map<string, { uri: string; name: string; mimeType: string; expires: number; children?: string[]; reading?: Promise<PdfContents>; release?: ReturnType<typeof setTimeout> }>();
 
 export function inboxFile(uri: string, documentsUri: string): boolean {
   try {
@@ -100,12 +100,37 @@ export function importDocument(handle: string | undefined) {
         })).then(contents => ({ pageCount: contents.reduce((sum, doc) => sum + doc.pageCount, 0), pages: contents.flatMap(doc => doc.pages) }));
         return entry.reading;
       }
-      // StrictMode/remounts share one read and cleanup, never race file deletion.
+      // StrictMode/remounts share one read, never race file deletion. A pass
+      // is gone once read; a PDF or picture stays until the screen lets go,
+      // because the traveller may keep it with the trips (see keep()).
+      const walletKind = kind === 'wallet' || kind === 'wallet-link';
       entry.reading ??= readDocument(entry.uri, kind).catch(reason => {
-        if (kind === 'wallet' || kind === 'wallet-link') throw reason;
+        if (walletKind) throw reason;
         return readDocument(entry.uri, kind === 'image' ? 'pdf' : 'image').catch(() => { throw reason; });
-      }).finally(() => { try { new File(entry.uri).delete(); } catch {} });
+      }).finally(() => { if (walletKind) { try { new File(entry.uri).delete(); } catch {} } });
       return entry.reading;
+    },
+    /** The file to keep with the trips: a PDF or picture still on hand. */
+    keep(): { uri: string; name: string } | null {
+      if (entry.children || !entry.uri || kind === 'wallet' || kind === 'wallet-link') return null;
+      return new File(entry.uri).exists ? { uri: entry.uri, name: entry.name } : null;
+    },
+    /** The screen holds the file; a release from an earlier mount is undone. */
+    retain() {
+      if (entry.release) clearTimeout(entry.release);
+      entry.release = undefined;
+    },
+    /** The screen is done with it: the copy goes. Deferred a moment so a
+     * StrictMode remount's retain() can take it back. */
+    release() {
+      if (entry.release) clearTimeout(entry.release);
+      entry.release = setTimeout(() => {
+        const children = entry.children ?? [];
+        for (const uri of [entry.uri, ...children.map(child => entries.get(child)?.uri ?? '')]) {
+          if (uri) { try { new File(uri).delete(); } catch {} }
+        }
+        entries.delete(handle);
+      }, 2000);
     },
   };
 }

@@ -166,6 +166,31 @@ export default defineSchema({
     .index('by_user_photo', ['userId', 'photoId'])
     .index('by_storage', ['storageId']),
 
+  /** The booking document a trip was imported from (a PDF, or the picture of
+   * a pass), kept when the traveller leaves "Keep the document" on. Only its
+   * owner ever gets a URL for it. One row per trip, each with its own copy of
+   * the file, so removing one trip's document never touches another's. Same
+   * sync model as tripPhotos: last-write-wins on updatedAt, a tombstone push
+   * deletes the stored file. */
+  tripDocuments: defineTable({
+    userId: v.string(),
+    /** The journey's natural key (journeys.naturalKey). */
+    journeyKey: v.string(),
+    /** The local row id. */
+    documentId: v.string(),
+    storageId: v.union(v.id('_storage'), v.null()),
+    /** The file name as it was shared, for the row and the share sheet. */
+    name: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    deletedAt: v.union(v.string(), v.null()),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_document', ['userId', 'documentId'])
+    .index('by_storage', ['storageId']),
+
   /** What the traveller shares from inside a trip: a photo, a line, or both,
    * for the people who follow them (see updatesShared.ts for the window a
    * trip takes them in). Server-authoritative — there is no local mirror,

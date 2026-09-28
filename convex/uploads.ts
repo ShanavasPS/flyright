@@ -3,13 +3,13 @@ import { internal } from './_generated/api';
 import { httpAction, internalMutation, type MutationCtx } from './_generated/server';
 import { limit, DAY } from './abuse';
 import { storageInUse } from './updates';
-import { boundedBody, imageType, MAX_PHOTO_BYTES } from './uploadShared';
+import { boundedBody, documentType, imageType, MAX_DOCUMENT_BYTES, MAX_PHOTO_BYTES } from './uploadShared';
 
 declare const process: { env: Record<string, string | undefined> };
 
 /** Reserve worst-case bytes before issuing a single-use upload capability.
  * Returning a URL keeps the existing native upload protocol compatible. */
-export async function issueUpload(ctx: MutationCtx, userId: string) {
+export async function issueUpload(ctx: MutationCtx, userId: string, path: 'photo-upload' | 'document-upload' = 'photo-upload') {
   const site = process.env.CONVEX_SITE_URL;
   if (!site) throw new ConvexError('Photo uploads are temporarily unavailable.');
   // A travel day's journal photos and status posts share this allowance;
@@ -22,7 +22,7 @@ export async function issueUpload(ctx: MutationCtx, userId: string) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const token = Array.from(crypto.getRandomValues(new Uint8Array(48)), b => alphabet[b % alphabet.length]).join('');
   await ctx.db.insert('uploadTickets', { token, userId, expiresAt: Date.now() + 10 * 60_000, state: 'pending' });
-  return `${site}/photo-upload?ticket=${token}`;
+  return `${site}/${path}?ticket=${token}`;
 }
 
 export const claim = internalMutation({
@@ -57,6 +57,25 @@ export const photoUpload = httpAction(async (ctx, request) => {
   catch { return new Response('Photo too large', { status: 413 }); }
   const type = imageType(bytes);
   if (!type) return new Response('Use a JPEG or PNG photo under 40 megapixels', { status: 415 });
+  const storageId = await ctx.storage.store(new Blob([bytes], { type }));
+  try { await ctx.runMutation(internal.uploads.finish, { ticketId, storageId, size: bytes.length }); }
+  catch { await ctx.storage.delete(storageId); return new Response('Upload expired', { status: 403 }); }
+  return Response.json({ storageId }, { headers: { 'Cache-Control': 'no-store' } });
+});
+
+/** A kept booking document: the same single-use ticket as a photo, a PDF
+ * allowed and the import screen's 20 MB cap. The ticket does not say which
+ * route it was issued for; either route checks the bytes it is given. */
+export const documentUpload = httpAction(async (ctx, request) => {
+  const token = new URL(request.url).searchParams.get('ticket') ?? '';
+  if (!/^[A-Za-z0-9]{48}$/.test(token)) return new Response('Invalid upload', { status: 403 });
+  const ticketId = await ctx.runMutation(internal.uploads.claim, { token });
+  if (!ticketId) return new Response('Upload expired', { status: 403 });
+  let bytes: Uint8Array<ArrayBuffer>;
+  try { bytes = await boundedBody(request, MAX_DOCUMENT_BYTES); }
+  catch { return new Response('Document too large', { status: 413 }); }
+  const type = documentType(bytes);
+  if (!type) return new Response('Use a PDF, JPEG or PNG document', { status: 415 });
   const storageId = await ctx.storage.store(new Blob([bytes], { type }));
   try { await ctx.runMutation(internal.uploads.finish, { ticketId, storageId, size: bytes.length }); }
   catch { await ctx.storage.delete(storageId); return new Response('Upload expired', { status: 403 }); }

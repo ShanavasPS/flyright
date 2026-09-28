@@ -11,6 +11,7 @@ import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
 import { flagsFor, type TripVisibility } from '@/services/trip-visibility';
+import { deleteDocumentsOf } from '@/services/trip-documents';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 import { importedJourneyPatch, matchingImportedJourney, matchingJourney, possibleImportedJourneys } from '@/services/imported-journeys';
 import type { ImportedSegment } from '@/services/itinerary';
@@ -245,6 +246,7 @@ export async function deleteJourney(id: string) {
     .update(journeys)
     .set({ deletedAt: now, updatedAt: now })
     .where(eq(journeys.id, id));
+  await deleteDocumentsOf(id);
   void reconcileNotifications();
   void reconcileTravelDay();
 }

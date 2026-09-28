@@ -4,13 +4,14 @@ import { Webhook } from 'svix';
 import { internal } from './_generated/api';
 import { httpAction } from './_generated/server';
 import { boundedBody } from './uploadShared';
-import { photoUpload } from './uploads';
+import { documentUpload, photoUpload } from './uploads';
 
 // The convex/ tsconfig has no Node types; process exists at runtime.
 declare const process: { env: Record<string, string | undefined> };
 
 const http = httpRouter();
 http.route({ path: '/photo-upload', method: 'POST', handler: photoUpload });
+http.route({ path: '/document-upload', method: 'POST', handler: documentUpload });
 
 /**
  * Clerk webhook receiver. Configure in the Clerk dashboard (Webhooks → Add

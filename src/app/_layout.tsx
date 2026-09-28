@@ -11,6 +11,7 @@ import { DocumentShareRouter } from "@/components/document-share-router";
 import { IdentitySync } from "@/components/identity-sync";
 import { JourneySync } from "@/components/journey-sync";
 import { PhotoSync } from "@/components/photo-sync";
+import { TripDocumentSync } from "@/components/trip-document-sync";
 import { ProPreferencesSync } from "@/components/pro-preferences-sync";
 import { HomeBaseSync } from "@/components/home-base-sync";
 import { TripCoversSync } from "@/components/trip-covers-sync";
@@ -138,6 +139,7 @@ function CloudSync({ children }: { children: React.ReactNode }) {
     <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
       <JourneySync />
       <PhotoSync />
+      <TripDocumentSync />
       <TravelDaySync />
       <FollowerActivitySync />
       <ProfileSync />

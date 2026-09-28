@@ -63,15 +63,43 @@ describe('document import authority', () => {
     await first;
     expect(mockRead).toHaveBeenCalledTimes(1);
     expect(mockRead).toHaveBeenCalledWith(`file:///cache/document-imports/${handle}`, 'pdf');
-    expect(mockFiles.get(`file:///cache/document-imports/${handle}`)?.deleted).toBe(true);
+    // Held for "Keep the document" until the screen lets go of it.
+    const copy = `file:///cache/document-imports/${handle}`;
+    expect(mockFiles.get(copy)?.deleted).toBeUndefined();
+    expect(document.keep()).toEqual({ uri: copy, name: 'Boarding pass.pdf' });
+    jest.useFakeTimers();
+    try {
+      document.release();
+      jest.advanceTimersByTime(2000);
+    } finally { jest.useRealTimers(); }
+    expect(mockFiles.get(copy)?.deleted).toBe(true);
+    expect(importDocument(handle)).toBeNull();
+  });
+  it('keeps the copy when a remount retains it again', () => {
+    const source = 'file:///cache/picked-again.pdf';
+    mockFiles.set(source, { size: 100 });
+    const document = importDocument(registerDocument({ uri: source }))!;
+    jest.useFakeTimers();
+    try {
+      document.release();
+      document.retain();
+      jest.advanceTimersByTime(5000);
+    } finally { jest.useRealTimers(); }
+    expect(document.keep()).not.toBeNull();
   });
   it('cleans up only its copy when readers fail, and bounds input bytes before copying', async () => {
     const source = 'file:///cache/picked.pdf';
     mockFiles.set(source, { size: 100 });
     mockRead.mockRejectedValue(new Error('invalid document'));
     const handle = registerDocument({ uri: source });
-    await expect(importDocument(handle)!.read()).rejects.toThrow('invalid document');
+    const document = importDocument(handle)!;
+    await expect(document.read()).rejects.toThrow('invalid document');
     expect(mockFiles.get(source)?.deleted).toBeUndefined();
+    jest.useFakeTimers();
+    try {
+      document.release();
+      jest.advanceTimersByTime(2000);
+    } finally { jest.useRealTimers(); }
     expect(mockFiles.get(`file:///cache/document-imports/${handle}`)?.deleted).toBe(true);
     mockFiles.set(source, { size: 21 * 1024 * 1024 });
     expect(() => registerDocument({ uri: source })).toThrow('20 MB');
