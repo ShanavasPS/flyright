@@ -157,6 +157,7 @@ describe('keeping the document with the trips', () => {
       segments.map((segment) => `trip-${segment.flight}`),
       'traveller',
       { uri: 'file:///cache/document-imports/handle', name: 'five-flights.pdf' },
+      expect.objectContaining({ flight: segments[0]!.flight, date: segments[0]!.date }),
     );
   });
 
@@ -214,6 +215,7 @@ describe('keeping the document with the trips', () => {
       segments.map((segment) => `trip-${segment.flight}`),
       'traveller',
       expect.objectContaining({ name: 'five-flights.pdf' }),
+      expect.objectContaining({ flight: segments[0]!.flight }),
     );
   });
 
@@ -236,6 +238,21 @@ describe('keeping the document with the trips', () => {
     expect(jest.mocked(keepDocument).mock.calls[0]![0].slice().sort()).toEqual(
       segments.map((segment) => `trip-${segment.flight}`).sort(),
     );
+  });
+
+  it('never shows a shared temporary copy\'s random name', async () => {
+    const shared = 'FEE9FDFA-F789-4C8F-98B3-97F33CFEF471.pdf';
+    mockDocument.name = shared;
+    try {
+      await mount();
+      await finish(0, 1, 2, 3, 4);
+      const texts = screen!.root.findAll((n) => typeof n.props.children === 'string' || Array.isArray(n.props.children));
+      const shown = texts.map((n) => [n.props.children].flat().join('')).join(' ');
+      expect(shown).toContain('flights in this document');
+      expect(shown).not.toContain('FEE9FDFA');
+    } finally {
+      mockDocument.name = 'five-flights.pdf';
+    }
   });
 
   it('lets go of the file when the screen closes', async () => {

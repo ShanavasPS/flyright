@@ -44,6 +44,7 @@ import { importedJourneyPatch, matchingImportedJourney } from '@/services/import
 import { confirmImportedJourney } from '@/services/confirm-imported-journey';
 import { legSchedule, plausibleArrivalDate } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
+import { documentLabel } from '@/services/document-name';
 import { keepDocument } from '@/services/trip-documents';
 import { requestPushPermission } from '@/services/notifications';
 import {
@@ -99,7 +100,7 @@ function fileLabel(uri: string | null, name: string | undefined, kind: DocumentK
   if (kind === 'wallet' || kind === 'wallet-link') return 'your Wallet pass';
   if (name) return name;
   if (kind === 'image') return 'this picture';
-  if (!uri) return 'document';
+  if (!uri) return 'this document';
   const last = uri.split('/').pop() ?? 'document';
   try {
     return decodeURIComponent(last);
@@ -146,7 +147,8 @@ export function ImportDocument() {
   const document = useMemo(() => importDocument(handle), [handle]);
   const fileUri = document ? handle : null;
   const kind = document?.kind ?? 'pdf';
-  const label = fileLabel(null, document?.name || undefined, kind);
+  // A shared temporary copy's UUID name says nothing; call it "this document".
+  const label = fileLabel(null, documentLabel(document?.name) ?? undefined, kind);
   const { data: journeys } = useJourneys(userId);
 
   const [phase, setPhase] = useState<Phase>(() =>
@@ -323,6 +325,17 @@ export function ImportDocument() {
   const alreadyIds = rows.filter((r) => r.already && !r.selected && r.existingId).map((r) => r.existingId!);
   const keepOnly = keepable && keepFile && pendingCount === 0 && selectedRows.length === 0 && alreadyIds.length > 0;
 
+  // Names a kept document whose file name is a machine's (see document-name).
+  const bookingHint = () => {
+    const first = (selectedRows[0] ?? rows[0])?.segment;
+    return {
+      carrier: first?.flight ? (carrierFor(first.flight)?.name ?? null) : null,
+      flight: first?.flight ?? null,
+      pnr: first?.pnr ?? null,
+      date: first?.date ?? null,
+    };
+  };
+
   const saving = useRef(false);
   const keepOnTrips = async () => {
     const source = document?.keep();
@@ -330,7 +343,7 @@ export function ImportDocument() {
     saving.current = true;
     try {
       setPhase((current) => (current.kind === 'review' ? { ...current, kind: 'saving' } : current));
-      const kept = await keepDocument(alreadyIds, userId, source);
+      const kept = await keepDocument(alreadyIds, userId, source, bookingHint());
       trackEvent('document_kept', { trips: kept, only: true });
       setPhase({ kind: 'added', count: 0, attached: 0, tracked: 0, kept });
     } catch {
@@ -460,7 +473,7 @@ export function ImportDocument() {
       // Flights too, not only those this import added.
       const source = keepable && keepFile ? document?.keep() : null;
       if (source && tripIds.length) {
-        await keepDocument([...tripIds, ...alreadyIds], userId, source)
+        await keepDocument([...tripIds, ...alreadyIds], userId, source, bookingHint())
           .then((kept) => trackEvent('document_kept', { trips: kept }))
           .catch(() => Observe.logEvent('document.keep_failed', { severity: 'warn' }));
       }

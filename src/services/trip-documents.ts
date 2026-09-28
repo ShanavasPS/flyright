@@ -13,10 +13,14 @@ import { MAX_DOCUMENT_BYTES } from '../../convex/uploadShared';
 import { db } from '@/db/client';
 import { tripDocuments } from '@/db/schema';
 import { useLiveRows } from '@/services/live-rows';
+import { readableDocumentName } from '@/services/document-name';
 import { openLocalDocument } from '@/services/open-document';
 import type { RemoteDocument, TripDocumentRow } from '@/services/trip-document-sync-plan';
 
 export type { TripDocumentRow };
+
+/** What the import read, to name a document whose file name says nothing. */
+export type BookingHint = Parameters<typeof readableDocumentName>[1];
 
 const documentDir = () => new Directory(Paths.document, 'trip-documents');
 
@@ -65,12 +69,14 @@ export async function keepDocument(
   journeyIds: string[],
   userId: string | null | undefined,
   source: { uri: string; name: string },
+  booking: BookingHint = { carrier: null, flight: null, pnr: null, date: null },
 ): Promise<number> {
   const file = new File(source.uri);
   if (!file.exists || file.size <= 0 || file.size > MAX_DOCUMENT_BYTES) return 0;
   const mimeType = sniffDocumentType(await file.bytes());
   if (!mimeType) return 0;
-  const name = (source.name || `Booking.${EXTENSION[mimeType]}`).slice(0, 200);
+  // A shared temporary copy is named by a UUID; name it from the booking.
+  const name = readableDocumentName(source.name, booking, EXTENSION[mimeType]).slice(0, 200);
   const dir = documentDir();
   if (!dir.exists) dir.create({ intermediates: true });
   let kept = 0;

@@ -5,6 +5,13 @@ import type { TripDocumentRow } from './trip-document-sync-plan';
 
 export type { TripDocumentRow };
 
+export interface BookingHint {
+  carrier: string | null;
+  flight: string | null;
+  pnr: string | null;
+  date: string | null;
+}
+
 export function useTripDocuments(_journeyId: string): TripDocumentRow[] | undefined {
   return [];
 }
