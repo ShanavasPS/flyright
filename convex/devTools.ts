@@ -898,3 +898,76 @@ export const inspectUser = internalQuery({
     };
   },
 });
+
+/** Read-only sweep for journeys whose arrival cannot belong to their own
+ * departure: at or before it, or more than `minHours` after it. A date taken
+ * from elsewhere on a booking document shifts the arrival by whole days, so
+ * it lands here (1.1.5, a traveller's AA79 "landing" twelve days on). Returns
+ * those rows alone — the route, the two times, how the row was added — so the
+ * app's distance rule (services/leg-schedule maxFlightMs) can judge them;
+ * nothing about any other trip. Writes nothing.
+ * `npx convex run --prod devTools:scanArrivals '{"minHours":20}'` */
+export const scanArrivals = internalQuery({
+  args: { minHours: v.number() },
+  handler: async (ctx, { minHours }) => {
+    const out = [];
+    for await (const r of ctx.db.query('journeys')) {
+      if (r.deletedAt || r.mode !== 'flight') continue;
+      const dep = Date.parse(r.scheduledDeparture);
+      const arr = Date.parse(r.scheduledArrival);
+      if (!Number.isFinite(dep) || !Number.isFinite(arr)) continue;
+      const hours = (arr - dep) / 3_600_000;
+      if (hours > 0 && hours <= minHours) continue;
+      out.push({
+        user: r.userId,
+        key: r.naturalKey,
+        flight: r.number,
+        from: r.fromCode,
+        to: r.toCode,
+        dep: r.scheduledDeparture,
+        arr: r.scheduledArrival,
+        hours: Math.round(hours * 10) / 10,
+        source: r.source,
+        createdAt: r.createdAt,
+      });
+    }
+    return out.sort((a, b) => a.user.localeCompare(b.user) || a.dep.localeCompare(b.dep));
+  },
+});
+
+/** Puts right the arrivals of named journeys, for a support case where a
+ * booking document's stray date was saved as the arrival (1.1.5, the date
+ * rule in services/leg-schedule). Each fix names the row, the arrival it
+ * holds now and the one it should hold; a row whose arrival is no longer the
+ * expected one (the traveller edited it since) is skipped and reported, and
+ * a new arrival must still come after the departure. Only scheduledArrival
+ * and updatedAt change: the new stamp is what makes the traveller's phones
+ * take the server's row (sync is last-write-wins on updatedAt). No push, no
+ * heads-up change — those follow the departure, which stays as it is.
+ * `dryRun: true` reports and writes nothing.
+ * `npx convex run --prod devTools:repairArrivals '{"userId":"user_…","dryRun":true,"fixes":[…]}'` */
+export const repairArrivals = internalMutation({
+  args: {
+    userId: v.string(),
+    dryRun: v.boolean(),
+    fixes: v.array(v.object({ naturalKey: v.string(), expectedArrival: v.string(), newArrival: v.string() })),
+  },
+  handler: async (ctx, { userId, dryRun, fixes }) => {
+    const now = new Date().toISOString();
+    const report = [];
+    for (const fix of fixes) {
+      const row = await ctx.db
+        .query('journeys')
+        .withIndex('by_user_key', (q) => q.eq('userId', userId).eq('naturalKey', fix.naturalKey))
+        .unique();
+      const base = { key: fix.naturalKey, departure: row?.scheduledDeparture ?? null, arrivalNow: row?.scheduledArrival ?? null, newArrival: fix.newArrival };
+      if (!row || row.deletedAt) { report.push({ ...base, result: 'skipped: no such trip' }); continue; }
+      if (row.scheduledArrival !== fix.expectedArrival) { report.push({ ...base, result: 'skipped: arrival changed since' }); continue; }
+      const hours = (Date.parse(fix.newArrival) - Date.parse(row.scheduledDeparture)) / 3_600_000;
+      if (!Number.isFinite(hours) || hours <= 0) { report.push({ ...base, result: 'skipped: new arrival not after departure' }); continue; }
+      if (!dryRun) await ctx.db.patch(row._id, { scheduledArrival: fix.newArrival, updatedAt: now });
+      report.push({ ...base, flightHours: Math.round(hours * 100) / 100, result: dryRun ? 'would fix' : 'fixed' });
+    }
+    return { dryRun, report };
+  },
+});
