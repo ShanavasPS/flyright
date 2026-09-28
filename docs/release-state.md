@@ -2,6 +2,24 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-28 — 1.1.6 (iOS 73, Android 74): kept booking documents, arrival-date fixes — store steps waiting on the owner
+
+Triggered by a traveller's (Siraj's) report: booking-PDF imports stored arrival dates taken from elsewhere on the page (AA79 LHR→DFW "landing" 12 days later → "1 day in the US"). His five rows were repaired on production separately (`devTools:repairArrivals`, dry run first) and a production scan (`devTools:scanArrivals`) found no other affected traveller.
+
+| Item | Observed result |
+| --- | --- |
+| Code | `02a478b` arrival rule (printed flight time → date within 2 days and the route's distance-based limit → provider → clocks), spelled-out fare validity never a travel date; `41a8140` scan/repair tools; `5370b2b` kept booking documents (Convex `tripDocuments`, `/document-upload`, migration 0016, Android viewer via new native `expo-intent-launcher`), privacy policy; `b1d30fe` bump + notes. Suite **107 files / 1,316 tests**; typecheck and eslint clean. |
+| Backend | `release:deploy-backend` passed (**80** functions, production and development); `release:preflight` passed; `release:journal` passed. |
+| Hosting | Deployment `01bndjzlp5`; `flyright.expo.app`, the deployment URL and `getflyright.com` all serve `entry-4c25054192a6c2d77145deff3ec22d11.js` (production Convex, `pk_live_`); privacy page "effective 28 September 2026". `.env.production.local` removed. |
+| iOS | Local Xcode 27 build, IPA verified `1.1.6 (73)`, `iphoneos27.0`, scene manifest. EAS submission `8679b24c`; ASC build `965340d0-79df-49a6-b96d-f88d4d2d768f` **VALID**, internal TestFlight `IN_BETA_TESTING`. **Not submitted for review:** 1.1.5 (72) is still `WAITING_FOR_REVIEW` (submission `b8d7bb08`); withdrawing it and resubmitting as 1.1.6 was refused by the agent's permission classifier and is left to the owner. Combined What's New: `store/apple/whats-new-1.1.6-with-1.1.5.txt`; reviewer notes `store/apple/review-notes-1.1.6.txt`. |
+| Android | EAS build `cc78e04a-cb81-478d-b74b-09b195d0364c` FINISHED; submission `90f53d9e` finished to **internal**. **Production promotion not done:** refused by the permission classifier; left to the owner (notes `store/google/release-notes-1.1.6.txt`, 413 chars). |
+| Physical iPhone 15 Pro | TestFlight 1.1.6 (73) over 1.1.5 (72). devicectl: version, unlocked, two deep-link cold starts alive >30 s, crash logs 8 → 8. XCTest `testAllTabsAcrossTwoColdStarts` **passed twice**: signed in with no trips (shanavascruise.usa) and signed in with trips (Maja, 21 trips, Tokyo "4 days in Japan"). Argent over USB: document import (shared from Preview), "Only me", kept document on the trip, open, both test trips removed. |
+| Physical Pixel 9a | Universal APK from the store AAB (bundletool) over 1.1.5 (73), non-debuggable. `release-signed-in.yaml` retained-photo gate **passed**; `release-matrix.yaml` signed in with trips **passed** (Helsinki header, not Qatar; Home base Helsinki · Auto). Document flow on production: import → kept → opens in Drive PDF viewer → trips removed → both production `tripDocuments` rows tombstoned with `storageId: null`. Evidence `.maestro/out/release/1.1.6-74-pixel/`. `screen_off_timeout` left at 1800000 (phone disconnected before restore). |
+| Not covered | Account matrix: signed out with/without trips on both phones, signed in without trips on the Pixel — owner chose to ship on the current coverage. |
+| Found, for 1.1.7 | (1) iOS opens a kept document in the share sheet (no view action on a real iPhone) — use Quick Look. (2) A file shared from another app arrives with a random name (`FEE9FDFA-….pdf`) and the trip shows it — derive a readable name. Store privacy forms (ASC App Privacy, Play Data safety) still need the new photo/document entries (owner's logged-in Chrome). |
+| Screenshots | Carried forward: the listing does not show the import review or the trip journal. |
+| Dev apps | iOS sim `AA6A8347` Debug **1.1.6 (73)**, Android `emulator-5556` Debug **1.1.6 (74)**, both on Metro 8082; `release:devices --mode native` passed on both. |
+
 ## 2026-09-27 — 1.1.5 build 72: home base, trip photo headers, city pages (three superseded candidates)
 
 Full release requested with a new account/journal matrix on both phones. Three candidates were superseded by bugs the owner found on their own production account, each after upload; see the **Known blockers and lessons** section of [release-checks.md](release-checks.md), written from this release.
