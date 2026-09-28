@@ -195,7 +195,7 @@ describe('trip grouping from the current journal', () => {
     const rows = [lax, sfo, las];
     expect(buildTripGroups(rows)).toHaveLength(1);
     expect(titles(rows)).toEqual(['Los Angeles', 'San Francisco', 'Las Vegas']);
-    expect(stays(rows)).toMatchObject([{ days: 4, place: 'the US' }, { days: 3, place: 'the US' }]);
+    expect(stays(rows)).toMatchObject([{ days: 4, place: 'Los Angeles' }, { days: 3, place: 'San Francisco' }]);
   });
 
   it('reads a finished trip newest destination first, while a coming one keeps travel order', () => {
@@ -227,7 +227,7 @@ describe('trip grouping from the current journal', () => {
     const a = flight('a', 'HEL', 'ARN', '2027-06-01T09:00', '2027-06-01T09:05');
     const b = flight('b', 'ARN', 'HEL', '2027-06-01T18:00', '2027-06-01T20:00');
     expect(titles([a, b])).toEqual(['Stockholm']);
-    expect(stays([a, b])).toMatchObject([{ days: 0, place: 'Sweden' }]);
+    expect(stays([a, b])).toMatchObject([{ days: 0, place: 'Stockholm' }]);
     expect(tripListSections([a, b], NOW)[0]!.data.flatMap(i => i.kind === 'flight' && i.connection ? [i.connection] : [])).toEqual([]);
   });
 

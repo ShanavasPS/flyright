@@ -120,7 +120,11 @@ function stayBetween(a: Direction, b: Direction, international: boolean): TripSt
   if (!start || !end || !(at(to) > at(from))) return null;
   const days = Math.round((Date.parse(end) - Date.parse(start)) / DAY_MS);
   if (days < 0) return null;
-  return { id: `${last(a).id}:${first(b).id}`, days, place: stayPlace(a.to, international), fromId: last(a).id, toId: first(b).id };
+  // Landing in a city and leaving from it again is a stay in that city, even
+  // on an international trip. Only a stay that lands in one city and leaves
+  // from another (in at JFK, out at BOS) is named after the country.
+  const oneCity = placeKey(a.to, false) === placeKey(b.from, false);
+  return { id: `${last(a).id}:${first(b).id}`, days, place: stayPlace(a.to, international && !oneCity), fromId: last(a).id, toId: first(b).id };
 }
 
 /** Where a direction leaves the traveller in time. A hand-typed flight often
@@ -184,11 +188,17 @@ function directions(rows: JourneyRow[]): Direction[] {
     });
 }
 
-function flattenVisits(route: Direction[], international: boolean): TripGroup[] {
+function flattenVisits(route: Direction[], international: boolean, home?: HomePlace | null): TripGroup[] {
   const groups: TripGroup[] = [];
   // Bookkeeping only: the rendered groups are always flat. A return closes
   // the destination it leaves; the resumed visit starts before its stay.
-  const visited: Place[] = [route[0]!.from];
+  // A trip whose flight out was never logged still left from home: with a
+  // home known, the flight back to it ends the visit it leaves instead of
+  // opening a heading of its own.
+  const origin = route[0]!.from;
+  const visited: Place[] = home && !isHome(origin, home, false)
+    ? [{ code: '', country: home.country, city: home.city }, origin]
+    : [origin];
   const seen = new Set<string>();
   let current: TripGroup | null = null;
   const makeGroup = (p: Place, start: Moment, id: string) => {
@@ -309,7 +319,7 @@ export function buildTripGroups(rows: JourneyRow[], homeAt?: HomeAt): TravelTrip
       route.push(next);
       i++;
     }
-    trips.push({ id: first(start).id, journeys: route.flatMap(d => d.legs), groups: flattenVisits(route, international) });
+    trips.push({ id: first(start).id, journeys: route.flatMap(d => d.legs), groups: flattenVisits(route, international, known) });
   }
   return trips;
 }

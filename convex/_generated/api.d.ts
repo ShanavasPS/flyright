@@ -36,6 +36,7 @@ import type * as followerActivities from "../followerActivities.js";
 import type * as followerActivityHelpers from "../followerActivityHelpers.js";
 import type * as followerActivityShared from "../followerActivityShared.js";
 import type * as homeBase from "../homeBase.js";
+import type * as homeBaseShared from "../homeBaseShared.js";
 import type * as http from "../http.js";
 import type * as itinerary from "../itinerary.js";
 import type * as itineraryShared from "../itineraryShared.js";
@@ -107,6 +108,7 @@ declare const fullApi: ApiFromModules<{
   followerActivityHelpers: typeof followerActivityHelpers;
   followerActivityShared: typeof followerActivityShared;
   homeBase: typeof homeBase;
+  homeBaseShared: typeof homeBaseShared;
   http: typeof http;
   itinerary: typeof itinerary;
   itineraryShared: typeof itineraryShared;

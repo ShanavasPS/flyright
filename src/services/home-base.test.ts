@@ -310,6 +310,20 @@ describe('trips count from the home you had then', () => {
     expect(buildTripGroups(lone).map(t => t.groups[0]!.title)).toEqual(['Helsinki']);
   });
 
+  it('a trip with no flight out logged ends at home, under the city it came from', () => {
+    // Siraj, November 2025: the flight out from London is missing, so the
+    // trip's first flight is inside the US. The flight home closes Dallas.
+    const rows = [
+      flight('sna', 'SNA', 'DFW', '2025-11-09T06:00', '2025-11-09T11:10'),
+      flight('lhr', 'DFW', 'LHR', '2025-11-14T17:20', '2025-11-15T08:30'),
+    ];
+    const london = buildTripGroups(rows, homeLookup(state(period('a', LON, null, null))));
+    expect(london.map(t => t.groups.map(g => g.title))).toEqual([['Dallas-Fort Worth']]);
+    expect(london[0]!.groups[0]!.entries.map(e => (e.kind === 'flight' ? e.journey.id : e.stay.place))).toEqual(['sna', 'Dallas-Fort Worth', 'lhr']);
+    // Without a home there is nothing to end at: today's headings stay.
+    expect(buildTripGroups(rows).flatMap(t => t.groups.map(g => g.title))).toEqual(['Dallas-Fort Worth', 'London']);
+  });
+
   it('stats count from the home you had then', () => {
     const lookup = homeLookup(moved)!;
     const recap = travelRecap(history, { current: { city: 'London', departures: 6 }, at: lookup });

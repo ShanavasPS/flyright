@@ -18,6 +18,8 @@ import type { PublicSession } from '../../convex/liveShared';
 import { getAirport } from '@/services/airports';
 import { haversineKm, type RouteSource } from '@/services/geo';
 import type { JourneyRow } from '@/services/journeys';
+import type { HomePlace } from '@/services/home-base';
+import { personHomeAt } from '@/services/person-home';
 import { buildTripGroups, tripGroupDates } from '@/services/trip-groups';
 import type { TripUpdate } from '@/services/trip-updates';
 import { cityOf } from '@/services/timeline';
@@ -53,6 +55,11 @@ export type PersonTrip = {
   toCode: string;
   scheduledDeparture: string;
   scheduledArrival: string;
+  /** Their home on this trip's departure day, as their own Flights tab
+   * groups it (convex/homeBaseShared). Absent from older servers. */
+  home?: HomePlace;
+  /** The home the day before when it differs (a move day); null = none. */
+  homeBefore?: HomePlace | null;
 };
 
 /** Someone else's flight as the journal's own row shape, so the Flights tab's
@@ -238,7 +245,7 @@ export function PersonTravel({
    * reads newest destination first, the way the viewer's own does. */
   const grouped = (list: PersonTrip[], flown: boolean) => {
     const byId = new Map(list.map((t) => [t.journeyId, t]));
-    const trips = buildTripGroups(list.map(asJourneyRow));
+    const trips = buildTripGroups(list.map(asJourneyRow), personHomeAt(list));
     return (flown ? [...trips].reverse() : trips).flatMap((t) => {
       const groups = flown ? [...t.groups].reverse() : t.groups;
       return groups.map((g) => (

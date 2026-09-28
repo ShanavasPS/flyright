@@ -36,16 +36,21 @@ interface HomeBaseState {
 
 A home base is a **city**, never one airport. A day is the departure
 airport's local calendar day (`flightDay`), the same day the Flights list
-prints. No period covering a day means **Automatic** for it: trip grouping
-falls back to the old rule (the trip's first departure), stats to the city
-with most take-offs.
+prints. With no periods at all, trip grouping uses the **automatic home**
+(`autoHome`: take-offs plus time on the ground) for every flight
+(`groupingHome`). Once any period is set, a day none of them covers has no
+home: grouping falls back to the old rule (the trip's first departure),
+because one guessed city for the whole journal would be wrong for the years
+before a move. Stats keep the city with most take-offs until a period is set.
 
 Pure logic lives in `src/services/home-base.ts` (no React, fully unit
 tested). `src/services/home-base-store.ts` keeps one state per account (and
 `guest`) in zustand + AsyncStorage, like `pro-prompts`. A signed-in account
 syncs through Convex table `homeBases` (`convex/homeBase.ts`, `mine` /
 `save`), last write wins on `updatedAt`; `components/home-base-sync.tsx`
-mounts in `CloudSync`. A guest's home base carries over to the first account
+mounts in `CloudSync`. The same component saves the phone's automatic home to
+the row's `auto` field (`saveAuto`) whenever it changes; the web build keeps no
+journal and never writes it. A guest's home base carries over to the first account
 that has none.
 
 ## Rules
@@ -72,9 +77,15 @@ that has none.
      "Moved to London"**, never the start of a trip;
    - a flight *to* home whose origin is not home and that nothing precedes
      (the outbound was never logged) groups under its origin, not under home;
+   - a trip whose flight out was never logged, but whose later flight lands
+     at home, still left from home: that flight ends the visit it leaves
+     instead of opening a heading of its own;
    - after a move, a flight to a former home is an ordinary destination with
      its stay.
-   Without a home (Automatic) grouping is exactly as before.
+   Without a home (an empty journal, or a day no set period covers) grouping
+   is exactly as before. A stay is named after its city when the traveller
+   lands in a city and leaves from it again, and after the country only when
+   they leave from another city (in at JFK, out at BOS).
 6. **Stats.** Travel stats shows today's home and its take-offs, or the
    automatic city. Top destination skips arrivals into the home the traveller
    had then. Places reads take-offs for today's home country and marks every
@@ -95,7 +106,15 @@ that has none.
    previous home that is followed by a take-off from it (the move). Two or more
    homes, and no periods yet, show "You seem to have lived in N places" with
    checkboxes; Confirm writes those periods.
-10. Claims never read the home base. Friends never see it.
+10. Claims never read the home base. **Friends' cards group trips the way
+    the traveller's own Flights tab does**: `circle.travelOf` attaches to each
+    trip a member may see its `home` (the home on its departure day, from the
+    periods, else the saved automatic home) and, on a move day, `homeBefore`
+    (`convex/homeBaseShared.tripHome`); `services/person-home.personHomeAt`
+    turns them back into the grouping lookup. The periods themselves never
+    leave the owner, nor anything about trips the member cannot see, and the
+    home is never printed as a label. An older server sends neither field and
+    the card groups as before.
 
 ## Screens
 

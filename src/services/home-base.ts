@@ -188,6 +188,19 @@ export function homeLookup(state: HomeBaseState): ((row: JourneyRow) => HomePlac
   return (row) => homeOn(state, departureDay(row));
 }
 
+/** The home trips are grouped from. Set periods rule, and a day none of them
+ * covers has no home (Automatic's own rule), because one guessed city for the
+ * whole journal would be wrong for the years before a move. With no periods
+ * at all, the automatic home stands for every flight. */
+export function groupingHome(state: HomeBaseState, rows: JourneyRow[], now = Date.now()): ((row: JourneyRow) => HomePlace | null) | undefined {
+  const set = homeLookup(state);
+  if (set) return set;
+  const auto = autoHome(rows, now);
+  if (!auto) return undefined;
+  const home: HomePlace = { city: auto.city, country: auto.country };
+  return () => home;
+}
+
 export interface UpsertResult {
   periods: HomePeriod[];
   /** What happened to neighbours, for the editor to say before saving. */

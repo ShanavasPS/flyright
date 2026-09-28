@@ -3,15 +3,16 @@ import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { HOUR, limit } from './abuse';
 
-/** The account's home base (docs/home-base.md). Only its owner reads it:
- * friends never see where someone lives. */
+/** The account's home base (docs/home-base.md). Only its owner reads the
+ * periods; a follower's copy of a trip carries just the home that trip
+ * counts from (homeBaseShared.tripHome), so both group it the same way. */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const row = await ctx.db.query('homeBases').withIndex('by_user', (q) => q.eq('userId', identity.subject)).unique();
-    return row ? { periods: row.periods, dismissed: row.dismissed, updatedAt: row.updatedAt } : null;
+    return row ? { periods: row.periods, dismissed: row.dismissed, updatedAt: row.updatedAt, auto: row.auto ?? null } : null;
   },
 });
 
@@ -43,6 +44,27 @@ export const save = mutation({
     const values = { periods: incoming.periods, dismissed: incoming.dismissed, updatedAt: incoming.updatedAt };
     if (row) await ctx.db.patch(row._id, values);
     else await ctx.db.insert('homeBases', { userId: identity.subject, ...values });
+    return { saved: true };
+  },
+});
+
+/** The automatic home the owner's phone worked out (autoHome), or null when
+ * the journal names none. Kept apart from `save` so it never races an edit
+ * of the periods: it carries no `updatedAt` and only ever sets this field. */
+export const saveAuto = mutation({
+  args: { auto: v.union(v.null(), v.object({ city: v.string(), country: v.string() })) },
+  handler: async (ctx, { auto }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { saved: false };
+    await limit(ctx, `home-base-auto:${identity.subject}`, 60, HOUR);
+    if (auto && (auto.city.length > 80 || auto.country.length > 2)) throw new ConvexError('Invalid home base.');
+    const row = await ctx.db.query('homeBases').withIndex('by_user', (q) => q.eq('userId', identity.subject)).unique();
+    if (row) {
+      if ((row.auto ?? null)?.city === auto?.city && (row.auto ?? null)?.country === auto?.country) return { saved: false };
+      await ctx.db.patch(row._id, { auto });
+    } else {
+      await ctx.db.insert('homeBases', { userId: identity.subject, periods: [], dismissed: [], updatedAt: 0, auto });
+    }
     return { saved: true };
   },
 });

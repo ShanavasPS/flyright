@@ -25,6 +25,10 @@ export default defineSchema({
     })),
     dismissed: v.array(v.string()),
     updatedAt: v.number(),
+    /** The automatic home the owner's phone worked out from the whole
+     * journal (src/services/home-base.ts autoHome), so followers group the
+     * owner's trips the way the owner sees them. Used only with no periods. */
+    auto: v.optional(v.union(v.null(), v.object({ city: v.string(), country: v.string() }))),
   }).index('by_user', ['userId']),
   /** Trips whose photo on Flights was changed (convex/tripCovers.ts). */
   tripCovers: defineTable({

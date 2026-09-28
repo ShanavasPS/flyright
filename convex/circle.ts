@@ -25,6 +25,7 @@ import {
   syncCloseAccess,
 } from './liveHelpers';
 import { preferredSession, stillLive, toPublicSession } from './liveShared';
+import { tripHome, type TripHome } from './homeBaseShared';
 import { blockedBetween, blockedSet, recentlyDeclined } from './safetyHelpers';
 import { latestUpdate, updatesFor } from './updates';
 import { updateWindowOpen } from './updatesShared';
@@ -469,8 +470,9 @@ export const cancelRequest = mutation({
 /** The public-safe shape of one of somebody else's trips: the same fields a
  * live session already exposes to a follower, plus the id to open it by.
  * Never the natural key, the notes, the photos or anything a claim knows. */
-function publicTrip(j: Doc<'journeys'>) {
+function publicTrip(j: Doc<'journeys'>, home: TripHome = {}) {
   return {
+    ...home,
     journeyId: j._id,
     carrier: j.carrier,
     number: j.number,
@@ -554,6 +556,9 @@ async function travelOf(
   upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
   past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
   const shownPast = past.slice(0, PAST_TRIPS_SHOWN);
+  // The owner's home per listed trip, so a member groups these trips the way
+  // the owner's own Flights tab does — never the periods themselves.
+  const base = await ctx.db.query('homeBases').withIndex('by_user', (q) => q.eq('userId', ownerId)).unique();
   // What the traveller has shared from the trip they are on: the live leg,
   // or — the morning after landing, when the pass has already let the trip
   // go — the most recent leg still inside its update window. Every update
@@ -569,8 +574,8 @@ async function travelOf(
     : [];
   return {
     liveJourneyId,
-    upcoming: upcoming.map(publicTrip),
-    past: shownPast.map(publicTrip),
+    upcoming: upcoming.map((j) => publicTrip(j, tripHome(base, j))),
+    past: shownPast.map((j) => publicTrip(j, tripHome(base, j))),
     /** The trip the updates below belong to (listed above, or the live one). */
     updatesJourneyId: current && updates.length ? current._id : null,
     updates,
