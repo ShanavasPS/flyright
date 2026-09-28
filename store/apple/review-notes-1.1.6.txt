@@ -1,0 +1,9 @@
+What's new to review:
+
+Keeping the booking document. On Flights, tap + > Upload ticket > Files (or Photo library) and choose an airline booking PDF, e-ticket receipt or a screenshot of one. The review screen that lists the flights found now has a "Keep the document with the trip" switch (on by default). With it on, the document is kept on each trip it names: open a trip, scroll to Your journal, and tap "Booking document" to open it (a long press removes it). If every flight in the document is already in Flights, the button reads "Keep the document" and only attaches it. The document is private to the account holder: it is never shown to followers, and deleting the trip, the document or the account deletes it from our storage.
+
+Arrival dates. When a booking prints a later date beside a flight (for example a fare's "not valid after" date), that date is no longer read as the flight's arrival; the printed flight time decides the arrival day instead.
+
+No new device permissions, no change to what Free and Pro include, and no change to purchases. The privacy policy (Settings > Privacy Policy, and getflyright.com/privacy) now describes the synced trip photos and kept documents.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. The review account already has trips; any booking PDF or screenshot of one can be used to try the import.

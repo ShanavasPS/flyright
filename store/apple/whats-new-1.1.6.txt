@@ -1,0 +1,3 @@
+Keep your booking with the trip. When you add flights from a PDF or a picture, FlyRight can keep the document on each trip, so you can open it at the airport — even offline. Only you can see it.
+
+Arrival dates read from bookings are right. A later date printed beside a flight — like a fare's "not valid after" — is no longer taken as the day it lands, and the flight time on the booking now settles it. With that, the days you spend somewhere between flights add up correctly again.
