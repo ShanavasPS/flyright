@@ -1,0 +1,13 @@
+What's new to review:
+
+Days by country. On Flights, tap "All travel stats". Under the Home base card, the new "Days by country" card shows this year's days in each country; tap it to open Places > Days, pick a year, and tap a country to see its stays. A day counts if the traveller was in the country for any part of it (the day count used by tax treaties' 183-day rule and the US presence test); United Kingdom rows also show midnights. When a flight seems to be missing from the journal, those days are listed as "Not sure" with an "Add the missing flight" button. The screen notes that the counts come from the logged flights and are not tax advice. Everything is computed on the device from the user's own trips; nothing new is collected or sent.
+
+Trip grouping. On Flights, a stay abroad now reads by country (for example "13 days in the US") and a stay in the home country by city. People who follow a traveller see that traveller's trips grouped the same way.
+
+Kept booking documents now open in Quick Look inside the app, and shared copies have readable file names.
+
+The Home base and Top destination cards on Travel stats were redesigned, the plane on the globe (World tab) is now white with a blue outline, and Settings names the plan (Monthly, Yearly, Lifetime).
+
+No new device permissions, no change to what Free and Pro include, and no change to purchases.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. The review account already has trips, so the Days by country card shows data straight away.

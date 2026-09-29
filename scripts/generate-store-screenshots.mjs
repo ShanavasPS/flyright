@@ -55,7 +55,7 @@ const SHOTS = [
   {
     raw: 'phone-02-stats.png',
     headline: 'Your travels, in numbers',
-    sub: 'Records, places and airlines from your history',
+    sub: 'Records, places and days in each country',
   },
   {
     raw: 'phone-04-add-flight.png',

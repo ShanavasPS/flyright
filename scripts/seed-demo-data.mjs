@@ -84,6 +84,20 @@ const TRIPS = [
   ['demo-nrt', 'Japan Airlines', 'JP', 'JL61', 'LAX', 'NRT', now - 232 * DAY, 11.7],
   ['demo-sin', 'Finnair', 'FI', 'AY131', 'HEL', 'SIN', now - 288 * DAY, 11.6],
   ['demo-fra', 'Lufthansa', 'DE', 'LH400', 'FRA', 'JFK', now - 340 * DAY, 8.6],
+  // The flights out and home around those, so every trip starts and ends in
+  // Helsinki: Days by country (Travel stats) then reads like a real year
+  // instead of months of "not sure" between one-way flights.
+  ['demo-mad-back', 'Finnair', 'FI', 'AY955', 'MAD', 'HEL', now - 40 * DAY, 4.5],
+  ['demo-arn-back', 'Finnair', 'FI', 'AY812', 'ARN', 'HEL', now - 71 * DAY, 1.0],
+  ['demo-jfk-back', 'Finnair', 'FI', 'AY6', 'JFK', 'HEL', now - 109 * DAY, 8.2],
+  ['demo-cdg-back', 'Finnair', 'FI', 'AY1552', 'CDG', 'HEL', now - 156 * DAY, 3.2],
+  ['demo-lax-back', 'Finnair', 'FI', 'AY8', 'LAX', 'HEL', now - 201 * DAY, 11.2],
+  ['demo-dxb-out', 'Emirates', 'AE', 'EK146', 'HEL', 'DXB', now - 213 * DAY, 6.2],
+  ['demo-nrt-back', 'Finnair', 'FI', 'AY74', 'NRT', 'HEL', now - 226 * DAY, 13.5],
+  ['demo-lax-out', 'Finnair', 'FI', 'AY7', 'HEL', 'LAX', now - 236 * DAY, 11.5],
+  ['demo-sin-back', 'Finnair', 'FI', 'AY132', 'SIN', 'HEL', now - 279 * DAY, 12.8],
+  ['demo-fra-back', 'Finnair', 'FI', 'AY16', 'JFK', 'HEL', now - 330 * DAY, 8.2],
+  ['demo-fra-out', 'Lufthansa', 'DE', 'LH2465', 'HEL', 'FRA', now - 340 * DAY - 6 * HOUR, 2.5],
 ];
 
 if (flag('home-base')) {
