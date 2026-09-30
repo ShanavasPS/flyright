@@ -15,6 +15,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.8',
+    date: '2026-09-30',
+    notes: [
+      'Easier to read with larger text: FlyRight follows your phone\'s text size up to a comfortable limit, so every screen stays tidy even at the largest settings.',
+      'Trip pages, your flights list and Travel stats rearrange themselves when text is large, so airport codes, times and flight numbers are never cut off.',
+      'Settings, tabs and buttons keep their labels whole with larger text, and the notifications page scrolls instead of hiding its text behind the buttons.',
+      'On Android, icons stay in place with large text, and a shared World poster looks the same whatever your text size.',
+    ],
+  },
+  {
     version: '1.1.7',
     date: '2026-09-28',
     notes: [
