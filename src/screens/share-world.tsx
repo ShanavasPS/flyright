@@ -367,7 +367,8 @@ const styles = StyleSheet.create({
   },
   segment: {
     flexDirection: 'row',
-    height: 36,
+    // A floor, not a height: at large text the labels would clip.
+    minHeight: 36,
     padding: 3,
     borderRadius: 18,
     backgroundColor: SURFACE,
@@ -404,7 +405,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 6,
-    height: 36,
+    // Grows with large text; the label's padding centres it at every size.
+    minHeight: 36,
     paddingHorizontal: Spacing.three,
     borderRadius: 18,
     backgroundColor: SURFACE,
@@ -416,7 +418,7 @@ const styles = StyleSheet.create({
     color: TEXT,
     fontSize: 14,
     fontWeight: '700',
-    lineHeight: 36,
+    paddingVertical: Spacing.two,
   },
   chipHint: {
     color: MUTED,

@@ -101,6 +101,11 @@ export const WideWindowMinWidth = 600;
  * Was 840 (Android's expanded breakpoint) until 2026-09-22. */
 export const TwoPaneMinWidth = 740;
 
+/** The largest the OS text setting can make text: Text and TextInput default
+ * `maxFontSizeMultiplier` to this in patches/react-native+*.patch, which is
+ * where the number is actually applied (a patch can't import app code). */
+export const MaxFontScale = 1.5;
+
 /** The narrowest a pane may get: a small phone (iPhone SE). Every screen in
  * the app already lays out at this width, so a pane never gets narrower
  * than a layout that was designed for it. */

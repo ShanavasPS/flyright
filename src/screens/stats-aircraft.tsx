@@ -10,6 +10,7 @@ import { AircraftCard, ListHeadline, RankRow, makerColours } from '@/components/
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { useJourneys } from '@/services/journeys';
 import { aircraftRanks, makerRanks, plural, type AircraftSort } from '@/services/travel-recap';
@@ -121,6 +122,8 @@ function TypeRow({
   last: boolean;
   onPress: () => void;
 }) {
+  // Large text: names wrap to a second line rather than end in "…".
+  const lines = useLargeText() ? 2 : 1;
   const theme = useTheme();
   const colours = makerColours(type.maker, theme.tint);
   return (
@@ -136,10 +139,10 @@ function TypeRow({
       value={type.flights.toLocaleString()}
       caption={`${Math.round(type.km).toLocaleString()} km`}
       last={last}>
-      <ThemedText type="smallBold" numberOfLines={1}>
+      <ThemedText type="smallBold" numberOfLines={lines}>
         {type.model}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={lines}>
         {[type.maker, type.airframes > 1 ? `${type.airframes} different aircraft` : type.airframes === 1 ? '1 aircraft' : null]
           .filter(Boolean)
           .join(' · ')}
@@ -163,6 +166,8 @@ function MakerRow({
   share: number;
   last: boolean;
 }) {
+  // Large text: names wrap to a second line rather than end in "…".
+  const lines = useLargeText() ? 2 : 1;
   const theme = useTheme();
   const colours = makerColours(maker.maker, theme.tint);
   return (
@@ -172,10 +177,10 @@ function MakerRow({
       value={maker.flights.toLocaleString()}
       caption={`${Math.round(maker.km).toLocaleString()} km`}
       last={last}>
-      <ThemedText type="smallBold" numberOfLines={1}>
+      <ThemedText type="smallBold" numberOfLines={lines}>
         {maker.maker}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={lines}>
         {plural(maker.models, 'type')}
       </ThemedText>
       <View style={[styles.bar, { backgroundColor: theme.backgroundSelected }]}>

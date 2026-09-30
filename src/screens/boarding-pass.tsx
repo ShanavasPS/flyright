@@ -247,7 +247,9 @@ function Fact({ label, value, wide = false }: { label: string; value: string; wi
   return (
     <View style={[styles.fact, wide && styles.factWide]}>
       <Text style={styles.factLabel}>{label.toUpperCase()}</Text>
-      <Text style={styles.factValue} numberOfLines={1}>
+      {/* A booking code shown at the gate must read whole: at large text it
+          shrinks to fit its box rather than ending "FRX7Y…". */}
+      <Text style={styles.factValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
         {value}
       </Text>
     </View>

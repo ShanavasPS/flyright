@@ -1,0 +1,16 @@
+# Passes when Settings shows the signed-in test account.
+appId: com.shanavasshaji.flyright
+tags:
+  - helper
+---
+- launchApp
+# Android drops a link sent before the router is up: wait for the tab bar.
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 30000
+    optional: true
+- runFlow: prompts.yaml
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: ".*clerk_test.*"
+    timeout: 90000

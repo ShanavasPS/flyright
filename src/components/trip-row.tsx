@@ -8,6 +8,7 @@ import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { countdown, flightInstant, formatDayLabel } from '@/services/dates';
@@ -98,6 +99,7 @@ export function TripRow({
   };
 }) {
   const theme = useTheme();
+  const large = useLargeText();
   const eyebrowColor = eyebrowTone === 'heading' ? theme.heading : theme.tint;
   const departureZone = airportZone(trip.fromCode);
   const departs = flightInstant(trip.scheduledDeparture, departureZone);
@@ -126,7 +128,8 @@ export function TripRow({
           <ThemedText
             type="small"
             themeColor="textSecondary"
-            numberOfLines={1}
+            // Large text: wrap rather than cut the flight number ("AY8…").
+            numberOfLines={large ? 2 : 1}
             style={styles.metaCarrier}>
             {/* The logo already names the airline, so the flight number alone
                 follows the date (Flighty's pattern); carrier is the fallback

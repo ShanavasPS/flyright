@@ -6,6 +6,7 @@ import { SheenCard } from '@/components/sheen-card';
 import { RankRow } from '@/components/stats-cards';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import type { YearDays } from '@/services/country-days';
 
@@ -46,6 +47,8 @@ export function YearChips({ years, value, onChange }: { years: number[]; value: 
 /** Places › Days: every country of the year with its days, the days a
  * missing flight leaves unknown, and how the days are counted. */
 export function CountryDaysList({ year }: { year: YearDays }) {
+  // Large text: names wrap to a second line rather than end in "…".
+  const lines = useLargeText() ? 2 : 1;
   const router = useRouter();
   const theme = useTheme();
   const most = Math.max(1, ...year.countries.map((c) => c.days));
@@ -66,13 +69,13 @@ export function CountryDaysList({ year }: { year: YearDays }) {
                 value={c.days.toLocaleString()}
                 caption={c.days === 1 ? 'day' : 'days'}
                 last={last}>
-                <ThemedText type="smallBold" numberOfLines={1}>
+                <ThemedText type="smallBold" numberOfLines={lines}>
                   {c.name}{' '}
                   <ThemedText type="smallBold" themeColor="textSecondary">{c.country}</ThemedText>
                 </ThemedText>
-                {!!sub && <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{sub}</ThemedText>}
+                {!!sub && <ThemedText type="small" themeColor="textSecondary" numberOfLines={lines}>{sub}</ThemedText>}
                 {c.country === 'GB' && (
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={lines}>
                     {c.midnights} {c.midnights === 1 ? 'midnight' : 'midnights'}, the UK&apos;s count
                   </ThemedText>
                 )}

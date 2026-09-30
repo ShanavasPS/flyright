@@ -3,6 +3,7 @@ import { Platform, useWindowDimensions } from 'react-native';
 import { TwoPaneMinWidth } from '@/constants/theme';
 import type { WideLayoutKey, WideLayoutSwitches } from '@/constants/wide-layouts';
 import { useWideLayouts } from '@/hooks/use-wide-layouts';
+import { useTextScale } from '@/hooks/use-text-scale';
 import { useFoldState, type FoldState } from '../../modules/flyright-fold';
 
 /** Which side the screen's own content (the list, the feed, the globe) sits
@@ -26,8 +27,9 @@ export interface SplitLayout {
 
 export type SplitSurface = Exclude<WideLayoutKey, 'duoMirror'>;
 
-/** Above this text scale the window stays one column. The standard sizes
- * (up to xxxLarge, about 1.35×) split; the accessibility sizes do not. */
+/** Above this text scale the window stays one column. Text is capped at
+ * MaxFontScale (1.5×), so with the capped scale from useTextScale every size
+ * splits; this guards callers that pass the raw OS scale. */
 export const MaxSplitFontScale = 1.5;
 
 export interface SplitInput {
@@ -103,7 +105,10 @@ export function useSplitLayout(
     allowWeb?: boolean;
   },
 ): SplitLayout {
-  const { width, fontScale } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  // The scale text is drawn at, not the OS setting: since the 1.5x cap a
+  // large-text user's columns are never wider than at 1.5x, so they split.
+  const fontScale = useTextScale();
   const fold = useFoldState();
   const switches = useWideLayouts();
   return splitLayoutFor({

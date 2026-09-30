@@ -70,6 +70,23 @@ Every release also runs the four account/journal states on the physical Pixel 9a
 
 Run `.maestro/release-matrix.yaml` once per state (`-e ACCOUNT_STATE=… -e TRIPS=with|without -e ACCOUNT_EMAIL=<escaped>`). Per state and over two cold starts it checks Flights (trip photo headers and a city page, or the empty journal), Travel stats and its Home base card, the Settings home base row and screen, Friends and World. Maestro cannot drive a physical iPhone: there the same states are walked with Argent on USB (sign-in typing, taps, screenshots) alongside the XCTest tab gate. Record each state per device in `release-state.md`.
 
+## Large text (since 2026-09-29)
+
+Text follows the phone's text size up to **1.5×** and stops there: `patches/react-native+0.86.3.patch` defaults `maxFontSizeMultiplier` to 1.5 on every `Text` and `TextInput` (`MaxFontScale` in `src/constants/theme.ts` mirrors it; `useTextScale()` gives layout code the capped value). `npm run release:preflight` fails if an upgrade drops the patch (`scripts/check-font-cap.test.mjs`).
+
+`npm run test:large-text` screenshots every screen state in `scripts/large-text/screens.json` at default text size and above the cap (iOS AX3, Android `font_scale 2.0`) on an iOS simulator and an Android emulator at once, then writes `index.html` (pairs side by side) and `findings.csv` in `.maestro/out/large-text/<stamp>/`:
+
+```
+npm run test:large-text -- --ios <sim-udid> --android <serial> \
+  --ios-app <Release FlyRight.app> --android-apk <app-release.apk> [--pass B,A,C] [--only F10,M05]
+```
+
+- Release builds pointed at DEV (no `.env.production.local`). The Android APK must be debuggable so `seed-demo-data.mjs` can use `run-as`: build it with `./gradlew -I <init script setting android.buildTypes.release.debuggable = true> app:assembleRelease`, never by editing `android/`.
+- Passes: B = fresh install signed out (onboarding, empty, then seeded), A = signed in as the store-profile user Maja with Pro (runs `seed-store-profile.mjs` and `devTools:setPro` on DEV), C = travel day. Each state cold-starts the app and opens its deep link; Android needs the tab bar up before a link is sent or the router drops it.
+- Use a dedicated simulator and emulator (the 2026-09-29 run made "FlyRight Large Text" / `FlyRight_LargeText`): pass B uninstalls the app and resets the simulator keychain.
+- `--baseline` on a build without the cap captures default size only; `--compare-to <that run>` then flags any default-size drift. The run also checks the cap engages (F10, F20, F03 identical at three sizes above it).
+- The iOS tab-bar long-press (Large Content Viewer) stays a manual check.
+
 ## Known blockers and lessons (1.1.5, builds 69–71, 2026-09-27)
 
 Read before starting; each cost time or a store build once.

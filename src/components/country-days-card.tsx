@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import type { YearDays } from '@/services/country-days';
 
@@ -43,6 +44,7 @@ export function DaysBar({ year, height = 10 }: { year: YearDays; height?: number
  * names itself, like the Home base card above it. */
 export function CountryDaysCard({ year, onPress }: { year: YearDays; onPress: () => void }) {
   const theme = useTheme();
+  const large = useLargeText();
   const home = year.countries.find((c) => c.home);
   const abroad = year.countries.filter((c) => !c.home);
   const top = abroad.slice(0, 3);
@@ -61,7 +63,7 @@ export function CountryDaysCard({ year, onPress }: { year: YearDays; onPress: ()
       {({ pressed }) => (
         <SheenCard style={[styles.card, pressed && styles.pressed]}>
           <View style={styles.header}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps} numberOfLines={1}>
+            <ThemedText type="smallBold" themeColor="textSecondary" style={[styles.caps, styles.grow]} numberOfLines={large ? 2 : 1}>
               Days by country · {period}
             </ThemedText>
             <SymbolView
@@ -72,8 +74,9 @@ export function CountryDaysCard({ year, onPress }: { year: YearDays; onPress: ()
             />
           </View>
           <DaysBar year={year} />
-          <View style={styles.summary}>
-            <ThemedText type="smallBold" numberOfLines={1} style={styles.grow}>{lead}</ThemedText>
+          {/* Large text: the two halves stack rather than cut the lead ("186 da…"). */}
+          <View style={large ? styles.summaryStacked : styles.summary}>
+            <ThemedText type="smallBold" numberOfLines={large ? 2 : 1} style={!large && styles.grow}>{lead}</ThemedText>
             {!!rest && <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{rest}</ThemedText>}
           </View>
           {top.length > 0 && (
@@ -99,6 +102,7 @@ const styles = StyleSheet.create({
   caps: { textTransform: 'uppercase', letterSpacing: 1, fontSize: 11, lineHeight: 14, flex: 1 },
   bar: { flexDirection: 'row', gap: 2, overflow: 'hidden' },
   summary: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
+  summaryStacked: { gap: Spacing.half },
   grow: { flex: 1, minWidth: 0 },
   top: { flexDirection: 'row', gap: Spacing.three },
   topItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },

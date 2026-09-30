@@ -1,0 +1,26 @@
+diff --git a/node_modules/expo-symbols/build/SymbolView.js b/node_modules/expo-symbols/build/SymbolView.js
+index 6b352b5..1d0da01 100644
+--- a/node_modules/expo-symbols/build/SymbolView.js
++++ b/node_modules/expo-symbols/build/SymbolView.js
+@@ -32,7 +32,7 @@ export function SymbolView(props) {
+     if (!loaded) {
+         return _jsx(View, { style: style });
+     }
+-    return (_jsx(View, { style: style, children: _jsx(Text, { style: {
++    return (_jsx(View, { style: style, children: _jsx(Text, { allowFontScaling: false, style: {
+                 fontFamily: font.name,
+                 color: props.tintColor ?? DEFAULT_SYMBOL_COLOR,
+                 fontSize: size,
+diff --git a/node_modules/expo-symbols/src/SymbolView.tsx b/node_modules/expo-symbols/src/SymbolView.tsx
+index 3df5fd5..23e8126 100644
+--- a/node_modules/expo-symbols/src/SymbolView.tsx
++++ b/node_modules/expo-symbols/src/SymbolView.tsx
+@@ -40,6 +40,8 @@ export function SymbolView(props: SymbolViewProps): JSX.Element {
+   return (
+     <View style={style}>
+       <Text
++        // FlyRight: an icon is a picture in a fixed box, not text to read (patches/expo-symbols).
++        allowFontScaling={false}
+         style={{
+           fontFamily: font.name,
+           color: props.tintColor ?? DEFAULT_SYMBOL_COLOR,

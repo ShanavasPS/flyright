@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { forwardRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type TextProps } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { WORLD } from '@/services/geo';
@@ -12,6 +12,12 @@ import {
   type ShareFormat,
   type ShareMapModel,
 } from '@/services/world-share';
+
+/** The poster is a picture that gets shared, not text read in the app: it
+ * must look the same whatever the sharer's text size, so it ignores it. */
+function PosterText(props: TextProps) {
+  return <Text allowFontScaling={false} {...props} />;
+}
 
 /** The shareable poster: the atlas across the top, edge to edge and fading
  * into the card, with the headline on it; the numbers, the records and the
@@ -52,15 +58,15 @@ export const WorldShareCard = forwardRef<
 
       <View style={[styles.block, { top: 0, padding: pad, paddingTop: story ? pad : 18 }]}>
         <View style={[styles.brandRow, !story && styles.brandRowTight]}>
-          <Text style={[styles.brand, { color: palette.green }]}>FLYRIGHT</Text>
+          <PosterText style={[styles.brand, { color: palette.green }]}>FLYRIGHT</PosterText>
           {!story && (
-            <Text style={[styles.eyebrowInline, muted]} numberOfLines={1}>
+            <PosterText style={[styles.eyebrowInline, muted]} numberOfLines={1}>
               {copy.eyebrow}
-            </Text>
+            </PosterText>
           )}
         </View>
-        {story && <Text style={[styles.eyebrow, muted]}>{copy.eyebrow}</Text>}
-        <Text
+        {story && <PosterText style={[styles.eyebrow, muted]}>{copy.eyebrow}</PosterText>}
+        <PosterText
           style={[
             styles.title,
             text,
@@ -70,11 +76,11 @@ export const WorldShareCard = forwardRef<
           adjustsFontSizeToFit
           minimumFontScale={0.6}>
           {copy.title}
-        </Text>
+        </PosterText>
         {copy.subtitle && (
-          <Text style={[styles.subtitle, muted]} numberOfLines={story ? 2 : 1}>
+          <PosterText style={[styles.subtitle, muted]} numberOfLines={story ? 2 : 1}>
             {copy.subtitle}
-          </Text>
+          </PosterText>
         )}
       </View>
 
@@ -87,16 +93,16 @@ export const WorldShareCard = forwardRef<
         <View style={styles.stats}>
           {copy.stats.map((stat) => (
             <View key={stat.label} style={[styles.stat, tile, !story && styles.statTight]}>
-              <Text
+              <PosterText
                 style={[styles.statValue, text, { fontSize: story ? 24 : 20 }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}>
                 <StatValue value={stat.value} size={story ? 24 : 20} />
-              </Text>
-              <Text style={[styles.statLabel, muted]} numberOfLines={1}>
+              </PosterText>
+              <PosterText style={[styles.statLabel, muted]} numberOfLines={1}>
                 {stat.label}
-              </Text>
+              </PosterText>
             </View>
           ))}
         </View>
@@ -106,14 +112,14 @@ export const WorldShareCard = forwardRef<
               <View
                 key={detail.label}
                 style={[styles.detail, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.divider }]}>
-                <Text style={[styles.detailLabel, muted]}>{detail.label.toUpperCase()}</Text>
-                <Text
+                <PosterText style={[styles.detailLabel, muted]}>{detail.label.toUpperCase()}</PosterText>
+                <PosterText
                   style={[styles.detailValue, text]}
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.8}>
                   {detail.value}
-                </Text>
+                </PosterText>
               </View>
             ))}
           </View>
@@ -127,9 +133,9 @@ export const WorldShareCard = forwardRef<
           // shared the row with getflyright.com.
           <View style={styles.detailsLines}>
             {copy.details.slice(0, 2).map((d) => (
-              <Text key={d.label} style={[styles.detailsLine, muted]} numberOfLines={1}>
-                {d.label} · <Text style={[styles.detailsLineValue, text]}>{d.value}</Text>
-              </Text>
+              <PosterText key={d.label} style={[styles.detailsLine, muted]} numberOfLines={1}>
+                {d.label} · <PosterText style={[styles.detailsLineValue, text]}>{d.value}</PosterText>
+              </PosterText>
             ))}
           </View>
         ) : (
@@ -137,7 +143,7 @@ export const WorldShareCard = forwardRef<
         )}
         <View style={[styles.footerBrand, !story && styles.footerBrandStacked]}>
           <View style={[styles.footerDot, { backgroundColor: palette.green }]} />
-          <Text style={[styles.footerText, muted]}>getflyright.com</Text>
+          <PosterText style={[styles.footerText, muted]}>getflyright.com</PosterText>
         </View>
       </View>
     </View>
@@ -154,15 +160,15 @@ function StatValue({ value, size }: { value: string; size: number }) {
     <>
       {parts.map((part, i) =>
         /^[^\d\s,.]+$/.test(part) ? (
-          <Text key={i} style={{ fontSize: Math.round(size * 0.58), fontWeight: '700', letterSpacing: 0 }}>
+          <PosterText key={i} style={{ fontSize: Math.round(size * 0.58), fontWeight: '700', letterSpacing: 0 }}>
             {' '}
             {part}
-          </Text>
+          </PosterText>
         ) : (
-          <Text key={i}>
+          <PosterText key={i}>
             {i > 0 ? ' ' : ''}
             {part}
-          </Text>
+          </PosterText>
         ),
       )}
     </>

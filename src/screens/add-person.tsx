@@ -274,7 +274,8 @@ function LinkRow({
         size={44}
       />
       <View style={styles.rowBody}>
-        <ThemedText themeColor="heading" numberOfLines={1}>
+        {/* Two lines at large text rather than "Not on FlyRig…". */}
+        <ThemedText themeColor="heading" numberOfLines={2}>
           {title}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={3}>

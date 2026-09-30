@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { formatKm, timeAloftComparison, type TravelStats } from '@/services/timeline';
 
 // The card keeps the brand's night-flight navy in BOTH themes — on the light
@@ -48,6 +49,7 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
  * there's at least one trip. */
 export function TravelStatsStrip({ stats }: { stats: TravelStats }) {
   const router = useRouter();
+  const large = useLargeText();
 
   if (!stats.trips) return null;
   const line = [
@@ -67,7 +69,8 @@ export function TravelStatsStrip({ stats }: { stats: TravelStats }) {
           <ThemedText type="smallBold" style={styles.microLabel}>
             All-time
           </ThemedText>
-          <ThemedText type="smallBold" style={styles.stripLine} numberOfLines={1}>
+          {/* Large text: two lines rather than "11 count..". */}
+          <ThemedText type="smallBold" style={styles.stripLine} numberOfLines={large ? 2 : 1}>
             {line}
           </ThemedText>
         </View>
@@ -86,6 +89,7 @@ export function TravelStatsBody({ stats }: { stats: TravelStats }) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const aloft = timeAloftComparison(stats.hoursAloft);
+  const large = useLargeText();
 
   return (
     <View style={styles.statsBody}>
@@ -96,10 +100,13 @@ export function TravelStatsBody({ stats }: { stats: TravelStats }) {
           <MiniContrail />
         </View>
 
-        <View style={styles.statsRow}>
-          <Stat label={stats.trips === 1 ? 'trip' : 'trips'} value={stats.trips.toLocaleString()} />
-          <Stat align="center" label="km flown" value={formatKm(stats.totalKm)} />
+        {/* Large text: three columns can't hold "COUNTRIES" (it broke as
+            "COUNTRIE/S" into "KM FLOWN"), so the stats stack. */}
+        <View style={large ? styles.statsStack : styles.statsRow}>
+          <Stat stacked={large} label={stats.trips === 1 ? 'trip' : 'trips'} value={stats.trips.toLocaleString()} />
+          <Stat stacked={large} align="center" label="km flown" value={formatKm(stats.totalKm)} />
           <Stat
+            stacked={large}
             align="right"
             label={stats.countries === 1 ? 'country' : 'countries'}
             value={stats.countries.toLocaleString()}
@@ -146,12 +153,25 @@ function Stat({
   value,
   label,
   align = 'left',
+  stacked = false,
 }: {
   value: string;
   label: string;
   align?: 'left' | 'center' | 'right';
+  /** One stat per line: label left, value right. */
+  stacked?: boolean;
 }) {
   const alignItems = align === 'left' ? 'flex-start' : align === 'center' ? 'center' : 'flex-end';
+  if (stacked) {
+    return (
+      <View style={styles.statStacked}>
+        <ThemedText type="smallBold" style={[styles.statLabel, styles.statLabelStacked]}>
+          {label}
+        </ThemedText>
+        <ThemedText style={styles.statValue}>{value}</ThemedText>
+      </View>
+    );
+  }
   return (
     <View style={[styles.stat, { alignItems }]}>
       <ThemedText type="smallBold" style={styles.statLabel}>
@@ -244,6 +264,17 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
+  },
+  statsStack: {
+    gap: Spacing.one,
+  },
+  statStacked: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.two,
+  },
+  statLabelStacked: {
+    flex: 1,
   },
   stat: {
     flex: 1,

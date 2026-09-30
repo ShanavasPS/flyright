@@ -1,0 +1,22 @@
+# Clears system prompts that can cover a large-text capture: iOS's tracking
+# (ATT) and notification alerts, and the "Open in FlyRight?" link sheet.
+# Each check is a no-op when the prompt isn't showing.
+appId: com.shanavasshaji.flyright
+tags:
+  - helper
+---
+- runFlow:
+    when:
+      visible: "Ask App Not to Track"
+    commands:
+      - tapOn: "Ask App Not to Track"
+- runFlow:
+    when:
+      visible: ".*Would Like to Send You Notifications.*"
+    commands:
+      - tapOn: "Allow"
+- runFlow:
+    when:
+      visible: "Open in “FlyRight”?"
+    commands:
+      - tapOn: "Open"

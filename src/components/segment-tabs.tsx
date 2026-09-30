@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { compactCount } from '@/services/circle';
 
@@ -29,6 +30,7 @@ export function SegmentTabs<K extends string>({
   onChange: (key: K) => void;
 }) {
   const theme = useTheme();
+  const large = useLargeText();
   return (
     <View style={[styles.segment, { backgroundColor: theme.field }]}>
       {tabs.map((t) => {
@@ -52,7 +54,8 @@ export function SegmentTabs<K extends string>({
             <ThemedText
               type="smallBold"
               themeColor={on ? 'heading' : 'textSecondary'}
-              numberOfLines={1}
+              // Large text: two lines rather than "By dista…".
+              numberOfLines={large ? 2 : 1}
               style={styles.label}>
               {t.label}
             </ThemedText>
@@ -87,7 +90,9 @@ const styles = StyleSheet.create({
   },
   segmentItem: {
     flex: 1,
-    height: 36,
+    // A floor, so a two-line label at large text grows the tab.
+    minHeight: 36,
+    paddingVertical: Spacing.half,
     borderRadius: Spacing.three - Spacing.one,
     flexDirection: 'row',
     alignItems: 'center',
@@ -97,6 +102,7 @@ const styles = StyleSheet.create({
   },
   label: {
     flexShrink: 1,
+    textAlign: 'center',
   },
   badge: {
     minWidth: 18,

@@ -1,0 +1,8 @@
+appId: com.shanavasshaji.flyright
+tags:
+  - helper
+---
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: ".*(code|Check your email|Verify).*"
+    timeout: 20000

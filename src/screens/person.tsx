@@ -409,8 +409,9 @@ function PillButton({
         <>
           <ThemedText
             type="smallBold"
-            numberOfLines={1}
-            style={{ color: filled ? '#ffffff' : theme.heading }}>
+            // Two lines at large text rather than "In your ci…".
+            numberOfLines={2}
+            style={[styles.pillLabel, { color: filled ? '#ffffff' : theme.heading }]}>
             {label}
           </ThemedText>
           {menu && (
@@ -452,6 +453,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-evenly',
   },
+  pillLabel: {
+    flexShrink: 1,
+    textAlign: 'center',
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -461,7 +466,9 @@ const styles = StyleSheet.create({
   },
   pill: {
     flex: 1,
-    height: 38,
+    // A floor: a two-line label at large text grows the pill.
+    minHeight: 38,
+    paddingVertical: Spacing.half,
     borderRadius: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',

@@ -402,8 +402,11 @@ const styles = StyleSheet.create({
   },
   amountRow: {
     flexDirection: 'row',
+    // Wraps "per passenger" under the amount at large text instead of off
+    // the card's edge.
+    flexWrap: 'wrap',
     alignItems: 'baseline',
-    gap: Spacing.two,
+    columnGap: Spacing.two,
     marginTop: Spacing.one,
   },
   amountLead: {

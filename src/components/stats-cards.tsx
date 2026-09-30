@@ -20,6 +20,7 @@ import {
 import { carrierCodeForName } from '@/constants/carriers';
 import { Spacing } from '@/constants/theme';
 import { useCountUp } from '@/hooks/use-count-up';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { formatDayLabelWithYear } from '@/services/dates';
@@ -72,6 +73,7 @@ export function StatsHero({
   // The headline number counts up on entry — a logbook total should feel
   // accumulated, not printed.
   const shownKm = useCountUp(totalKm, 1100);
+  const large = useLargeText();
   const orbit = aroundEarth(totalKm);
   const days = hoursAloft / 24;
   const aloft =
@@ -102,19 +104,21 @@ export function StatsHero({
         </View>
         <Text style={styles.orbitText}>→ {orbit.next}×</Text>
       </View>
-      <View style={styles.heroGrid}>
-        <HeroStat value={trips.toLocaleString()} label={trips === 1 ? 'Trip' : 'Trips'} />
-        <HeroStat value={`${hoursEstimated ? '≈' : ''}${aloft}`} label="In the air" />
-        <HeroStat value={countries.toLocaleString()} label={countries === 1 ? 'Country' : 'Countries'} />
-        <HeroStat value={airports.toLocaleString()} label={airports === 1 ? 'Airport' : 'Airports'} />
+      {/* Large text: four across ran together ("9.8d11", "COUNTRIAIRPORT"),
+          so the grid goes two by two. */}
+      <View style={[styles.heroGrid, large && styles.heroGridLarge]}>
+        <HeroStat half={large} value={trips.toLocaleString()} label={trips === 1 ? 'Trip' : 'Trips'} />
+        <HeroStat half={large} value={`${hoursEstimated ? '≈' : ''}${aloft}`} label="In the air" />
+        <HeroStat half={large} value={countries.toLocaleString()} label={countries === 1 ? 'Country' : 'Countries'} />
+        <HeroStat half={large} value={airports.toLocaleString()} label={airports === 1 ? 'Airport' : 'Airports'} />
       </View>
     </View>
   );
 }
 
-function HeroStat({ value, label }: { value: string; label: string }) {
+function HeroStat({ value, label, half = false }: { value: string; label: string; half?: boolean }) {
   return (
-    <View style={styles.heroStat}>
+    <View style={[styles.heroStat, half && styles.heroStatHalf]}>
       <Text style={styles.heroStatValue}>{value}</Text>
       <Text style={styles.heroStatLabel}>{label}</Text>
     </View>
@@ -127,7 +131,7 @@ export function SectionLink({ label, link, onPress }: { label: string; link: str
   const theme = useTheme();
   return (
     <View style={styles.sectionRow}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>
+      <ThemedText type="smallBold" themeColor="textSecondary" style={[styles.caps, styles.sectionLabel]}>
         {label}
       </ThemedText>
       <Pressable accessibilityRole="link" hitSlop={Spacing.two} onPress={onPress} style={styles.sectionLink}>
@@ -617,6 +621,14 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  heroGridLarge: {
+    flexWrap: 'wrap',
+    rowGap: Spacing.three,
+  },
+  heroStatHalf: {
+    flex: 0,
+    flexBasis: '50%',
+  },
   heroStatValue: {
     color: WHITE,
     fontSize: 20,
@@ -635,8 +647,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.two,
     marginTop: Spacing.two,
     paddingHorizontal: Spacing.one,
+  },
+  // Wraps beside the link at large text instead of running into it
+  // ("MOST FLOWN AIRCRAFTAll aircraft").
+  sectionLabel: {
+    flexShrink: 1,
   },
   sectionLink: {
     flexDirection: 'row',

@@ -1,0 +1,31 @@
+# Signs the dev test user in on an iOS simulator for the large-text run.
+# EMAIL comes from the runner; the Clerk dev OTP for +clerk_test addresses is 424242.
+appId: com.shanavasshaji.flyright
+tags:
+  - helper
+---
+- launchApp
+# Android drops a link sent before the router is up: wait for the tab bar.
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 30000
+    optional: true
+- runFlow: prompts.yaml
+- openLink: "flyright://settings"
+- runFlow: prompts.yaml
+- extendedWaitUntil:
+    visible: ".*(Sign in or create account|clerk_test).*"
+    timeout: 30000
+- runFlow:
+    when:
+      visible: "Sign in or create account"
+    commands:
+      - tapOn: "Sign in or create account"
+      - runFlow:
+          file: ../../clerk-dev-sign-in.yaml
+          env:
+            EMAIL: ${EMAIL}
+- openLink: "flyright://settings"
+- extendedWaitUntil:
+    visible: ".*clerk_test.*"
+    timeout: 90000

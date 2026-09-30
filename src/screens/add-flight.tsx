@@ -1462,7 +1462,8 @@ function PassPill({
       onPress={onPress}
       style={({ pressed }) => [styles.passPill, { opacity: pressed ? 0.7 : 1 }]}>
       <SymbolView name={icon} size={16} weight="semibold" tintColor={WHITE} />
-      <ThemedText type="smallBold" style={styles.passPillLabel} numberOfLines={1}>
+      {/* Two lines at most: large text wraps "Upload ticket" rather than cut it. */}
+      <ThemedText type="smallBold" style={styles.passPillLabel} numberOfLines={2}>
         {label}
       </ThemedText>
     </Pressable>
@@ -1755,6 +1756,8 @@ const styles = StyleSheet.create({
   },
   passPillLabel: {
     color: WHITE,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   orRow: {
     flexDirection: 'row',

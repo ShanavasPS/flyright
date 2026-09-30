@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useHomeContext } from '@/hooks/use-home-base';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { cityAirports } from '@/services/airports';
 import { countryDays, countryDayYears } from '@/services/country-days';
 import { useJourneys } from '@/services/journeys';
@@ -34,6 +35,8 @@ const TABS: { key: PlaceTab; label: string }[] = [
  * landings there — take-offs for the home country, where landings are
  * mostly coming back. The top destination keeps its sky card up top. */
 export function StatsPlaces() {
+  // Large text: names wrap to a second line rather than end in "…".
+  const lines = useLargeText() ? 2 : 1;
   const { userId } = useAuth();
   const { data: journeys, error } = useJourneys(userId);
   const params = useLocalSearchParams<{ tab?: string; year?: string }>();
@@ -108,13 +111,13 @@ export function StatsPlaces() {
                     value={count.toLocaleString()}
                     caption={isHome ? (count === 1 ? 'take-off' : 'take-offs') : count === 1 ? 'landing' : 'landings'}
                     last={i === groups.length - 1}>
-                    <ThemedText type="smallBold" numberOfLines={1}>
+                    <ThemedText type="smallBold" numberOfLines={lines}>
                       {group.name}{' '}
                       <ThemedText type="smallBold" themeColor="textSecondary">
                         {group.country}
                       </ThemedText>
                     </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={lines}>
                       {group.cities.join(' · ')}
                       {isHome ? ' · your home base' : ''}
                     </ThemedText>

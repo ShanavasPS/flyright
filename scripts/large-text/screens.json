@@ -1,0 +1,2823 @@
+{
+  "version": 1,
+  "passes": {
+    "B0": "fresh install, first launch (onboarding showing), signed out, empty journal",
+    "B": "signed out, onboarding done, EMPTY journal",
+    "B2": "signed out, local demo trips seeded (scripts/seed-demo-data.mjs --future)",
+    "A": "signed in as dev user Maja Lindqvist with Pro; demo trips seeded (--future); synthetic friends Noah Berg (store_demo_noah, in the air, photo postcard), Clara Nyström (store_demo_clara, at security, text postcard), Tomas Ek (store_demo_tomas, landed, photo postcard) from scripts/seed-store-profile.mjs",
+    "C": "signed in as Maja with Pro; seeded with --travel-day (demo-upcoming HEL→LHR AY1331 ~1h out, through security)"
+  },
+  "states": [
+    {
+      "id": "F01",
+      "state": "top",
+      "title": "Flights home",
+      "pass": "A",
+      "link": "flyright:///",
+      "anchor": {
+        "text": "Open your travel stats.*"
+      },
+      "volatile": true,
+      "note": "Pro + demo-upcoming 12h out: live glance inside the London group, all-time strip on top"
+    },
+    {
+      "id": "F01",
+      "state": "middle",
+      "title": "Flights home",
+      "pass": "A",
+      "link": "flyright:///",
+      "anchor": {
+        "text": "Open your travel stats.*"
+      },
+      "scrollTo": {
+        "id": "trip-group-visit:demo-mad"
+      },
+      "note": "scrolled past the stats strip into the year sections (Madrid trip cover)"
+    },
+    {
+      "id": "F01",
+      "state": "bottom",
+      "title": "Flights home",
+      "pass": "A",
+      "link": "flyright:///",
+      "anchor": {
+        "text": "Open your travel stats.*"
+      },
+      "scrollTo": {
+        "text": ".*\\bAY16\\b.*"
+      },
+      "note": "oldest trip (HEL-FRA-JFK-HEL); AY16 JFK-HEL is the last row"
+    },
+    {
+      "id": "F01",
+      "state": "signed-in-empty",
+      "title": "Flights home, signed in, no trips",
+      "pass": "A",
+      "skip": "Maja is signed in with the seeded demo journal; no pass has a signed-in account with an empty journal"
+    },
+    {
+      "id": "F02",
+      "state": "top",
+      "title": "Travel stats",
+      "pass": "A",
+      "link": "flyright:///stats",
+      "anchor": {
+        "text": ".*around the Earth.*"
+      },
+      "note": "passport hero"
+    },
+    {
+      "id": "F02",
+      "state": "home-base",
+      "title": "Travel stats",
+      "pass": "A",
+      "link": "flyright:///stats",
+      "anchor": {
+        "text": ".*around the Earth.*"
+      },
+      "scrollTo": {
+        "id": "home-base-change"
+      },
+      "note": "Home base card"
+    },
+    {
+      "id": "F02",
+      "state": "days",
+      "title": "Travel stats",
+      "pass": "A",
+      "link": "flyright:///stats",
+      "anchor": {
+        "text": ".*around the Earth.*"
+      },
+      "scrollTo": {
+        "id": "country-days-card"
+      },
+      "note": "Days by country card"
+    },
+    {
+      "id": "F02",
+      "state": "records",
+      "title": "Travel stats",
+      "pass": "A",
+      "link": "flyright:///stats",
+      "anchor": {
+        "text": ".*around the Earth.*"
+      },
+      "scrollTo": {
+        "text": "All places"
+      },
+      "note": "Longest flight + Top destination"
+    },
+    {
+      "id": "F02",
+      "state": "airline-aircraft",
+      "title": "Travel stats",
+      "pass": "A",
+      "link": "flyright:///stats",
+      "anchor": {
+        "text": ".*around the Earth.*"
+      },
+      "scrollTo": {
+        "text": "All aircraft"
+      },
+      "note": "Most flown airline + aircraft"
+    },
+    {
+      "id": "F02",
+      "state": "bottom",
+      "title": "Travel stats",
+      "pass": "A",
+      "link": "flyright:///stats",
+      "anchor": {
+        "text": ".*around the Earth.*"
+      },
+      "scrollTo": {
+        "text": "(?i)shortest hop"
+      },
+      "note": "mini tiles (label is textTransform uppercase, hence (?i))"
+    },
+    {
+      "id": "F03",
+      "state": "top",
+      "title": "All flights",
+      "pass": "A",
+      "link": "flyright:///stats/flights",
+      "anchor": {
+        "id": "tab-duration"
+      },
+      "note": "Longest / In the air / Newest"
+    },
+    {
+      "id": "F03",
+      "state": "bottom",
+      "title": "All flights",
+      "pass": "A",
+      "link": "flyright:///stats/flights",
+      "anchor": {
+        "id": "tab-duration"
+      },
+      "scrollTo": {
+        "text": ".*#2\\d · \\d{3} km.*"
+      },
+      "note": "last rows are the HEL-ARN hops"
+    },
+    {
+      "id": "F04",
+      "state": "visits",
+      "title": "Places",
+      "pass": "A",
+      "link": "flyright:///stats/places",
+      "anchor": {
+        "text": "\\d+ airports · \\d+ cities"
+      }
+    },
+    {
+      "id": "F04",
+      "state": "a-z",
+      "title": "Places",
+      "pass": "A",
+      "link": "flyright:///stats/places",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "tab-name"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "tab-name"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "\\d+ airports · \\d+ cities"
+      }
+    },
+    {
+      "id": "F04",
+      "state": "latest",
+      "title": "Places",
+      "pass": "A",
+      "link": "flyright:///stats/places",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "tab-latest"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "tab-latest"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "\\d+ airports · \\d+ cities"
+      }
+    },
+    {
+      "id": "F04",
+      "state": "days",
+      "title": "Places",
+      "pass": "A",
+      "link": "flyright:///stats/places?tab=days&year=2025",
+      "anchor": {
+        "text": "in 2025.*"
+      },
+      "note": "Days tab, 2025 year chip"
+    },
+    {
+      "id": "F05",
+      "state": "top",
+      "title": "Airlines",
+      "pass": "A",
+      "link": "flyright:///stats/airlines",
+      "anchor": {
+        "text": "\\d+ airlines"
+      }
+    },
+    {
+      "id": "F06",
+      "state": "types",
+      "title": "Aircraft",
+      "pass": "A",
+      "link": "flyright:///stats/aircraft",
+      "anchor": {
+        "text": "\\d+ aircraft types"
+      }
+    },
+    {
+      "id": "F06",
+      "state": "by-distance",
+      "title": "Aircraft",
+      "pass": "A",
+      "link": "flyright:///stats/aircraft",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "tab-distance"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "tab-distance"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Furthest in.*"
+      }
+    },
+    {
+      "id": "F06",
+      "state": "makers",
+      "title": "Aircraft",
+      "pass": "A",
+      "link": "flyright:///stats/aircraft",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "tab-makers"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "tab-makers"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "\\d+ types?"
+      },
+      "note": "maker rows read 'Airbus' / '3 types'"
+    },
+    {
+      "id": "F07",
+      "state": "top",
+      "title": "Aircraft type",
+      "pass": "A",
+      "link": "flyright:///stats/aircraft/Airbus%20A350-900",
+      "anchor": {
+        "text": "Newest first"
+      },
+      "note": "the seed stores the provider name 'Airbus A350-900'; /stats/aircraft/A350-900 would show 'No flights on this aircraft any more.'"
+    },
+    {
+      "id": "F08",
+      "state": "home-country",
+      "title": "Days in a country",
+      "pass": "A",
+      "link": "flyright:///stats/days/FI?year=2025",
+      "anchor": {
+        "text": ".*in Finland in 2025.*"
+      }
+    },
+    {
+      "id": "F08",
+      "state": "empty",
+      "title": "Days in a country",
+      "pass": "A",
+      "link": "flyright:///stats/days/BR?year=2025",
+      "anchor": {
+        "text": ".*No days in Brazil in 2025.*"
+      },
+      "note": "a country with no days"
+    },
+    {
+      "id": "F09",
+      "state": "top",
+      "title": "Destination",
+      "pass": "A",
+      "link": "flyright:///destination?city=Madrid&country=ES",
+      "anchor": {
+        "id": "destination-screen"
+      },
+      "note": "Madrid destination page by deep link"
+    },
+    {
+      "id": "F09",
+      "state": "trips",
+      "title": "Destination",
+      "pass": "A",
+      "link": "flyright:///destination?city=Madrid&country=ES",
+      "anchor": {
+        "id": "destination-screen"
+      },
+      "scrollTo": {
+        "id": "destination-trip-visit:demo-mad"
+      },
+      "note": "Madrid destination page by deep link"
+    },
+    {
+      "id": "F09",
+      "state": "sheet",
+      "title": "Destination",
+      "pass": "A",
+      "link": "flyright:///destination?city=Madrid&country=ES",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "hero-change-photo"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "hero-change-photo"
+          }
+        }
+      ],
+      "anchor": {
+        "id": "trip-photo-done"
+      },
+      "note": "Madrid destination page by deep link"
+    },
+    {
+      "id": "F10",
+      "state": "top",
+      "title": "Trip, past",
+      "pass": "A",
+      "link": "flyright:///journey/demo-jfk",
+      "anchor": {
+        "text": ".*from HEL to JFK.*"
+      },
+      "note": "route map inset + trip card"
+    },
+    {
+      "id": "F10",
+      "state": "middle",
+      "title": "Trip, past",
+      "pass": "A",
+      "link": "flyright:///journey/demo-jfk",
+      "anchor": {
+        "text": ".*from HEL to JFK.*"
+      },
+      "scrollTo": {
+        "id": "trip-card-baggageBelt"
+      },
+      "note": "trip card grid through the baggage cell"
+    },
+    {
+      "id": "F10",
+      "state": "bottom",
+      "title": "Trip, past",
+      "pass": "A",
+      "link": "flyright:///journey/demo-jfk",
+      "anchor": {
+        "text": ".*from HEL to JFK.*"
+      },
+      "scrollTo": {
+        "text": "Write about this trip"
+      },
+      "note": "trip log / journal card"
+    },
+    {
+      "id": "F10",
+      "state": "menu",
+      "title": "Trip, past",
+      "pass": "A",
+      "link": "flyright:///journey/demo-jfk",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "text": ".*from HEL to JFK.*"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Trip options"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Remove from Flights"
+      },
+      "note": "ActionSheet on iOS, Alert titled 'Trip options' on Android; same items (Edit trip details, Who sees this trip…, Remove from Flights). Never tap Remove"
+    },
+    {
+      "id": "F11",
+      "state": "top",
+      "title": "Trip, upcoming",
+      "pass": "A",
+      "link": "flyright:///journey/demo-upcoming",
+      "anchor": {
+        "text": ".*from HEL to LHR.*"
+      },
+      "scrollTo": {
+        "id": "boarding-pass-card"
+      },
+      "volatile": true,
+      "note": "12h out: travel-day reminder phase, boarding pass card"
+    },
+    {
+      "id": "F11",
+      "state": "trip-card",
+      "title": "Trip, upcoming",
+      "pass": "A",
+      "link": "flyright:///journey/demo-upcoming",
+      "anchor": {
+        "text": ".*from HEL to LHR.*"
+      },
+      "scrollTo": {
+        "id": "trip-card-bookingReference"
+      },
+      "volatile": true
+    },
+    {
+      "id": "F11",
+      "state": "bottom",
+      "title": "Trip, upcoming",
+      "pass": "A",
+      "link": "flyright:///journey/demo-upcoming",
+      "anchor": {
+        "text": ".*from HEL to LHR.*"
+      },
+      "scrollTo": {
+        "text": "Add a note for this trip"
+      },
+      "volatile": true,
+      "note": "timeline, own updates, 'Your journal' card"
+    },
+    {
+      "id": "F12",
+      "state": "verdict",
+      "title": "Trip, delayed",
+      "pass": "A",
+      "link": "flyright:///journey/demo-mad",
+      "anchor": {
+        "text": "You're owed .*"
+      },
+      "scrollTo": {
+        "text": "(Generate|Finish) my claim.*"
+      },
+      "note": "195-min recorded delay, 400 EUR; amount counts up"
+    },
+    {
+      "id": "F01",
+      "state": "empty",
+      "title": "Flights home",
+      "pass": "B",
+      "link": "flyright:///",
+      "anchor": {
+        "text": "Where have you flown.*"
+      },
+      "note": "signed-out empty journal hero"
+    },
+    {
+      "id": "F02",
+      "state": "empty",
+      "title": "Travel stats",
+      "pass": "B",
+      "link": "flyright:///stats",
+      "anchor": {
+        "text": "Log a flight and your stats will start adding up here.*"
+      }
+    },
+    {
+      "id": "F01",
+      "state": "signed-out",
+      "title": "Flights home",
+      "pass": "B2",
+      "link": "flyright:///",
+      "anchor": {
+        "text": "Open your travel stats.*"
+      },
+      "note": "signed out with trips: sign-in notice, full navy stats card (no live hero without Pro)"
+    },
+    {
+      "id": "F14",
+      "state": "upcoming",
+      "title": "Pro-locked trip card",
+      "pass": "B2",
+      "link": "flyright:///journey/demo-upcoming",
+      "anchor": {
+        "id": "pro-trip-card"
+      },
+      "note": "'Live updates off · For this trip · See Pro'; needs RevenueCat customer loaded (billingAvailable)"
+    },
+    {
+      "id": "F14",
+      "state": "past-delayed",
+      "title": "Pro-locked trip card",
+      "pass": "B2",
+      "link": "flyright:///journey/demo-mad",
+      "anchor": {
+        "text": "You're owed .*"
+      },
+      "scrollTo": {
+        "text": "Generate my claim.*"
+      },
+      "note": "signed out: past trips have no Pro card; the verdict still shows, its claim button leads to pro-offer?feature=claim"
+    },
+    {
+      "id": "F01",
+      "state": "travel-day",
+      "title": "Flights home",
+      "pass": "C",
+      "link": "flyright:///",
+      "anchor": {
+        "id": "travel-day-banner"
+      },
+      "volatile": true,
+      "note": "AY1331 ~1h out, through security: live card in the London group"
+    },
+    {
+      "id": "F13",
+      "state": "top",
+      "title": "Travel-day timeline",
+      "pass": "C",
+      "link": "flyright:///journey/demo-upcoming",
+      "anchor": {
+        "text": ".*from HEL to LHR.*"
+      },
+      "scrollTo": {
+        "id": "travel-day-toggle"
+      },
+      "volatile": true,
+      "note": "Trip progress card, open by default"
+    },
+    {
+      "id": "F13",
+      "state": "bottom",
+      "title": "Travel-day timeline",
+      "pass": "C",
+      "link": "flyright:///journey/demo-upcoming",
+      "anchor": {
+        "text": ".*from HEL to LHR.*"
+      },
+      "scrollTo": {
+        "text": "Add a note for this trip"
+      },
+      "volatile": true
+    },
+    {
+      "id": "F15",
+      "state": "empty",
+      "title": "Add flight, empty",
+      "pass": "A",
+      "link": "flyright://add",
+      "anchor": {
+        "id": "add-manually"
+      },
+      "note": "Flight-number pass card, 'Or', blank ticket, coverage note"
+    },
+    {
+      "id": "F15",
+      "state": "typed",
+      "title": "Add flight, AY1331 typed",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "AY1331 or LH873"
+          }
+        },
+        {
+          "inputText": "AY1331"
+        }
+      ],
+      "anchor": {
+        "id": "search-flight"
+      },
+      "keyboard": true,
+      "note": "Stub turns into 'Search this flight →'; keyboard up"
+    },
+    {
+      "id": "F16",
+      "state": "lookup",
+      "title": "Add date, lookup mode",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "AY1331 or LH873"
+          }
+        },
+        {
+          "inputText": "AY1331"
+        },
+        {
+          "tapOn": {
+            "id": "search-flight"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Journal it instead.*"
+      },
+      "note": "Quick picks, calendar, 12-month hint with the journal link"
+    },
+    {
+      "id": "F16",
+      "state": "manual",
+      "title": "Add date, manual mode",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "add-manually"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Yesterday.*"
+      },
+      "note": "Same step in journal mode: no lookup hint, calendar reaches 30 years back"
+    },
+    {
+      "id": "F16",
+      "state": "day-picked",
+      "title": "Add date, a day picked",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "AY1331 or LH873"
+          }
+        },
+        {
+          "inputText": "AY1331"
+        },
+        {
+          "tapOn": {
+            "id": "search-flight"
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Previous month"
+          }
+        },
+        {
+          "tapOn": {
+            "text": "\\d{4}-\\d{2}-15"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Use .* →"
+      },
+      "note": "Calendar days are labelled with their ISO date; the 15th of last month is always in lookup range"
+    },
+    {
+      "id": "F17",
+      "state": "found",
+      "title": "Add result, flight found",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "AY1331 or LH873"
+          }
+        },
+        {
+          "inputText": "AY1331"
+        },
+        {
+          "tapOn": {
+            "id": "search-flight"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Yesterday.*"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Save to Flights.*"
+      },
+      "note": "Dev build without AERODATABOX_API_KEY answers from the /api/flight-status mock (any number → HEL→FRA; odd number on a past date = 195 min late). With the real provider AY1331 yesterday is a real flight"
+    },
+    {
+      "id": "F17",
+      "state": "error",
+      "title": "Add result, lookup error",
+      "pass": "A",
+      "skip": "Not deterministic: the mock only fails for dates over a year back, which the lookup calendar blocks; reaching one needs the year wheel (token-year), which Maestro cannot spin reliably"
+    },
+    {
+      "id": "F18",
+      "state": "new",
+      "title": "Manual trip details, new",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "add-manually"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Yesterday.*",
+            "retryTapIfNoChange": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Cancel",
+            "optional": true
+          }
+        }
+      ],
+      "anchor": {
+        "text": "From · city or HEL"
+      },
+      "keyboard": true,
+      "note": "From field autofocuses. The optional Cancel dismisses Gboard's stylus tutorial on Android. Never hideKeyboard here: on Android it is a back press that leaves the screen"
+    },
+    {
+      "id": "F18",
+      "state": "filled",
+      "title": "Manual trip details, airports filled",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "add-manually"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Yesterday.*",
+            "retryTapIfNoChange": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Cancel",
+            "optional": true
+          }
+        },
+        {
+          "inputText": "HEL"
+        },
+        {
+          "tapOn": {
+            "text": ".*Helsinki.*"
+          }
+        },
+        {
+          "inputText": "MAD"
+        },
+        {
+          "tapOn": {
+            "text": ".*Madrid.*"
+          }
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "id": "manual-airline"
+            },
+            "direction": "DOWN"
+          }
+        }
+      ],
+      "anchor": {
+        "id": "manual-airline"
+      },
+      "keyboard": true,
+      "note": "Route card with airline chip, Departs/Arrives chips, booking ref and seat. Same airports as .maestro/manual-airline-sheet.yaml"
+    },
+    {
+      "id": "F18",
+      "state": "airline-sheet",
+      "title": "Manual trip details, airline sheet",
+      "pass": "A",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "add-manually"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Yesterday.*",
+            "retryTapIfNoChange": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Cancel",
+            "optional": true
+          }
+        },
+        {
+          "inputText": "HEL"
+        },
+        {
+          "tapOn": {
+            "text": ".*Helsinki.*"
+          }
+        },
+        {
+          "inputText": "MAD"
+        },
+        {
+          "tapOn": {
+            "text": ".*Madrid.*"
+          }
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "id": "manual-airline"
+            },
+            "direction": "DOWN"
+          }
+        },
+        {
+          "tapOn": {
+            "id": "manual-airline"
+          }
+        }
+      ],
+      "anchor": {
+        "id": "manual-airline-search"
+      },
+      "note": "'Choose an airline' sheet, search pinned on top"
+    },
+    {
+      "id": "F18",
+      "state": "time-picker-ios",
+      "title": "Manual trip details, time picker",
+      "pass": "A",
+      "platforms": [
+        "ios"
+      ],
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "add-manually"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Yesterday.*",
+            "retryTapIfNoChange": true
+          }
+        },
+        {
+          "inputText": "HEL"
+        },
+        {
+          "tapOn": {
+            "text": ".*Helsinki.*"
+          }
+        },
+        {
+          "inputText": "MAD"
+        },
+        {
+          "tapOn": {
+            "text": ".*Madrid.*"
+          }
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "id": "manual-airline"
+            },
+            "direction": "DOWN"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Departs.*"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Arrives.*"
+      },
+      "note": "iOS: inline spinner under the time chips (the chip tap dismisses the keyboard). The spinner has no stable text, so the anchor is the neighbouring chip"
+    },
+    {
+      "id": "F18",
+      "state": "time-picker-android",
+      "title": "Manual trip details, time picker",
+      "pass": "A",
+      "platforms": [
+        "android"
+      ],
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "add-manually"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Yesterday.*",
+            "retryTapIfNoChange": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Cancel",
+            "optional": true
+          }
+        },
+        {
+          "inputText": "HEL"
+        },
+        {
+          "tapOn": {
+            "text": ".*Helsinki.*"
+          }
+        },
+        {
+          "inputText": "MAD"
+        },
+        {
+          "tapOn": {
+            "text": ".*Madrid.*"
+          }
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "id": "manual-airline"
+            },
+            "direction": "DOWN"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Departs.*"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "OK"
+      },
+      "note": "Android: Material time dialog (Compose AlertDialog) with Cancel / OK"
+    },
+    {
+      "id": "F18",
+      "state": "edit",
+      "title": "Edit trip details",
+      "pass": "A",
+      "link": "flyright://add-details?editId=demo-jfk",
+      "anchor": {
+        "text": "Update your trip details"
+      },
+      "keyboard": true,
+      "note": "Edit Trip title; every seeded row is source=manual so it is editable. From field autofocuses"
+    },
+    {
+      "id": "F19",
+      "state": "top",
+      "title": "Added confirmation",
+      "pass": "A",
+      "link": "flyright://add-done?title=Added%20to%20Flights&label=AY1331&subtitle=If%20the%20flight%20was%20disrupted%2C%20your%20verdict%20is%20waiting%20on%20the%20trip%20page.",
+      "anchor": {
+        "text": "Added to Flights"
+      },
+      "note": "Opened with the params a save passes instead of saving, so no trip is added (no data mutation). Auto-dismisses after 1.6 s — may be flaky"
+    },
+    {
+      "id": "F20",
+      "state": "top",
+      "title": "Settings",
+      "pass": "A",
+      "link": "flyright://settings",
+      "anchor": {
+        "text": ".*Maja Lindqvist.*"
+      },
+      "note": "Profile card, push/travel-day/visibility/discoverable rows"
+    },
+    {
+      "id": "F20",
+      "state": "middle",
+      "title": "Settings",
+      "pass": "A",
+      "link": "flyright://settings",
+      "anchor": {
+        "text": ".*Maja Lindqvist.*"
+      },
+      "scrollTo": {
+        "id": "contact-support"
+      },
+      "note": "Home base, Appearance, FlyRight Pro, Restore purchases, Support messages"
+    },
+    {
+      "id": "F20",
+      "state": "bottom",
+      "title": "Settings",
+      "pass": "A",
+      "link": "flyright://settings",
+      "anchor": {
+        "text": ".*Maja Lindqvist.*"
+      },
+      "scrollTo": {
+        "text": "Version .*"
+      },
+      "note": "Blocked people, disclaimer, version line"
+    },
+    {
+      "id": "F21",
+      "state": "top",
+      "title": "Account (Clerk)",
+      "pass": "A",
+      "link": "flyright://settings",
+      "steps": [
+        {
+          "tapOn": {
+            "text": ".*Maja Lindqvist.*"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Sign out.*"
+      },
+      "note": "Clerk's native UserProfileView; the anchor is Clerk's own copy"
+    },
+    {
+      "id": "F22",
+      "state": "top",
+      "title": "Home base",
+      "pass": "A",
+      "link": "flyright://home-base",
+      "anchor": {
+        "id": "home-base-screen"
+      },
+      "note": "City photo hero, airport chips, Change city / Change photo"
+    },
+    {
+      "id": "F22",
+      "state": "list",
+      "title": "Home base, homes over time",
+      "pass": "A",
+      "link": "flyright://home-base",
+      "anchor": {
+        "id": "home-base-screen"
+      },
+      "scrollTo": {
+        "id": "home-add-period"
+      },
+      "note": "'Your homes over time' list and Add a period"
+    },
+    {
+      "id": "F22",
+      "state": "suggestions",
+      "title": "Home base, suggestions",
+      "pass": "A",
+      "link": "flyright://home-base",
+      "anchor": {
+        "id": "home-suggestions"
+      },
+      "note": "Only when take-offs cluster in more than one city; the demo journal is Helsinki-based, so this screenshot is expected to be lost unless the journal was seeded with --home-base"
+    },
+    {
+      "id": "F22",
+      "state": "photo-sheet",
+      "title": "Home base, photo sheet",
+      "pass": "A",
+      "link": "flyright://home-base",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "home-base-change-photo"
+          }
+        }
+      ],
+      "anchor": {
+        "id": "home-photo-done"
+      },
+      "note": "Photo for Helsinki: From Wikipedia / One of your photos / No photo"
+    },
+    {
+      "id": "F23",
+      "state": "list",
+      "title": "Choose a city",
+      "pass": "A",
+      "link": "flyright://home-base-city?target=current",
+      "anchor": {
+        "id": "home-city-automatic"
+      },
+      "note": "Automatic row, search field, cities from your flights"
+    },
+    {
+      "id": "F23",
+      "state": "no-results",
+      "title": "Choose a city, no results",
+      "pass": "A",
+      "link": "flyright://home-base-city?target=current",
+      "steps": [
+        {
+          "tapOn": {
+            "id": "home-city-search"
+          }
+        },
+        {
+          "inputText": "Qqzzxx"
+        }
+      ],
+      "anchor": {
+        "text": "No city or airport matches that."
+      },
+      "keyboard": true
+    },
+    {
+      "id": "F24",
+      "state": "new",
+      "title": "New home period",
+      "pass": "A",
+      "link": "flyright://home-base-period",
+      "anchor": {
+        "id": "home-period-screen"
+      },
+      "note": "Nothing is saved"
+    },
+    {
+      "id": "F24",
+      "state": "bottom",
+      "title": "New home period",
+      "pass": "A",
+      "link": "flyright://home-base-period",
+      "anchor": {
+        "id": "home-period-screen"
+      },
+      "scrollTo": {
+        "text": "Save period"
+      },
+      "note": "Note card and the disabled Save period button"
+    },
+    {
+      "id": "F25",
+      "state": "pro",
+      "title": "Manage subscription, Pro",
+      "pass": "A",
+      "link": "flyright://manage-subscription",
+      "anchor": {
+        "text": ".*Request a refund.*"
+      },
+      "note": "Plan · store line, renewal status; Change plan / Manage rows appear only for store purchases (not a dashboard grant)"
+    },
+    {
+      "id": "F26",
+      "state": "empty",
+      "title": "Blocked people",
+      "pass": "A",
+      "link": "flyright://blocked",
+      "anchor": {
+        "text": ".*Nobody is blocked.*"
+      }
+    },
+    {
+      "id": "F27",
+      "state": "top",
+      "title": "Support messages",
+      "pass": "A",
+      "link": "flyright://messages",
+      "anchor": {
+        "id": "new-message"
+      },
+      "note": "Empty hero ('No messages yet') or Maja's thread list, whichever the dev account has"
+    },
+    {
+      "id": "F28",
+      "state": "top",
+      "title": "Support thread",
+      "pass": "A",
+      "anchor": {
+        "id": "reply-input"
+      },
+      "note": "Reachable only if the dev account already has a support thread (none is created here); otherwise this screenshot is lost",
+      "skip": "Maja has no support thread on DEV; sending one would email support"
+    },
+    {
+      "id": "F29",
+      "state": "top",
+      "title": "Contact support form",
+      "pass": "A",
+      "link": "flyright://contact",
+      "anchor": {
+        "text": "What can we help with?"
+      },
+      "note": "Signed-in form; the account email is used, so there is no email field"
+    },
+    {
+      "id": "F29",
+      "state": "keyboard",
+      "title": "Contact support form, typing",
+      "pass": "A",
+      "link": "flyright://contact",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "What can we help with?"
+          }
+        },
+        {
+          "inputText": "Large text check, please ignore"
+        }
+      ],
+      "anchor": {
+        "text": ".*Large text check.*"
+      },
+      "keyboard": true,
+      "note": "Typed only. Never tap Send message"
+    },
+    {
+      "id": "F20",
+      "state": "signed-out",
+      "title": "Settings, signed out",
+      "pass": "B",
+      "link": "flyright://settings",
+      "anchor": {
+        "text": "Sign in or create account"
+      },
+      "note": "Account card invites sign-in; Contact support row, no Blocked people"
+    },
+    {
+      "id": "F20",
+      "state": "signed-out-bottom",
+      "title": "Settings, signed out",
+      "pass": "B",
+      "link": "flyright://settings",
+      "anchor": {
+        "text": "Sign in or create account"
+      },
+      "scrollTo": {
+        "text": "Version .*"
+      }
+    },
+    {
+      "id": "F25",
+      "state": "not-pro",
+      "title": "Manage subscription, no Pro",
+      "pass": "B",
+      "link": "flyright://manage-subscription",
+      "anchor": {
+        "text": "No active subscription"
+      },
+      "note": "Signed out and not Pro: the 'See FlyRight Pro →' card"
+    },
+    {
+      "id": "F29",
+      "state": "mail-fallback",
+      "title": "Contact support, mail fallback",
+      "pass": "B",
+      "link": "flyright://contact",
+      "anchor": {
+        "text": ".*get back to you.*"
+      },
+      "note": "Signed out: 'Email us' with the support address link instead of the form"
+    },
+    {
+      "id": "F17",
+      "state": "sign-in-required",
+      "title": "Add result, sign-in required",
+      "pass": "B2",
+      "link": "flyright://add",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "AY1331 or LH873"
+          }
+        },
+        {
+          "inputText": "AY1331"
+        },
+        {
+          "tapOn": {
+            "id": "search-flight"
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Yesterday.*"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Save to journal instead.*"
+      },
+      "note": "Shows only once the device's 5 guest lookups for the day (UTC) are spent; before that the same steps show the found flight and this screenshot is lost"
+    },
+    {
+      "id": "M01",
+      "state": "page-1",
+      "title": "Onboarding, page 1",
+      "pass": "B0",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Allow",
+            "optional": true
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Every flight, remembered"
+      },
+      "note": "Fresh install: no link, the intro opens by itself. It is marked seen on first render, so later pages use the route link."
+    },
+    {
+      "id": "M01",
+      "state": "page-2",
+      "title": "Onboarding, page 2",
+      "pass": "B0",
+      "link": "flyright:///onboarding",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Continue"
+          }
+        },
+        {
+          "waitForAnimationToEnd": {}
+        }
+      ],
+      "anchor": {
+        "text": "Pro when you travel"
+      }
+    },
+    {
+      "id": "M01",
+      "state": "page-3",
+      "title": "Onboarding, push pitch",
+      "pass": "B0",
+      "link": "flyright:///onboarding",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Continue"
+          }
+        },
+        {
+          "waitForAnimationToEnd": {}
+        },
+        {
+          "tapOn": {
+            "text": "Continue"
+          }
+        },
+        {
+          "waitForAnimationToEnd": {}
+        }
+      ],
+      "anchor": {
+        "text": "Allow notifications"
+      },
+      "note": "Do not tap Allow notifications or Remind me later."
+    },
+    {
+      "id": "M02",
+      "state": "top",
+      "title": "Notification reminder",
+      "pass": "B",
+      "link": "flyright:///notification-prime",
+      "anchor": {
+        "text": "Stay connected to your people"
+      }
+    },
+    {
+      "id": "M03",
+      "state": "email",
+      "title": "Sign in, email step",
+      "pass": "B",
+      "link": "flyright:///sign-in",
+      "anchor": {
+        "text": "Enter your email"
+      },
+      "note": "Clerk native AuthView; nothing typed."
+    },
+    {
+      "id": "M04",
+      "state": "top",
+      "title": "Paywall",
+      "pass": "B",
+      "link": "flyright:///paywall",
+      "anchor": {
+        "text": "Choose your plan"
+      },
+      "note": "Plans load from RevenueCat; the heading shows before they do."
+    },
+    {
+      "id": "M04",
+      "state": "bottom",
+      "title": "Paywall, bottom",
+      "pass": "B",
+      "link": "flyright:///paywall",
+      "anchor": {
+        "text": "Choose your plan"
+      },
+      "scrollTo": {
+        "text": "Restore purchases"
+      }
+    },
+    {
+      "id": "M05",
+      "state": "default",
+      "title": "Pro offer",
+      "pass": "B",
+      "link": "flyright:///pro-offer",
+      "anchor": {
+        "text": "What Pro adds"
+      }
+    },
+    {
+      "id": "M05",
+      "state": "claim",
+      "title": "Pro offer, claim",
+      "pass": "B",
+      "link": "flyright:///pro-offer?feature=claim",
+      "anchor": {
+        "text": "Prepare your claim with Pro"
+      }
+    },
+    {
+      "id": "M05",
+      "state": "postcard",
+      "title": "Pro offer, postcard",
+      "pass": "B",
+      "link": "flyright:///pro-offer?feature=postcard",
+      "anchor": {
+        "text": "Share postcards with Pro"
+      }
+    },
+    {
+      "id": "M06",
+      "state": "top",
+      "title": "What's new",
+      "pass": "B",
+      "link": "flyright:///whats-new",
+      "anchor": {
+        "text": "What.s new"
+      },
+      "note": "Renders without a newer store version (\"You're on the latest version.\"); shows release notes if the store is ahead of this build."
+    },
+    {
+      "id": "M08",
+      "state": "top",
+      "title": "Import document",
+      "pass": "B",
+      "skip": "Needs a shared or uploaded PDF/image file handle."
+    },
+    {
+      "id": "M14",
+      "state": "top",
+      "title": "Photo viewer",
+      "pass": "A",
+      "skip": "No trip photos in the seeded journal."
+    },
+    {
+      "id": "M15",
+      "state": "form",
+      "title": "Check a flight (demo)",
+      "pass": "B",
+      "link": "flyright:///check?demo=1",
+      "anchor": {
+        "text": "Flight delayed or cancelled?"
+      }
+    },
+    {
+      "id": "M15",
+      "state": "result",
+      "title": "Check a flight, example verdict",
+      "pass": "B",
+      "link": "flyright:///check?demo=1",
+      "anchor": {
+        "text": "Flight delayed or cancelled?"
+      },
+      "scrollTo": {
+        "text": ".*Example: Lufthansa LH873.*"
+      }
+    },
+    {
+      "id": "M16",
+      "state": "no-flight",
+      "title": "Assistant boarding pass, no flight",
+      "pass": "B",
+      "link": "flyright:///assistant/boarding-pass",
+      "anchor": {
+        "text": "No upcoming flight saved"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "privacy-top",
+      "title": "Privacy policy",
+      "pass": "B",
+      "link": "flyright:///privacy",
+      "anchor": {
+        "text": "Privacy Policy"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "privacy-bottom",
+      "title": "Privacy policy, bottom",
+      "pass": "B",
+      "link": "flyright:///privacy",
+      "anchor": {
+        "text": "Privacy Policy"
+      },
+      "scrollTo": {
+        "text": "Contact"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "terms-top",
+      "title": "Terms of Service",
+      "pass": "B",
+      "link": "flyright:///terms",
+      "anchor": {
+        "text": "Terms of Service"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "terms-bottom",
+      "title": "Terms of Service, bottom",
+      "pass": "B",
+      "link": "flyright:///terms",
+      "anchor": {
+        "text": "Terms of Service"
+      },
+      "scrollTo": {
+        "text": "Contact"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "support-top",
+      "title": "Support page",
+      "pass": "B",
+      "link": "flyright:///support",
+      "anchor": {
+        "text": "Get help"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "support-bottom",
+      "title": "Support page, bottom",
+      "pass": "B",
+      "link": "flyright:///support",
+      "anchor": {
+        "text": "Get help"
+      },
+      "scrollTo": {
+        "text": "What FlyRight does"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "delete-account-top",
+      "title": "Delete account, signed out",
+      "pass": "B",
+      "link": "flyright:///delete-account",
+      "anchor": {
+        "text": "Delete your FlyRight account"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "delete-account-bottom",
+      "title": "Delete account, bottom",
+      "pass": "B",
+      "link": "flyright:///delete-account",
+      "anchor": {
+        "text": "Delete your FlyRight account"
+      },
+      "scrollTo": {
+        "text": "Sign in →"
+      },
+      "note": "Short page; the scroll usually lands on the same view."
+    },
+    {
+      "id": "M17",
+      "state": "welcome-top",
+      "title": "Welcome (post-purchase)",
+      "pass": "B",
+      "link": "flyright:///welcome",
+      "anchor": {
+        "text": "You.re Pro.*"
+      }
+    },
+    {
+      "id": "M17",
+      "state": "welcome-bottom",
+      "title": "Welcome, bottom",
+      "pass": "B",
+      "link": "flyright:///welcome",
+      "anchor": {
+        "text": "You.re Pro.*"
+      },
+      "scrollTo": {
+        "text": ".*Manage subscription in the app.*"
+      }
+    },
+    {
+      "id": "M18",
+      "state": "top",
+      "title": "Unknown link",
+      "pass": "B",
+      "link": "flyright:///nope",
+      "anchor": {
+        "text": "This link needs a newer FlyRight"
+      }
+    },
+    {
+      "id": "M04",
+      "state": "signed-in",
+      "title": "Paywall, signed in",
+      "pass": "A",
+      "link": "flyright:///paywall",
+      "anchor": {
+        "text": "Choose your plan"
+      }
+    },
+    {
+      "id": "M05",
+      "state": "reminder",
+      "title": "Pro offer, take-off reminder",
+      "pass": "A",
+      "link": "flyright:///pro-offer?step=reminder&journeyId=demo-lis",
+      "anchor": {
+        "text": ".*(Remind me before take-off|Your Pro reminder|flying soon).*"
+      },
+      "note": "Do not tap Set reminder. Title depends on whether a reminder is already saved."
+    },
+    {
+      "id": "M07",
+      "state": "top",
+      "title": "Boarding pass",
+      "pass": "A",
+      "link": "flyright:///boarding-pass?journeyId=demo-upcoming",
+      "anchor": {
+        "id": "boarding-pass-code"
+      }
+    },
+    {
+      "id": "M07",
+      "state": "rotated",
+      "title": "Boarding pass, code turned",
+      "pass": "A",
+      "link": "flyright:///boarding-pass?journeyId=demo-upcoming",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "boarding-pass-code"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "boarding-pass-code"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Tap the code to return to pass details"
+      }
+    },
+    {
+      "id": "M07",
+      "state": "no-code",
+      "title": "Boarding pass, trip without a code",
+      "pass": "A",
+      "link": "flyright:///boarding-pass?journeyId=demo-jfk",
+      "anchor": {
+        "text": "No saved code on this trip"
+      }
+    },
+    {
+      "id": "M09",
+      "state": "keyboard",
+      "title": "Trip notes editor",
+      "pass": "A",
+      "link": "flyright:///journey-note?journeyId=demo-jfk",
+      "anchor": {
+        "id": "trip-note-editor"
+      },
+      "keyboard": true,
+      "note": "autoFocus raises the keyboard; never tap Save."
+    },
+    {
+      "id": "M10",
+      "state": "keyboard",
+      "title": "Trip details, gate focused",
+      "pass": "A",
+      "link": "flyright:///trip-details?journeyId=demo-upcoming&field=gate",
+      "anchor": {
+        "id": "trip-details-gate"
+      },
+      "keyboard": true,
+      "note": "Never tap Save."
+    },
+    {
+      "id": "M11",
+      "state": "sheet",
+      "title": "Trip cover picker",
+      "pass": "A",
+      "link": "flyright:///destination?city=London&country=GB",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "hero-change-photo"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "hero-change-photo"
+          }
+        }
+      ],
+      "anchor": {
+        "id": "trip-photo-done"
+      },
+      "note": "Opens /trip-photo from the destination hero's Change photo button. Do not pick an option."
+    },
+    {
+      "id": "M12",
+      "state": "sheet",
+      "title": "Home city photo picker",
+      "pass": "A",
+      "link": "flyright:///home-photo?city=Helsinki&country=FI",
+      "anchor": {
+        "id": "home-photo-done"
+      },
+      "note": "Do not pick an option."
+    },
+    {
+      "id": "N05",
+      "state": "redirect-flights",
+      "title": "Old /flights link",
+      "pass": "A",
+      "link": "flyright:///flights",
+      "anchor": {
+        "text": ".*Open your travel stats.*"
+      },
+      "note": "Redirects to Flights home; anchor is the stats header's accessibility label."
+    },
+    {
+      "id": "N05",
+      "state": "redirect-go-pro",
+      "title": "Old /go-pro link",
+      "pass": "A",
+      "link": "flyright:///go-pro",
+      "anchor": {
+        "text": "Choose your plan"
+      },
+      "note": "Redirects to the paywall."
+    },
+    {
+      "id": "N05",
+      "state": "redirect-add-flight",
+      "title": "Old /add-flight link",
+      "pass": "A",
+      "link": "flyright:///add-flight",
+      "anchor": {
+        "id": "scan-boarding-pass"
+      },
+      "note": "Redirects to /add, the Find my flight step."
+    },
+    {
+      "id": "M13",
+      "state": "empty",
+      "title": "Share an update, empty",
+      "pass": "C",
+      "link": "flyright:///trip-update?journeyId=demo-upcoming",
+      "anchor": {
+        "id": "trip-update-editor"
+      },
+      "keyboard": true,
+      "volatile": true,
+      "note": "Context line reflects the live travel-day stage. Never tap Post."
+    },
+    {
+      "id": "M13",
+      "state": "typed",
+      "title": "Share an update, typed",
+      "pass": "C",
+      "link": "flyright:///trip-update?journeyId=demo-upcoming",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "trip-update-editor"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "inputText": "Gate 22, boarding soon"
+        }
+      ],
+      "anchor": {
+        "id": "trip-update-editor"
+      },
+      "keyboard": true,
+      "volatile": true,
+      "note": "Type only, never Post. The text stays as a local postcard draft for this trip."
+    },
+    {
+      "id": "U01",
+      "state": "top",
+      "title": "Updates feed",
+      "pass": "A",
+      "link": "flyright://updates",
+      "anchor": {
+        "text": "POSTCARDS"
+      },
+      "volatile": true,
+      "note": "Following rail (Noah in the air, Clara at security) over the postcards"
+    },
+    {
+      "id": "U01",
+      "state": "scrolled",
+      "title": "Updates feed, scrolled",
+      "pass": "A",
+      "link": "flyright://updates",
+      "anchor": {
+        "text": "POSTCARDS"
+      },
+      "scrollTo": {
+        "text": ".*Landed in Tokyo.*"
+      },
+      "volatile": true,
+      "note": "Tomas's photo postcard is the oldest, at the bottom"
+    },
+    {
+      "id": "U02",
+      "state": "sheet",
+      "title": "Following face sheet",
+      "pass": "A",
+      "link": "flyright://updates",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "following-face-store_demo_noah"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "following-face-store_demo_noah"
+          }
+        }
+      ],
+      "anchor": {
+        "id": "following-sheet-close"
+      },
+      "volatile": true,
+      "note": "Noah's face on the rail opens his status sheet"
+    },
+    {
+      "id": "U03",
+      "state": "top",
+      "title": "Following see all",
+      "pass": "A",
+      "link": "flyright://updates",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "following-see-all"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "following-see-all"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Noah Berg's trip.*"
+      },
+      "volatile": true,
+      "note": "The rail's trailing 'Friends' tile lands on Friends > Following (LivePass label)"
+    },
+    {
+      "id": "U04",
+      "state": "top",
+      "title": "Postcard viewer",
+      "pass": "A",
+      "link": "flyright://updates",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": "POSTCARDS",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Open this trip",
+            "index": 0
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Report this photo"
+      },
+      "volatile": true,
+      "note": "First photo postcard (Noah's) full screen"
+    },
+    {
+      "id": "U05",
+      "state": "top",
+      "title": "Report a postcard",
+      "pass": "A",
+      "link": "flyright://updates",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": "POSTCARDS",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Open this trip",
+            "index": 0
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": "Report this photo",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": "Report this photo"
+        }
+      ],
+      "anchor": {
+        "id": "report-reason-scam"
+      },
+      "volatile": true,
+      "note": "The photo viewer's ··· opens 'Report this update'. Never tap Send"
+    },
+    {
+      "id": "P01",
+      "state": "following",
+      "title": "Friends, Following",
+      "pass": "A",
+      "link": "flyright://people?tab=following",
+      "anchor": {
+        "text": ".*Noah Berg.*"
+      },
+      "volatile": true,
+      "note": "Live passes for friends in the air, then next-trip rows"
+    },
+    {
+      "id": "P01",
+      "state": "followers",
+      "title": "Friends, Followers",
+      "pass": "A",
+      "link": "flyright://people?tab=followers",
+      "anchor": {
+        "text": ".*sees? your trips.*"
+      },
+      "note": "'N people see your trips' note + 'See what they see' pill"
+    },
+    {
+      "id": "P02",
+      "state": "empty",
+      "title": "Add someone",
+      "pass": "A",
+      "link": "flyright://add-person",
+      "anchor": {
+        "text": "Add someone"
+      },
+      "keyboard": true,
+      "note": "Search field is autofocused"
+    },
+    {
+      "id": "P02",
+      "state": "results",
+      "title": "Add someone, results",
+      "pass": "A",
+      "link": "flyright://add-person",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": "Add someone",
+            "timeout": 15000
+          }
+        },
+        {
+          "inputText": "Noah"
+        }
+      ],
+      "anchor": {
+        "text": "Someone else\\?"
+      },
+      "keyboard": true,
+      "note": "Whole-first-name search; the link row under hits reads 'Someone else?'. Search is metered per day"
+    },
+    {
+      "id": "P02",
+      "state": "no-results",
+      "title": "Add someone, no results",
+      "pass": "A",
+      "link": "flyright://add-person",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": "Add someone",
+            "timeout": 15000
+          }
+        },
+        {
+          "inputText": "Zyxwvq"
+        }
+      ],
+      "anchor": {
+        "text": "Not on FlyRight"
+      },
+      "keyboard": true,
+      "note": "'Nobody matches …' link row"
+    },
+    {
+      "id": "P03",
+      "state": "top",
+      "title": "Circle preview",
+      "pass": "A",
+      "link": "flyright://preview",
+      "anchor": {
+        "text": ".*Sharing their trips with you.*"
+      },
+      "note": "Close circle / Rest of circle tabs over Maja's page as seen"
+    },
+    {
+      "id": "P04",
+      "state": "top",
+      "title": "Person page",
+      "pass": "A",
+      "link": "flyright://person/store_demo_noah",
+      "anchor": {
+        "id": "person-more"
+      },
+      "volatile": true,
+      "note": "Noah Berg: globe, live card, postcards"
+    },
+    {
+      "id": "P04",
+      "state": "menu",
+      "title": "Person, More menu",
+      "pass": "A",
+      "link": "flyright://person/store_demo_noah",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "person-more"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "person-more"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Block Noah Berg"
+      },
+      "note": "iOS ActionSheet / Android MenuSheet, same rows (Report / Block)"
+    },
+    {
+      "id": "P04",
+      "state": "block-alert",
+      "title": "Person, Block alert",
+      "pass": "A",
+      "link": "flyright://person/store_demo_noah",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "person-more"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "id": "person-more"
+          }
+        },
+        {
+          "tapOn": "Block Noah Berg"
+        }
+      ],
+      "anchor": {
+        "text": "Block Noah Berg\\?"
+      },
+      "note": "Screenshot only. NEVER tap 'Block'; the next state's cold start dismisses the alert (or tap Cancel)"
+    },
+    {
+      "id": "P05",
+      "state": "top",
+      "title": "A friend's trip",
+      "pass": "A",
+      "link": "flyright://person/store_demo_noah",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "person-more"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": {
+            "text": ".*Lands in.*"
+          }
+        }
+      ],
+      "anchor": {
+        "text": ".*Noah Berg is flying.*"
+      },
+      "volatile": true,
+      "note": "Tap Noah's live card (AY5 HEL→JFK, in the air) → follower trip page"
+    },
+    {
+      "id": "P06",
+      "state": "top",
+      "title": "A friend's world",
+      "pass": "A",
+      "link": "flyright://person/store_demo_noah/world",
+      "anchor": {
+        "text": ".*Everywhere Noah Berg has been.*"
+      },
+      "note": "Full-bleed globe of Noah's travel"
+    },
+    {
+      "id": "P07",
+      "state": "top",
+      "title": "Shared trip link",
+      "pass": "A",
+      "skip": "flyright://trip/<token> and /t/<token> need a real share token minted from someone's trip"
+    },
+    {
+      "id": "P08",
+      "state": "top",
+      "title": "Follow a live trip",
+      "pass": "A",
+      "skip": "flyright://following/<sessionId> needs a live Convex session id (Lock Screen/Dynamic Island hand-off)"
+    },
+    {
+      "id": "P09",
+      "state": "expired",
+      "title": "Invite link expired",
+      "pass": "A",
+      "link": "flyright:///i/not-a-real-token",
+      "anchor": {
+        "text": "This invite has expired"
+      }
+    },
+    {
+      "id": "W01",
+      "state": "loaded",
+      "title": "World",
+      "pass": "A",
+      "link": "flyright://world",
+      "anchor": {
+        "text": "Showing All time.*"
+      },
+      "note": "Globe + stats card (trips/airports/countries/km)"
+    },
+    {
+      "id": "W01",
+      "state": "period",
+      "title": "World, period chooser",
+      "pass": "A",
+      "link": "flyright://world",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": "Showing All time.*",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": "Showing All time.*"
+        }
+      ],
+      "anchor": {
+        "text": "Custom"
+      },
+      "note": "Period card with All time / year chips / Custom"
+    },
+    {
+      "id": "W01",
+      "state": "route",
+      "title": "World, route tapped",
+      "pass": "A",
+      "skip": "Selecting a route needs a coordinate tap on the Skia globe; routes are not accessibility elements, so it is not deterministic"
+    },
+    {
+      "id": "W02",
+      "state": "story",
+      "title": "Share your world, Story",
+      "pass": "A",
+      "link": "flyright://world",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": "Showing All time.*",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": "Share your world"
+        }
+      ],
+      "anchor": {
+        "text": "Share image"
+      },
+      "note": "Poster preview; stop before 'Share image' (system share sheet)"
+    },
+    {
+      "id": "W02",
+      "state": "square",
+      "title": "Share your world, Square",
+      "pass": "A",
+      "link": "flyright://world",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": "Showing All time.*",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": "Share your world"
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": "Share image",
+            "timeout": 10000
+          }
+        },
+        {
+          "tapOn": "Square"
+        }
+      ],
+      "anchor": {
+        "text": "Share image"
+      }
+    },
+    {
+      "id": "C01",
+      "state": "empty",
+      "title": "Claims, empty",
+      "pass": "A",
+      "link": "flyright://claims",
+      "anchor": {
+        "text": "No claims yet"
+      },
+      "note": "Must run before C02 confirm/sent (seed clears the claims table)"
+    },
+    {
+      "id": "C02",
+      "state": "details",
+      "title": "Claim wizard, details",
+      "pass": "A",
+      "link": "flyright:///claim?journeyId=demo&delay=195",
+      "anchor": {
+        "text": "Who should the payout go to\\?"
+      },
+      "keyboard": true,
+      "note": "Built-in demo flight (LH873), name field autofocused"
+    },
+    {
+      "id": "C02",
+      "state": "review",
+      "title": "Claim wizard, review",
+      "pass": "A",
+      "link": "flyright:///claim?journeyId=demo&delay=195",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Full name.*|Maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 40
+          }
+        },
+        {
+          "inputText": "Maja Lindqvist"
+        },
+        {
+          "tapOn": {
+            "text": "Email for the airline.*|maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 60
+          }
+        },
+        {
+          "inputText": "maja+clerk_test@example.com"
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "text": "Preview my claim.*"
+            },
+            "direction": "DOWN",
+            "optional": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Preview my claim.*"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Review and send your claim"
+      },
+      "note": "Fields refilled in case Clerk hadn't prefilled them on a cold start"
+    },
+    {
+      "id": "C02",
+      "state": "confirm-ios",
+      "title": "Claim wizard, confirm",
+      "pass": "A",
+      "platforms": [
+        "ios"
+      ],
+      "link": "flyright:///claim?journeyId=demo-mad&delay=195",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Full name.*|Maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 40
+          }
+        },
+        {
+          "inputText": "Maja Lindqvist"
+        },
+        {
+          "tapOn": {
+            "text": "Email for the airline.*|maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 60
+          }
+        },
+        {
+          "inputText": "maja+clerk_test@example.com"
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "text": "Preview my claim.*"
+            },
+            "direction": "DOWN",
+            "optional": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Preview my claim.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": "Review and send your claim",
+            "timeout": 10000
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Save the PDF to attach.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": ".*PDF.*",
+            "timeout": 20000,
+            "optional": true
+          }
+        },
+        {
+          "tapOn": {
+            "point": "50%,8%"
+          }
+        }
+      ],
+      "anchor": {
+        "text": "Did your claim letter go out\\?"
+      },
+      "note": "demo-mad (Finnair, form channel): 'Save the PDF to attach' opens the share sheet, dismissed above it; nothing is emailed"
+    },
+    {
+      "id": "C02",
+      "state": "confirm-android",
+      "title": "Claim wizard, confirm",
+      "pass": "A",
+      "platforms": [
+        "android"
+      ],
+      "link": "flyright:///claim?journeyId=demo-mad&delay=195",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Full name.*|Maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 40
+          }
+        },
+        {
+          "inputText": "Maja Lindqvist"
+        },
+        {
+          "tapOn": {
+            "text": "Email for the airline.*|maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 60
+          }
+        },
+        {
+          "inputText": "maja+clerk_test@example.com"
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "text": "Preview my claim.*"
+            },
+            "direction": "DOWN",
+            "optional": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Preview my claim.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": "Review and send your claim",
+            "timeout": 10000
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Save the PDF to attach.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": ".*(Share|Copy|Nearby|Drive).*",
+            "timeout": 15000,
+            "optional": true
+          }
+        },
+        "back"
+      ],
+      "anchor": {
+        "text": "Did your claim letter go out\\?"
+      },
+      "note": "Share chooser dismissed with back; nothing is emailed"
+    },
+    {
+      "id": "C02",
+      "state": "sent-ios",
+      "title": "Claim sent",
+      "pass": "A",
+      "platforms": [
+        "ios"
+      ],
+      "link": "flyright:///claim?journeyId=demo-mad&delay=195",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Full name.*|Maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 40
+          }
+        },
+        {
+          "inputText": "Maja Lindqvist"
+        },
+        {
+          "tapOn": {
+            "text": "Email for the airline.*|maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 60
+          }
+        },
+        {
+          "inputText": "maja+clerk_test@example.com"
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "text": "Preview my claim.*"
+            },
+            "direction": "DOWN",
+            "optional": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Preview my claim.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": "Review and send your claim",
+            "timeout": 10000
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Save the PDF to attach.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": ".*PDF.*",
+            "timeout": 20000,
+            "optional": true
+          }
+        },
+        {
+          "tapOn": {
+            "point": "50%,8%"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": "Did your claim letter go out\\?",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": "I sent it.*"
+        }
+      ],
+      "anchor": {
+        "text": "Claim sent"
+      },
+      "note": "MUTATES: 'I sent it' only records a sent claim + letter snapshot locally for demo-mad (no email). Run after F12"
+    },
+    {
+      "id": "C02",
+      "state": "sent-android",
+      "title": "Claim sent",
+      "pass": "A",
+      "platforms": [
+        "android"
+      ],
+      "link": "flyright:///claim?journeyId=demo-mad&delay=195",
+      "steps": [
+        {
+          "tapOn": {
+            "text": "Full name.*|Maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 40
+          }
+        },
+        {
+          "inputText": "Maja Lindqvist"
+        },
+        {
+          "tapOn": {
+            "text": "Email for the airline.*|maja.*"
+          }
+        },
+        {
+          "eraseText": {
+            "charactersToErase": 60
+          }
+        },
+        {
+          "inputText": "maja+clerk_test@example.com"
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "text": "Preview my claim.*"
+            },
+            "direction": "DOWN",
+            "optional": true
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Preview my claim.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": "Review and send your claim",
+            "timeout": 10000
+          }
+        },
+        {
+          "tapOn": {
+            "text": "Save the PDF to attach.*"
+          }
+        },
+        {
+          "extendedWaitUntil": {
+            "visible": ".*(Share|Copy|Nearby|Drive).*",
+            "timeout": 15000,
+            "optional": true
+          }
+        },
+        "back",
+        {
+          "extendedWaitUntil": {
+            "visible": "Did your claim letter go out\\?",
+            "timeout": 15000
+          }
+        },
+        {
+          "tapOn": "I sent it.*"
+        }
+      ],
+      "anchor": {
+        "text": "Claim sent"
+      },
+      "note": "MUTATES: records a sent claim locally for demo-mad (no email)"
+    },
+    {
+      "id": "C01",
+      "state": "with-claim",
+      "title": "Claims, one claim",
+      "pass": "A",
+      "link": "flyright://claims",
+      "anchor": {
+        "text": ".*AY954.*"
+      },
+      "note": "After C02 sent: the Finnair AY954 HEL→MAD claim, 400 EUR"
+    },
+    {
+      "id": "C03",
+      "state": "top",
+      "title": "Claim letter",
+      "pass": "A",
+      "link": "flyright:///claim-letter?journeyId=demo-mad",
+      "anchor": {
+        "text": "Addressed to"
+      },
+      "note": "The snapshot frozen at 'I sent it'"
+    },
+    {
+      "id": "U01",
+      "state": "signed-out",
+      "title": "Updates, signed out",
+      "pass": "B",
+      "link": "flyright://updates",
+      "anchor": {
+        "text": ".*Postcards from your friends.*"
+      }
+    },
+    {
+      "id": "P01",
+      "state": "signed-out",
+      "title": "Friends, signed out",
+      "pass": "B",
+      "link": "flyright://people",
+      "anchor": {
+        "text": "Travel together, apart"
+      }
+    },
+    {
+      "id": "P03",
+      "state": "signed-out",
+      "title": "Circle preview, signed out",
+      "pass": "B",
+      "link": "flyright://preview",
+      "anchor": {
+        "text": "Sign in to preview"
+      }
+    },
+    {
+      "id": "P09",
+      "state": "signed-out",
+      "title": "Invite link expired, signed out",
+      "pass": "B",
+      "link": "flyright:///i/not-a-real-token",
+      "anchor": {
+        "text": "This invite has expired"
+      }
+    },
+    {
+      "id": "W01",
+      "state": "empty",
+      "title": "World, empty",
+      "pass": "B",
+      "link": "flyright://world",
+      "anchor": {
+        "text": "Your world map awaits"
+      }
+    }
+  ]
+}

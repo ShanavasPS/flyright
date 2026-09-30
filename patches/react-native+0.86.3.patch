@@ -57,6 +57,27 @@ index c8392ea..24a2b4f 100644
            nodeHandle,
            nullthrows(findNodeHandle<$FlowFixMe>(this)),
            // $FlowFixMe[method-unbinding] added when improving typing for this parameters
+diff --git a/node_modules/react-native/Libraries/Components/TextInput/TextInput.js b/node_modules/react-native/Libraries/Components/TextInput/TextInput.js
+index adca4e3..7b8d1a3 100644
+--- a/node_modules/react-native/Libraries/Components/TextInput/TextInput.js
++++ b/node_modules/react-native/Libraries/Components/TextInput/TextInput.js
+@@ -904,6 +904,7 @@ const TextInput: component(
+ ) = function TextInput({
+   ref: forwardedRef,
+   allowFontScaling = true,
++  maxFontSizeMultiplier,
+   rejectResponderTermination = true,
+   underlineColorAndroid = 'transparent',
+   autoComplete,
+@@ -923,6 +924,8 @@ const TextInput: component(
+   return (
+     <InternalTextInput
+       allowFontScaling={allowFontScaling}
++      // FlyRight: text follows the OS text size up to 1.5x (patches/react-native).
++      maxFontSizeMultiplier={maxFontSizeMultiplier ?? 1.5}
+       rejectResponderTermination={rejectResponderTermination}
+       underlineColorAndroid={underlineColorAndroid}
+       editable={readOnly !== undefined ? !readOnly : editable}
 diff --git a/node_modules/react-native/Libraries/Components/Touchable/Touchable.js b/node_modules/react-native/Libraries/Components/Touchable/Touchable.js
 index 23358c3..30fd207 100644
 --- a/node_modules/react-native/Libraries/Components/Touchable/Touchable.js
@@ -137,6 +158,19 @@ index 8e04ee5..d8004ad 100644
      } else {
        this._responderID.measure(this._measureCallback);
      }
+diff --git a/node_modules/react-native/Libraries/Text/Text.js b/node_modules/react-native/Libraries/Text/Text.js
+index 8e7b29c..8ee8b20 100644
+--- a/node_modules/react-native/Libraries/Text/Text.js
++++ b/node_modules/react-native/Libraries/Text/Text.js
+@@ -287,6 +287,8 @@ const TextImpl: component(
+ 
+   processedProps.accessible = _accessible;
+   processedProps.allowFontScaling = allowFontScaling !== false;
++  // FlyRight: text follows the OS text size up to 1.5x (patches/react-native).
++  processedProps.maxFontSizeMultiplier = processedProps.maxFontSizeMultiplier ?? 1.5;
+   processedProps.disabled = _disabled;
+   processedProps.ellipsizeMode = ellipsizeMode ?? 'tail';
+   processedProps.children = children;
 diff --git a/node_modules/react-native/Libraries/Text/TextNativeComponent.js b/node_modules/react-native/Libraries/Text/TextNativeComponent.js
 index 11c8691..fea49f9 100644
 --- a/node_modules/react-native/Libraries/Text/TextNativeComponent.js

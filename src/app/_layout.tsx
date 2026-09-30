@@ -457,6 +457,9 @@ function RootLayout() {
                 options={{
                   title: "Check your flight",
                   headerShown: Platform.OS !== "web",
+                  // The screen under it is the tab group, whose route name
+                  // "(tabs)" iOS printed as the back title.
+                  headerBackButtonDisplayMode: "minimal",
                 }}
               />
               <Stack.Screen

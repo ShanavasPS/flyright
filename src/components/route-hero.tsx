@@ -5,6 +5,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { dayOffsetMark, dayOffsetSpoken, flightInstant } from '@/services/dates';
@@ -127,6 +128,7 @@ export function RouteHero({
   eyebrow?: boolean;
 }) {
   const theme = useTheme();
+  const large = useLargeText();
   const airborne = progress != null;
   const flown = !airborne && Date.parse(journey.scheduledDeparture) <= now;
   const chip = dateChipLabel(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code), airborne);
@@ -182,7 +184,7 @@ export function RouteHero({
         }
         style={styles.codesRow}>
         <View style={styles.endpoint}>
-          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
+          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1} maxFontSizeMultiplier={CodeMaxScale}>
             {journey.from.code}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
@@ -198,7 +200,7 @@ export function RouteHero({
             </ThemedText>
           )}
         </View>
-        <View style={styles.contrail}>
+        <View style={[styles.contrail, large && styles.contrailLarge]}>
           {/* A blank keeps the line centred on the codes when the lookup
               carried no UTC offsets and there is no block time to show. */}
           <ThemedText
@@ -221,12 +223,13 @@ export function RouteHero({
             type="small"
             themeColor="textSecondary"
             style={styles.contrailLabel}
-            numberOfLines={1}>
+            // Large text: "1,848 / km" in the narrower middle, not "1,848…".
+            numberOfLines={large ? 2 : 1}>
             {distance}
           </ThemedText>
         </View>
         <View style={[styles.endpoint, styles.endpointRight]}>
-          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1}>
+          <ThemedText themeColor="heading" style={styles.code} numberOfLines={1} maxFontSizeMultiplier={CodeMaxScale}>
             {journey.to.code}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.cityRight} numberOfLines={2}>
@@ -344,6 +347,10 @@ function ProgressContrail({ progress }: { progress: number }) {
   );
 }
 
+/** The codes are 40pt display type already: at 1.5x three letters no longer
+ * fit a column ("H…"), so they stop at 1.3x while the rest grows to 1.5x. */
+const CodeMaxScale = 1.3;
+
 const styles = StyleSheet.create({
   hero: {
     gap: Spacing.three,
@@ -411,15 +418,24 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   // Label + line + label total 54pt; the -4 margin centres the plane on the
-  // 46pt code line rather than on the whole endpoint column.
+  // 46pt code line rather than on the whole endpoint column. A floor, not a
+  // height, so large text grows the labels instead of clipping them;
+  // flex-start keeps the row's stretch from centring it on the column.
   contrail: {
     flex: 1.4,
+    alignSelf: 'flex-start',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.half,
-    height: 54,
+    minHeight: 54,
     marginTop: -4,
     paddingHorizontal: Spacing.one,
+  },
+  // Large text: the endpoints need the room for a 1.3x code and a 1.5x
+  // clock ("11:15 PM" wrapped to "11:15 P / M" at the normal split); the
+  // duration and distance still fit the narrower middle.
+  contrailLarge: {
+    flex: 0.6,
   },
   contrailLabel: {
     fontSize: 12,

@@ -1,13 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NotificationPitchArt } from '@/components/notification-pitch';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
 
@@ -20,6 +20,7 @@ import { requestPushPermission } from '@/services/notifications';
  */
 export function NotificationPrime() {
   const router = useRouter();
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
 
@@ -36,9 +37,14 @@ export function NotificationPrime() {
     }
   }
 
+  // The ScrollView is the root: on iOS 26+ a sheet's ScrollView under a
+  // wrapper collapses to nothing (services/form-sheets.test.ts). flexGrow
+  // keeps the footer at the bottom at normal text; at large text the whole
+  // sheet scrolls instead of the copy running under the buttons.
   return (
-    <ThemedView
-      style={[styles.container, { paddingBottom: Math.max(insets.bottom, Spacing.four) }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.four) }]}>
       <View style={styles.content}>
         <NotificationPitchArt />
         <ThemedText type="subtitle" themeColor="heading" style={styles.title}>
@@ -57,7 +63,7 @@ export function NotificationPrime() {
           </ThemedText>
         </Pressable>
       </View>
-    </ThemedView>
+    </ScrollView>
   );
 }
 
@@ -67,6 +73,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+  },
+  sheet: {
+    flexGrow: 1,
     paddingHorizontal: Spacing.five,
     paddingTop: Spacing.five,
   },
@@ -74,6 +83,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: Spacing.three,
+    paddingBottom: Spacing.three,
   },
   title: {
     textAlign: 'center',

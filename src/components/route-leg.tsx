@@ -4,6 +4,7 @@ import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'reac
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { dayOffset, dayOffsetMark, dayOffsetSpoken, formatTime } from '@/services/dates';
@@ -57,6 +58,7 @@ export function RouteLeg({
   via?: { code: string; layover: string | null }[];
 }) {
   const theme = useTheme();
+  const large = useLargeText();
   const { dep, arr, nextDay } = clocks(leg);
   const depWas =
     !compact && leg.ticketedDeparture
@@ -127,7 +129,7 @@ export function RouteLeg({
           </View>
         </Fragment>
       ))}
-      <View style={[styles.contrail, compact && styles.contrailCompact]}>
+      <View style={[styles.contrail, compact && styles.contrailCompact, large && !compact && styles.contrailLarge]}>
         <Contrail
           progress={stops.length ? undefined : progress}
           tint={theme.tint}
@@ -139,7 +141,8 @@ export function RouteLeg({
             type="small"
             themeColor="textSecondary"
             style={styles.contrailLabel}
-            numberOfLines={1}>
+            // Large text: "16h / 45m" in the narrower middle, not "16h 45…".
+            numberOfLines={large ? 2 : 1}>
             {middle}
           </ThemedText>
         )}
@@ -394,6 +397,11 @@ const styles = StyleSheet.create({
   // Compact codes are 18pt tall, so a 3pt offset centres the 12pt line. The
   // contrail takes the width between the codes, so a compact leg spans its
   // row edge to edge the way the journal's rows do beneath it.
+  // Large text: the endpoints take the room, so a clock stays whole
+  // ("8:52P…") and a city wraps between words, not inside one ("Stockhol/m").
+  contrailLarge: {
+    flex: 0.6,
+  },
   contrailCompact: {
     flex: 1,
     minWidth: 28,

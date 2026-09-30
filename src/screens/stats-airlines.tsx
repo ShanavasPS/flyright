@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { carrierCodeForName } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { useJourneys } from '@/services/journeys';
 import { useLogoTint } from '@/services/logo-tint';
@@ -90,6 +91,8 @@ function AirlineRow({
   share: number;
   last: boolean;
 }) {
+  // Large text: names wrap to a second line rather than end in "…".
+  const lines = useLargeText() ? 2 : 1;
   const theme = useTheme();
   const code = carrierCodeForName(airline.carrier) ?? airlineCode(airline.number);
   const tint = useLogoTint(code);
@@ -100,10 +103,10 @@ function AirlineRow({
       value={airline.flights.toLocaleString()}
       caption={`${Math.round(airline.km).toLocaleString()} km`}
       last={last}>
-      <ThemedText type="smallBold" numberOfLines={1}>
+      <ThemedText type="smallBold" numberOfLines={lines}>
         {airline.carrier}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={lines}>
         {[code, airline.rating != null ? formatStars(airline.rating) : 'not rated'].filter(Boolean).join(' · ')}
       </ThemedText>
       <View style={[styles.bar, { backgroundColor: theme.backgroundSelected }]}>

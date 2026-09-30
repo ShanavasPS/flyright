@@ -1,0 +1,22 @@
+# Finishes first-run onboarding without granting anything.
+appId: com.shanavasshaji.flyright
+tags:
+  - helper
+---
+- launchApp
+- runFlow: prompts.yaml
+- runFlow:
+    when:
+      visible: "Skip"
+    commands:
+      - tapOn: "Skip"
+- runFlow:
+    when:
+      visible: "Remind me later"
+    commands:
+      - tapOn: "Remind me later"
+- runFlow: prompts.yaml
+- extendedWaitUntil:
+    visible: ".*Where have you flown.*"
+    timeout: 30000
+    optional: true
