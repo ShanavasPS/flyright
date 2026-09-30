@@ -1192,25 +1192,71 @@
       "state": "new",
       "title": "New home period",
       "pass": "A",
-      "link": "flyright://home-base-period",
+      "link": "flyright://home-base",
       "anchor": {
         "id": "home-period-screen"
       },
-      "note": "Nothing is saved"
+      "note": "Opened from Home base: the editor reads the draft that \"Add a period\" creates, so a direct link shows nothing. Nothing is saved",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "home-base-screen"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "id": "home-add-period"
+            },
+            "direction": "DOWN"
+          }
+        },
+        {
+          "tapOn": {
+            "id": "home-add-period"
+          }
+        }
+      ]
     },
     {
       "id": "F24",
       "state": "bottom",
       "title": "New home period",
       "pass": "A",
-      "link": "flyright://home-base-period",
+      "link": "flyright://home-base",
       "anchor": {
         "id": "home-period-screen"
       },
       "scrollTo": {
         "text": "Save period"
       },
-      "note": "Note card and the disabled Save period button"
+      "note": "Opened from Home base: the editor reads the draft that \"Add a period\" creates, so a direct link shows nothing. Note card and the disabled Save period button",
+      "steps": [
+        {
+          "extendedWaitUntil": {
+            "visible": {
+              "id": "home-base-screen"
+            },
+            "timeout": 15000
+          }
+        },
+        {
+          "scrollUntilVisible": {
+            "element": {
+              "id": "home-add-period"
+            },
+            "direction": "DOWN"
+          }
+        },
+        {
+          "tapOn": {
+            "id": "home-add-period"
+          }
+        }
+      ]
     },
     {
       "id": "F25",
