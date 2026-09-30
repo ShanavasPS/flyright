@@ -1,0 +1,9 @@
+What's new to review:
+
+Larger text. This release makes FlyRight readable with the larger text sizes in Settings > Accessibility > Display & Text Size > Larger Text. Text follows the system size up to 1.5 times the default and stops there, so layouts hold at the accessibility sizes. At large sizes, rows that put several items side by side rearrange: the route on a trip page, the flights list, Travel stats, and the tabs and list rows on the stats screens. Settings pickers, buttons and pills keep their labels whole. At the default text size nothing changes.
+
+To see it, set Larger Text to one of the larger accessibility sizes and open Flights, a trip, All travel stats and Settings.
+
+No new device permissions, no change to what Free and Pro include, and no change to purchases.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. The review account already has trips.

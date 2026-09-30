@@ -1,0 +1,5 @@
+Easier to read with larger text. FlyRight now follows your iPhone's text size up to a comfortable limit, so every screen stays tidy even at the largest accessibility sizes.
+
+Trip pages, your flights list and Travel stats rearrange themselves when text is large, so airport codes, times and flight numbers are never cut off.
+
+Settings, tabs and buttons keep their labels whole with larger text, and the notifications page scrolls instead of hiding its text behind the buttons. A shared World poster looks the same whatever your text size.

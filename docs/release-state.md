@@ -2,6 +2,24 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-09-30 — 1.1.8 (iOS 75, Android 77): large text — Android on production, iOS in App Review
+
+Triggered by a tester with a large iPhone text size. 1.1.7 had reached the App Store (READY_FOR_SALE, 2026-09-29 18:11 UTC) and Play production before this release started.
+
+| Item | Observed result |
+| --- | --- |
+| Code | `54cfefc` 1.5x text cap (patches/react-native default `maxFontSizeMultiplier`, `MaxFontScale`, `useTextScale`/`useLargeText`, `check-font-cap` in preflight), large-text layouts (route hero/leg, trip rows, stats grids, segment tabs, list rows, pills), iOS picker/year wheel Dynamic Type clamp, expo-symbols patch, share poster fixed size, notification sheet scrolls as root, "(tabs)" back title; large-text screenshot harness `npm run test:large-text` (docs/release-checks.md → Large text). `1d4cf96` harness fix; `b4235c5` bump + notes. Suite **1,355 tests**; typecheck and eslint clean. |
+| Large-text verification | Simulator/emulator runs at default size and above the cap (iOS AX3, Android font_scale 2.0), before and after the fixes; comparisons in `~/Downloads/FlyRight large text 2026-09-29/` (`Needs fixing/`, `After fixes/`, `FINDINGS.md`). Default-size screens unchanged. |
+| Backend | No backend change; `release:deploy-backend` **81** functions on production and development; `release:preflight` and `release:journal` passed. |
+| Hosting | Deployment `q6msu0p498`; flyright.expo.app, the deployment URL and getflyright.com all serve `entry-d76dad9e…` (production Convex `limitless-oyster-269`, `pk_live_`). `.env.production.local` removed. |
+| iOS | Local Xcode 27 build `FlyRight-1.1.8-75.ipa` verified `1.1.8 (75)`, `iphoneos27.0`, scene manifest. `eas submit` uploaded it; ASC build `fb0453f1` **VALID**. Version `7d653bd3` created with build 75, `AFTER_APPROVAL`, What's New `store/apple/whats-new-1.1.8.txt`, reviewer notes `review-notes-1.1.8.txt` (demo account kept). Review submission **`9653447b-69d1-4acb-9278-fca582aea311` WAITING_FOR_REVIEW**. |
+| Android | First EAS build `251637d6` (76) failed: "Gradle build daemon disappeared" (transient). Retry `41efd2c1` **FINISHED** 1.1.8 (77), app.json re-synced; submission `0fa723ff` finished to internal. **Play production** edit `15073767431075946510`: `1.1.8 (77)` `completed`, notes `store/google/release-notes-1.1.8.txt` (452 chars). |
+| Candidate (sim/emulator) | Production Release builds: iOS on iPhone 17 sim `53F70378` (App Review account had to be signed back in first — the sim had been signed out), Android release APK on `Pixel_API33` over 1.1.6. `release:devices --mode candidate` **passed on both**; retained photo renders. Evidence `.maestro/out/release/2026-09-30T04-44-04.665Z/`. |
+| Physical iPhone 15 Pro | TestFlight **1.1.8 (75)** installed by the owner. Unlocked; two devicectl cold starts alive >35 s; crash logs 8 → 8; XCTest `testAllTabsAcrossTwoColdStarts` **passed** (145 s), signed in with trips. Evidence `.maestro/out/physical-ios-1.1.8-75/`, `.maestro/out/physical-ios-tabs-1.1.8-75/`. |
+| Physical Pixel 9a | Universal APK from the store AAB (bundletool, debug key) over 1.1.7 (75), non-debuggable. `release-signed-in.yaml` **passed** (retained photo renders); `release-matrix.yaml` signed in with trips **passed** (needs `ACCOUNT_EMAIL`). No new crash/ANR in dropbox (newest 2026-09-28). `screen_off_timeout` restored to 30000. Evidence `.maestro/out/release/1.1.8-77-pixel/`. |
+| Screenshots | Carried forward: default-size screens are unchanged. |
+| Dev apps | iOS sim `AA6A8347` Debug **1.1.8 (75)**, Android `FlyRight_Dev` (`emulator-5556`) Debug **1.1.8 (77)**, Metro 8082 (8081 is another project's; the Android dev app needs `debug_http_host` 10.0.2.2:8082). The emulator's system_server hung once ("Process system isn't responding"); a cold boot cleared it. `release:devices --mode native` **passed on both**. |
+
 ## 2026-09-29 — 1.1.7 (iOS 74, Android 75): days by country, stays by country abroad, friends' grouping — Android on production, iOS in App Review
 
 1.1.6 reached the App Store (READY_FOR_SALE) during this release; iOS was held at TestFlight until then so the 1.1.6 review kept its place.

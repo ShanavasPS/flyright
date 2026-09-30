@@ -1,0 +1,3 @@
+• Easier to read with larger text: FlyRight follows your phone's font size up to a comfortable limit, so screens stay tidy even at the largest settings.
+• Trip pages, your flights list and Travel stats rearrange themselves when text is large, so airport codes, times and flight numbers are never cut off.
+• Settings, tabs and buttons keep their labels whole, icons stay in place, and a shared World poster looks the same whatever your text size.
