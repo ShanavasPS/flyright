@@ -15,6 +15,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.9',
+    date: '2026-10-01',
+    notes: [
+      'On iPhone, your flight card shows the gate, check-in desk and seat at full size again: 1.1.8 drew them far too small to read.',
+      'Once you land, the card names your city and baggage belt at full size again.',
+      'The larger-text support from 1.1.8 stays: FlyRight still follows your phone\'s text size up to a comfortable limit.',
+    ],
+  },
+  {
     version: '1.1.8',
     date: '2026-09-30',
     notes: [

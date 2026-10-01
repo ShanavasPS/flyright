@@ -1,0 +1,2 @@
+• Fixes and polish to the live flight card, which shows your gate, check-in desk, seat and baggage belt.
+• The larger-text support from 1.1.8 stays: FlyRight follows your phone's font size up to a comfortable limit.

@@ -1,0 +1,9 @@
+What's new to review:
+
+A bug fix. On 1.1.8 the live flight card on the Flights tab drew its main fact (the gate, check-in desk, seat or baggage belt) and, after landing, the arrival city only a few points tall. They now render at full size again. Nothing else changes.
+
+To see it, open Flights while a flight in the review account's journal is within a day of departure, or in the air: the card at the top shows the gate or seat in large type on the right.
+
+No new device permissions, no change to what Free and Pro include, and no change to purchases.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method. The review account already has trips.
