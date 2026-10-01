@@ -2,6 +2,21 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-10-01 — 1.1.9 (iOS 78, Android 78): live card values at full size, landed Live Activity plane — Android on production, iOS in App Review (expedited)
+
+Triggered while reshooting the Shipaton demo on the iOS 27 simulator: 1.1.8's live card drew the gate and the landed city a few points tall. 1.1.8 itself reached the App Store (READY_FOR_SALE) during this release. The owner skipped the physical-device, candidate and native checks for this release.
+
+| Item | Observed result |
+| --- | --- |
+| Code | `8928845` live card lead value and landed city sized by length instead of `adjustsFontSizeToFit` (iOS 27 sim drew them tiny; the owner's iOS 26 iPhone showed belt/city fine — likely iOS 27 only); `086a733` landed Live Activity plane: `flyright-live-activities` unwraps NSNumber before `AnyCodable` (progress 1 was stored as `true` → widget drew the plane at the origin) and the widget reads a stored `true` as 1; `895d556`/`22ea91c`/`122a9ea` bump + notes; `3edf629`/`d89e45f` iOS build-number syncs. Suite **1,355 tests**; typecheck and eslint clean. |
+| Backend | No backend change; `release:deploy-backend` **81** functions on production and development; `release:preflight` and `release:journal` passed. |
+| Hosting | Deployment `ohojimvp71`; flyright.expo.app, the deployment URL and getflyright.com serve `entry-aa3f6464…` (production Convex, `pk_live_`). `.env.production.local` removed. |
+| iOS | Build 76 (local, uploaded) superseded before review by the Live Activity fix. Build 77 consumed by a local build that died with ENOSPC (disk full). Build **78** local Xcode 27, `iphoneos27.0`, uploaded with `eas submit`; ASC build `5085b10b` **VALID**. Version `a708a4dd` (new record, `AFTER_APPROVAL`), What's New `store/apple/whats-new-1.1.9.txt` on `6c5c3397`, reviewer notes `review-notes-1.1.9.txt` on `f38829f8` (demo account kept). Review submission **`c328744b-2bee-40d3-bd75-27406c1fab74` WAITING_FOR_REVIEW**. **Expedited review requested** on developer.apple.com (account `shanavasshajidev@gmail.com`, team S4C392T83S), accepted: "We'll expedite review for FlyRight: Flight Tracker." |
+| Android | EAS build `79a647e2-eb90-4f8a-a70f-5918e5e1cb35` FINISHED 1.1.9 (78); submission `984df3b8` finished to internal. **Play production** edit `15295231408252461324`: `1.1.9 (78)` `completed`, notes `store/google/release-notes-1.1.9.txt` (220 chars). |
+| Checks | Physical iPhone/Pixel, signed-in candidate and `release:devices --mode native`: **skipped at the owner's request**. The live-card fix was verified on the iOS 27 simulator (dev build) in the airport, gate, in-air and landed states. |
+| Screenshots | Carried forward (the listing panels are unchanged apart from the live card's value size). |
+| Dev apps | **Not rebuilt**: the disk filled twice (local iOS builds need ~15 GB; freed Gradle caches, old Xcode archives, demo renders and the FlyRight DerivedData). iOS sim `AA6A8347` still Debug **1.1.8 (75)** with the Shipaton demo seed (`demo-upcoming` = AY73 HEL→HND); Android `FlyRight_Dev` still 1.1.8. Rebuild both when there is room. |
+
 ## 2026-09-30 — 1.1.8 (iOS 75, Android 77): large text — Android on production, iOS in App Review
 
 Triggered by a tester with a large iPhone text size. 1.1.7 had reached the App Store (READY_FOR_SALE, 2026-09-29 18:11 UTC) and Play production before this release started.
