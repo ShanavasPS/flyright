@@ -195,10 +195,9 @@ function HeroContent({
               </ThemedText>
               <ThemedText
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.5}
                 style={[
                   styles.leadValue,
+                  leadValueSize(content.lead.value),
                   { color: content.tone === 'boarding' || content.tone === 'landed' ? theme.success : theme.heading },
                 ]}>
                 {content.lead.value}
@@ -325,7 +324,7 @@ function HeroClock({ end, color, fallback }: { end: number | null; color: string
   const left = end === null ? NaN : end - now.getTime();
   if (!(left > 0)) {
     return (
-      <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.clockWords, { color }]}>
+      <ThemedText numberOfLines={1} style={[styles.clockWords, clockWordsSize(fallback), { color }]}>
         {fallback}
       </ThemedText>
     );
@@ -467,6 +466,22 @@ function RoutePath({ progress, delayed }: { progress: number; delayed: boolean }
       </Animated.View>
     </View>
   );
+}
+
+/** The words in the clock's place (a city once landed, a short status):
+ * sized by length for the same reason as the lead fact. */
+function clockWordsSize(words: string) {
+  if (words.length <= 10) return null;
+  return words.length <= 16 ? { fontSize: 22, lineHeight: 28 } : { fontSize: 18, lineHeight: 24 };
+}
+
+/** The lead fact is always short — a gate, a desk, a seat, a belt — so its
+ * size comes from its length. adjustsFontSizeToFit drew it a few points tall
+ * on iOS (React Native 0.86, below its own minimumFontScale): a shrink-wrapped
+ * auto-fit text is fitted against no width at all. */
+function leadValueSize(value: string) {
+  if (value.length <= 4) return null;
+  return value.length <= 7 ? { fontSize: 20, lineHeight: 26 } : { fontSize: 16, lineHeight: 24 };
 }
 
 const styles = StyleSheet.create({
