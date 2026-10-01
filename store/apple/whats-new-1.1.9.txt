@@ -1,5 +1,3 @@
-Your flight card shows the gate, check-in desk and seat at full size again. 1.1.8 drew them far too small to read.
-
-Once you land, the card names your city and baggage belt at full size again.
+On some iPhones, the flight card drew the gate and, after landing, your arrival city far too small to read. Both show at full size again.
 
 The larger-text support from 1.1.8 stays: FlyRight still follows your iPhone's text size up to a comfortable limit.
