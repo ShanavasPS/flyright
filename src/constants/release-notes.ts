@@ -18,7 +18,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     version: '1.1.9',
     date: '2026-10-01',
     notes: [
-      'On some iPhones, the flight card drew the gate and, after landing, your arrival city far too small to read. Both show at full size again.',
+      'On some iPhones, the flight card drew your gate far too small to read. It shows at full size again.',
+      'After landing, the card names your arrival city at full size again, beside your baggage belt.',
       'The larger-text support from 1.1.8 stays: FlyRight still follows your phone\'s text size up to a comfortable limit.',
     ],
   },
