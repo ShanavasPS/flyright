@@ -117,7 +117,7 @@ public class FlyRightLiveActivitiesModule: Module {
         // keeps whatever OneSignal put alongside it.
         var next = activity.content.state
         var data: [String: AnyCodable] = [:]
-        for (key, value) in state { data[key] = AnyCodable(value) }
+        for (key, value) in state { data[key] = AnyCodable(plainValue(value)) }
         next.data = data
         await activity.update(ActivityContent(state: next, staleDate: activity.content.staleDate))
         promise.resolve(true)
@@ -148,4 +148,14 @@ public class FlyRightLiveActivitiesModule: Module {
       }
     }
   }
+}
+
+/// JS numbers arrive as NSNumber, and AnyCodable tries `as Bool` first when
+/// it encodes: an NSNumber of exactly 0 or 1 passes that, so a landed card's
+/// progress of 1 was stored as `true` and the widget, reading a number, drew
+/// the plane back at the origin. Unwrap numbers to Int or Double; only a real
+/// JS boolean stays a Bool.
+private func plainValue(_ value: Any) -> Any {
+  guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return value }
+  return CFNumberIsFloatType(number) ? number.doubleValue : number.intValue
 }

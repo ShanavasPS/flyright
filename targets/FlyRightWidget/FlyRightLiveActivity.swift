@@ -103,7 +103,9 @@ private struct TravelDayModel {
         // as missing without this.
         func number(_ value: AnyCodable?) -> Double? {
             guard let value else { return nil }
-            return value.asDouble() ?? value.asInt().map(Double.init)
+            // A card stored before the module unwrapped NSNumbers carries a
+            // progress of 1 as `true` (AnyCodable tries Bool first).
+            return value.asDouble() ?? value.asInt().map(Double.init) ?? value.asBool().map { $0 ? 1 : 0 }
         }
         let state = context.state.data
         journeyId = context.attributes.data["journeyId"]?.asString() ?? ""
