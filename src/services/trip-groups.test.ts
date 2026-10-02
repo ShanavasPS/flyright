@@ -256,14 +256,36 @@ describe('grouped list sections', () => {
     expect(tripGroupDates(buildTripGroups([a, b])[0]!.groups[0]!, 2027)).toBe('20 Dec 2026 – 6 Jan 2027');
   });
 
-  it('sorts completed trips newest first, and each finished trip newest destination first', () => {
+  it('sorts completed trips newest first, and each finished trip newest leg first', () => {
     const portugal = flight('portugal', 'HEL', 'LIS', '2027-07-01T10:00', '2027-07-01T14:00');
     const sections = tripListSections([...all, portugal], new Date('2027-09-01'));
-    // Portugal is the latest trip, then the US/Canada trip read back from its
-    // last destination: Boston, Toronto, New York.
+    // Portugal is the latest trip, then the US/Canada trip read back from the
+    // flight home: Boston, Toronto, New York.
     expect(sections[0]!.data.flatMap(i => i.kind === 'flight' ? [i.journey.id] : [])).toEqual([
-      'portugal', 'canada-back', 'back', 'canada-out', 'out',
+      'portugal', 'back', 'canada-back', 'canada-out', 'out',
     ]);
+  });
+
+  it('sorts completed trips by when they got home, not when they left', () => {
+    // Sydney leaves first but lands last, so it is the newest finished trip.
+    const sydney = flight('sydney', 'HEL', 'SYD', '2027-07-01T10:00Z', '2027-07-02T20:00Z');
+    const copenhagen = flight('copenhagen', 'ARN', 'CPH', '2027-07-01T12:00Z', '2027-07-01T13:10Z');
+    const ids = tripListSections([copenhagen, sydney], new Date('2027-09-01'))[0]!.data.flatMap(i => i.kind === 'flight' ? [i.journey.id] : []);
+    expect(ids).toEqual(['sydney', 'copenhagen']);
+  });
+
+  it('keeps each connection between its two legs when a finished trip reads back', () => {
+    const a = flight('a', 'HEL', 'DOH', '2027-05-11T15:20Z', '2027-05-11T21:20Z');
+    const b = flight('b', 'DOH', 'SIN', '2027-05-11T23:10Z', '2027-05-12T06:50Z');
+    const c = flight('c', 'SIN', 'DOH', '2027-05-18T11:25Z', '2027-05-18T19:20Z');
+    const d = flight('d', 'DOH', 'HEL', '2027-05-18T22:20Z', '2027-05-19T04:05Z');
+    const rows = [a, b, c, d];
+    const shape = (now: Date) => tripListSections(rows, now)[0]!.data.flatMap(i =>
+      i.kind === 'flight' ? [i.connection ? `~${i.journey.id}` : i.journey.id] : i.kind === 'stay' ? ['stay'] : []);
+    // Coming: the joint sits above the leg it leads into.
+    expect(shape(new Date('2027-05-01T00:00Z'))).toEqual(['a', '~b', 'stay', 'c', '~d']);
+    // Flown: the flight home on top, and the joint above the leg it leads out of.
+    expect(shape(new Date('2027-09-01T00:00Z'))).toEqual(['d', '~c', 'stay', 'b', '~a']);
   });
 
   it('keeps the active full row without losing its destination, stays or position', () => {
@@ -295,9 +317,9 @@ describe('grouped list sections', () => {
     expect(tripListSections(all, afterScheduledLanding, back.id)[0]!.key).toBe('current');
     const complete = tripListSections(all, afterScheduledLanding);
     expect(complete.map(s => s.key)).toEqual(['2027']);
-    // Filed as finished, so its destinations read back newest first.
+    // Filed as finished, so it reads back newest first, the flight home on top.
     expect(complete[0]!.data.filter(i => i.kind === 'flight').map(i => i.journey.id)).toEqual([
-      'canada-back', 'back', 'canada-out', 'out',
+      'back', 'canada-back', 'canada-out', 'out',
     ]);
     expect(complete[0]!.data.some(i => i.kind === 'flight' && i.hero)).toBe(false);
   });

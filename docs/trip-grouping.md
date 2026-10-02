@@ -40,9 +40,11 @@ Adding, editing or deleting flights recomputes the groups through `useJourneys`.
   Missing or invalid schedules do not produce invented durations.
 - Complete trips remain together in Current trip, Upcoming or a completed-year
   section. A current or upcoming trip reads in travel order, the order its legs
-  will be flown. A completed trip reads back the other way, its destinations
-  newest first, so the whole past list descends by date; each destination keeps
-  its own flight-then-stay order. Completed independent trips remain newest first.
+  will be flown. A completed trip reads back the other way, newest first: its
+  destinations and the legs and stays inside each one are reversed, so the
+  flight home is on top and the whole past list descends by date. A connection
+  still sits between its two legs. Completed trips are ordered by when they got
+  home (the last leg's arrival), newest first; coming trips by departure.
   Classify the full trip before highlighting the active row,
   so the final flight home cannot file the itinerary as completed too early.
   An ongoing trip stays current during known stays between flights.

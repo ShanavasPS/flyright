@@ -365,22 +365,26 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
     return { trip, key, hasHero };
   });
   const rank = (key: string) => key === 'current' ? 0 : key === 'upcoming' ? 1 : key === 'undated' ? Infinity : 10_000 - Number(key);
+  // Coming trips by when they leave; finished ones by when they got home, so
+  // a trip that came back last sits on top even if another left after it.
+  const homecoming = (trip: TravelTrip) => at(arrival(trip.journeys[trip.journeys.length - 1]!));
   filed.sort((a, b) => rank(a.key) - rank(b.key) ||
     Number(b.hasHero) - Number(a.hasHero) ||
-    (a.key === 'current' || a.key === 'upcoming' ? 1 : -1) *
-    (at(departure(a.trip.journeys[0]!)) - at(departure(b.trip.journeys[0]!))));
+    (a.key === 'current' || a.key === 'upcoming'
+      ? at(departure(a.trip.journeys[0]!)) - at(departure(b.trip.journeys[0]!))
+      : homecoming(b.trip) - homecoming(a.trip)));
 
   const sections: TripListSection[] = [];
   for (const { trip, key } of filed) {
     const items: TripListItem[] = [];
     // Travel order is what a traveller wants of a trip they are on or about to
     // take: the legs come in the order they will be flown. A finished trip is
-    // read the other way, newest first, like the trips around it — so its
-    // destinations are reversed and the whole past list descends by date.
-    // Each destination keeps its own flight-then-stay order internally.
+    // read the other way, newest first, like the trips around it — its
+    // destinations and the legs and stays inside each one are reversed, so
+    // the whole past list descends by date, the flight home on top.
     const completed = key !== 'current' && key !== 'upcoming';
     for (const group of completed ? [...trip.groups].reverse() : trip.groups) {
-      const entries = group.entries;
+      const entries = completed ? [...group.entries].reverse() : group.entries;
       items.push({ kind: 'header', key: `header:${group.id}`, group, dates: tripGroupDates(group, now.getFullYear()) });
       let previousId: string | undefined;
       for (const entry of entries) {
@@ -388,8 +392,12 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
           items.push(entry);
           previousId = undefined;
         } else {
-          const connection = connections.get(entry.journey.id);
-          items.push({ ...entry, live: phase.get(entry.journey.id) === 'live', hero: entry.journey.id === heroId, connection: connection?.prevId === previousId ? connection : undefined });
+          // The joint is drawn above a row, between it and the one before:
+          // in travel order that is the connection into this leg; read back,
+          // the row above is the later leg, so it is the connection out.
+          const into = completed ? connections.get(previousId ?? '') : connections.get(entry.journey.id);
+          const joins = completed ? into?.prevId === entry.journey.id : !!into && into.prevId === previousId;
+          items.push({ ...entry, live: phase.get(entry.journey.id) === 'live', hero: entry.journey.id === heroId, connection: joins ? into : undefined });
           previousId = entry.journey.id;
         }
       }
