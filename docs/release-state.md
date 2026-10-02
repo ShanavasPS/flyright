@@ -2,6 +2,22 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-10-02 — 1.1.10 (iOS 79, Android 79): sort chips, past trips newest first, one current destination — on TestFlight and Play internal, NOT submitted
+
+The owner asked for builds without store submission, to test first, and to skip the physical-device checks. 1.1.9 reached the App Store before this release started (`/api/app-version` reports it released 2026-10-01 18:53 UTC).
+
+| Item | Observed result |
+| --- | --- |
+| Code | `d32f092` summary card (cobalt edge opens Travel stats, footer row removed); `f69ccbe` finished trips newest leg first, filed by homecoming; `895b573` sort chips (Upcoming: Next up / Recently added; past: Latest / Oldest, remembered in `services/trip-sort`); `43af3ef` Current trip holds only the destination being travelled (landed destinations → past, later ones → Upcoming); `06afc10` cached Intl formatters (`services/dates.ts`, `convex/itineraryShared.ts`) and cover photos shown at once when already seen (re-sort redraw 162 → 114 ms, debug); `e1422dd` chip spinner (`useDeferredValue`); `e6863e9` (other session) Galileo e-ticket clocks; `27b0f25` bump + notes; `c53b706` store text. Suite **1,365 tests**; typecheck (app + convex) and eslint clean. |
+| Backend | `release:deploy-backend` **81** functions on production and development (carries the `itineraryShared` formatter cache; behaviour unchanged); `release:preflight` and `release:journal` passed. |
+| Hosting | Deployment `mxymo8zvjc`; the deployment URL, flyright.expo.app and getflyright.com serve `entry-2937609b…` matching the export (production Convex, `pk_live_`; `pk_test_` appears only in Clerk's prefix checks). `.env.production.local` removed. |
+| iOS | Local Xcode 27 build `FlyRight-1.1.10-79.ipa`: `1.1.10 (79)`, `iphoneos27.0`, scene manifest, production Convex. `eas submit` `b32d9349`; ASC build `23aa41e3-9e20-4f33-ab11-2765e33e5c5f` **VALID**, internal TestFlight `IN_BETA_TESTING`. **No App Store version created, no review submission** (owner's instruction). |
+| Android | EAS build `46d38003-b58e-4c81-b65d-9565841922f5` **FINISHED** 1.1.10 (79) (about 2.5 h on the worker, slow native compile but no failure); submission `2f27a8d1` **FINISHED** to internal. Read-only edit (deleted after): internal = `1.1.10` [79] completed, production still `1.1.9 (78)`. **Not promoted to production** (owner's instruction). |
+| Store text (not submitted) | `store/apple/whats-new-1.1.10.txt` (648 chars), `store/apple/review-notes-1.1.10.txt`, `store/google/release-notes-1.1.10.txt` (364 chars). |
+| Checks | Physical iPhone/Pixel and signed-in candidate checks **skipped at the owner's request** (the owner tests the TestFlight / internal builds). `release:devices --mode native --metro-port 8082` **passed on both** (evidence `.maestro/out/release/2026-10-02T06-16-32.010Z`). Features verified on the iOS 27 and iPhone 17 (iOS 26.5) simulators and FlyRight_Dev, signed in as Maja (dev). |
+| Screenshots | Not reshot yet: the Flights panel's summary card changed (cobalt edge, no footer row) — decide before submission. |
+| Dev apps | iOS sim `AA6A8347` Debug **1.1.10 (79)**, Android `FlyRight_Dev` (`emulator-5556`) Debug **1.1.10 (79)**, Metro 8082. `expo run:android --device emulator-5556` fails name matching with two emulators up — pass the AVD name (`--device FlyRight_Dev`); `--port` and `--no-bundler` cannot be combined (the apps keep 8082 in their saved settings; reopen with the dev-client URL `?url=http://localhost:8082`). Two prebuilds run in parallel collide ("Failed to create the native directory") — run them one after the other. iPhone 17 sim `53F70378` now carries a Debug 1.1.8 (75) copy (replaced its 1.1.8 release build; it loads current JS from Metro 8082) signed in as Maja with two seeded demo trips (`demo-fco-*` Rome Nov, `demo-sin2-*` Singapore May) on the dev deployment. |
+
 ## 2026-10-01 — 1.1.9 (iOS 78, Android 78): live card values at full size, landed Live Activity plane — Android on production, iOS in App Review (expedited)
 
 Triggered while reshooting the Shipaton demo on the iOS 27 simulator: 1.1.8's live card drew the gate and the landed city a few points tall. 1.1.8 itself reached the App Store (READY_FOR_SALE) during this release. The owner skipped the physical-device, candidate and native checks for this release.
