@@ -45,6 +45,12 @@ Adding, editing or deleting flights recomputes the groups through `useJourneys`.
   flight home is on top and the whole past list descends by date. A connection
   still sits between its two legs. Completed trips are ordered by when they got
   home (the last leg's arrival), newest first; coming trips by departure.
+- Two sort chips change that, remembered per device (`services/trip-sort.ts`).
+  On the Upcoming heading: Next up (by departure) or Recently added (by the
+  newest leg's `createdAt`); each trip still reads in flying order. On the
+  first past year heading, for all of the past: Latest (above) or Oldest,
+  which turns everything forward: years ascending, trips by first departure,
+  legs in flying order. A chip shows only when there are two trips to sort.
   Classify the full trip before highlighting the active row,
   so the final flight home cannot file the itinerary as completed too early.
   An ongoing trip stays current during known stays between flights.

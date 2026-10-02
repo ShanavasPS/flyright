@@ -63,6 +63,18 @@ export type TripListItem =
 
 export interface TripListSection { key: string; title: string; data: TripListItem[] }
 
+/** How the Flights list orders its trips, picked from the chips on the
+ * Upcoming and past headings. Next up / Latest are the defaults. */
+export interface TripSort {
+  /** Soonest departure first, or the trips saved most recently first. */
+  upcoming: 'next' | 'added';
+  /** Newest first, read back from the flight home; or the first trip first,
+   * each in the order it was flown. */
+  past: 'latest' | 'oldest';
+}
+
+export const DEFAULT_TRIP_SORT: TripSort = { upcoming: 'next', past: 'latest' };
+
 export interface TripHeroGroup { group: TripGroup; dates: string; isFirstFlight: boolean }
 
 /** The active itinerary sorts first. Its first flight expands in place;
@@ -350,8 +362,15 @@ export function tripGroupDates(group: TripGroup, currentYear: number): string {
 
 /** Classify the complete trip before highlighting its active flight row.
  * A trip remains current between its flights and through the hero's arrival
- * window. Flights stay in travel order; completed trips are newest first. */
-export function tripListSections(rows: JourneyRow[], now: Date, heroId: string | null = null, homeAt?: HomeAt): TripListSection[] {
+ * window. Flights stay in travel order; completed trips are newest first
+ * unless `sort` asks for Upcoming by save date or the past oldest first. */
+export function tripListSections(
+  rows: JourneyRow[],
+  now: Date,
+  heroId: string | null = null,
+  homeAt?: HomeAt,
+  sort: TripSort = DEFAULT_TRIP_SORT,
+): TripListSection[] {
   const visible = rows.filter(r => !r.deletedAt);
   const phase = new Map(groupJourneys(visible, now).flatMap(s => s.data.map(r => [r.id, s.key] as const)));
   const connections = connectionsInto(rows.filter(r => !r.deletedAt));
@@ -364,15 +383,23 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
     const key = current ? 'current' : keys.includes('upcoming') ? 'upcoming' : year;
     return { trip, key, hasHero };
   });
-  const rank = (key: string) => key === 'current' ? 0 : key === 'upcoming' ? 1 : key === 'undated' ? Infinity : 10_000 - Number(key);
-  // Coming trips by when they leave; finished ones by when they got home, so
-  // a trip that came back last sits on top even if another left after it.
+  const oldest = sort.past === 'oldest';
+  const rank = (key: string) => key === 'current' ? 0 : key === 'upcoming' ? 1 : key === 'undated' ? Infinity
+    : oldest ? Number(key) : 10_000 - Number(key);
+  const leaving = (trip: TravelTrip) => at(departure(trip.journeys[0]!));
+  // Finished trips newest first go by when they got home, so a trip that came
+  // back last sits on top even if another left after it.
   const homecoming = (trip: TravelTrip) => at(arrival(trip.journeys[trip.journeys.length - 1]!));
+  // A trip was saved when its newest leg was.
+  const added = (trip: TravelTrip) => Math.max(...trip.journeys.map(r => Date.parse(r.createdAt) || 0));
+  const within = (a: TravelTrip, b: TravelTrip, key: string) => {
+    if (key === 'current') return leaving(a) - leaving(b);
+    if (key === 'upcoming') return (sort.upcoming === 'added' ? added(b) - added(a) : 0) || leaving(a) - leaving(b);
+    return oldest ? leaving(a) - leaving(b) : homecoming(b) - homecoming(a);
+  };
   filed.sort((a, b) => rank(a.key) - rank(b.key) ||
     Number(b.hasHero) - Number(a.hasHero) ||
-    (a.key === 'current' || a.key === 'upcoming'
-      ? at(departure(a.trip.journeys[0]!)) - at(departure(b.trip.journeys[0]!))
-      : homecoming(b.trip) - homecoming(a.trip)));
+    within(a.trip, b.trip, a.key));
 
   const sections: TripListSection[] = [];
   for (const { trip, key } of filed) {
@@ -381,10 +408,11 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
     // take: the legs come in the order they will be flown. A finished trip is
     // read the other way, newest first, like the trips around it — its
     // destinations and the legs and stays inside each one are reversed, so
-    // the whole past list descends by date, the flight home on top.
-    const completed = key !== 'current' && key !== 'upcoming';
-    for (const group of completed ? [...trip.groups].reverse() : trip.groups) {
-      const entries = completed ? [...group.entries].reverse() : group.entries;
+    // the whole past list descends by date, the flight home on top. Sorted
+    // oldest first, the past list climbs instead, and so does each trip.
+    const readBack = key !== 'current' && key !== 'upcoming' && !oldest;
+    for (const group of readBack ? [...trip.groups].reverse() : trip.groups) {
+      const entries = readBack ? [...group.entries].reverse() : group.entries;
       items.push({ kind: 'header', key: `header:${group.id}`, group, dates: tripGroupDates(group, now.getFullYear()) });
       let previousId: string | undefined;
       for (const entry of entries) {
@@ -395,8 +423,8 @@ export function tripListSections(rows: JourneyRow[], now: Date, heroId: string |
           // The joint is drawn above a row, between it and the one before:
           // in travel order that is the connection into this leg; read back,
           // the row above is the later leg, so it is the connection out.
-          const into = completed ? connections.get(previousId ?? '') : connections.get(entry.journey.id);
-          const joins = completed ? into?.prevId === entry.journey.id : !!into && into.prevId === previousId;
+          const into = readBack ? connections.get(previousId ?? '') : connections.get(entry.journey.id);
+          const joins = readBack ? into?.prevId === entry.journey.id : !!into && into.prevId === previousId;
           items.push({ ...entry, live: phase.get(entry.journey.id) === 'live', hero: entry.journey.id === heroId, connection: joins ? into : undefined });
           previousId = entry.journey.id;
         }

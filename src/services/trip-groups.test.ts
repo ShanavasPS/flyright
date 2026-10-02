@@ -274,6 +274,28 @@ describe('grouped list sections', () => {
     expect(ids).toEqual(['sydney', 'copenhagen']);
   });
 
+  it('orders Upcoming by when each trip was saved when asked, newest save first', () => {
+    const soon = flight('soon', 'HEL', 'ARN', '2027-06-01T09:00Z', '2027-06-01T09:05Z', { createdAt: '2027-03-01T10:00:00Z' });
+    const soonBack = flight('soon-back', 'ARN', 'HEL', '2027-06-03T18:00Z', '2027-06-03T20:00Z', { createdAt: '2027-03-01T10:00:00Z' });
+    const later = flight('later', 'HEL', 'CDG', '2027-08-01T09:00Z', '2027-08-01T11:00Z', { createdAt: '2027-04-20T10:00:00Z' });
+    const ids = (sort: Parameters<typeof tripListSections>[4]) =>
+      tripListSections([soon, soonBack, later], NOW, null, undefined, sort)[0]!.data.flatMap(i => i.kind === 'flight' ? [i.journey.id] : []);
+    expect(ids({ upcoming: 'next', past: 'latest' })).toEqual(['soon', 'soon-back', 'later']);
+    // The Paris trip was saved last, so it leads; each trip keeps flying order.
+    expect(ids({ upcoming: 'added', past: 'latest' })).toEqual(['later', 'soon', 'soon-back']);
+  });
+
+  it('turns the whole past around when sorted oldest first, years and legs included', () => {
+    const old = flight('old', 'HEL', 'LIS', '2026-03-01T10:00Z', '2026-03-01T14:00Z');
+    const oldBack = flight('old-back', 'LIS', 'HEL', '2026-03-08T10:00Z', '2026-03-08T16:00Z');
+    const rows = [old, oldBack, ...all];
+    const later = new Date('2027-09-01T00:00Z');
+    const read = (past: 'latest' | 'oldest') => tripListSections(rows, later, null, undefined, { upcoming: 'next', past })
+      .map(s => `${s.key}: ${s.data.flatMap(i => i.kind === 'flight' ? [i.journey.id] : []).join(' ')}`);
+    expect(read('latest')).toEqual(['2027: back canada-back canada-out out', '2026: old-back old']);
+    expect(read('oldest')).toEqual(['2026: old old-back', '2027: out canada-out canada-back back']);
+  });
+
   it('keeps each connection between its two legs when a finished trip reads back', () => {
     const a = flight('a', 'HEL', 'DOH', '2027-05-11T15:20Z', '2027-05-11T21:20Z');
     const b = flight('b', 'DOH', 'SIN', '2027-05-11T23:10Z', '2027-05-12T06:50Z');

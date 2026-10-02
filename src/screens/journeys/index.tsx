@@ -65,6 +65,7 @@ import {
   pushRemindDue,
 } from '@/services/onboarding';
 import { tripHeroGroup, tripListSections, type TripListItem, type TripListSection } from '@/services/trip-groups';
+import { setTripSort, useTripSort } from '@/services/trip-sort';
 import { HomeNudgeCard } from '@/components/home-base';
 import { useHomeContext } from '@/hooks/use-home-base';
 import { autoHome, departureDay, markMove, nudgeFor, placeKey } from '@/services/home-base';
@@ -194,14 +195,21 @@ export function Journeys() {
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
   const homeContext = useHomeContext(userId, journeys);
   // Keep the active flight in the complete, chronological itinerary.
+  const tripSort = useTripSort();
   const tripSections = useMemo(
-    () => tripListSections(journeys ?? [], now, heroId, homeContext.homeAt).map(section => ({
+    () => tripListSections(journeys ?? [], now, heroId, homeContext.homeAt, tripSort).map(section => ({
       ...section,
+      // A separator stood between two trips: counted, the chips know whether
+      // there is anything to sort.
+      trips: section.data.filter(item => item.kind === 'separator').length + 1,
       // Filled destination containers now provide the boundary for every trip.
       data: section.data.filter(item => item.kind !== 'separator'),
     })),
-    [journeys, now, heroId, homeContext.homeAt],
+    [journeys, now, heroId, homeContext.homeAt, tripSort],
   );
+  // One chip orders every year of the past, so it sits on the first of them.
+  const pastSections = tripSections.filter(s => s.key !== 'current' && s.key !== 'upcoming');
+  const pastTrips = pastSections.reduce((n, s) => n + s.trips, 0);
   const heroGroup = useMemo(() => tripHeroGroup(journeys ?? [], now, heroId, homeContext.homeAt), [journeys, now, heroId, homeContext.homeAt]);
   // "Is London home now?" — once, when recent take-offs point elsewhere.
   const nudge = useMemo(
@@ -213,7 +221,7 @@ export function Journeys() {
     const before = autoHome(journeys.filter(r => departureDay(r) < nudge.since));
     updateHomeBase(userId, s => ({ periods: markMove(s, nudge, nudge.since, before) }));
   };
-  const listRef = useRef<SectionList<TripListItem, TripListSection>>(null);
+  const listRef = useRef<SectionList<TripListItem, TripListSection & { trips: number }>>(null);
   const listHeaderHeight = useRef(0);
   const [anchoredViewer, setAnchoredViewer] = useState<string | null>(null);
   const preserveListPosition = anchoredViewer === (userId ?? 'guest');
@@ -403,13 +411,37 @@ export function Journeys() {
                   : <HomeHero journeys={journeys} stats={stats} snapshot={{ hero, now }} tripGroup={heroGroup} onViewTrip={jumpToActiveFlight} />)}
               </View>
             }
-            renderSectionHeader={({ section }) =>
+            renderSectionHeader={({ section }) => {
               // The first label sits right under the stats card and needs a
               // breath above it; the rest follow a card that already spaced itself.
-              <ThemedText type="smallBold" themeColor="textSecondary" style={[styles.sectionTitle, section === tripSections[0] && styles.firstSectionTitle]}>
-                {section.title}
-              </ThemedText>
-            }
+              const title = (
+                <ThemedText type="smallBold" themeColor="textSecondary" style={[styles.sectionTitle, section === tripSections[0] && styles.firstSectionTitle]}>
+                  {section.title}
+                </ThemedText>
+              );
+              const chip = section.key === 'upcoming' && section.trips > 1
+                ? <SortChip
+                    what="upcoming trips"
+                    label={tripSort.upcoming === 'added' ? 'Recently added' : 'Next up'}
+                    other={tripSort.upcoming === 'added' ? 'Next up' : 'Recently added'}
+                    onPress={() => setTripSort({ upcoming: tripSort.upcoming === 'added' ? 'next' : 'added' })}
+                  />
+                : section === pastSections[0] && pastTrips > 1
+                  ? <SortChip
+                      what="past trips"
+                      label={tripSort.past === 'oldest' ? 'Oldest' : 'Latest'}
+                      other={tripSort.past === 'oldest' ? 'Latest' : 'Oldest'}
+                      onPress={() => setTripSort({ past: tripSort.past === 'oldest' ? 'latest' : 'oldest' })}
+                    />
+                  : null;
+              if (!chip) return title;
+              return (
+                <View style={styles.sectionRow}>
+                  {title}
+                  {chip}
+                </View>
+              );
+            }}
             renderItem={({ item, index, section }) => {
               if (item.kind === 'separator') return null;
               if (item.kind === 'header') return <TripCoverHeader group={item.group} dates={item.dates} />;
@@ -503,6 +535,34 @@ export function Journeys() {
       {/* "Update shared" after posting from the rail's You tile or the hero. */}
       <FlashToast />
     </ThemedView>
+  );
+}
+
+/** The sort switch beside a section heading, as in the trips-sort design:
+ * a small pill naming the current order; a tap flips to the other one. The
+ * pill is 28 points tall and pulled into the heading's line height, with a
+ * hit slop that gives it the full 44-point target. */
+function SortChip({ what, label, other, onPress }: { what: string; label: string; other: string; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Sort ${what}`}
+      accessibilityValue={{ text: label }}
+      accessibilityHint={`Switches to ${other}`}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.sortChip, { backgroundColor: theme.backgroundSelected }, pressed && styles.rowPressed]}>
+      <SymbolView
+        name={{ ios: 'arrow.up.arrow.down', android: 'swap_vert', web: 'swap_vert' }}
+        size={13}
+        weight="semibold"
+        tintColor={theme.tint}
+      />
+      <ThemedText type="smallBold" style={[styles.sortChipText, { color: theme.text }]}>
+        {label}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -902,6 +962,27 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   firstSectionTitle: { marginTop: Spacing.three },
+  // The heading keeps its own margins; the row only lays the chip beside it.
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: 28,
+    paddingHorizontal: 11,
+    borderRadius: 14,
+    // Centred on the heading's 18-point line instead of growing the header.
+    marginBottom: Spacing.two - 5,
+  },
+  sortChipText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
   rowPressed: {
     opacity: 0.9,
   },
