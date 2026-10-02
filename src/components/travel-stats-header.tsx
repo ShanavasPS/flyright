@@ -19,6 +19,11 @@ export const WHITE_DIM = 'rgba(242,246,251,0.62)';
 export const WHITE_FAINT = 'rgba(242,246,251,0.16)';
 export const COBALT = '#7FB1F2';
 
+// The summary card's right edge: clear into a cobalt glow behind its chevron.
+const EDGE_GLOW =
+  'linear-gradient(90deg, rgba(61,134,245,0) 0%, rgba(61,134,245,0.16) 55%, rgba(61,134,245,0.32) 100%)';
+const EDGE_WIDTH = 60;
+
 /** The rewarding little flex at the top of My travels — a passport-style
  * navy card that opens the full Travel stats screen. Renders nothing until
  * there's at least one trip. Signed-out users get the backup pitch — the
@@ -34,8 +39,19 @@ export function TravelStatsHeader({ stats }: { stats: TravelStats }) {
       accessibilityLabel="Open your travel stats"
       onPress={() => router.push('/stats')}
       style={({ pressed }) => pressed && styles.pressed}>
-      <View style={[styles.card, { experimental_backgroundImage: NIGHT_SKY }]}>
+      <View style={[styles.card, styles.cardWithEdge, { experimental_backgroundImage: NIGHT_SKY }]}>
         <TravelStatsBody stats={stats} />
+        {/* The way in to Travel stats: a cobalt-lit edge with the chevron,
+            instead of a footer row under the figures. */}
+        <View style={[styles.edge, { experimental_backgroundImage: EDGE_GLOW }]}>
+          <SymbolView
+            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            // Material's glyph sits in more padding and has no weight to raise.
+            size={Platform.OS === 'ios' ? 18 : 26}
+            weight="semibold"
+            tintColor={WHITE}
+          />
+        </View>
       </View>
     </Pressable>
   );
@@ -118,18 +134,6 @@ export function TravelStatsBody({ stats }: { stats: TravelStats }) {
             {aloft}
           </ThemedText>
         )}
-
-        <View style={styles.divider} />
-        <View style={styles.spacedRow}>
-          <ThemedText type="smallBold" style={styles.footerText}>
-            All travel stats
-          </ThemedText>
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={13}
-            tintColor={WHITE_DIM}
-          />
-        </View>
 
         {isLoaded && !isSignedIn && (
           <Pressable
@@ -222,6 +226,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
+  // Room on the right for the edge, so the COUNTRIES column ends before it.
+  cardWithEdge: {
+    paddingRight: EDGE_WIDTH + Spacing.two,
+  },
+  // Rounded itself rather than clipped by the card: overflow hidden would
+  // take the card's iOS shadow with it.
+  edge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: EDGE_WIDTH,
+    borderTopRightRadius: Spacing.four - 1,
+    borderBottomRightRadius: Spacing.four - 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: Spacing.two,
+  },
   spacedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -297,13 +319,6 @@ const styles = StyleSheet.create({
   aloft: {
     color: COBALT,
     marginTop: -Spacing.two,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: WHITE_FAINT,
-  },
-  footerText: {
-    color: WHITE,
   },
   cta: {
     color: WHITE_DIM,
