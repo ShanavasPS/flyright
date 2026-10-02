@@ -27,6 +27,30 @@ const ZONED = /(Z|[+-]\d\d:?\d\d)$/;
 /** A stored wall clock with no zone — a manual entry's "2026-09-09T04:15:00". */
 const WALL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/;
 
+/** One Intl.DateTimeFormat per locale and options, built once and reused.
+ * Constructing one is the expensive part (Hermes builds the ICU formatter
+ * each time; toLocale*String does the same under the hood), and grouping a
+ * journal asks for the same few zones hundreds of times — re-sorting the
+ * Flights list spent ~150 ms of a debug build in the constructor alone. A
+ * zone the engine rejects throws here as before, and is never cached. */
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function formatter(locale: string | undefined, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${locale ?? ''}|${JSON.stringify(options)}`;
+  let made = formatters.get(key);
+  if (!made) {
+    made = new Intl.DateTimeFormat(locale, options);
+    formatters.set(key, made);
+  }
+  return made;
+}
+
+/** `date.toLocale*String(undefined, options)` through the shared formatter —
+ * including its "Invalid Date" for a date that doesn't parse, where
+ * `format` would throw. */
+function localeString(date: Date, options: Intl.DateTimeFormatOptions): string {
+  return Number.isNaN(date.getTime()) ? 'Invalid Date' : formatter(undefined, options).format(date);
+}
+
 /** Formatting options for a stored timestamp: convert into the airport's
  * zone when the string is an instant and we know the zone, otherwise let the
  * runtime read it as written. */
@@ -40,7 +64,7 @@ function inZone(iso: string, zone: string | null | undefined): { timeZone?: stri
 function zonedDay(date: Date, zone: string | null | undefined): string {
   if (!zone) return localDateString(date);
   try {
-    return new Intl.DateTimeFormat('en-CA', {
+    return formatter('en-CA', {
       timeZone: zone,
       year: 'numeric',
       month: '2-digit',
@@ -75,14 +99,14 @@ function utcNoon(isoDate: string): Date {
  * as tomorrow to a reader further east. */
 export function formatDayLabel(isoDate: string, zone?: string | null): string {
   if (ZONED.test(isoDate) && zone) {
-    return new Date(isoDate).toLocaleDateString(undefined, {
+    return localeString(new Date(isoDate), {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
       timeZone: zone,
     });
   }
-  return utcNoon(isoDate).toLocaleDateString(undefined, {
+  return localeString(utcNoon(isoDate), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -94,14 +118,14 @@ export function formatDayLabel(isoDate: string, zone?: string | null): string {
  * countdown reads worse than the plain date. */
 export function formatDayLabelWithYear(isoDate: string, zone?: string | null): string {
   if (ZONED.test(isoDate) && zone) {
-    return new Date(isoDate).toLocaleDateString(undefined, {
+    return localeString(new Date(isoDate), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
       timeZone: zone,
     });
   }
-  return utcNoon(isoDate).toLocaleDateString(undefined, {
+  return localeString(utcNoon(isoDate), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -123,7 +147,7 @@ export function formatTime(iso: string | null, zone?: string | null): string {
   if (wall) {
     const [, y, mo, d, h, mi] = wall;
     try {
-      return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi)).toLocaleTimeString(undefined, {
+      return localeString(new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi)), {
         hour: '2-digit',
         minute: '2-digit',
         timeZone: 'UTC',
@@ -135,20 +159,20 @@ export function formatTime(iso: string | null, zone?: string | null): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
   try {
-    return date.toLocaleTimeString(undefined, {
+    return localeString(date, {
       hour: '2-digit',
       minute: '2-digit',
       ...inZone(iso, zone),
     });
   } catch {
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return localeString(date, { hour: '2-digit', minute: '2-digit' });
   }
 }
 
 /** How far ahead of UTC `zone` runs at `utcMs`, in milliseconds. */
 function zoneOffsetMs(utcMs: number, zone: string): number {
   try {
-    const parts = new Intl.DateTimeFormat('en-CA', {
+    const parts = formatter('en-CA', {
       timeZone: zone,
       hour12: false,
       year: 'numeric',
@@ -220,7 +244,7 @@ export function wallClock(iso: string | null | undefined, zone: string | null | 
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
   try {
-    const parts = new Intl.DateTimeFormat('en-GB', {
+    const parts = formatter('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,

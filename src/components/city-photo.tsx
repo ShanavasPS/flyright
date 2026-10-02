@@ -26,6 +26,12 @@ function FlagFill({ country, tone }: { country: string; tone: string }) {
   );
 }
 
+/** Photos already on screen once this session. expo-image plays its
+ * transition on every load, cached or not (iOS ImageView), so a trip header
+ * the list re-creates — after a re-sort, or scrolling back — faded its photo
+ * in again over the flag. Only a photo's first appearance fades. */
+const shown = new Set<string>();
+
 /** Fills its parent: the photo, or the flag while there is none. */
 export function CityPhotoFill({ place, photo, style }: { place: HomePlace; photo: CityPhoto; style?: StyleProp<ViewStyle> }) {
   const theme = useTheme();
@@ -35,7 +41,14 @@ export function CityPhotoFill({ place, photo, style }: { place: HomePlace; photo
           whenever the photo re-laid out (a collapsing header blinked). */}
       {photo.status !== 'ok' && <FlagFill country={place.country} tone={theme.backgroundSelected} />}
       {photo.status === 'ok' && (
-        <Image source={{ uri: photo.url }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} cachePolicy="disk" />
+        <Image
+          source={{ uri: photo.url }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={shown.has(photo.url) ? 0 : 250}
+          cachePolicy="memory-disk"
+          onLoad={() => shown.add(photo.url)}
+        />
       )}
     </View>
   );

@@ -342,13 +342,25 @@ export function buildTripGroups(rows: JourneyRow[], homeAt?: HomeAt): TravelTrip
   return trips;
 }
 
+/** "Oct" for 10, as this engine's en-GB spells it ("Sept" on Android's ICU),
+ * worked out once per month: every trip heading asks for one or two. */
+const monthNames = new Map<number, string>();
+function shortMonth(month: number): string {
+  let name = monthNames.get(month);
+  if (name === undefined) {
+    name = new Date(Date.UTC(2000, month - 1, 1)).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
+    monthNames.set(month, name);
+  }
+  return name;
+}
+
 /** Dates belong to the airports' calendars, including an overnight landing
  * home. A stay counts only arrival-to-departure at the visited destination. */
 export function tripGroupDates(group: TripGroup, currentYear: number): string {
   const start = calendarDay(group.start);
   const end = calendarDay(group.end);
   if (!start) return '';
-  const month = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
+  const month = (day: string) => shortMonth(Number(day.slice(5, 7)));
   const day = (value: string) => Number(value.slice(8));
   const single = (value: string, year: boolean) => `${day(value)} ${month(value)}${year ? ` ${value.slice(0, 4)}` : ''}`;
   const withYear = Number(start.slice(0, 4)) !== currentYear;

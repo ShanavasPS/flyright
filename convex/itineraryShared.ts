@@ -135,17 +135,29 @@ export function instantWith(zoneOf: (iata: string) => string | null): Instant {
   };
 }
 
+/** One formatter per zone, built once: constructing an Intl.DateTimeFormat
+ * is the expensive part, and the app's Flights list reads every manual leg's
+ * time through here each time it regroups (a re-sort spent ~130 ms of a
+ * debug build in the constructor). A zone the engine rejects still throws
+ * and is never cached. */
+const zoneFormats = new Map<string, Intl.DateTimeFormat>();
+
 function zoneOffsetMs(utcMs: number, zone: string): number {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: zone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(new Date(utcMs));
+  let format = zoneFormats.get(zone);
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-CA', {
+      timeZone: zone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    zoneFormats.set(zone, format);
+  }
+  const parts = format.formatToParts(new Date(utcMs));
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0');
   const local = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
   return local - Math.floor(utcMs / 1000) * 1000;
