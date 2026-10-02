@@ -3,7 +3,8 @@ Ticket number: 176 2200000004
 Ticket & receipt  Scan the bar code or use the ticket number above at
 the self check-in points in the airport.
 Passenger name  Issued by / Date
-PSAHDAINNAJVAARSEMCHRALILDOE/  A04GATP 8R624092168E4K5W AWEWWW DUBAI / EMIRATES IBE
+DOEDOE/  AGT 86491845 AE
+JANEMR  04APR2026EKWWWWW DUBAI / EMIRATES IBE
 Your booking reference: ME4WSN
 Your ticket is stored in our booking system. This receipt is your record  Check with your departure airport for restrictions on the carriage of
 of your ticket and is part of your conditions of carriage. For more  liquids, aerosols and gels in hand baggage and check your visa
@@ -13,7 +14,8 @@ your return or onwards travel to immigration.  can and can’t bring on board. S
 restricted, like portable electronic devices, spare batteries or smart
 bags.
 ............................................................................................................................................................................................................................................................................................................................................
-Caihrpeocrkt sin y oatu  tnheee adir tpoo artr.r iAvte  m3 ohsoturs  9th0r omuignhu tpeass bsepfoorrte c toankter-ool.ff go  6re0a mdyin autt ethse b geafotere ( Ptarekme-ioufmf be  4re5a mdyin autt ethse b geafotere ( Ftiarkste -Colfafs bse,
+Check in at the airport. At most  90 minutes before take-off go  60 minutes before take-off be  45 minutes before take-off be
+airports you need to arrive 3 hours  through passport control.  ready at the gate (Premium  ready at the gate (First Class,
 before departure, but it can be  Economy, Economy Class).  Business Class).
 up to 4 hours to complete all the
 travel requirements. Please check
@@ -25,18 +27,22 @@ Departing » From Kochi (Cochin), India
 Leg 1 of 3 | Kochi (COK) to Dubai (DXB) | Operated by Emirates (equipment owner - Emirates)
 Flight  Check-in at  Departure  KOCHI (COCHIN)
 EK 533  08Apr2026  08Apr2026
-Economy  00:30  04:30  DT3e pNaerwtin Tge CrmOiKna, lKochi International Airport
+00:30  04:30  Departing COK, Kochi International Airport
+Economy  T3 New Terminal
 Saver
-Seat  Status  A08rrAivparl2026  DUBAI
+Seat  Status  Arrival  DUBAI
+08Apr2026
 Confirmed
-06:50  ATerrrimviinnga lD 3XB, Dubai International Airport
+06:50  Arriving DXB, Dubai International Airport
+Terminal 3
 Coupon validity: not before 08Apr2026 / not after 08Apr2026   Baggage 25Kgs
 Leg 2 of 3 | Dubai (DXB) to Brussels (BRU) | Operated by Emirates (equipment owner - Emirates)
 Flight  Check-in at  Departure  DUBAI
 EK 181  08Apr2026  08Apr2026
 Economy  10:20  13:20  Departing DXB, Dubai International Airport
 Saver  Terminal 3
-Seat  Status  A08rrAivparl2026  BRUSSELS
+Seat  Status  Arrival  BRUSSELS
+08Apr2026
 Confirmed
 19:30  Arriving BRU, Brussels Airport
 Coupon validity: not before 08Apr2026 / not after 08Apr2026   Baggage 25Kgs
@@ -50,7 +56,8 @@ Flight  Check-in at  Departure
 09Apr2026  09Apr2026  BRUSSELS
 AY 1550
 Economy  03:00  06:30  Departing BRU, Brussels Airport
-Seat  Status  A09rrAivparl2026  HELSINKI
+Seat  Status  Arrival
+09Apr2026  HELSINKI
 Confirmed
 10:00  Arriving HEL, Helsinki Airport
 Coupon validity: not before 09Apr2026 / not after 09Apr2026   Baggage 25Kgs
@@ -99,24 +106,44 @@ frequent flyer number through Manage your booking to see your total checked bagg
 accepted, for health and safety reasons.
 S
 ca
-n  t  Ti  Inflight entertainment
-the  ck
-he  b  e
-sear  t  Fall in love with a classic romance or immerse yourself in
-lf  co  nu
-chde  m  the latest edge-of-the-seat blockbuster - let our ice inflight
-ec  or  b  entertainment take you to places you won't find on a map.
-k-i  u  er
-n  pse  :1  Choose from over 6,500 channels of movies, TV shows and
-oith  7  music from around the world and in multiple languages. Or
-ntse  ti  6
-inck  2  challenge other passengers to a range of gripping games.
-thet  20
-e  nu  8
-airm  7
-pobe  10
-rt.r  a  6
-bo  1
-ve  9
-at
+n  T
+t  i  Inflight entertainment
+th  c
+e  k
+h  b
+e  e
+sar  t
+e  Fall in love with a classic romance or immerse yourself in
+lfc  n
+o  u
+cd  the latest edge-of-the-seat blockbuster - let our ice inflight
+he  m
+ec  o  b
+r  entertainment take you to places you won't find on a map.
+k-  e
+iu  r
+n  se  :  Choose from over 6,500 channels of movies, TV shows and
+p  1
+oth  7
+i  music from around the world and in multiple languages. Or
+nte  6
+sti
+ic  2  challenge other passengers to a range of gripping games.
+nk
+te  2
+ht  0
+e  n  8
+u
+aim  7
+r
+pb  1
+oe  0
+rtr
+.a  6
+b  1
+o
+v  9
+e
+a
+t
 © Emirates. All rights reserved   Emirates Experience | Check-in Online | Manage a Booking | Baggage | Contact us   Page 3 of 3

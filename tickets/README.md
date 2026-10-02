@@ -19,9 +19,8 @@ parser ever sees.
 - `expected.json` — the legs each document yields: flight, date, route,
   printed clocks, arrival day when it differs, seat, booking reference,
   operating carrier when the page names one. A leg one platform's reader
-  cannot produce at all carries `onlyOn` (the iOS reader bands the
-  Galileo e-ticket's wrapped "12 Sep / 2026" cell into "21022 6S ep", so
-  QR729 there has no date) — a reader fault, never a parser one.
+  cannot produce at all carries `onlyOn` (`["android"]`) — a reader
+  fault, never a parser one, and the reader is the thing to fix.
 
 To add a document: run `scripts/ticket-text.sh <dir-with-the-pdf>` to
 produce its two text files, scrub the personal data, copy them into

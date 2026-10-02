@@ -423,10 +423,7 @@
       "dep": "07:50",
       "arr": "15:40",
       "seat": null,
-      "pnr": "ABC123",
-      "onlyOn": [
-        "android"
-      ]
+      "pnr": "ABC123"
     },
     {
       "flight": "QR730",

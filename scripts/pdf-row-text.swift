@@ -5,6 +5,53 @@
 import Foundation
 import PDFKit
 
+struct RowGlyph {
+  var row: Int
+  let minX: CGFloat
+  let maxX: CGFloat
+  let depth: CGFloat
+  let text: String
+  let isBlank: Bool
+  let isColumnBreak: Bool
+}
+
+let maxLinesPerBand = 8
+
+// Lines that share horizontal space can't be one row of text: a band whose
+// lines overlap gets one row per line (see splitInterleavedRows in the module).
+func splitInterleavedRows(_ glyphs: inout [RowGlyph], band: CGFloat) {
+  var byRow: [Int: [Int]] = [:]
+  for index in glyphs.indices { byRow[glyphs[index].row, default: []].append(index) }
+  for (row, members) in byRow where members.count > 1 {
+    var lines: [[Int]] = []
+    var anchor = -CGFloat.infinity
+    for index in members.sorted(by: { glyphs[$0].depth < glyphs[$1].depth }) {
+      if glyphs[index].depth - anchor > band / 2 {
+        lines.append([])
+        anchor = glyphs[index].depth
+      }
+      lines[lines.count - 1].append(index)
+    }
+    guard lines.count > 1, lines.count <= maxLinesPerBand, linesOverlap(lines, in: glyphs) else { continue }
+    for (offset, line) in lines.enumerated() {
+      for index in line { glyphs[index].row = row + offset }
+    }
+  }
+}
+
+func linesOverlap(_ lines: [[Int]], in glyphs: [RowGlyph]) -> Bool {
+  for a in 0..<lines.count {
+    for b in (a + 1)..<lines.count {
+      for i in lines[a] where !glyphs[i].isBlank {
+        for j in lines[b] where !glyphs[j].isBlank {
+          if glyphs[i].minX < glyphs[j].maxX - 0.5 && glyphs[j].minX < glyphs[i].maxX - 0.5 { return true }
+        }
+      }
+    }
+  }
+  return false
+}
+
 func rowOrderedText(on page: PDFPage) -> String {
   let raw = page.string ?? ""
   let ns = raw as NSString
@@ -18,17 +65,20 @@ func rowOrderedText(on page: PDFPage) -> String {
   guard !heights.isEmpty, let top = boxes.filter({ !$0.isNull }).map(\.maxY).max() else { return raw }
   let band = max(heights[heights.count / 2], 1)
   let columnGap = band * 0.8
-  var glyphs: [(row: Int, minX: CGFloat, maxX: CGFloat, text: String, isColumnBreak: Bool)] = []
+  var glyphs: [RowGlyph] = []
   for index in 0..<ns.length {
     let box = boxes[index]
     if box.isNull || box.isInfinite { continue }
     let character = ns.substring(with: NSRange(location: index, length: 1))
     if character == "\n" || character == "\r" { continue }
     let blank = character.trimmingCharacters(in: .whitespaces).isEmpty
-    let row = Int(((top - box.midY) / band).rounded(.down))
-    glyphs.append((row, box.minX, box.maxX, character, blank && box.width > columnGap))
+    let depth = top - box.midY
+    let row = Int((depth / band).rounded(.down)) * maxLinesPerBand
+    glyphs.append(RowGlyph(row: row, minX: box.minX, maxX: box.maxX, depth: depth, text: character,
+                           isBlank: blank, isColumnBreak: blank && box.width > columnGap))
   }
   guard !glyphs.isEmpty else { return raw }
+  splitInterleavedRows(&glyphs, band: band)
   glyphs.sort { $0.row != $1.row ? $0.row < $1.row : $0.minX < $1.minX }
   var lines: [String] = []
   var line = ""

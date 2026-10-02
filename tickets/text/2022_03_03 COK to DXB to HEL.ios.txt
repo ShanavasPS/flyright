@@ -30,7 +30,8 @@ Optional extras  INR 1,024.00
 Fare total  INR 32,105.00  Skywards membership number:  4121 Skywards Miles
 Base fare  INR 28,655.00  EK-500000004
 Jane Doe 15 February
-T1a6x0e.0s0/f e; Kes3  ZINRR IN 1R,3 17100.0.000 ; F6 INR 730.00 ; P2 INR 1,080.00 ; WO INR  INR 3,450.00  2022
+Taxes/fees ZR INR 110.00 ; F6 INR 730.00 ; P2 INR 1,080.00 ; WO INR  INR 3,450.00  2022
+160.00 ; K3 INR 1,370.00
 Card number: ************0000  INR 100,876.11
 Jane Doe 15 February 2022
 Please note, that the credit/debit card used to make the payment will be checked at the airport.

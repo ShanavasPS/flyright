@@ -235,7 +235,7 @@ public class FlyRightDocumentImportModule: Module {
     // Wider than any word space at this text size: a column break.
     let columnGap = band * 0.8
 
-    var glyphs: [(row: Int, minX: CGFloat, maxX: CGFloat, text: String, isColumnBreak: Bool)] = []
+    var glyphs: [RowGlyph] = []
     glyphs.reserveCapacity(ns.length)
     for index in 0..<ns.length {
       let box = boxes[index]
@@ -244,10 +244,14 @@ public class FlyRightDocumentImportModule: Module {
       if character == "\n" || character == "\r" { continue }
       let blank = character.trimmingCharacters(in: .whitespaces).isEmpty
       // PDF's origin is bottom-left; flip so the row index grows downward.
-      let row = Int(((top - box.midY) / band).rounded(.down))
-      glyphs.append((row, box.minX, box.maxX, character, blank && box.width > columnGap))
+      // Each band leaves room for the lines splitInterleavedRows parts.
+      let depth = top - box.midY
+      let row = Int((depth / band).rounded(.down)) * maxLinesPerBand
+      glyphs.append(RowGlyph(row: row, minX: box.minX, maxX: box.maxX, depth: depth, text: character,
+                             isBlank: blank, isColumnBreak: blank && box.width > columnGap))
     }
     guard !glyphs.isEmpty else { return raw }
+    splitInterleavedRows(&glyphs, band: band)
     glyphs.sort { $0.row != $1.row ? $0.row < $1.row : $0.minX < $1.minX }
 
     var lines: [String] = []
@@ -273,6 +277,63 @@ public class FlyRightDocumentImportModule: Module {
       .map { $0.trimmingCharacters(in: .whitespaces) }
       .filter { !$0.isEmpty }
       .joined(separator: "\n")
+  }
+
+  struct RowGlyph {
+    var row: Int
+    let minX: CGFloat
+    let maxX: CGFloat
+    /// Distance of the glyph's middle below the page's top text.
+    let depth: CGFloat
+    let text: String
+    let isBlank: Bool
+    let isColumnBreak: Bool
+  }
+
+  private static let maxLinesPerBand = 8
+
+  /// Parts the lines a band caught when they sit one above the other.
+  ///
+  /// Bands are a fixed grid down the page, so two lines set closer than a
+  /// glyph height can fall in one band or in two depending only on where the
+  /// grid happens to cut. A Galileo e-ticket's "12 Sep" over "2026" (8.7 pt
+  /// apart at a 10 pt band) split cleanly on one leg and, 43 pt lower on the
+  /// same table, landed in one band and read "21022 6S ep" — no date, so the
+  /// leg was never offered (QR729, 2026-10-01). Lines that share horizontal
+  /// space can't be one row of text, so a band whose lines overlap gets one
+  /// row per line; lines side by side at slightly different heights (cells of
+  /// one table row) stay together as before.
+  private static func splitInterleavedRows(_ glyphs: inout [RowGlyph], band: CGFloat) {
+    var byRow: [Int: [Int]] = [:]
+    for index in glyphs.indices { byRow[glyphs[index].row, default: []].append(index) }
+    for (row, members) in byRow where members.count > 1 {
+      var lines: [[Int]] = []
+      var anchor = -CGFloat.infinity
+      for index in members.sorted(by: { glyphs[$0].depth < glyphs[$1].depth }) {
+        if glyphs[index].depth - anchor > band / 2 {
+          lines.append([])
+          anchor = glyphs[index].depth
+        }
+        lines[lines.count - 1].append(index)
+      }
+      guard lines.count > 1, lines.count <= maxLinesPerBand, linesOverlap(lines, in: glyphs) else { continue }
+      for (offset, line) in lines.enumerated() {
+        for index in line { glyphs[index].row = row + offset }
+      }
+    }
+  }
+
+  private static func linesOverlap(_ lines: [[Int]], in glyphs: [RowGlyph]) -> Bool {
+    for a in 0..<lines.count {
+      for b in (a + 1)..<lines.count {
+        for i in lines[a] where !glyphs[i].isBlank {
+          for j in lines[b] where !glyphs[j].isBlank {
+            if glyphs[i].minX < glyphs[j].maxX - 0.5 && glyphs[j].minX < glyphs[i].maxX - 0.5 { return true }
+          }
+        }
+      }
+    }
+    return false
   }
 
   /// A decoded symbol: its payload and which symbology carried it, named the
