@@ -310,13 +310,39 @@ describe('grouped list sections', () => {
     expect(shape(new Date('2027-09-01T00:00Z'))).toEqual(['d', '~c', 'stay', 'b', '~a']);
   });
 
-  it('keeps the active full row without losing its destination, stays or position', () => {
-    const items = tripListSections(all, NOW, out.id)[0]!.data;
-    expect(items.flatMap(i => i.kind === 'header' ? [i.group.title] : [])).toEqual(['New York', 'Toronto', 'Boston']);
-    expect(items.flatMap(i => i.kind === 'flight' ? [i.journey.id] : [])).toEqual(['out', 'canada-out', 'canada-back', 'back']);
-    expect(items.flatMap(i => i.kind === 'flight' && i.hero ? [i.journey.id] : [])).toEqual(['out']);
-    expect(items.flatMap(i => i.kind === 'stay' ? [i.stay.days] : [])).toEqual([9, 4, 9]);
+  it('shows only the destination being travelled as the current trip; the rest waits under Upcoming', () => {
+    const sections = tripListSections(all, NOW, out.id);
+    expect(sections.map(s => s.key)).toEqual(['current', 'upcoming']);
+    const [current, upcoming] = sections.map(s => s.data);
+    expect(current!.flatMap(i => i.kind === 'header' ? [i.group.title] : [])).toEqual(['New York']);
+    expect(current!.flatMap(i => i.kind === 'flight' ? [i.journey.id] : [])).toEqual(['out']);
+    expect(current!.flatMap(i => i.kind === 'flight' && i.hero ? [i.journey.id] : [])).toEqual(['out']);
+    expect(current!.flatMap(i => i.kind === 'stay' ? [i.stay.days] : [])).toEqual([9]);
+    expect(upcoming!.flatMap(i => i.kind === 'header' ? [i.group.title] : [])).toEqual(['Toronto', 'Boston']);
+    expect(upcoming!.flatMap(i => i.kind === 'flight' ? [i.journey.id] : [])).toEqual(['canada-out', 'canada-back', 'back']);
+    expect(upcoming!.flatMap(i => i.kind === 'stay' ? [i.stay.days] : [])).toEqual([4, 9]);
     expect(tripListSections([out], NOW, out.id)[0]!.data.filter(i => i.kind === 'flight')).toHaveLength(1);
+  });
+
+  it('files a destination with the past once all its flights have landed', () => {
+    // In New York between flights: its one flight has landed, so New York is
+    // past; Toronto, whose flight is next, is the current trip.
+    const sections = tripListSections(all, new Date('2027-06-05T12:00Z'));
+    expect(sections.map(s => `${s.key}: ${s.data.flatMap(i => i.kind === 'header' ? [i.group.title] : []).join(', ')}`))
+      .toEqual(['current: Toronto', 'upcoming: Boston', '2027: New York']);
+  });
+
+  it('never shows more than one destination as the current trip', () => {
+    const lisbon = flight('lisbon', 'HEL', 'LIS', '2027-05-20T10:00Z', '2027-05-20T14:00Z');
+    const lisbonBack = flight('lisbon-back', 'LIS', 'HEL', '2027-05-29T10:00Z', '2027-05-29T16:00Z');
+    const portugal = flight('portugal', 'HEL', 'OPO', '2027-07-01T10:00Z', '2027-07-01T14:00Z');
+    const rows = [lisbon, lisbonBack, ...all, portugal];
+    // Every six hours from before the first take-off to after the last landing.
+    for (let t = Date.parse('2027-05-19T00:00Z'); t < Date.parse('2027-07-03T00:00Z'); t += 6 * 3_600_000) {
+      const current = tripListSections(rows, new Date(t)).filter(s => s.key === 'current');
+      expect(current.length).toBeLessThanOrEqual(1);
+      expect(current.flatMap(s => s.data.filter(i => i.kind === 'header')).length).toBeLessThanOrEqual(1);
+    }
   });
 
   it('only gives the active itinerary live styling, not later return flights', () => {
@@ -364,10 +390,12 @@ describe('grouped list sections', () => {
   });
 
   it('keeps a live flight into a new city under that city heading, followed by its stay', () => {
-    const items = tripListSections(all, new Date('2027-06-14T17:00Z'), canadaBack.id)[0]!.data;
+    const sections = tripListSections(all, new Date('2027-06-14T17:00Z'), canadaBack.id);
+    const items = sections[0]!.data;
     const active = items.findIndex(i => i.kind === 'flight' && i.hero);
-    expect(items[active - 2]).toMatchObject({ kind: 'stay', stay: { days: 4 } });
     expect(items[active - 1]).toMatchObject({ kind: 'header', group: { title: 'Boston', continued: false } });
+    // Toronto, with its stay, is behind the traveller now and filed as past.
+    expect(sections.find(s => s.key === '2027')!.data.find(i => i.kind === 'stay')).toMatchObject({ stay: { days: 4 } });
     expect(items[active + 1]).toMatchObject({ kind: 'stay', stay: { days: 9 } });
     expect(tripHeroGroup(all, NOW, canadaBack.id)).toMatchObject({ group: { title: 'Boston' }, isFirstFlight: false });
     expect(tripHeroGroup(all, NOW, back.id)).toMatchObject({ group: { title: 'Boston' } });
@@ -377,7 +405,7 @@ describe('grouped list sections', () => {
     expect(tripListSections([out], NOW, out.id)[0]!.data.filter(i => i.kind === 'flight')).toHaveLength(1);
     expect(tripHeroGroup([out], NOW, out.id)).toMatchObject({ group: { title: 'New York' }, dates: '1 Jun', isFirstFlight: true });
     expect(tripHeroGroup([out, back], NOW, out.id)).toMatchObject({ dates: '1–24 Jun', isFirstFlight: true });
-    const added = tripListSections(all, NOW, out.id)[0]!.data;
+    const added = tripListSections(all, NOW, out.id).flatMap(s => s.data);
     expect(added.filter(i => i.kind === 'flight' && i.hero)).toHaveLength(1);
     expect(tripHeroGroup(all, NOW, out.id)?.isFirstFlight).toBe(true);
     expect(tripHeroGroup([back], NOW, back.id)?.isFirstFlight).toBe(true);
@@ -389,7 +417,8 @@ describe('grouped list sections', () => {
   it('keeps independent future trips separate from a current trip and its hero', () => {
     const portugal = flight('portugal', 'HEL', 'LIS', '2027-07-01T10:00', '2027-07-01T14:00');
     const sections = tripListSections([...all, portugal], new Date('2027-06-14T17:00Z'), canadaBack.id);
-    expect(sections.map(s => s.key)).toEqual(['current', 'upcoming']);
+    // Boston is under way; New York and Toronto are flown, Portugal is ahead.
+    expect(sections.map(s => s.key)).toEqual(['current', 'upcoming', '2027']);
     expect(sections[1]!.data.find(i => i.kind === 'flight')).toMatchObject({ journey: { id: 'portugal' }, hero: false });
   });
 

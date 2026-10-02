@@ -51,6 +51,11 @@ Adding, editing or deleting flights recomputes the groups through `useJourneys`.
   first past year heading, for all of the past: Latest (above) or Oldest,
   which turns everything forward: years ascending, trips by first departure,
   legs in flying order. A chip shows only when there are two trips to sort.
+  A trip under way is split by destination: a destination whose flights have
+  all landed is filed with the past (its own year), the first one with a
+  flight still to land is the current trip, and the destinations after it wait
+  under Upcoming. Current trip holds at most one destination; should two trips
+  both be under way, the one with the live flight (else the earlier) wins.
   Classify the full trip before highlighting the active row,
   so the final flight home cannot file the itinerary as completed too early.
   An ongoing trip stays current during known stays between flights.

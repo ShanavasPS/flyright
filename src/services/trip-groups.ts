@@ -362,7 +362,8 @@ export function tripGroupDates(group: TripGroup, currentYear: number): string {
 
 /** Classify the complete trip before highlighting its active flight row.
  * A trip remains current between its flights and through the hero's arrival
- * window. Flights stay in travel order; completed trips are newest first
+ * window — but only the destination being travelled is shown as current:
+ * the ones already flown are filed with the past, later ones under Upcoming. Flights stay in travel order; completed trips are newest first
  * unless `sort` asks for Upcoming by save date or the past oldest first. */
 export function tripListSections(
   rows: JourneyRow[],
@@ -374,15 +375,49 @@ export function tripListSections(
   const visible = rows.filter(r => !r.deletedAt);
   const phase = new Map(groupJourneys(visible, now).flatMap(s => s.data.map(r => [r.id, s.key] as const)));
   const connections = connectionsInto(rows.filter(r => !r.deletedAt));
-  const filed = buildTripGroups(rows, homeAt).map(trip => {
+  const yearOf = (journeys: JourneyRow[]) => calendarDay(departure(journeys[0]!))?.slice(0, 4) ?? 'undated';
+  const part = (trip: TravelTrip, groups: TripGroup[], suffix: string): TravelTrip => ({
+    id: `${trip.id}${suffix}`,
+    groups,
+    journeys: groups.flatMap(g => g.entries.flatMap(e => e.kind === 'flight' ? [e.journey] : [])),
+  });
+  // A destination is done once every flight in it has landed. The hero keeps
+  // its own through the arrival window, and a flight still in the air is not
+  // done whatever its timetable says.
+  const landed = (group: TripGroup) => group.entries.every(e => e.kind !== 'flight' ||
+    (e.journey.id !== heroId && phase.get(e.journey.id) !== 'live' && at(arrival(e.journey)) <= now.getTime()));
+  const filed = buildTripGroups(rows, homeAt).flatMap(trip => {
     const keys = trip.journeys.map(r => phase.get(r.id));
-    const year = calendarDay(departure(trip.journeys[0]!))?.slice(0, 4) ?? 'undated';
     const hasHero = trip.journeys.some(r => r.id === heroId);
     const started = at(departure(trip.journeys[0]!)) <= now.getTime();
     const current = hasHero || keys.includes('live') || (started && keys.includes('upcoming'));
-    const key = current ? 'current' : keys.includes('upcoming') ? 'upcoming' : year;
-    return { trip, key, hasHero };
+    if (!current) return [{ trip, key: keys.includes('upcoming') ? 'upcoming' : yearOf(trip.journeys), hasHero }];
+    // A trip under way is where the traveller is in it: the destinations
+    // already flown are filed with the past, the one still being travelled is
+    // the current trip, and whatever comes after it waits under Upcoming.
+    const flights = (g: TripGroup) => g.entries.some(e => e.kind === 'flight');
+    if (!trip.groups.every(flights)) return [{ trip, key: 'current', hasHero }];
+    const open = trip.groups.findIndex(g => !landed(g));
+    const done = open < 0 ? trip.groups : trip.groups.slice(0, open);
+    const ongoing = open < 0 ? [] : [trip.groups[open]!];
+    const next = open < 0 ? [] : trip.groups.slice(open + 1);
+    const parts: { trip: TravelTrip; key: string; hasHero: boolean }[] = [];
+    if (done.length) {
+      const flown = part(trip, done, ':flown');
+      parts.push({ trip: flown, key: yearOf(flown.journeys), hasHero: false });
+    }
+    if (ongoing.length) {
+      const here = part(trip, ongoing, '');
+      parts.push({ trip: here, key: 'current', hasHero: here.journeys.some(r => r.id === heroId) });
+    }
+    if (next.length) parts.push({ trip: part(trip, next, ':next'), key: 'upcoming', hasHero: false });
+    return parts;
   });
+  // One place at a time: should two trips both be under way, the one with
+  // the live flight (else the one that left first) is current, the other waits.
+  const currents = filed.filter(f => f.key === 'current')
+    .sort((a, b) => Number(b.hasHero) - Number(a.hasHero) || at(departure(a.trip.journeys[0]!)) - at(departure(b.trip.journeys[0]!)));
+  for (const extra of currents.slice(1)) extra.key = 'upcoming';
   const oldest = sort.past === 'oldest';
   const rank = (key: string) => key === 'current' ? 0 : key === 'upcoming' ? 1 : key === 'undated' ? Infinity
     : oldest ? Number(key) : 10_000 - Number(key);
