@@ -1,0 +1,97 @@
+=== PAGE 1 ===
+E-TICKET
+AGENCY DETAILS
+EXAMPLE TRAVEL AGENCY  ￼
+10000000
+BOOKING REFERENCE: Galileo: ABC123, AIRLINE: QR/QWERTY
+Traveller Information
+DOE/JANE MS
+DATE  FLNIGOH.  T  FROM  DEP  TERDMEIPNAL  TO  ARR  TERAMRIRNAL  AIRLINE
+TIME  TIME
+12 Sep  Kochi Intl Arpt  Hamad
+2026  QR517  (COK), Kochi  0415  3  International Arpt  0605
+(DOH), Doha
+Hamad  Dallas FT Worth
+21022 6S  ep  QR729  International Arpt  0750  Intl Arpt (DFW),  1540  D
+(DOH), Doha  Dallas
+Dallas FT Worth  Hamad
+03 Oct
+2026  QR730  Intl Arpt (DFW),  1820  D  International Arpt  1705
+Dallas  (DOH), Doha
+04 Oct  Hamad  Kochi Intl Arpt
+2026  QR516  International Arpt  1950  (COK), Kochi  0245  3
+(DOH), Doha
+E-Ticket Numbers   Date of Issue: Thu, 03 Sep 2026
+E-Ticket Number: 1572100000000
+Detailed Itinerary
+KOCHI INTL ARPT (COK) TO HAMAD INTERNATIONAL ARPT (DOH)   FARE BASIS: LJINN3SE
+FLT NO  DFALTTE  CLASS  DEP  ARR  ATERRR  STATUS  DUR  SEAT  MEAL/SPCL
+TIME  TIME  REQ  A/C TYPE  BAGGAGE
+12  AIRBUS
+QR517  Sep  L  0415  0605  CONFIRMED  4:20  Meal  INDUSTRIE  2PC *
+2026  A350-900  23KG
+Carry on Allowance
+*NO FEE INR UPTO15LB/7KG AND
+UPTO45LI/115LCM
+￼
+Check in Baggage Allowance
+*NO FEE INR UPTO50LB/23KG AND
+UPTO62LI/158LCM
+Economy Carbon Emission:  188.00 KG
+Ground Time:   1 hours and 45 minutes
+HAMAD INTERNATIONAL ARPT (DOH) TO DALLAS FT WORTH INTL ARPT (DFW)   FARE BASIS: LJINN3SE
+FLT NO  FLT  ARR  ARR  A/C
+DATE  CLASS  TDIEMPE  TIME  TER  STATUS  DUR  SEAT  MEARLE/QSPCL  TYPE  BAGGAGE
+QR729  21022 S6ep  L  0750  1540  D  CONFIRMED  15:50  Meal  223PKCG *
+Carry on Allowance
+=== PAGE 2 ===
+*NO FEE QAR UPTO15LB/7KG AND
+UPTO45LI/115LCM
+Check in Baggage Allowance
+*NO FEE INR UPTO50LB/23KG AND  ￼
+UPTO62LI/158LCM
+Economy Carbon Emission:  602.00 KG
+DALLAS FT WORTH INTL ARPT (DFW) TO HAMAD INTERNATIONAL ARPT (DOH)   FARE BASIS: TJINN4RE
+FLT NO  FLT  ARR  ARR  A/C
+DATE  CLASS  TDIMEPE  TIME  TER  STATUS  DUR  SEAT  MEARLE/QSPCL  TYPE  BAGGAGE
+QR730  03 Oct
+2026  T  1820  (1+710)  5  CONFIRMED  14:45  Meal  223PKCG *
+(+1) in ARR Time denotes arrival one day
+later and (+2) denotes two days later
+Carry on Allowance
+￼
+*NO FEE USD UPTO15LB/7KG AND
+UPTO45LI/115LCM
+Check in Baggage Allowance
+*NO FEE INR UPTO50LB/23KG AND
+UPTO62LI/158LCM
+Economy Carbon Emission:  591.00 KG
+Ground Time:   2 hours and 45 minutes
+HAMAD INTERNATIONAL ARPT (DOH) TO KOCHI INTL ARPT (COK)   FARE BASIS: TJINN4RE
+FLT NO  FLT  ARR  ARR
+DATE  CLASS  TDIMEPE  TIME  TER  STATUS  DUR  SEAT  MEARLE/QSP  CL  A/C TYPE  BAGGAGE
+AIRBUS
+QR516  20042 O6  ct  T  1950  0245  INDUSTRIE  2PC *
+(+1)  3  CONFIRMED  4:25  Meal  23KG
+A350-900
+(+1) in ARR Time denotes arrival one day
+later and (+2) denotes two days later
+Carry on Allowance
+￼
+*NO FEE QAR UPTO15LB/7KG AND
+UPTO45LI/115LCM
+Check in Baggage Allowance
+*NO FEE INR UPTO50LB/23KG AND
+UPTO62LI/158LCM
+Economy Carbon Emission:  188.00 KG
+Other Details and Remarks
+TOUR CODE:
+ENDORSEMENT
+INFORMATION:   NON END/CHNG PENALTIESAS PER RULE
+CANCELLATION PENALTY WILL APPLY AS PER AIRLINE POLICY
+RECONFIRM ALL FLIGHT/TIMINGS 72 HRS BEFORE DEPARTURE
+*DISCLAIMER FOR AIR INDIA AND AIR INDIA EXPRESS CODE SHARE FLIGHTS*
+Passengers travelling on Air India 9000 series flight numbers and connecting to any other airline MUST collect their baggage at transit
+points and proceed to the check in counters at departure.
+=== PAGE 3 ===
+TICKET DETAILS AS ON: 03 Sep 2026 15:03:28  ￼

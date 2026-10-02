@@ -38,6 +38,11 @@ type ExpectedLeg = {
   seat: string | null;
   pnr: string | null;
   operatedBy?: string;
+  /** The platforms whose reader can read this leg at all — absent means
+   * both. Only for a reader fault the parser cannot undo (an iOS row band
+   * that merges a wrapped date cell into "21022 6S ep"), never for a
+   * reading the parser gets wrong. */
+  onlyOn?: string[];
 };
 
 const shape = (s: ImportedSegment): ExpectedLeg => ({
@@ -74,7 +79,10 @@ describe('tickets/', () => {
       const platform = text.slice(file.length + 1, -'.txt'.length);
       it(`${file} reads right on ${platform}`, () => {
         const { segments } = extractItinerary(pagesOf(readFileSync(join(TEXT, text), 'utf8')), TODAY);
-        expect(segments.map(shape)).toEqual((expected as Record<string, ExpectedLeg[]>)[file]);
+        const legs = (expected as Record<string, ExpectedLeg[]>)[file]
+          .filter((leg) => !leg.onlyOn || leg.onlyOn.includes(platform))
+          .map(({ onlyOn: _onlyOn, ...leg }) => leg);
+        expect(segments.map(shape)).toEqual(legs);
       });
     }
   }

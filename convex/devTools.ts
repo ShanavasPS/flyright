@@ -4,7 +4,8 @@ import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
 import { internalAction, internalMutation, internalQuery } from './_generated/server';
 import { armHeadsUp, createSession, materializeCircleFollows } from './liveHelpers';
-import { sendFollowerPush } from './onesignal';
+import { oneSignalConfig, sendFollowerPush } from './onesignal';
+import { pushAlias } from './pushIdentity';
 import { safeAvatar } from './profileShared';
 import { firstNameKey, searchKey } from './circleShared';
 import { flightDay } from './airportZones';
@@ -969,5 +970,77 @@ export const repairArrivals = internalMutation({
       report.push({ ...base, flightHours: Math.round(hours * 100) / 100, result: dryRun ? 'would fix' : 'fixed' });
     }
     return { dryRun, report };
+  },
+});
+
+/** Whether one account can receive a push, for answering "did they get
+ * it?" without guessing: the OneSignal subscriptions on the account's push
+ * alias — type, opt-in state, device and app version, never the token.
+ * Read-only.
+ * `npx convex run --prod devTools:pushStatus '{"userId":"user_…"}'` */
+export const pushStatus = internalAction({
+  args: { userId: v.string() },
+  handler: async (_ctx, { userId }) => {
+    const cfg = oneSignalConfig();
+    const alias = await pushAlias(userId);
+    if (!cfg || !alias) return { error: 'OneSignal or the push secret is not configured' };
+    const res = await fetch(
+      `https://api.onesignal.com/apps/${cfg.appId}/users/by/external_id/${encodeURIComponent(alias)}`,
+      { headers: { authorization: cfg.auth } },
+    );
+    if (res.status === 404) return { registered: false };
+    if (!res.ok) return { error: `OneSignal ${res.status}` };
+    const user = (await res.json()) as {
+      subscriptions?: {
+        type?: string;
+        enabled?: boolean;
+        notification_types?: number;
+        device_model?: string;
+        device_os?: string;
+        app_version?: string;
+        session_time?: number;
+        session_count?: number;
+      }[];
+    };
+    return {
+      registered: true,
+      subscriptions: (user.subscriptions ?? []).map((s) => ({
+        type: s.type,
+        enabled: s.enabled,
+        notificationTypes: s.notification_types,
+        device: s.device_model,
+        os: s.device_os,
+        appVersion: s.app_version,
+        sessions: s.session_count,
+      })),
+    };
+  },
+});
+
+/** One push to one account — a support note ("we fixed your trip"), sent
+ * deliberately from the CLI. `url` is where a tap lands, e.g.
+ * https://getflyright.com/journey/QR516-2026-10-04. Reports OneSignal's
+ * answer, so an unsubscribed account shows as not delivered.
+ * `npx convex run --prod devTools:pushToUser '{"userId":"user_…","heading":"…","body":"…","url":"…"}'` */
+export const pushToUser = internalAction({
+  args: { userId: v.string(), heading: v.string(), body: v.string(), url: v.string() },
+  handler: async (_ctx, { userId, heading, body, url }) => {
+    const cfg = oneSignalConfig();
+    const alias = await pushAlias(userId);
+    if (!cfg || !alias) return { sent: false, error: 'OneSignal or the push secret is not configured' };
+    const res = await fetch('https://api.onesignal.com/notifications', {
+      method: 'POST',
+      headers: { authorization: cfg.auth, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        app_id: cfg.appId,
+        target_channel: 'push',
+        include_aliases: { external_id: [alias] },
+        headings: { en: heading },
+        contents: { en: body },
+        data: { url },
+      }),
+    });
+    const text = (await res.text()).slice(0, 300);
+    return { sent: res.ok && /"id":"[^"]+"/.test(text), status: res.status, response: text };
   },
 });

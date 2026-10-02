@@ -403,5 +403,52 @@
       "pnr": "9ITC0L",
       "operatedBy": "AY"
     }
+  ],
+  "Galileo eticket QR": [
+    {
+      "flight": "QR517",
+      "date": "2026-09-12",
+      "from": "COK",
+      "to": "DOH",
+      "dep": "04:15",
+      "arr": "06:05",
+      "seat": null,
+      "pnr": "ABC123"
+    },
+    {
+      "flight": "QR729",
+      "date": "2026-09-12",
+      "from": "DOH",
+      "to": "DFW",
+      "dep": "07:50",
+      "arr": "15:40",
+      "seat": null,
+      "pnr": "ABC123",
+      "onlyOn": [
+        "android"
+      ]
+    },
+    {
+      "flight": "QR730",
+      "date": "2026-10-03",
+      "from": "DFW",
+      "to": "DOH",
+      "dep": "18:20",
+      "arr": "17:05",
+      "arrivalDate": "2026-10-04",
+      "seat": null,
+      "pnr": "ABC123"
+    },
+    {
+      "flight": "QR516",
+      "date": "2026-10-04",
+      "from": "DOH",
+      "to": "COK",
+      "dep": "19:50",
+      "arr": "02:45",
+      "arrivalDate": "2026-10-05",
+      "seat": null,
+      "pnr": "ABC123"
+    }
   ]
 }

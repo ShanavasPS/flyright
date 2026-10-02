@@ -70,6 +70,28 @@ describe('legSchedule', () => {
   });
 });
 
+describe('legSchedule — a printed departure no flight could have left at', () => {
+  // QR516 DOH 19:50 → COK 02:45 (+1), saved leaving at 04:20: the ticket's
+  // "CONFIRMED 4:20" flight time read as the departure clock.
+  const QR516 = { date: '2026-10-04', arrivalDate: '2026-10-05', depTime: '04:20', arrTime: null, fromCode: 'DOH', toCode: 'COK' };
+  const QR516_LOOKUP = {
+    date: '2026-10-04',
+    from: { code: 'DOH', country: 'QA' },
+    to: { code: 'COK', country: 'IN' },
+    scheduledDeparture: '2026-10-04T16:50Z',
+    scheduledArrival: '2026-10-04T21:15Z',
+  };
+
+  it('takes the provider’s departure when the printed one would make the flight a day long', () => {
+    expect(legSchedule(QR516, QR516_LOOKUP).departure).toBe('2026-10-04T16:50Z');
+  });
+
+  it('keeps a printed departure that a re-time moved', () => {
+    // An hour later than the provider says, and still a flight to its arrival.
+    expect(legSchedule({ ...QR516, depTime: '20:50' }, QR516_LOOKUP).departure).toBe('2026-10-04T17:50:00.000Z');
+  });
+});
+
 describe('legSchedule — an arrival date from elsewhere on the page', () => {
   // AA79 as imported: the printed clocks were right, the arrival date was the
   // fare's "not valid after" day, twelve days on.

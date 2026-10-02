@@ -628,7 +628,32 @@ function findDates(text: string, today: Date): Mark<string>[] {
 const TIME_RE =
   /\b(\d{1,2})(?::(\d{2}))?\s?([AaPp])\.?[Mm]\.?(?![A-Za-z])|\b(\d{1,2}):(\d{2})\b(?!\s?[AaPp]\.?[Mm])|\b(\d{1,2})\.(\d{2})\s?(?:hrs|hr|h)\b|(?:^|[^\d-])(\d{1,2})-(\d{2})(?![\d-])|(?:^|\n)[ \t]*(\d{2})(\d{2})[ \t]*(?=\n|$)/g;
 
-function findTimes(text: string): Mark<string>[] {
+/** A Travelport (Galileo) leg row prints its flight time right after the
+ * booking status, on the same line: "L 0415 0605 CONFIRMED 4:20 Meal".
+ * Emirates prints "Confirmed" on a line of its own with the departure
+ * clock under it, so only the capitalised status on the clock's own line
+ * counts. */
+const AFTER_STATUS = /\bCONFIRMED[ \t]+$/;
+
+/** A table that heads its clock columns "DEP … TIME" in capitals (the
+ * header can wrap over a couple of lines). On such a page that prints no
+ * colon clock at all, the clocks are the four bare digits in its rows —
+ * "2026 T 1950 0245" — not only the ones a line holds alone. */
+const DEP_TIME_HEADER = /\bDEP\b(?:[^\n]*\n){0,2}[^\n]*\bTIME\b/;
+const INLINE_HHMM_RE = /(?:^|[\s(])(\d{2})(\d{2})(?=[\s)]|$)/g;
+/** "QR 0517": a flight number with a space is not a clock. */
+const BEFORE_DESIGNATOR = /\b(?:[A-Z]{2}|[A-Z]\d|\d[A-Z])[ \t]$/;
+
+/** Bare digits that read as a year: the years the document's own dates
+ * name, give or take one. A page without a dated year keeps the old rule,
+ * 1900–2099 — but a ticket dated 2026 that prints "1950" alone on a line
+ * means ten to eight in the evening. */
+function isYear(n: number, years: ReadonlySet<number>): boolean {
+  if (!years.size) return n >= 1900 && n <= 2099;
+  return years.has(n) || years.has(n - 1) || years.has(n + 1);
+}
+
+function findTimes(text: string, years: ReadonlySet<number> = new Set()): Mark<string>[] {
   const marks: Mark<string>[] = [];
   TIME_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
@@ -648,9 +673,8 @@ function findTimes(text: string): Mark<string>[] {
       hours = Number(m[8]);
       minutes = Number(m[9]);
     } else {
-      // A four-digit line: "1730" is half past five, "2020" is a year.
-      const asNumber = Number(m[10] + m[11]);
-      if (asNumber >= 1900 && asNumber <= 2099) continue;
+      // A four-digit line: "1730" is half past five, "2026" a year.
+      if (isYear(Number(m[10] + m[11]), years)) continue;
       hours = Number(m[10]);
       minutes = Number(m[11]);
     }
@@ -667,7 +691,23 @@ function findTimes(text: string): Mark<string>[] {
     if (text[index - 1] === ':') continue;
     const end = m.index + m[0].length;
     if (/^:\d{2}/.test(text.slice(end))) continue;
+    if (m[4] && AFTER_STATUS.test(text.slice(text.lastIndexOf('\n', index - 1) + 1, index))) continue;
     marks.push({ index, end, value: `${pad2(hours)}:${pad2(minutes)}` });
+  }
+  // A page whose only clocks are bare four digits prints them inside its
+  // rows as well; a page with any other clock keeps reading those.
+  if (DEP_TIME_HEADER.test(text) && marks.every((k) => /^\d{4}$/.test(text.slice(k.index, k.index + 4)))) {
+    INLINE_HHMM_RE.lastIndex = 0;
+    while ((m = INLINE_HHMM_RE.exec(text))) {
+      const index = m.index + m[0].search(/\d/);
+      if (marks.some((k) => k.index === index)) continue;
+      const hours = Number(m[1]);
+      const minutes = Number(m[2]);
+      if (hours > 23 || minutes > 59 || isYear(Number(m[1] + m[2]), years)) continue;
+      if (BEFORE_DESIGNATOR.test(text.slice(Math.max(0, index - 4), index))) continue;
+      marks.push({ index, end: index + 4, value: `${pad2(hours)}:${pad2(minutes)}` });
+    }
+    marks.sort((a, b) => a.index - b.index);
   }
   return marks;
 }
@@ -781,6 +821,34 @@ const ROUTE_SENTENCE_RE = /\(([A-Z]{3})\)\s*(?:to|-|–|—|→)\s*[^()\n]{0,48}
 
 /** The leg's route: a route sentence anywhere in the window, else whatever
  * airports the window names, in order. */
+/** The route of a table row whose cells wrap: its own line names one
+ * airport, the line under it the other. Null unless that reading is whole —
+ * one code on the row, a different one on the next line, and the row's
+ * departure clock to say which column the row's code sits in. */
+function wrappedRoute(
+  text: string,
+  lineStart: number,
+  lineEnd: number,
+  to: number,
+  ownRow: string[],
+  depClock: Mark<string> | undefined,
+): string[] | null {
+  if (ownRow.length !== 1 || !depClock || depClock.index < lineStart || depClock.index > lineEnd) return null;
+  const nextEnd = text.indexOf('\n', lineEnd + 1);
+  const line = text.slice(lineEnd, Math.min(to, nextEnd < 0 ? text.length : nextEnd));
+  // The wrapped line can carry the row's own city again ("Dallas (DOH),
+  // Doha"), and a city name reads as its other airport (Dallas as DAL): a
+  // code the page prints in brackets says which one it means.
+  const bracketed = [...line.matchAll(/\(([A-Z]{3})\)/g)].map((m) => m[1]).filter(isValidIata);
+  const below = bracketed.length ? bracketed : findAirports(line);
+  const others = [...new Set(below.filter((code) => code !== ownRow[0]))];
+  if (others.length !== 1) return null;
+  const other = others[0];
+  const at = text.indexOf(ownRow[0], lineStart);
+  if (at < 0 || at > lineEnd) return null;
+  return at < depClock.index ? [ownRow[0], other] : [other, ownRow[0]];
+}
+
 function findAirports(window: string): string[] {
   const sentence = ROUTE_SENTENCE_RE.exec(window);
   if (
@@ -1040,7 +1108,7 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
   if (!anchors.length) anchors = findNamedCarrierFlights(text, dates);
   if (!anchors.length) return [];
 
-  const times = findTimes(text);
+  const times = findTimes(text, new Set(dates.map((d) => Number(d.value.slice(0, 4)))));
   const pnr = findPnr(text);
   // The table's column headers sit above its first leg — not above the
   // first flight-shaped token on the page, which on a screenshot can be
@@ -1070,9 +1138,18 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     const nextRowStart = next
       ? Math.min(next.index, ...times.filter((t) => t.end <= next.index && !text.slice(t.end, next.index).includes('\n')).map((t) => t.index))
       : text.length;
+    // A date that opens the line right above the next leg's flight number,
+    // whose year starts that number's line, is that row's wrapped date cell
+    // ("04 Oct  Hamad  Kochi Intl Arpt" over "2026  QR516", as a Travelport
+    // summary prints it): taken as this leg's arrival day, it left the next
+    // leg with no date at all.
+    const nextLine = next ? text.lastIndexOf('\n', next.index - 1) + 1 : 0;
+    const wrappedCell = !!next && nextLine > 0 && /^[ \t]*\d{4}[ \t]+$/.test(text.slice(nextLine, next.index));
+    const headingLine = wrappedCell ? text.lastIndexOf('\n', nextLine - 2) + 1 : -1;
     let nearby = dates.filter((d) => {
       if (d.index < from || d.end > to) return false;
       if (!next || d.index < anchor.end) return true;
+      if (headingLine >= 0 && d.end < nextLine && /^[ \t]*$/.test(text.slice(headingLine, d.index))) return false;
       const lastClock = times.filter((t) => t.index >= anchor.end && t.end <= d.index).pop();
       const mine = d.index - (lastClock?.end ?? anchor.end);
       const theirs = nextRowStart - d.end;
@@ -1171,7 +1248,13 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
     // row that doesn't gets the wider window, where the previous leg's
     // airport names can sit nearer than this leg's own.
     const ownRow = findAirports(text.slice(lineStart, lineEnd));
-    const airports = ownRow.length >= 2 ? ownRow : findAirports(window);
+    // A row naming one airport finishes on its next line when its cells
+    // wrap ("2026 QR730 Intl Arpt (DFW), 1820 D International Arpt 1705"
+    // over "Dallas (DOH), Doha"); the wider window starts on the previous
+    // row's wrapped line and named its airport first. Which end the row's
+    // own code is comes from its column: before the departure clock it is
+    // the origin, after it the destination ("1950  (COK), Kochi").
+    const airports = ownRow.length >= 2 ? ownRow : wrappedRoute(text, lineStart, lineEnd, to, ownRow, depClock) ?? findAirports(window);
     const seatMatch = SEAT_RE.exec(tail) ?? SEAT_COLUMN_RE.exec(tail) ?? SEAT_ROW_END_RE.exec(tail);
     const operatedBy = findOperator(tail, anchor.flight.match(/^([A-Z]{2}|[A-Z]\d|\d[A-Z])/)?.[1] ?? null);
 

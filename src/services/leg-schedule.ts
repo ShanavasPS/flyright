@@ -32,10 +32,18 @@ export function legSchedule(
     if (!clock || !on) return null;
     return zonedTimestamp(on, clock, airportZone(iata)) ?? `${on}T${clock}:00`;
   };
+  // The printed departure gets the check the arrival below gets: a clock no
+  // flight to the provider's arrival could have left at is not this leg's.
+  // A Galileo ticket's flight time ("CONFIRMED 4:20") read as the clock
+  // saved a DOH→COK leg leaving 13 hours before its inbound landed
+  // (2026-10-01); a re-time moves both ends, so a real one still fits.
+  const printedDeparture = printed(segment.depTime, day, flight?.from.code ?? segment.fromCode);
   const departure =
-    printed(segment.depTime, day, flight?.from.code ?? segment.fromCode) ??
-    flight?.scheduledDeparture ??
-    null;
+    (printedDeparture &&
+    (!flight?.scheduledArrival ||
+      fitsFlight(printedDeparture, flight.scheduledArrival, maxFlightMs(flight.from.code ?? segment.fromCode, flight.to.code ?? segment.toCode))))
+      ? printedDeparture
+      : (flight?.scheduledDeparture ?? printedDeparture ?? null);
   // The printed arrival clock is trusted; the date it is pinned to is not
   // always the leg's. A booking PDF prints fare-validity dates and the next
   // leg's date beside the row, and one of those taken as the arrival turned a
