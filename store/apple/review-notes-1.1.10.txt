@@ -1,0 +1,12 @@
+What's new to review:
+
+Changes to how the Flights tab lists trips. Nothing about purchases, permissions or what Free and Pro include changes.
+
+1. Sort chips. Beside the "Upcoming" heading a small chip switches between "Next up" (soonest departure first) and "Recently added". Beside the first year heading of past trips a chip switches between "Latest" and "Oldest". The choice is remembered on the device.
+2. Past trips read newest first, including the flights inside each trip (the flight home is on top).
+3. "Current trip" shows only the destination being travelled; destinations already flown appear with past trips.
+4. The all-time summary card at the top of Flights opens Travel stats from its right edge (chevron).
+
+To see them: sign in with the review account, open Flights and scroll to "Upcoming" and the year headings. The review account already has trips.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method.

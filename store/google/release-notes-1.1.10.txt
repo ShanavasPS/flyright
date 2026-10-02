@@ -1,0 +1,5 @@
+• Sort your trips: Upcoming by next up or recently added, past trips from the latest or the oldest.
+• Past trips read newest first, with the flight home on top.
+• Current trip shows only where you are travelling now.
+• A cleaner all-time summary: tap its edge for your travel stats.
+• Faster re-sorting, and agency e-tickets import with the right times.

@@ -1,0 +1,9 @@
+Sort your trips: Upcoming by next up or recently added, and past trips from the latest or the oldest. Your choice is remembered.
+
+Past trips now read newest first all the way down, with the flight home on top, and are ordered by when you got home.
+
+Current trip shows only the place you are travelling now. Places you have already flown to move to your past trips, and later stops wait under Upcoming.
+
+A cleaner all-time summary on Flights: tap its lit edge to open your travel stats.
+
+Your trips list re-sorts faster, and city photos you have already seen appear at once. E-tickets from travel agencies now import with the right departure times.
