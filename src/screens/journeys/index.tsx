@@ -4,8 +4,9 @@ import { useAuth, useUser } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -64,7 +65,7 @@ import {
   onboardingSeen,
   pushRemindDue,
 } from '@/services/onboarding';
-import { tripHeroGroup, tripListSections, type TripListItem, type TripListSection } from '@/services/trip-groups';
+import { tripHeroGroup, tripListSections, type TripListItem, type TripListSection, type TripSort } from '@/services/trip-groups';
 import { setTripSort, useTripSort } from '@/services/trip-sort';
 import { HomeNudgeCard } from '@/components/home-base';
 import { useHomeContext } from '@/hooks/use-home-base';
@@ -195,7 +196,11 @@ export function Journeys() {
   const stats = useMemo(() => travelStats(journeys ?? []), [journeys]);
   const homeContext = useHomeContext(userId, journeys);
   // Keep the active flight in the complete, chronological itinerary.
-  const tripSort = useTripSort();
+  // The list sorts by a deferred copy of the chips' setting: a tap flips the
+  // chip at once (it reads the store itself) and React rebuilds the list in
+  // the background, keeping the old order on screen until the new one is
+  // ready — the chip spins for exactly that long (SortChip).
+  const tripSort = useDeferredValue(useTripSort());
   const tripSections = useMemo(
     () => tripListSections(journeys ?? [], now, heroId, homeContext.homeAt, tripSort).map(section => ({
       ...section,
@@ -420,19 +425,9 @@ export function Journeys() {
                 </ThemedText>
               );
               const chip = section.key === 'upcoming' && section.trips > 1
-                ? <SortChip
-                    what="upcoming trips"
-                    label={tripSort.upcoming === 'added' ? 'Recently added' : 'Next up'}
-                    other={tripSort.upcoming === 'added' ? 'Next up' : 'Recently added'}
-                    onPress={() => setTripSort({ upcoming: tripSort.upcoming === 'added' ? 'next' : 'added' })}
-                  />
+                ? <SortChip kind="upcoming" shown={tripSort.upcoming} />
                 : section === pastSections[0] && pastTrips > 1
-                  ? <SortChip
-                      what="past trips"
-                      label={tripSort.past === 'oldest' ? 'Oldest' : 'Latest'}
-                      other={tripSort.past === 'oldest' ? 'Latest' : 'Oldest'}
-                      onPress={() => setTripSort({ past: tripSort.past === 'oldest' ? 'latest' : 'oldest' })}
-                    />
+                  ? <SortChip kind="past" shown={tripSort.past} />
                   : null;
               if (!chip) return title;
               return (
@@ -538,12 +533,31 @@ export function Journeys() {
   );
 }
 
+const SORT_CHIPS = {
+  upcoming: { what: 'upcoming trips', labels: { next: 'Next up', added: 'Recently added' } },
+  past: { what: 'past trips', labels: { latest: 'Latest', oldest: 'Oldest' } },
+} as const;
+
 /** The sort switch beside a section heading, as in the trips-sort design:
  * a small pill naming the current order; a tap flips to the other one. The
  * pill is 28 points tall and pulled into the heading's line height, with a
- * hit slop that gives it the full 44-point target. */
-function SortChip({ what, label, other, onPress }: { what: string; label: string; other: string; onPress: () => void }) {
+ * hit slop that gives it the full 44-point target.
+ *
+ * It reads the setting itself, so its label changes on the tap, and spins
+ * while the list below still shows the previous order (`shown`, from the
+ * screen's deferred copy). On a short journal that is a frame or two and the
+ * spinner barely appears; on a long one it lasts as long as the wait does. */
+function SortChip<K extends keyof typeof SORT_CHIPS>({ kind, shown }: { kind: K; shown: TripSort[K] }) {
   const theme = useTheme();
+  const sort = useTripSort();
+  const value = sort[kind];
+  const { what, labels } = SORT_CHIPS[kind];
+  const options = Object.keys(labels) as TripSort[K][];
+  const next = options.find(o => o !== value)!;
+  const label = (labels as Record<string, string>)[value];
+  const other = (labels as Record<string, string>)[next];
+  const sorting = shown !== value;
+  const onPress = () => setTripSort({ [kind]: next } as Partial<TripSort>);
   return (
     <Pressable
       accessibilityRole="button"
@@ -551,14 +565,22 @@ function SortChip({ what, label, other, onPress }: { what: string; label: string
       accessibilityValue={{ text: label }}
       accessibilityHint={`Switches to ${other}`}
       hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+      accessibilityState={{ busy: sorting }}
       onPress={onPress}
       style={({ pressed }) => [styles.sortChip, { backgroundColor: theme.backgroundSelected }, pressed && styles.rowPressed]}>
-      <SymbolView
-        name={{ ios: 'arrow.up.arrow.down', android: 'swap_vert', web: 'swap_vert' }}
-        size={13}
-        weight="semibold"
-        tintColor={theme.tint}
-      />
+      {/* Same 13-point box either way, so the label doesn't shift. */}
+      <View style={styles.sortChipIcon}>
+        {sorting ? (
+          <ActivityIndicator size="small" color={theme.tint} style={styles.sortChipSpinner} />
+        ) : (
+          <SymbolView
+            name={{ ios: 'arrow.up.arrow.down', android: 'swap_vert', web: 'swap_vert' }}
+            size={13}
+            weight="semibold"
+            tintColor={theme.tint}
+          />
+        )}
+      </View>
       <ThemedText type="smallBold" style={[styles.sortChipText, { color: theme.text }]}>
         {label}
       </ThemedText>
@@ -978,6 +1000,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     // Centred on the heading's 18-point line instead of growing the header.
     marginBottom: Spacing.two - 5,
+  },
+  sortChipIcon: {
+    width: 13,
+    height: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // The small indicator is ~20 points; scaled into the icon's box.
+  sortChipSpinner: {
+    transform: [{ scale: 0.65 }],
   },
   sortChipText: {
     fontSize: 12,
