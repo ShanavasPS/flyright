@@ -85,9 +85,19 @@ export default function JourneysStack() {
         options={{ title: 'Choose a city', headerBackButtonDisplayMode: 'minimal' }}
       />
       <Stack.Screen name="home-base-period" options={{ title: 'Home period', headerShown: false }} />
+      {/* The avatar's door: who you are, your memberships, and the rows
+          into Settings and the account (screens/profile). */}
+      <Stack.Screen
+        name="profile"
+        options={{ title: 'Profile', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
+      />
+      <Stack.Screen
+        name="memberships"
+        options={{ title: 'Memberships', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
+      />
       <Stack.Screen
         name="settings"
-        options={{ title: 'Profile', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
+        options={{ title: 'Settings', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
       />
       <Stack.Screen
         name="manage-subscription"
@@ -115,16 +125,14 @@ export default function JourneysStack() {
         name="blocked"
         options={{ title: 'Blocked people', headerBackButtonDisplayMode: 'minimal' }}
       />
-      {/* On native, Clerk's UserProfileView brings its own navigation chrome;
-          the route header is hidden and onHostBack (see screens/account.tsx)
-          pops the route, so there's a single back button at every level. The
-          web UserProfile has no onHostBack, so web keeps the stack header. */}
+      {/* Native draws its own Account & security page (screens/account); the
+          web UserProfile keeps Clerk's, under the stack header. */}
       <Stack.Screen
         name="account"
         options={
           Platform.OS === 'web'
             ? { title: 'Account', headerBackTitle: 'Back' }
-            : { headerShown: false }
+            : { title: 'Account & security', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }
         }
       />
     </Stack>

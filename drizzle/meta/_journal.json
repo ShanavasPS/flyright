@@ -120,6 +120,13 @@
       "when": 1790564681826,
       "tag": "0016_trip_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1791049108162,
+      "tag": "0017_memberships",
+      "breakpoints": true
     }
   ]
 }

@@ -316,6 +316,33 @@ function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
+              {/* Name and photo, and a frequent flyer card added or edited:
+                the same card modal, Cancel and Save in the header, the form
+                ending at the keyboard (components/keyboard-form). */}
+              <Stack.Screen
+                name="edit-profile"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
+              <Stack.Screen
+                name="change-email"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
+              <Stack.Screen
+                name="membership"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
               {/* "Share an update" — a photo and a line from inside a trip,
                 for the people following it. The same card modal as the
                 notes editor, for the same keyboard reason. */}
@@ -486,7 +513,7 @@ function RootLayout() {
               />
               <Stack.Screen
                 name="delete-account"
-                options={{ title: "Delete account" }}
+                options={{ title: "Delete account", headerBackButtonDisplayMode: "minimal" }}
               />
               <Stack.Screen name="support" options={{ title: "Support" }} />
               {/* Universal-link landings pushed over the tabs: a plain back

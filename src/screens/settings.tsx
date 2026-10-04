@@ -1,7 +1,5 @@
-import { useAuth, useUser } from '@clerk/expo';
+import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
-import * as Application from 'expo-application';
-import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
@@ -19,20 +17,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../convex/_generated/api';
 
-import { SupportUnreadBadge } from '@/components/support-unread-badge';
 import { appBadgePermission } from '@/services/app-badge';
 import { OptionPicker } from '@/components/option-picker';
-import { Avatar } from '@/components/avatar';
+import { SectionLabel } from '@/components/grouped-list';
 import { ThemedSwitch } from '@/components/themed-switch';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { UpdateAvailableCard } from '@/components/update-available-card';
 import { CONVEX_URL } from '@/constants/config';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useSignedOutNotice } from '@/hooks/use-signed-out-notice';
 import { useHomeContext } from '@/hooks/use-home-base';
 import { useTheme } from '@/hooks/use-theme';
 import { useJourneys } from '@/services/journeys';
+import { getMembershipLock, setMembershipLock, unlockLabel } from '@/services/memberships';
 import { planLabel } from '@/services/plan-label';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import {
@@ -56,7 +52,6 @@ import {
   billingAvailable,
   restorePurchases,
   useActiveSubscriptions,
-  useHasPro,
   useProEntitlement,
 } from '@/services/purchases';
 
@@ -64,90 +59,6 @@ function renewalLine(expirationDate: string | null, willRenew: boolean): string 
   if (!expirationDate) return 'Lifetime access — yours forever';
   const date = new Date(expirationDate).toLocaleDateString();
   return willRenew ? `Renews ${date}` : `Expires ${date}`;
-}
-
-/** "1.0.0 (6)" from the installed binary; falls back to the JS config
- * version on web, where native version APIs return null. */
-function versionLine(): string {
-  const version = Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '';
-  const build = Application.nativeBuildVersion;
-  return `Version ${version}${build ? ` (${build})` : ''}`;
-}
-
-/** Placeholder shell shown while Clerk initializes (a network round trip on
- * fresh installs) — keeps the card's footprint so the content doesn't jump. */
-function AccountCardSkeleton() {
-  return (
-    <ThemedView type="backgroundElement" style={[styles.card, styles.profileRow]}>
-      <ThemedView type="backgroundSelected" style={styles.avatar} />
-      <View style={styles.profileText}>
-        <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '55%' }]} />
-        <ThemedView type="backgroundSelected" style={[styles.skeletonBar, { width: '40%' }]} />
-      </View>
-    </ThemedView>
-  );
-}
-
-function AccountCard() {
-  const router = useRouter();
-  const theme = useTheme();
-  // Native auth components can leave the session briefly 'pending' mid-flow;
-  // don't flash the signed-out card while that resolves.
-  const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
-  const { user } = useUser();
-  const hasPro = useHasPro();
-  // A session that ran out on its own: say so, instead of greeting a
-  // traveller who had an account like a stranger.
-  const signedOutNotice = useSignedOutNotice();
-
-  if (!isLoaded) return <AccountCardSkeleton />;
-
-  if (!isSignedIn) {
-    return (
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="subtitle">{signedOutNotice ? 'You were signed out' : 'Account'}</ThemedText>
-        <ThemedText type="small">
-          {signedOutNotice
-            ? `Your sign-in ran out${signedOutNotice.email ? ` for ${signedOutNotice.email}` : ''}. Your trips are still on this phone — sign back in to keep syncing.`
-            : 'Keep your purchases and travel history safe across devices.'}
-        </ThemedText>
-        <Pressable onPress={() => router.push('/sign-in')}>
-          <ThemedText type="link">
-            {signedOutNotice ? 'Sign back in' : 'Sign in or create account'}
-          </ThemedText>
-        </Pressable>
-      </ThemedView>
-    );
-  }
-
-  // Email-OTP users have no name yet, so the email becomes the title line.
-  // Clerk's imageUrl always resolves — initials placeholder when no photo.
-  const email = user?.primaryEmailAddress?.emailAddress;
-  const name = user?.fullName;
-
-  return (
-    <Pressable
-      onPress={() => router.push('/account')}
-      style={({ pressed }) => pressed && styles.pressedRow}>
-      <ThemedView type="backgroundElement" style={[styles.card, styles.profileRow]}>
-        <Avatar name={name ?? email ?? ''} imageUrl={user?.imageUrl ?? null} size={48} pro={hasPro} />
-        <View style={styles.profileText}>
-          <ThemedText numberOfLines={1}>{name ?? email ?? 'Signed in'}</ThemedText>
-          {name && email && (
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {email}
-            </ThemedText>
-          )}
-        </View>
-        <SymbolView
-          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-          size={14}
-          weight="bold"
-          tintColor={theme.textSecondary}
-        />
-      </ThemedView>
-    </Pressable>
-  );
 }
 
 /** Inset hairline between rows of a grouped card. */
@@ -396,6 +307,48 @@ function TravelDayRow() {
   );
 }
 
+/** One rounded group; the hairline every row draws under itself is
+ * clipped off the last one. */
+function SettingsGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemedView type="backgroundElement" style={styles.group}>
+      <View style={styles.groupInner}>{children}</View>
+    </ThemedView>
+  );
+}
+
+/** "Face ID for memberships": membership numbers stay masked until the
+ * phone's own lock passes (services/memberships). */
+function MembershipLockRow() {
+  const [enabled, setEnabled] = useState(getMembershipLock);
+  const [label, setLabel] = useState(Platform.OS === 'ios' ? 'Face ID' : 'Screen lock');
+  useEffect(() => {
+    void unlockLabel().then((l) => setLabel(l === 'passcode' ? (Platform.OS === 'ios' ? 'Passcode' : 'Screen lock') : l[0].toUpperCase() + l.slice(1)));
+  }, []);
+  if (Platform.OS === 'web') return null;
+  return (
+    <>
+      <View style={styles.row}>
+        <View style={styles.rowLabel}>
+          <ThemedText>{label} for memberships</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Needed to show or copy a membership number.
+          </ThemedText>
+        </View>
+        <ThemedSwitch
+          testID="membership-lock-toggle"
+          value={enabled}
+          onValueChange={(on) => {
+            setEnabled(on);
+            setMembershipLock(on);
+          }}
+        />
+      </View>
+      <RowSeparator />
+    </>
+  );
+}
+
 export function Settings() {
   const router = useRouter();
   const theme = useTheme();
@@ -446,75 +399,21 @@ export function Settings() {
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}>
-        {/* The screen is named in the navigation bar (see the home stack),
-            which is where the door it opens from — the avatar — expects it. */}
-        <UpdateAvailableCard />
-
-        <AccountCard />
-
-        <ThemedView type="backgroundElement" style={styles.group}>
+        {/* Reached from Profile: the switches. Who you are, Pro and help
+            live on Profile (screens/profile). */}
+        <SectionLabel>Notifications</SectionLabel>
+        <SettingsGroup>
           <PushNotificationsRow />
           <TravelDayRow />
+        </SettingsGroup>
+
+        <SectionLabel>Privacy</SectionLabel>
+        <SettingsGroup>
           <TripVisibilityRow />
           <DiscoverableRow />
-
-          <HomeBaseRow />
-          <AppearanceRow />
-
-          {billingAvailable && (
-            <>
-              <Pressable
-                onPress={() => router.push(pro ? '/manage-subscription' : '/pro-offer')}
-                style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
-                <View style={styles.rowLabel}>
-                  <ThemedText>{pro ? 'FlyRight Pro' : 'Get FlyRight Pro'}</ThemedText>
-                  {pro && (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {renewalLine(pro.expirationDate, pro.willRenew)}
-                    </ThemedText>
-                  )}
-                </View>
-                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.rowValue}>
-                  {pro ? planLabel(pro.productIdentifier) : 'Free plan'}
-                </ThemedText>
-                {chevron}
-              </Pressable>
-
-              <RowSeparator />
-
-              <Pressable
-                onPress={onRestore}
-                style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
-                <ThemedText themeColor="tint">Restore purchases</ThemedText>
-              </Pressable>
-            </>
-          )}
-
-          <RowSeparator />
-
-          {/* Two different doors behind one row: signed in it opens the
-              conversations (replies land there and by email), so it is named
-              for them and carries the unread count; anonymous it is the form
-              itself, since there is nothing to list. */}
-          <Pressable
-            testID="contact-support"
-            onPress={() => router.push(isSignedIn ? '/messages' : '/contact')}
-            style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
-            <View style={styles.rowLabel}>
-              <ThemedText>{isSignedIn ? 'Support messages' : 'Contact support'}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {isSignedIn
-                  ? 'Your conversations — we reply by email.'
-                  : 'Send us a message — we reply by email.'}
-              </ThemedText>
-            </View>
-            <SupportUnreadBadge />
-            {chevron}
-          </Pressable>
-
+          <MembershipLockRow />
           {isSignedIn && (
             <>
-              <RowSeparator />
               <Pressable
                 testID="blocked-people"
                 onPress={() => router.push('/blocked')}
@@ -527,9 +426,38 @@ export function Settings() {
                 </View>
                 {chevron}
               </Pressable>
+              <RowSeparator />
             </>
           )}
-        </ThemedView>
+        </SettingsGroup>
+
+        <SectionLabel>Preferences</SectionLabel>
+        <SettingsGroup>
+          <HomeBaseRow />
+          <AppearanceRow />
+        </SettingsGroup>
+
+        {billingAvailable && (
+          <>
+            <SectionLabel>Purchases</SectionLabel>
+            <SettingsGroup>
+              <Pressable
+                testID="restore-purchases"
+                onPress={onRestore}
+                style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}>
+                <View style={styles.rowLabel}>
+                  <ThemedText themeColor="tint">Restore purchases</ThemedText>
+                  {pro && (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {renewalLine(pro.expirationDate, pro.willRenew)}
+                    </ThemedText>
+                  )}
+                </View>
+              </Pressable>
+              <RowSeparator />
+            </SettingsGroup>
+          </>
+        )}
 
         {pro && activeSubscriptions.length > 1 && (
           <ThemedText type="small" themeColor="textSecondary">
@@ -537,15 +465,6 @@ export function Settings() {
             longest-running one unlocks Pro; the others expire on their own.
           </ThemedText>
         )}
-
-        <ThemedText type="small">
-          FlyRight generates claim documents for you to send yourself. It is not a law
-          firm and takes no commission — you keep 100% of what you recover.
-        </ThemedText>
-
-        <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
-          {versionLine()}
-        </ThemedText>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -574,6 +493,10 @@ const styles = StyleSheet.create({
   },
   group: {
     borderRadius: Spacing.four,
+    overflow: 'hidden',
+  },
+  groupInner: {
+    marginBottom: -StyleSheet.hairlineWidth,
   },
   row: {
     flexDirection: 'row',

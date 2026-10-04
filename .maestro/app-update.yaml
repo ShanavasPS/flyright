@@ -17,7 +17,7 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Flights"
     timeout: 90000
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: "Update available.*"
     timeout: 30000

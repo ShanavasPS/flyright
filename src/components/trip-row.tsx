@@ -1,3 +1,4 @@
+import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
@@ -58,8 +59,12 @@ export function TripRow({
   live = false,
   liveMark = false,
   highlight,
+  earning,
 }: {
   trip: RowTrip;
+  /** "Earns Qpoints · Privilege Club Gold" — a frequent flyer card on this
+   * phone earns on the flight (services/loyalty-programmes). */
+  earning?: string | null;
   now: Date;
   /** The meta line's right slot when something outranks the countdown — the
    * journal puts the money moment there. */
@@ -173,6 +178,16 @@ export function TripRow({
             distanceKm: trip.distanceKm,
           }}
         />
+        {earning ? (
+          <View style={styles.earningRow}>
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <SymbolView name={{ ios: 'star.circle.fill', android: 'stars', web: 'stars' }} size={13} tintColor={theme.warning} />
+            </View>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.earningText}>
+              {earning}
+            </ThemedText>
+          </View>
+        ) : null}
         {/* The journal peeks through: the note's first line, so the list
             reads as a diary and not just a timetable. */}
         {trip.notes && (
@@ -276,6 +291,14 @@ function firstLine(notes: string): string {
 }
 
 const styles = StyleSheet.create({
+  earningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+  },
+  earningText: {
+    flex: 1,
+  },
   clock: { fontVariant: ['tabular-nums'] },
   clockBlock: { alignItems: 'flex-end', gap: 1 },
   clockLabel: { fontSize: 10, lineHeight: 13, textTransform: 'uppercase', letterSpacing: 1 },

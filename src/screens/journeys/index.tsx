@@ -1,5 +1,7 @@
 import { useProPreferences } from '@/services/pro-prompts';
 import { useHasPro } from '@/services/purchases';
+import { carrierCode, earningLine } from '@/services/loyalty-programmes';
+import { useMemberships } from '@/services/memberships';
 import { useAuth, useUser } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Link, useRouter } from 'expo-router';
@@ -129,6 +131,9 @@ export function Journeys() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
+  // Frequent flyer cards on this phone: an upcoming flight that earns in one
+  // says so on its row (services/loyalty-programmes).
+  const memberships = useMemberships(userId);
   const { user } = useUser();
   const firstName = user?.firstName ?? user?.fullName?.split(' ')[0] ?? null;
   // Decided once per account per launch, so it can't flip mid-session.
@@ -329,7 +334,7 @@ export function Journeys() {
             loading={!authSettled}
             imageUrl={user?.imageUrl ?? null}
             name={user?.fullName ?? user?.firstName ?? null}
-            onPress={() => router.push('/settings')}
+            onPress={() => router.push('/profile')}
           />
           <View style={styles.titleActions}>
             <MessagesButton />
@@ -470,6 +475,11 @@ export function Journeys() {
                     owed={owedByJourney.get(row.id)}
                     onSelect={twoPane ? () => setSelectedId(row.id) : undefined}
                     selected={twoPane && detailId === row.id}
+                    earning={
+                      memberships?.length && row.mode === 'flight' && Date.parse(row.scheduledDeparture) > now.getTime()
+                        ? earningLine(carrierCode(row.number), memberships)
+                        : null
+                    }
                   />
                 </TripGroupFrame>
               );
@@ -795,8 +805,11 @@ function JourneyItem({
   selected,
   hero,
   onViewLive,
+  earning,
 }: {
   row: JourneyRow;
+  /** "Earns Qpoints · Privilege Club Gold" under the leg, or null. */
+  earning?: string | null;
   now: Date;
   /** This flight is in the air: the row runs its light and counts down to
    * the landing (see TripRow). */
@@ -824,6 +837,7 @@ function JourneyItem({
     <TripRow
       trip={row}
       now={now}
+      earning={earning}
       live={live}
       liveMark={liveMark}
       // Where it is along the route, so the plane sits where the flight is

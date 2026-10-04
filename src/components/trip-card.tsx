@@ -12,65 +12,108 @@ import type { TripCardCell, TripCardClock, TripCardField, TripCardModel, TripCar
 
 const TWO_DAYS_MS = 48 * 3_600_000;
 
-/** The trip card between the map and the route (services/trip-card): the
- * flight and its status, the clock that matters, then everything known
- * about the trip in fixed places — the departure airport's facts, the
- * ticket, the belt. Every box opens the trip-details editor on its field. */
-export function TripCard({
+/** The trip page's head (services/trip-card), A2 layout: the flight and its
+ * status as a plain row over the route, then — under the route's times —
+ * the clock that matters as one compact strip. */
+export function TripStatusRow({
   model,
   journey,
-  onEdit,
   action,
 }: {
   model: TripCardModel;
   journey: Pick<HeroJourney, 'number' | 'carrier'>;
-  onEdit?: (field: TripCardField) => void;
   /** Inline share / ··· for the embedded pane, which has no header. */
   action?: React.ReactNode;
 }) {
-  const theme = useTheme();
   return (
-    <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.hairline }]}>
-      <View style={styles.top}>
-        <AirlineLogo number={journey.number} carrier={journey.carrier} size={32} />
-        <ThemedText type="smallBold" themeColor="heading" style={styles.flight} numberOfLines={1}>
-          {flightLabel(journey)}
-        </ThemedText>
-        <StatusPill text={model.status.text} tone={model.status.tone} />
-        {action}
-      </View>
+    <View style={styles.top}>
+      <AirlineLogo number={journey.number} carrier={journey.carrier} size={24} />
+      <ThemedText type="smallBold" themeColor="heading" style={styles.flight} numberOfLines={1}>
+        {flightLabel(journey)}
+      </ThemedText>
+      <StatusPill text={model.status.text} tone={model.status.tone} />
+      {action}
+    </View>
+  );
+}
 
-      {model.clock && (
-        <View style={styles.clockBlock}>
-          <Clock clock={model.clock} />
-          {model.line && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {model.line}
+/** "Departs in 4d 21h" / "2:14:05", "Landed 16:58": the countdown or the
+ * time, small enough to sit under the route, with the real times of a flown
+ * trip and the in-flight progress under it. */
+export function TripClockStrip({ model }: { model: TripCardModel }) {
+  const theme = useTheme();
+  if (!model.clock) return null;
+  const tone = model.clock.kind === 'countdown' ? model.clock.tone : 'normal';
+  const tint = tone === 'late' ? theme.warning : tone === 'boarding' ? theme.success : null;
+  return (
+    <View style={styles.clockBlock}>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.clockStrip, tint ? { backgroundColor: `${tint}1F` } : null]}>
+        <SymbolView
+          name={{ ios: 'timer', android: 'timer', web: 'timer' }}
+          size={16}
+          tintColor={tint ?? theme.tint}
+        />
+        <Clock clock={model.clock} />
+      </ThemedView>
+      {model.line && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {model.line}
+        </ThemedText>
+      )}
+      {model.progress && (
+        <View style={styles.progressBlock}>
+          <View style={[styles.track, { backgroundColor: theme.hairline }]}>
+            <View
+              style={[
+                styles.fill,
+                { backgroundColor: theme.tint, width: `${Math.round(model.progress.fraction * 100)}%` },
+              ]}
+            />
+          </View>
+          {!!model.progress.caption && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.progressCaption}>
+              {model.progress.caption}
             </ThemedText>
-          )}
-          {model.progress && (
-            <View style={styles.progressBlock}>
-              <View style={[styles.track, { backgroundColor: theme.hairline }]}>
-                <View
-                  style={[
-                    styles.fill,
-                    { backgroundColor: theme.tint, width: `${Math.round(model.progress.fraction * 100)}%` },
-                  ]}
-                />
-              </View>
-              {!!model.progress.caption && (
-                <ThemedText type="small" themeColor="textSecondary" style={styles.progressCaption}>
-                  {model.progress.caption}
-                </ThemedText>
-              )}
-            </View>
           )}
         </View>
       )}
+    </View>
+  );
+}
 
-      {model.sections.map((section) => (
+const TICKET = 'Your ticket';
+
+/** One of the trip's fact cards: 'airport' is the departure airport's
+ * terminal, check-in, gate and boarding with the belt at the other end;
+ * 'ticket' is the seat and booking. Every box opens the trip-details editor
+ * on its field. `children` go under the boxes (the ticket's earning line);
+ * the airport card carries the model's footnote. Nothing when the model has
+ * no such section (a flown trip with nothing recorded shows its ticket
+ * alone). */
+export function TripFactsCard({
+  model,
+  part,
+  onEdit,
+  children,
+  testID,
+}: {
+  model: TripCardModel;
+  part: 'airport' | 'ticket';
+  onEdit?: (field: TripCardField) => void;
+  children?: React.ReactNode;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  const sections = model.sections.filter((s) => (part === 'ticket') === (s.title === TICKET));
+  if (!sections.length) return null;
+  const footnote = part === 'airport' ? model.footnote : null;
+  return (
+    <ThemedView testID={testID} type="backgroundElement" style={[styles.card, { borderColor: theme.hairline }]}>
+      {sections.map((section, i) => (
         <View key={section.title}>
-          <View style={[styles.sectionHead, { borderTopColor: theme.hairline }]}>
+          <View style={[styles.sectionHead, i === 0 && styles.firstHead, { borderTopColor: theme.hairline }]}>
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
               {section.title.toUpperCase()}
             </ThemedText>
@@ -86,11 +129,11 @@ export function TripCard({
           </View>
         </View>
       ))}
-
-      {model.footnote && (
+      {children}
+      {footnote && (
         <View style={[styles.footnote, { borderTopColor: theme.hairline }]}>
           <ThemedText type="small" themeColor="textSecondary">
-            {model.footnote}
+            {footnote}
           </ThemedText>
         </View>
       )}
@@ -245,9 +288,7 @@ const styles = StyleSheet.create({
   top: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two + Spacing.half,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three - Spacing.half,
+    gap: Spacing.two,
   },
   flight: {
     flex: 1,
@@ -264,30 +305,37 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   clockBlock: {
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two + Spacing.half,
-    paddingBottom: Spacing.three - Spacing.half,
     gap: Spacing.one + Spacing.half,
   },
+  clockStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two + Spacing.half,
+    minHeight: 48,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.three + Spacing.half,
+    borderRadius: Spacing.three,
+  },
   clockRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'baseline',
-    flexWrap: 'wrap',
   },
   clockLabel: {
-    fontSize: 15,
-    marginRight: Spacing.two + Spacing.half,
+    flex: 1,
+    fontSize: 14,
+    marginRight: Spacing.two,
   },
   clockBig: {
-    fontSize: 52,
-    lineHeight: 58,
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: 800,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
     fontVariant: ['tabular-nums'],
   },
   clockSmall: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: 700,
     fontVariant: ['tabular-nums'],
   },
@@ -310,6 +358,9 @@ const styles = StyleSheet.create({
   progressCaption: {
     fontSize: 13,
     textAlign: 'center',
+  },
+  firstHead: {
+    borderTopWidth: 0,
   },
   sectionHead: {
     borderTopWidth: 1,

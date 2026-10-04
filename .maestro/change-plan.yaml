@@ -19,9 +19,10 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Flights"
     timeout: 90000
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
-    visible: "Restore purchases"
+    visible:
+      id: "profile-pro"
     timeout: 10000
 - runFlow:
     when:

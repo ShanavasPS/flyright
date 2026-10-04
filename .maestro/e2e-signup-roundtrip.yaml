@@ -28,7 +28,7 @@ tags:
 - extendedWaitUntil:
     visible: "Flights"
     timeout: 90000
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: ${ORIGINAL_MATCH}
     timeout: 30000
@@ -54,7 +54,7 @@ tags:
 - extendedWaitUntil:
     visible: ".*(Flights|Settings|Welcome|Every flight).*"
     timeout: 60000
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: ".*e2e-.*"
     timeout: 30000
@@ -82,7 +82,7 @@ tags:
 - extendedWaitUntil:
     visible: ".*(Flights|Settings|Welcome|Every flight).*"
     timeout: 60000
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: ${ORIGINAL_MATCH}
     timeout: 30000

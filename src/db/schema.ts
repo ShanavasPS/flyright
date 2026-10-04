@@ -200,3 +200,40 @@ export const evidence = sqliteTable('evidence', {
   note: text('note'),
   createdAt: text('created_at').notNull(),
 });
+
+/** The traveller's frequent flyer memberships (docs/memberships.md): one row
+ * per programme card on the Memberships screen. Local to this device and
+ * never synced — a membership number is the traveller's own, and nothing
+ * on the server needs it. Everything past the number is optional and typed
+ * by the traveller; no airline is asked. */
+export const memberships = sqliteTable('memberships', {
+  id: text('id').primaryKey(),
+  /** See journeys.userId: which account added it, null while anonymous. */
+  userId: text('user_id'),
+  /** A programme in services/loyalty-programmes, or 'other'. */
+  programme: text('programme').notNull(),
+  /** Only for 'other': the airline and the programme as the traveller
+   *  names them. */
+  customAirline: text('custom_airline'),
+  customProgramme: text('custom_programme'),
+  /** The membership number exactly as typed. */
+  number: text('number').notNull(),
+  /** Tier name as the programme words it ("Gold"); null for the entry tier. */
+  tier: text('tier'),
+  /** Redeemable balance (miles, Avios, points) the traveller last saw. */
+  balance: integer('balance'),
+  /** Qualifying credit so far this period and the next tier's threshold,
+   *  in the programme's own unit (Qpoints, tier miles, XP …). */
+  qualifying: integer('qualifying'),
+  qualifyingTarget: integer('qualifying_target'),
+  /** Last month the current tier holds, 'YYYY-MM'. */
+  tierUntil: text('tier_until'),
+  /** Miles that run out, and when ('YYYY-MM-DD'). */
+  expiringAmount: integer('expiring_amount'),
+  expiringOn: text('expiring_on'),
+  /** Card order in the stack, lowest first. */
+  position: integer('position').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});

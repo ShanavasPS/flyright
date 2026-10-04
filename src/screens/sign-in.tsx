@@ -10,11 +10,11 @@ import { useDismissOnce } from '@/hooks/use-dismiss-once';
  * instance enables). Presented as a form sheet; onDismiss also fires when the
  * flow completes, so the sheet closes itself after sign-in. Pass ?next=<href>
  * to land back on the screen that asked (an invite page, the People tab);
- * Settings is the default.
+ * Profile is the default.
  */
 export function SignIn() {
   const { next } = useLocalSearchParams<{ next?: string }>();
-  const target = typeof next === 'string' && next.startsWith('/') ? (next as Href) : '/settings';
+  const target = typeof next === 'string' && next.startsWith('/') ? (next as Href) : '/profile';
   const dismiss = useDismissOnce(target);
 
   return (

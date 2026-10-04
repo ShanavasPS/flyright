@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 import { SymbolView } from 'expo-symbols';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
@@ -28,8 +28,8 @@ import { SheenSweep } from '@/components/sheen-card';
 import { FlashToast } from '@/components/flash-toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TravelDayTimeline } from '@/components/travel-day-timeline';
-import { TripCard } from '@/components/trip-card';
+import { TravelProgressStrip } from '@/components/travel-progress-strip';
+import { TripClockStrip, TripFactsCard, TripStatusRow } from '@/components/trip-card';
 import { TripDocuments } from '@/components/trip-documents';
 import { TripPhotos } from '@/components/trip-photos';
 import { useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
@@ -82,6 +82,7 @@ import {
   DEFAULT_PLAN,
   EMPTY_FACTS,
   flightProgress,
+  hasLanded,
   stageRules,
   travelWindow,
   type TravelStage,
@@ -89,6 +90,8 @@ import {
 import { stagePlanFor } from '@/services/travel-day-plan';
 import { tripCard } from '@/services/trip-card';
 import { tripFacts } from '@/services/trip-facts';
+import { carrierCode, earningLine } from '@/services/loyalty-programmes';
+import { useMemberships } from '@/services/memberships';
 import { visibilityChip, visibilityOf } from '@/services/trip-visibility';
 import { focusWorldOn } from '@/services/world-focus';
 import { ALL_TIME } from '@/services/world-period';
@@ -135,12 +138,6 @@ export function JourneyDetail({
   // Ticks so the travel-day timeline stays live while open; the coarser
   // claim-window math reads the same clock and doesn't mind the updates.
   const now = useNow(60_000).getTime();
-  // Opening the trip-progress card brings its steps into view, as the
-  // status sheet does: the card sits low on the page, and steps that open
-  // below the fold look like a tap that did nothing.
-  const scrollRef = useRef<ScrollView>(null);
-  const progressY = useRef(0);
-  const revealProgress = useRef(false);
   const router = useRouter();
   const { userId, isLoaded: authLoaded } = useAuth();
   const isDemo = isDemoJourneyId(journeyId);
@@ -325,15 +322,23 @@ export function JourneyDetail({
   const travelWin = !isDemo && row ? travelWindow(row, travelState, new Date(now), travelPlan) : null;
   const travelPhase = travelWin?.phase ?? 'unsupported';
   const travelActive = !proLocked && (travelPhase === 'reminder' || travelPhase === 'live');
-  // Before the window the steps still show, locked, so the traveler knows
-  // what the day will look like and when the card comes alive.
-  const travelPreview = !proLocked && travelPhase === 'before';
-  // The trip log is the whole story for manual entries and forgotten flights;
-  // every other state gets the notes as their own card underneath.
-  const showTripLog = !disruption && !travelActive && !travelPreview && journalOnly;
   const openNotes = row
     ? () => router.push({ pathname: '/journey-note', params: { journeyId: row.id } })
     : undefined;
+
+  // Which moment of the trip the page is laid out for (A2): before the
+  // travel window, the travel day itself, landed inside the window, or a
+  // trip in the past. orderedSlots says what leads in each.
+  const landedNow = hasLanded(travelState.stage);
+  // Free users get a free delay check once the flight is down.
+  const delayCheck = proLocked && isLookupable && !!row && Date.parse(row.scheduledArrival) < now && !disruption;
+  const moment: TripMoment = travelActive
+    ? landedNow
+      ? 'landed'
+      : 'travel'
+    : tripAge > 0
+      ? 'past'
+      : 'saved';
 
   // Journal entries without user-entered times store the placeholder noon
   // pair — no schedule worth showing. A lone entered time reads as a departure.
@@ -471,15 +476,10 @@ export function JourneyDetail({
         {/* The travel-day timeline made the tall path (title + timeline +
             verdict) overflow smaller screens — everything scrolls now. */}
         <ScrollView
-          ref={scrollRef}
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          onContentSizeChange={() => {
-            if (!revealProgress.current) return;
-            revealProgress.current = false;
-            scrollRef.current?.scrollTo({ y: Math.max(0, progressY.current - Spacing.three), animated: true });
-          }}>
+>
         {mapSource && (
           <RouteMap
             journey={mapSource}
@@ -494,17 +494,22 @@ export function JourneyDetail({
           />
         )}
 
-        {/* The trip card: its status and clock, then everything known —
-            the departure airport's facts, the ticket, the belt — in the same
-            places in every state. Each box opens the details editor. */}
-        {card && row && (
-          <TripCard
-            model={card}
-            journey={journey}
-            onEdit={(field) => router.push({ pathname: '/trip-details', params: { journeyId: row.id, field } })}
-            action={embedded ? inlineActions : undefined}
-          />
-        )}
+        {/* The head (A2): the flight and its status, the route with its
+            times, and the countdown — or the landing — as one small strip
+            under them. Everything else is a card below, in the order the
+            trip's moment needs it. */}
+        {card && <TripStatusRow model={card} journey={journey} action={embedded ? inlineActions : undefined} />}
+
+        <RouteHero
+          journey={journey}
+          now={now}
+          schedule={schedule}
+          progress={liveProgress}
+          eyebrow={!card}
+          action={!card && embedded ? inlineActions : null}
+        />
+
+        {card && <TripClockStrip model={card} />}
 
         {status.error instanceof FlightLookupError && status.error.signInRequired && (
           <Card>
@@ -519,15 +524,6 @@ export function JourneyDetail({
           </Card>
         )}
 
-        <RouteHero
-          journey={journey}
-          now={now}
-          schedule={schedule}
-          progress={liveProgress}
-          eyebrow={!card}
-          action={!card && embedded ? inlineActions : null}
-        />
-
         {moveTo && row && (
           <MoveCard
             to={moveTo}
@@ -537,123 +533,107 @@ export function JourneyDetail({
           />
         )}
 
-        {!isDemo && row && proLocked && <ProTripCard trip={row} />}
         {!proLocked && status.data && (() => {
           const outlook = inboundOutlook(status.data);
           return outlook ? <InboundCard outlook={outlook} /> : null;
         })()}
 
-        {/* Keep airport codes within reach, before the travel-day checklist. */}
-        {!isDemo && row && (travelActive || travelPreview || tripAge <= 0) && (
-          <BoardingPassCard row={row} prominent />
-        )}
-
-        {(travelActive || travelPreview) && row && (
-          <View
-            onLayout={(e) => {
-              progressY.current = e.nativeEvent.layout.y;
-            }}>
-            <TravelDayTimeline
-              onToggle={(open) => {
-                revealProgress.current = open;
-              }}
-              journey={row}
-              state={travelState}
-              facts={facts}
-              plan={travelPlan}
-              action={shareActions}
-              locked={travelPreview}
-              unlocksAt={travelWin?.startsAt}
-              title={travelPreview ? 'Upcoming trip' : 'Trip progress'}
-              // Before the window this card IS the upcoming-trip card, so the
-              // summary that used to have its own card sits under the steps.
-              footer={
-                travelPreview ? (
-                  <View style={styles.timelineFooter}>
-                    <ThemedText type="small">
-                      You&apos;ll fly {Math.round(journey.distanceKm).toLocaleString()} km
-                      {routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.
-                    </ThemedText>
-                    {!journalOnly && (
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {status.isFetching
-                          ? 'Checking the latest status…'
-                          : "We're watching this flight. If a delay makes you eligible for compensation, you'll know here first."}
-                      </ThemedText>
-                    )}
-                  </View>
-                ) : undefined
-              }
-              onAdvance={(stage: TravelStage) => {
-                void advanceStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
-              }}
-              onRewind={(stage: TravelStage) => {
-                void rewindStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
-              }}
-              onUndo={() => {
-                void undoStage(row.id, travelRules).then(() => reconcileTravelDay());
-              }}
-            />
-          </View>
-        )}
-
-        {/* What the traveller shares with the people following this trip,
-            and the row to share more — from the day they fly until a day
-            after landing. Under the travel day, above the verdict: the
-            trip's own news before the airline's. */}
-        {CONVEX_URL && !isDemo && row && <OwnUpdatesCard row={row} travel={travelState} now={new Date(now)} />}
-
-        {proLocked && isLookupable && row && Date.parse(row.scheduledArrival) < now && !disruption && (
-          <Card>
-            <ThemedText type="smallBold">Was this flight delayed?</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">Check its final arrival delay for free. Preparing a claim with FlyRight needs Pro.</ThemedText>
-            <PrimaryButton label={status.isFetching ? 'Checking…' : 'Check eligibility'} disabled={status.isFetching} onPress={() => void status.refetch()} />
-            {status.isError && <ThemedText type="small" themeColor="textSecondary">We couldn’t retrieve the arrival. Try again later. Your flight is still saved.</ThemedText>}
-            {status.data && status.data.delayMinutes == null && <ThemedText type="small" themeColor="textSecondary">The final arrival time isn’t available yet.</ThemedText>}
-          </Card>
-        )}
-
-        {disruption ? (
-          <VerdictCard journey={journey} disruption={disruption} />
-        ) : travelActive || travelPreview ? null : journalOnly && row ? (
-          <TripLogCard
-            row={row}
-            userId={userId}
-            journal={journal ?? []}
-            now={now}
-            tripAge={tripAge}
-            action={shareActions}
-            onEditNotes={openNotes}
-          />
-        ) : (
-          <Card>
-            <View style={styles.cardHeader}>
-              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
-                Upcoming trip
-              </ThemedText>
-              {shareActions}
-            </View>
-            <ThemedText type="subtitle">We&apos;re watching this flight</ThemedText>
-            <ThemedText type="small">
-              {status.isFetching && !isDemo
-                ? 'Checking the latest status…'
-                : "No disruption so far. If a delay makes you eligible for compensation, you'll know here first."}
-            </ThemedText>
-          </Card>
-        )}
-
-        {!showTripLog && row && openNotes && (
-          <Card>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
-              Your journal
-            </ThemedText>
-            <JournalBlock row={row} userId={userId} now={now} tripAge={tripAge} onEditNotes={openNotes} />
-          </Card>
-        )}
-
-        {!isDemo && row && !(travelActive || travelPreview || tripAge <= 0) && (
-          <BoardingPassCard row={row} prominent={false} />
-        )}
+        {orderedSlots(moment).map((slot) => {
+          switch (slot) {
+            case 'pass':
+              return !isDemo && row ? (
+                <BoardingPassCard key={slot} row={row} prominent={moment === 'travel' || moment === 'saved'} />
+              ) : null;
+            case 'airport':
+              return card && row ? (
+                <TripFactsCard
+                  key={slot}
+                  testID="trip-airport-card"
+                  model={card}
+                  part="airport"
+                  onEdit={(field) => router.push({ pathname: '/trip-details', params: { journeyId: row.id, field } })}
+                />
+              ) : null;
+            case 'ticket':
+              return card && row ? (
+                <TripFactsCard
+                  key={slot}
+                  testID="trip-ticket-card"
+                  model={card}
+                  part="ticket"
+                  onEdit={(field) => router.push({ pathname: '/trip-details', params: { journeyId: row.id, field } })}>
+                  <EarningLine number={row.mode === 'flight' ? row.number : ''} />
+                </TripFactsCard>
+              ) : null;
+            case 'progress':
+              return travelActive && row ? (
+                <TravelProgressStrip
+                  key={slot}
+                  journey={row}
+                  state={travelState}
+                  facts={facts}
+                  plan={travelPlan}
+                  onAdvance={(stage: TravelStage) => {
+                    void advanceStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
+                  }}
+                  onRewind={(stage: TravelStage) => {
+                    void rewindStage(row.id, stage, travelRules).then(() => reconcileTravelDay());
+                  }}
+                  onUndo={() => {
+                    void undoStage(row.id, travelRules).then(() => reconcileTravelDay());
+                  }}
+                />
+              ) : null;
+            case 'updates':
+              // What the traveller shares with the people following this
+              // trip, from the day they fly until a day after landing.
+              return CONVEX_URL && !isDemo && row ? (
+                <OwnUpdatesCard key={slot} row={row} travel={travelState} now={new Date(now)} />
+              ) : null;
+            case 'pro':
+              return !isDemo && row && proLocked ? <ProTripCard key={slot} trip={row} /> : null;
+            case 'claims':
+              return delayCheck || disruption ? (
+                <View key={slot} style={styles.slot}>
+                  {delayCheck && (
+                    <Card>
+                      <ThemedText type="smallBold">Was this flight delayed?</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">Check its final arrival delay for free. Preparing a claim with FlyRight needs Pro.</ThemedText>
+                      <PrimaryButton label={status.isFetching ? 'Checking…' : 'Check eligibility'} disabled={status.isFetching} onPress={() => void status.refetch()} />
+                      {status.isError && <ThemedText type="small" themeColor="textSecondary">We couldn’t retrieve the arrival. Try again later. Your flight is still saved.</ThemedText>}
+                      {status.data && status.data.delayMinutes == null && <ThemedText type="small" themeColor="textSecondary">The final arrival time isn’t available yet.</ThemedText>}
+                    </Card>
+                  )}
+                  {disruption && <VerdictCard journey={journey} disruption={disruption} />}
+                </View>
+              ) : null;
+            case 'journal':
+              return row && openNotes ? (
+                <JournalCard
+                  key={slot}
+                  row={row}
+                  userId={userId}
+                  now={now}
+                  tripAge={tripAge}
+                  flown={moment === 'landed' || moment === 'past'}
+                  onEditNotes={openNotes}
+                />
+              ) : null;
+            case 'about':
+              return row || isDemo ? (
+                <AboutTripCard
+                  key={slot}
+                  row={row ?? null}
+                  journal={journal ?? []}
+                  tripAge={tripAge}
+                  watching={!journalOnly && !disruption && tripAge <= 0 && !travelActive}
+                  summary={tripAge <= 0 && journey.distanceKm ? `You'll fly ${Math.round(journey.distanceKm).toLocaleString()} km${routeSentence(journey) ? ` ${routeSentence(journey)}` : ''}.` : null}
+                  checking={status.isFetching && !isDemo}
+                  action={shareActions}
+                />
+              ) : null;
+          }
+        })}
 
         </ScrollView>
 
@@ -718,66 +698,104 @@ function shareTrip(journey: Journey) {
   }).catch(() => {});
 }
 
-/** The journal card for trips with no live data to show — manual entries and
- * flights the status provider has forgotten. Says where the entry came from
- * (so a hand-typed trip is never mistaken for a tracked one), puts the trip in
- * the context of the rest of the journal, and carries the traveler's own
- * notes. The distance and block time already sit in the hero. */
-function TripLogCard({
+type TripMoment = 'saved' | 'travel' | 'landed' | 'past';
+type Slot = 'pass' | 'airport' | 'ticket' | 'progress' | 'updates' | 'pro' | 'claims' | 'journal' | 'about';
+
+/** The trip page's cards by what the moment needs (the A2 study, design
+ * canvas "Trip details & Memberships alternatives"):
+ *  - saved: close the ticket's gaps first; the airport card is still empty.
+ *  - travel: the next hour, in the order it is needed — pass, gate, steps.
+ *  - landed: belt and bags, a claim if one is owed, then the journal while
+ *    it is fresh.
+ *  - past: any claim, then the memory; the airport record last. */
+function orderedSlots(moment: TripMoment): Slot[] {
+  switch (moment) {
+    case 'saved':
+      return ['ticket', 'pass', 'airport', 'pro', 'claims', 'journal', 'about'];
+    case 'travel':
+      return ['pass', 'airport', 'claims', 'progress', 'updates', 'ticket', 'journal', 'about'];
+    case 'landed':
+      return ['airport', 'claims', 'progress', 'journal', 'updates', 'about', 'ticket', 'pass'];
+    case 'past':
+      return ['claims', 'pro', 'journal', 'updates', 'ticket', 'airport', 'about', 'pass'];
+  }
+}
+
+/** "Earns Qpoints · Privilege Club Gold" under the ticket, when a
+ * membership on this phone earns on the flight's airline or an alliance
+ * partner (services/loyalty-programmes). Tapping it opens Memberships. */
+function EarningLine({ number }: { number: string }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const { userId } = useAuth();
+  const memberships = useMemberships(userId);
+  const line = memberships?.length ? earningLine(carrierCode(number), memberships) : null;
+  if (!line) return null;
+  return (
+    <Pressable
+      testID="trip-earning"
+      accessibilityRole="button"
+      accessibilityLabel={line}
+      accessibilityHint="Opens your memberships"
+      onPress={() => router.push('/memberships')}
+      style={({ pressed }) => [styles.earning, { borderTopColor: theme.hairline }, pressed && { opacity: 0.6 }]}>
+      <SymbolView name={{ ios: 'star.circle', android: 'stars', web: 'stars' }} size={16} tintColor={theme.warning} />
+      <ThemedText type="small" themeColor="heading" style={styles.earningText} numberOfLines={1}>
+        {line}
+      </ThemedText>
+      <SymbolView
+        name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+        size={12}
+        tintColor={theme.textSecondary}
+      />
+    </Pressable>
+  );
+}
+
+/** What the trip is in the traveller's story: where it came from, who sees
+ * it, what it means in the journal ("First time in Japan"), the share
+ * controls — and, before a tracked flight, that FlyRight is watching it. */
+function AboutTripCard({
   row,
-  userId,
   journal,
-  now,
   tripAge,
+  watching,
+  summary,
+  checking,
   action,
-  onEditNotes,
 }: {
-  row: JourneyRow;
-  userId: string | null | undefined;
+  row: JourneyRow | null;
   journal: JourneyRow[];
-  now: number;
   tripAge: number;
+  watching: boolean;
+  /** "You'll fly 1,853 km from Helsinki to London." before the trip. */
+  summary: string | null;
+  checking: boolean;
   action?: React.ReactNode;
-  onEditNotes?: () => void;
 }) {
   const theme = useTheme();
-  const manual = row.source === 'manual';
-  const facts = tripFacts(row, journal);
-  const details = tripDetailChips(row);
-  const added = formatDayLabelWithYear(row.createdAt);
-
+  const facts = row ? tripFacts(row, journal) : [];
+  const details = row ? tripDetailChips(row) : [];
+  const manual = row?.source === 'manual';
+  const added = row ? formatDayLabelWithYear(row.createdAt) : null;
+  if (!row && !watching) return null;
   return (
-    <Card>
+    <Card testID="trip-about">
       <View style={styles.cardHeader}>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
-          {tripAge > 0 ? 'Trip log' : 'Upcoming trip'}
+          {tripAge > 0 ? 'Trip log' : 'This trip'}
         </ThemedText>
         {action}
       </View>
-
-      <View style={styles.provenanceRow}>
-        <SymbolView
-          name={
-            manual
-              ? { ios: 'pencil', android: 'edit', web: 'edit' }
-              : {
-                  ios: 'antenna.radiowaves.left.and.right',
-                  android: 'sensors',
-                  web: 'sensors',
-                }
-          }
-          size={14}
-          tintColor={theme.textSecondary}
-        />
-        <ThemedText type="small" themeColor="textSecondary" style={styles.provenanceText}>
-          {manual ? `Added by you · ${added}` : `Tracked flight · added ${added}`}
-        </ThemedText>
-      </View>
-
       {(details.length > 0 || facts.length > 0) && (
         <View style={styles.factRow}>
-          {/* The traveler's own details lead in the tint wash; the journal's
-              computed facts follow on the field colour. */}
+          {facts.map((fact) => (
+            <View key={fact} style={[styles.factChip, { backgroundColor: `${theme.warning}1F` }]}>
+              <ThemedText type="smallBold" style={[styles.factText, { color: theme.warning }]}>
+                {fact}
+              </ThemedText>
+            </View>
+          ))}
           {details.map((detail) => (
             <View key={detail} style={[styles.factChip, { backgroundColor: `${theme.tint}1A` }]}>
               <ThemedText type="smallBold" style={[styles.factText, { color: theme.tint }]}>
@@ -785,34 +803,35 @@ function TripLogCard({
               </ThemedText>
             </View>
           ))}
-          {facts.map((fact) => (
-            <View key={fact} style={[styles.factChip, { backgroundColor: theme.field }]}>
-              <ThemedText type="smallBold" themeColor="heading" style={styles.factText}>
-                {fact}
-              </ThemedText>
-            </View>
-          ))}
         </View>
       )}
-
-      {onEditNotes && (
-        <>
-          <View style={[styles.divider, { backgroundColor: theme.hairline }]} />
-          <JournalBlock
-            row={row}
-            userId={userId}
-            now={now}
-            tripAge={tripAge}
-            onEditNotes={onEditNotes}
-            withDetails={false}
-          />
-        </>
+      {summary && <ThemedText type="small">{summary}</ThemedText>}
+      {watching && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {checking
+            ? 'Checking the latest status…'
+            : "We're watching this flight. If a delay makes you eligible for compensation, you'll know here first."}
+        </ThemedText>
       )}
-
+      {row && (
+        <View style={styles.provenanceRow}>
+          <SymbolView
+            name={
+              manual
+                ? { ios: 'pencil', android: 'edit', web: 'edit' }
+                : { ios: 'antenna.radiowaves.left.and.right', android: 'sensors', web: 'sensors' }
+            }
+            size={13}
+            tintColor={theme.textSecondary}
+          />
+          <ThemedText type="small" themeColor="textSecondary" style={styles.provenanceText}>
+            {manual ? `Added by you · ${added}` : `Tracked flight · added ${added}`}
+          </ThemedText>
+        </View>
+      )}
       {tripAge > CLAIM_WINDOW_MS && (
         <ThemedText type="small" themeColor="textSecondary">
-          Compensation claim windows (2–6 years depending on country) have likely passed for
-          this trip.
+          Compensation claim windows (2–6 years depending on country) have likely passed for this trip.
         </ThemedText>
       )}
     </Card>
@@ -820,49 +839,47 @@ function TripLogCard({
 }
 
 /** Who sees the trip, as a chip. The seat and booking used to sit here
- * too; the trip card above now shows them in every state. */
+ * too; the ticket card now shows them in every state. */
 function tripDetailChips(row: JourneyRow): string[] {
   return [visibilityChip(visibilityOf(row))].filter((chip): chip is string => !!chip);
 }
 
-/** Everything the traveler adds to a trip themselves: seat and booking
- * details, a star rating once it's flown, photos, and notes. The trip-log
- * card shows the detail chips in its own facts row, so it turns them off. */
-function JournalBlock({
+/** The trip journal (A2): photos, the traveller's note and — once flown —
+ * the rating. Empty, it is one dashed "Add photos" tile and a field-like
+ * row that opens the note; filled, the photo strip, the note in its own
+ * panel and the stars. Kept documents sit with it. */
+function JournalCard({
   row,
   userId,
   now,
   tripAge,
+  flown,
   onEditNotes,
-  withDetails = true,
 }: {
   row: JourneyRow;
   userId: string | null | undefined;
   now: number;
   tripAge: number;
+  flown: boolean;
   onEditNotes: () => void;
-  withDetails?: boolean;
 }) {
   const theme = useTheme();
-  const details = withDetails ? tripDetailChips(row) : [];
   return (
-    <View style={styles.journal}>
-      {details.length > 0 && (
-        <View style={styles.factRow}>
-          {details.map((detail) => (
-            <View key={detail} style={[styles.factChip, { backgroundColor: `${theme.tint}1A` }]}>
-              <ThemedText type="smallBold" style={[styles.factText, { color: theme.tint }]}>
-                {detail}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-      )}
-      {tripAge > 0 && <RatingRow row={row} />}
-      <TripPhotos journeyId={row.id} userId={userId} />
-      <TripDocuments journeyId={row.id} />
-      <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={onEditNotes} />
-    </View>
+    <Card testID="trip-journal">
+      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
+        Trip journal
+      </ThemedText>
+      <View style={styles.journal}>
+        <TripPhotos journeyId={row.id} userId={userId} />
+        <NotesBlock row={row} now={now} tripAge={tripAge} onEdit={onEditNotes} />
+        <TripDocuments journeyId={row.id} />
+        {(flown || tripAge > 0) && (
+          <View style={[styles.ratingDivider, { borderTopColor: theme.hairline }]}>
+            <RatingRow row={row} />
+          </View>
+        )}
+      </View>
+    </Card>
   );
 }
 
@@ -918,53 +935,43 @@ function NotesBlock({
   const theme = useTheme();
   if (row.notes) {
     // The note is plain, selectable text (copyable, readable by assistive
-    // tech); only the Edit link is a button.
+    // tech); the whole panel opens the editor, Edit says so.
     return (
-      <View>
-        <View style={styles.cardHeader}>
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cardEyebrow}>
-            Your notes
-          </ThemedText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Edit your notes"
-            hitSlop={Spacing.two}
-            onPress={onEdit}>
-            <ThemedText type="smallBold" style={{ color: theme.tint }}>
-              Edit
-            </ThemedText>
-          </Pressable>
-        </View>
-        <ThemedText selectable style={styles.notesText}>
+      <Pressable
+        testID="journal-note"
+        accessibilityRole="button"
+        accessibilityLabel={`Your note: ${row.notes}`}
+        accessibilityHint="Edit"
+        onPress={onEdit}
+        style={({ pressed }) => [styles.notePanel, { backgroundColor: theme.background, borderColor: theme.hairline }, pressed && { opacity: 0.7 }]}>
+        <ThemedText style={styles.notesText} numberOfLines={4}>
           {row.notes}
         </ThemedText>
-        {row.notesUpdatedAt && (
+        <View style={styles.noteMeta}>
           <ThemedText type="small" themeColor="textSecondary">
-            Edited {editedLabel(row.notesUpdatedAt, new Date(now))}
+            {row.notesUpdatedAt ? `Note · edited ${editedLabel(row.notesUpdatedAt, new Date(now))}` : 'Note'}
           </ThemedText>
-        )}
-      </View>
+          <ThemedText type="smallBold" style={{ color: theme.tint }}>
+            Edit
+          </ThemedText>
+        </View>
+      </Pressable>
     );
   }
+  const prompt = tripAge > 0 ? 'Write about this trip…' : 'Write a note for this trip…';
   return (
     <Pressable
+      testID="journal-add-note"
       accessibilityRole="button"
-      accessibilityLabel={tripAge > 0 ? 'Write about this trip' : 'Add a note for this trip'}
+      accessibilityLabel={prompt.replace('…', '')}
       onPress={onEdit}
-      style={({ pressed }) => [styles.notesPrompt, { opacity: pressed ? 0.6 : 1 }]}>
+      style={({ pressed }) => [styles.noteField, { backgroundColor: theme.background, borderColor: theme.hairline }, pressed && { opacity: 0.6 }]}>
       <SymbolView
         name={{ ios: 'square.and.pencil', android: 'edit_note', web: 'edit_note' }}
-        size={20}
-        tintColor={theme.tint}
+        size={16}
+        tintColor={theme.textSecondary}
       />
-      <View style={styles.notesPromptText}>
-        <ThemedText type="smallBold" style={{ color: theme.tint }}>
-          {tripAge > 0 ? 'Write about this trip' : 'Add a note for this trip'}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Who you were with, where you sat, what you&apos;d do differently.
-        </ThemedText>
-      </View>
+      <ThemedText themeColor="textSecondary">{prompt}</ThemedText>
     </Pressable>
   );
 }
@@ -1191,6 +1198,44 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
 }
 
 const styles = StyleSheet.create({
+  slot: {
+    gap: Spacing.three,
+  },
+  earning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    minHeight: 44,
+    paddingHorizontal: Spacing.three,
+    borderTopWidth: 1,
+  },
+  earningText: {
+    flex: 1,
+  },
+  ratingDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: Spacing.two,
+  },
+  notePanel: {
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  noteMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  noteField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    minHeight: 48,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   timelineFooter: {
     gap: Spacing.two,
     paddingTop: Spacing.two,

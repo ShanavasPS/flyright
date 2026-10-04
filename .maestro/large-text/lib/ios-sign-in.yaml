@@ -11,7 +11,7 @@ tags:
     timeout: 30000
     optional: true
 - runFlow: prompts.yaml
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - runFlow: prompts.yaml
 - extendedWaitUntil:
     visible: ".*(Sign in or create account|clerk_test).*"
@@ -25,7 +25,7 @@ tags:
           file: ../../clerk-dev-sign-in.yaml
           env:
             EMAIL: ${EMAIL}
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: ".*clerk_test.*"
     timeout: 90000

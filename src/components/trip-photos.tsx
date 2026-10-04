@@ -80,12 +80,15 @@ export function TripPhotos({
         accessibilityRole="button"
         accessibilityLabel="Add photos"
         onPress={add}
-        style={({ pressed }) => [styles.prompt, { opacity: pressed ? 0.6 : 1 }]}>
-        <SymbolView
-          name={{ ios: 'photo.on.rectangle.angled', android: 'add_photo_alternate', web: 'add_photo_alternate' }}
-          size={20}
-          tintColor={theme.tint}
-        />
+        testID="journal-add-photos"
+        style={({ pressed }) => [styles.prompt, { borderColor: theme.backgroundSelected, opacity: pressed ? 0.6 : 1 }]}>
+        <View style={[styles.promptIcon, { backgroundColor: `${theme.tint}1F` }]}>
+          <SymbolView
+            name={{ ios: 'photo.on.rectangle.angled', android: 'add_photo_alternate', web: 'add_photo_alternate' }}
+            size={26}
+            tintColor={theme.tint}
+          />
+        </View>
         <View style={styles.promptText}>
           <ThemedText type="smallBold" style={{ color: theme.tint }}>
             Add photos
@@ -230,11 +233,23 @@ export function showPhotoSourceMenu(onPick: (source: 'camera' | 'library') => vo
 }
 
 const styles = StyleSheet.create({
+  // The journal's empty state: one dashed tile that says what goes here.
   prompt: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two + Spacing.half,
-    paddingVertical: Spacing.one,
+    alignItems: 'center',
+    gap: Spacing.three,
+    minHeight: 96,
+    padding: Spacing.three,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+  },
+  promptIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   promptText: {
     flex: 1,

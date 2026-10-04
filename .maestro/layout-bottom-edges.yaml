@@ -59,7 +59,7 @@ appId: com.shanavasshaji.flyright
     timeout: 10000
 - scroll
 - takeScreenshot: .maestro/out/bottom-claims
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: "Appearance"
     timeout: 10000

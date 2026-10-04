@@ -13,7 +13,7 @@ appId: com.shanavasshaji.flyright
 - extendedWaitUntil:
     visible: "Flights"
     timeout: 60000
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: "Sign in or create account"
     timeout: 20000

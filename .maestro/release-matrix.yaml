@@ -141,8 +141,8 @@ tags:
                 timeout: 20000
             - takeScreenshot: ${SHOTS}/${ACCOUNT_STATE}-${TRIPS}-stats
 
-      # Settings: account state and the Home base row.
-      - openLink: "flyright://settings"
+      # Profile: account state; then Settings and the Home base row.
+      - openLink: "flyright://profile"
       - runFlow:
           when:
             true: ${ACCOUNT_STATE === 'signed-in'}
@@ -158,6 +158,7 @@ tags:
             - extendedWaitUntil:
                 visible: "Sign in or create account"
                 timeout: 30000
+      - openLink: "flyright://settings"
       - scrollUntilVisible:
           element:
             id: "settings-home-base"

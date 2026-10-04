@@ -10,7 +10,7 @@ tags:
     visible: "Flights"
     timeout: 30000
     optional: true
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: ".*(Sign in or create account|clerk_test).*"
     timeout: 30000

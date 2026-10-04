@@ -42,7 +42,7 @@ tags:
 - tapOn:
     text: "Not now"
     optional: true
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible: "Sign in or create account"
     timeout: 15000

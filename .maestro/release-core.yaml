@@ -30,12 +30,12 @@ tags:
           when:
             platform: Android
           commands:
-            - openLink: "flyright://settings"
+            - openLink: "flyright://profile"
       - runFlow:
           when:
             platform: iOS
           commands:
-            - openLink: "flyright://settings"
+            - openLink: "flyright://profile"
       - runFlow:
           when:
             true: ${ACCOUNT_STATE === 'signed-in'}

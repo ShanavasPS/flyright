@@ -6,7 +6,7 @@
 appId: com.shanavasshaji.flyright
 ---
 - launchApp
-- openLink: "flyright://settings"
+- openLink: "flyright://profile"
 - extendedWaitUntil:
     visible:
       id: "contact-support"

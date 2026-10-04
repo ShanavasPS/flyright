@@ -15,7 +15,7 @@ tags:
       - extendedWaitUntil:
           visible: "Flights"
           timeout: 90000
-      - openLink: "flyright://settings"
+      - openLink: "flyright://profile"
       - extendedWaitUntil:
           visible: ".*${ACCOUNT_EMAIL}.*"
           timeout: 30000
