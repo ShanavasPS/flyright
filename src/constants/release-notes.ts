@@ -15,6 +15,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.2.0',
+    date: '2026-10-04',
+    notes: [
+      'Trip progress now runs door to door: tap Left home when you set off and Reached the hotel (or Home safe) when you arrive, so the people following you know you are on your way and got there safely.',
+      'Open trip progress full screen to see every leg of the trip with its icons. Add or remove steps to suit the trip; the steps are suggested from your home base, your connections and where you are going.',
+      'Finished trips keep their progress, so you can look back at when you left, cleared security and landed.',
+      'All your updates from a trip open on a page of their own, and a long journal note opens in place with Read more.',
+      'Adding the same photo to a trip twice is caught, even offline, times only show as changed when the airline really moved them, and the compensation card appears only when you are owed something.',
+    ],
+  },
+  {
     version: '1.1.11',
     date: '2026-10-04',
     notes: [
