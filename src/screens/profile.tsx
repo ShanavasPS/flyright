@@ -179,21 +179,31 @@ function HeaderSkeleton() {
   );
 }
 
+/** Signed out: a navy card in the app icon's colours. The heading says what
+ * an account gives, the line how; after an expired sign-in it says that. */
 function SignedOutCard() {
   const router = useRouter();
   const notice = useSignedOutNotice();
   return (
-    <ThemedView type="backgroundElement" style={styles.signedOut}>
-      <ThemedText type="subtitle">{notice ? 'You were signed out' : 'Your account'}</ThemedText>
-      <ThemedText type="small">
+    <View style={styles.signedOut}>
+      <ThemedText style={styles.signedOutTitle}>
+        {notice ? 'You were signed out' : 'Your trips, on every device'}
+      </ThemedText>
+      <ThemedText type="small" style={styles.signedOutBody}>
         {notice
           ? `Your sign-in ran out${notice.email ? ` for ${notice.email}` : ''}. Your trips are still on this phone — sign back in to keep syncing.`
-          : 'Keep your purchases and travel history safe across devices.'}
+          : 'Sign in to back them up, let friends follow along and get live flight updates.'}
       </ThemedText>
-      <Pressable accessibilityRole="button" onPress={() => router.push('/sign-in')}>
-        <ThemedText type="link">{notice ? 'Sign back in' : 'Sign in or create account'}</ThemedText>
+      <Pressable
+        testID="profile-sign-in"
+        accessibilityRole="button"
+        onPress={() => router.push('/sign-in')}
+        style={({ pressed }) => [styles.signedOutButton, pressed && styles.pressed]}>
+        <ThemedText type="smallBold" style={styles.signedOutAction}>
+          {notice ? 'Sign back in' : 'Sign in or create account'}
+        </ThemedText>
       </Pressable>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -411,9 +421,33 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   signedOut: {
-    gap: Spacing.three,
+    gap: Spacing.two,
     padding: Spacing.four,
     borderRadius: Spacing.four,
+    backgroundColor: '#0C1B36',
+    experimental_backgroundImage: 'linear-gradient(135deg, #0C1B36 0%, #1E3F73 100%)',
+  },
+  signedOutTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 700,
+  },
+  signedOutBody: {
+    color: 'rgba(255,255,255,0.75)',
+  },
+  signedOutButton: {
+    alignSelf: 'flex-start',
+    marginTop: Spacing.two,
+    minHeight: 40,
+    paddingHorizontal: Spacing.four,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signedOutAction: {
+    color: '#0C1B36',
   },
   membershipsCard: {
     flexDirection: 'row',
