@@ -208,14 +208,14 @@ function MembershipsCard({ rows, onPress }: { rows: MembershipRow[] | undefined;
       return m.tier ? `${d.short} ${m.tier}` : d.short;
     })
     .join(' · ');
-  const stack = (rows ?? []).slice(0, 3).map((m) => describeMembership(m).card);
   // Stacked as on the Memberships screen: the cards behind peek out above.
-  const shown = stack.length ? stack : [{ from: theme.backgroundSelected, to: theme.backgroundSelected, accent: theme.tint }];
+  const shown = (rows ?? []).slice(0, 3).map((m) => describeMembership(m).card);
+  if (!count) return <EmptyMembershipsCard onPress={onPress} />;
   return (
     <Pressable
       testID="profile-memberships"
       accessibilityRole="button"
-      accessibilityLabel={count ? `Memberships, ${count} programmes, ${summary}` : 'Add a frequent flyer membership'}
+      accessibilityLabel={`Memberships, ${count} ${count === 1 ? 'programme' : 'programmes'}, ${summary}`}
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView type="backgroundElement" style={styles.membershipsCard}>
@@ -246,10 +246,10 @@ function MembershipsCard({ rows, onPress }: { rows: MembershipRow[] | undefined;
         </View>
         <View style={styles.membershipsText}>
           <ThemedText style={styles.membershipsTitle}>
-            {count ? `${count} ${count === 1 ? 'programme' : 'programmes'}` : 'Add your frequent flyer cards'}
+            {`${count} ${count === 1 ? 'programme' : 'programmes'}`}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={3}>
-            {count ? summary : 'Membership numbers, tiers and miles in one place. They stay on this phone.'}
+            {summary}
           </ThemedText>
         </View>
         <SymbolView
@@ -260,6 +260,93 @@ function MembershipsCard({ rows, onPress }: { rows: MembershipRow[] | undefined;
         />
       </ThemedView>
     </Pressable>
+  );
+}
+
+const NAVY = { from: '#14284A', to: '#1E3F73', accent: '#7FA8F0' };
+const GHOSTS = [
+  { from: '#2A2534', to: '#3A2A2E', accent: '#C27A6E' },
+  { from: '#5A3A1E', to: '#8A6230', accent: '#E8C27A' },
+];
+
+function MiniCard({ card, style, children }: { card: typeof NAVY; style?: object; children?: React.ReactNode }) {
+  return (
+    <View
+      style={[
+        styles.miniCard,
+        { backgroundColor: card.from, experimental_backgroundImage: `linear-gradient(135deg, ${card.from} 0%, ${card.to} 100%)` },
+        style,
+      ]}>
+      {children ?? <View style={[styles.miniStripe, { backgroundColor: card.accent }]} />}
+    </View>
+  );
+}
+
+function Chevron() {
+  const theme = useTheme();
+  return (
+    <SymbolView
+      name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+      size={14}
+      weight="bold"
+      tintColor={theme.textSecondary}
+    />
+  );
+}
+
+function EmptyPressable({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
+  return (
+    <Pressable
+      testID="profile-memberships"
+      accessibilityRole="button"
+      accessibilityLabel="Add a frequent flyer membership"
+      accessibilityHint="Kept on this phone"
+      onPress={onPress}
+      style={({ pressed }) => pressed && styles.pressed}>
+      {children}
+    </Pressable>
+  );
+}
+
+/** No memberships yet: the height of the filled card, with two programme
+ * cards fanned behind a navy one with a plus — the stack it will become. */
+function EmptyMembershipsCard({ onPress }: { onPress: () => void }) {
+  return (
+    <EmptyPressable onPress={onPress}>
+      <ThemedView type="backgroundElement" style={styles.membershipsCard}>
+        <View style={[styles.miniStack, { height: MINI_HEIGHT + 2 * MINI_PEEK }]}>
+          {GHOSTS.map((card, i) => {
+            const depth = 2 - i;
+            return (
+              <MiniCard
+                key={i}
+                card={card}
+                style={{
+                  top: i * MINI_PEEK,
+                  left: depth * MINI_INSET,
+                  width: MINI_WIDTH - depth * MINI_INSET * 2,
+                  opacity: 1 - depth * 0.35,
+                }}
+              />
+            );
+          })}
+          <MiniCard card={NAVY} style={[{ top: 2 * MINI_PEEK, boxShadow: '0 -1px 3px rgba(0, 0, 0, 0.3)' }, styles.centred]}>
+            <View style={styles.plusDot}>
+              <SymbolView name={{ ios: 'plus', android: 'add', web: 'add' }} size={12} weight="bold" tintColor="#14284A" />
+            </View>
+          </MiniCard>
+        </View>
+        <View style={styles.membershipsText}>
+          <ThemedText style={styles.membershipsTitle} numberOfLines={1}>
+            Frequent flyer cards
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            Add your first membership
+          </ThemedText>
+        </View>
+        <Chevron />
+      </ThemedView>
+    </EmptyPressable>
   );
 }
 
@@ -348,6 +435,18 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.22)',
     padding: 8,
+  },
+  centred: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plusDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   miniStripe: {
     width: 3,
