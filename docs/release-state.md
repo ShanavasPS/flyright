@@ -2,6 +2,22 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-10-04 — 1.1.11 (iOS 80, Android 80): profile, memberships, cabin / price / baggage, trip page by moment — TestFlight + Play internal, NOT submitted
+
+The owner asked for new builds, to skip the physical-device checks and **not to submit for review** (they test first and submit themselves). 1.1.10 was READY_FOR_SALE on the App Store when this release started.
+
+| Item | Observed result |
+| --- | --- |
+| Code | `6cd50ea` Profile hub (avatar → /profile), Memberships (device-only frequent flyer stack, expo-local-authentication), own Account & security (email change with code, Apple/Google connect, signed-in devices) replacing Clerk's UserProfileView on native, trip page A2 (cards ordered by moment, clock strip, horizontal progress); `55dbe3f` destination pages: connections + Flights order; `afc785b` cabin class (`journeys.cabin`, migration 0018); `1186281` ticket price editor + baggage allowance (`journeys.baggage`, migration 0019; BCBP item 118, document baggage column), "Departs in" strip centred; `db7e598` bump + notes. Suite **1,391 tests**; typecheck and eslint clean. |
+| Backend | `release:deploy-backend` **81** functions on production and development (production schema now takes optional `cabin` and `baggage` on journeys — required before these builds sync); `release:preflight` and `release:journal` passed. |
+| Hosting | Deployment `q4z8qtwpm6`; flyright.expo.app and the deployment URL serve `entry-1d7b1adb…` matching the export (production Convex `limitless-oyster-269`, `pk_live_`). `.env.production.local` removed. `/api/app-version` still reports 1.1.10 (store-served). |
+| iOS | Local Xcode 27 build `FlyRight-1.1.11-80.ipa`: `1.1.11 (80)`, `iphoneos27.0`, scene manifest, `NSFaceIDUsageDescription`, production Convex + `pk_live_`. `eas submit` `d67696b3-d85e-4b9c-a03f-be695d076bd6` finished; ASC build `394060d3-d7b1-44d3-8624-c270e86130e4` **VALID**, internal TestFlight **IN_BETA_TESTING**. No App Store version record created and **no review submission** (owner's call). |
+| Android | EAS build `8c05928d-23c8-4f53-b222-0b649b35cf8c` 1.1.11 (80) with auto-submit `8f0f9818-3526-4370-90ca-3cd04332d90d` to **internal**: ANDROID_PENDING. **Not promoted to production** (owner's call). |
+| Store text | `store/apple/whats-new-1.1.11.txt` (851 chars), `store/apple/review-notes-1.1.11.txt` (covers the moved account deletion: Profile › Account & security › Delete account, and the Face ID prompt for memberships), `store/google/release-notes-1.1.11.txt` (380 chars). Not yet applied in ASC / Play — the owner submits. |
+| Checks | Physical iPhone/Pixel and signed-in candidate checks **skipped at the owner's request**. `release:devices --mode native --metro-port 8082` **passed on both** (evidence `.maestro/out/release/2026-10-04T05-30-33.637Z`); the first Android run failed only on an Android "Process system isn't responding" dialog while the Mac's load average was ~45 from the builds. Features verified on the iPhone 17 simulator (iOS 26.5) and FlyRight_Dev, signed in as Maja (dev). |
+| Screenshots | Carried forward. The listing's Flights / World / Friends panels are unchanged; the new Profile, Memberships and trip-page layout are not in the listing yet — reshoot if the owner wants them shown. |
+| Dev apps | iPhone 17 sim `53F70378` Debug **1.1.11 (80)**, Android `FlyRight_Dev` (`emulator-5556`) Debug **1.1.11 (80)**, both on Metro 8082. |
+
 ## 2026-10-02 — 1.1.10 (iOS 79, Android 79): sort chips, past trips newest first, one current destination — Android on production, iOS in App Review
 
 The owner asked for builds without store submission, to test first, and to skip the physical-device checks; after testing, the owner asked to submit for review the same day. 1.1.9 reached the App Store before this release started (`/api/app-version` reports it released 2026-10-01 18:53 UTC).

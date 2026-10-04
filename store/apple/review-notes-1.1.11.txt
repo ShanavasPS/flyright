@@ -1,0 +1,12 @@
+What's new to review:
+
+Nothing about purchases or what Free and Pro include changes.
+
+1. Profile. Tapping the photo at the top left of Flights opens a new Profile page: name and photo (Edit profile), Memberships, Settings, Account & security, FlyRight Pro, Help & support, and Sign out. Settings now holds only the app's switches.
+2. Account deletion has moved with it: Profile > Account & security > Delete account. Account & security also shows the sign-in email (changed with a code), connected Apple / Google accounts and the devices signed in.
+3. Memberships (frequent flyer cards). Profile > Memberships > "+" adds a programme's card; numbers are stored only on the device and shown only after Face ID or the device passcode (this is the reason for the new Face ID usage description). The lock can be turned off in Settings > Privacy.
+4. Trip details. A trip's "Your ticket" section now has Cabin, Price and Baggage boxes; tapping one opens the trip details editor.
+
+To see them: sign in with the review account, tap the photo at the top left of Flights for Profile, and open any trip for the ticket section. The review account already has trips.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method.
