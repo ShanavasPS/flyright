@@ -42,8 +42,7 @@ export function GetStarted({ onFindPeople }: { onFindPeople: () => void }) {
       <View style={styles.welcomeCopy}>
         <Text style={styles.welcomeHeadline}>Follow a friend’s flights.</Text>
         <Text style={styles.welcomePitch}>
-          Their gate, take-off and landing show up here as they happen, with the postcards they
-          send on the way.
+          Their gate, take-off and landing show up here as they happen.
         </Text>
       </View>
       <PassDivider />
@@ -368,8 +367,7 @@ export function UpdatesWelcome({ onSignIn }: { onSignIn: () => void }) {
       <View style={styles.welcomeCopy}>
         <Text style={styles.welcomeHeadline}>Postcards from your friends.</Text>
         <Text style={styles.welcomePitch}>
-          A photo from the gate, a line from the window seat, the first evening away — sent as
-          they travel. Sign in to invite your friends, see theirs and send your own.
+          A photo from the gate, a line from the window seat — sent as they travel.
         </Text>
       </View>
       <PassDivider />

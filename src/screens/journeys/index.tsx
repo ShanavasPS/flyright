@@ -81,9 +81,8 @@ import { groupJourneys, travelStats } from '@/services/timeline';
 import { useFoldState } from '../../../modules/flyright-fold';
 
 /** Ghost trip card in the empty hero: the real row's height (40pt logo +
- * card padding) and how far each card behind it peeks out. */
+ * card padding). */
 const GHOST_CARD_HEIGHT = 40 + 2 * Spacing.three;
-const GHOST_PEEK = 10;
 
 /** The context line above the title — the next departure when one is booked
  * (the thing a traveller actually wants at a glance), today's date otherwise.
@@ -619,7 +618,7 @@ function Greeting({ text }: { text: string }) {
 }
 
 /** The empty journal's hero: the night-sky card of the travel-day pass with a
- * deck of ghost trip cards where the journal's rows will stack up — the same
+ * ghost trip card where the journal's rows will stack up — the same
  * silhouette as the real rows below, in skeleton form, no labels.
  *
  * Signed in or not says different things. Signed out, it is a first screen:
@@ -649,8 +648,8 @@ function JournalHero({
         </Text>
         <Text style={styles.heroPitch}>
           {signedIn
-            ? 'Your flight is saved for free. Pro adds live travel updates and postcards for the people who follow you.'
-            : 'Next month\u2019s trip or one from years back — save your flights for free and see your distance, countries and airlines add up.'}
+            ? 'Saved for free. Pro adds live updates for the people who follow you.'
+            : 'Save your flights for free and watch your distance, countries and airlines add up.'}
         </Text>
       </View>
       <PassDivider />
@@ -671,18 +670,14 @@ function JournalHero({
   );
 }
 
-/** Three ghost trip rows, the back two peeking out above the front one like
- * a deck. Only the front card carries the row's skeleton content; the ones
- * behind are silhouettes, each a step narrower and fainter. Decorative — the
- * headline says what it means. */
+/** One ghost trip row: the real row's skeleton. Decorative — the headline
+ * says what it means. */
 function GhostTrips() {
   return (
     <View
       style={styles.ghostDeck}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      <View style={[styles.ghostCard, styles.ghostCardBack2]} />
-      <View style={[styles.ghostCard, styles.ghostCardBack1]} />
       <View style={[styles.ghostCard, styles.ghostCardFront]}>
         <View style={styles.ghostLogo}>
           <SymbolView
@@ -1055,7 +1050,7 @@ const styles = StyleSheet.create({
   },
   // The deck: the front card's height plus the two peeks above it.
   ghostDeck: {
-    height: GHOST_CARD_HEIGHT + 2 * GHOST_PEEK,
+    height: GHOST_CARD_HEIGHT,
     marginTop: Spacing.one,
   },
   ghostCard: {
@@ -1069,27 +1064,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(242,246,251,0.06)',
   },
   ghostCardFront: {
-    top: 2 * GHOST_PEEK,
+    top: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
     padding: Spacing.three,
-    // Opaque (the sky lifted ~10% toward white) so the cards behind read as
-    // peeking out, not as showing through.
+    // The sky lifted ~10% toward white.
     backgroundColor: '#22395F',
     borderColor: 'rgba(242,246,251,0.18)',
-  },
-  ghostCardBack1: {
-    top: GHOST_PEEK,
-    left: Spacing.three,
-    right: Spacing.three,
-    opacity: 0.7,
-  },
-  ghostCardBack2: {
-    top: 0,
-    left: Spacing.four + Spacing.two,
-    right: Spacing.four + Spacing.two,
-    opacity: 0.4,
   },
   // Skeleton of the real row: a 40pt logo tile, then meta / cities / times.
   ghostLogo: {

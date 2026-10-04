@@ -43,59 +43,29 @@ export function GhostTrips() {
   );
 }
 
-/** What Updates holds when it is full, drawn as shapes: the faces of whoever
- * you follow who is travelling, over one of their postcards. Not the
+/** What Updates holds when it is full, drawn as shapes: the head of a
+ * friend's postcard. Not the
  * journal's deck of rows — that is Flights' empty screen, next door — and
  * not a live flight card, which lives on Flights too. Hidden from screen
  * readers. */
 export function GhostUpdates() {
   return (
     <View
-      style={styles.day}
+      style={styles.live}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      <View style={styles.faces}>
-        <View style={styles.face}>
-          <View style={styles.badge}>
-            <SymbolView
-              name={{ ios: 'airplane', android: 'flight', web: 'flight' }}
-              size={9}
-              tintColor="#FFFFFF"
-              style={Platform.OS === 'ios' ? undefined : styles.rotated}
-            />
-          </View>
+      <View style={styles.postHead}>
+        <View style={styles.postFace} />
+        <View style={styles.body}>
+          <View style={[styles.bar, styles.barMeta]} />
+          <View style={[styles.bar, styles.barRoute, styles.barThin]} />
         </View>
-        <View style={[styles.face, styles.faceDim]} />
-        <View style={[styles.face, styles.faceDimmer]} />
-      </View>
-      <View style={styles.live}>
-        <View style={styles.postHead}>
-          <View style={styles.postFace} />
-          <View style={styles.body}>
-            <View style={[styles.bar, styles.barMeta]} />
-            <View style={[styles.bar, styles.barRoute, styles.barThin]} />
-          </View>
-        </View>
-        <View style={styles.photo} />
-        <View style={[styles.bar, styles.barText]} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  day: { gap: Spacing.two },
-  faces: { flexDirection: 'row', gap: Spacing.two },
-  face: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1.5,
-    borderColor: 'rgba(127,177,242,0.55)',
-    backgroundColor: 'rgba(242,246,251,0.10)',
-  },
-  faceDim: { opacity: 0.6 },
-  faceDimmer: { opacity: 0.35 },
   live: {
     gap: Spacing.two,
     padding: Spacing.three,
@@ -104,22 +74,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(242,246,251,0.18)',
     backgroundColor: '#22395F',
   },
-  badge: {
-    position: 'absolute',
-    right: -3,
-    bottom: -3,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COBALT,
-  },
   postHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   postFace: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(242,246,251,0.16)' },
-  photo: { height: 64, borderRadius: Spacing.two, backgroundColor: 'rgba(242,246,251,0.10)' },
   barThin: { height: 6, width: '60%' },
-  barText: { width: '70%' },
   deck: { height: GHOST_CARD_HEIGHT + 2 * GHOST_PEEK, marginTop: Spacing.one },
   card: {
     position: 'absolute',
