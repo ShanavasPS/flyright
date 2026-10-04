@@ -81,6 +81,25 @@ export const push = mutation({
         rejected.push(row.photoId);
         continue;
       }
+
+      // The same picture already in this trip's journal: keep that one and
+      // file this as removed, which takes it off the phones too. Offline,
+      // with the upload waiting, one photo was once picked fourteen times
+      // (QR516, Sep 19); builds without the phone's own check still can.
+      if (
+        row.storageId &&
+        row.storageId !== existing?.storageId &&
+        (await sameFileInTrip(ctx, identity.subject, row.journeyKey, row.storageId as Id<'_storage'>, row.photoId))
+      ) {
+        if (!(await storageInUse(ctx, row.storageId, { photo: existing?._id })))
+          await deleteOwnedFile(ctx, identity.subject, row.storageId);
+        const now = new Date().toISOString();
+        const tombstone = { ...row, storageId: null, deletedAt: now, updatedAt: now > row.updatedAt ? now : row.updatedAt };
+        if (!existing) await ctx.db.insert('tripPhotos', { ...tombstone, userId: identity.subject });
+        else await ctx.db.patch(existing._id, tombstone);
+        console.log(`[photos] ${row.photoId} is a copy of a photo already in ${row.journeyKey}; removed`);
+        continue;
+      }
       if (!existing) {
         await ctx.db.insert('tripPhotos', { ...row, userId: identity.subject });
       } else if (row.updatedAt > existing.updatedAt) {
@@ -105,6 +124,30 @@ export const push = mutation({
     return { rejected };
   },
 });
+
+/** Whether another live photo of the caller's in this trip holds a file
+ * with the same bytes (the stored SHA-256). */
+async function sameFileInTrip(
+  ctx: MutationCtx,
+  userId: string,
+  journeyKey: string,
+  storageId: Id<'_storage'>,
+  photoId: string,
+): Promise<boolean> {
+  const file = await ctx.db.system.get(storageId);
+  if (!file) return false;
+  const others = await ctx.db
+    .query('tripPhotos')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect();
+  for (const other of others) {
+    if (other.journeyKey !== journeyKey || other.photoId === photoId || other.deletedAt || !other.storageId) continue;
+    if (other.storageId === storageId) continue;
+    const theirs = await ctx.db.system.get(other.storageId as Id<'_storage'>);
+    if (theirs && theirs.sha256 === file.sha256) return true;
+  }
+  return false;
+}
 
 /** All of the caller's photo rows, tombstones included, each with a fetch
  * URL for its stored file (null for tombstones). Returns [] while the

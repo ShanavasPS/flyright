@@ -52,6 +52,7 @@ import {
   editedLabel,
   formatDayLabel,
   formatDayLabelWithYear,
+  flightInstant,
   formatTime,
   tripDateTitle,
 } from '@/services/dates';
@@ -362,13 +363,24 @@ export function JourneyDetail({
   // Set only once the airline has moved the flight (services/schedule-change):
   // the times the ticket was booked at, so the card can show what changed
   // rather than quietly swapping the number the traveler wrote down.
-  const departureWas = row?.ticketedDeparture
-    ? formatTime(row.ticketedDeparture, departureZone)
-    : null;
-  const arrivalWas = row?.ticketedArrival ? formatTime(row.ticketedArrival, arrivalZone) : null;
-  const movedMinutes = row?.ticketedDeparture
+  // Each end separately, and only when it really differs: an airline that
+  // moved the flight and then put it back, or the same time saved in another
+  // form, must not show a clock struck through above itself.
+  const changed = (ticketed: string | null | undefined, current: string, zone: string | null) =>
+    !!ticketed && flightInstant(ticketed, zone) !== flightInstant(current, zone);
+  const departureWas =
+    row && changed(row.ticketedDeparture, journey.scheduledDeparture, departureZone)
+      ? formatTime(row.ticketedDeparture!, departureZone)
+      : null;
+  const arrivalWas =
+    row && changed(row.ticketedArrival, journey.scheduledArrival, arrivalZone)
+      ? formatTime(row.ticketedArrival!, arrivalZone)
+      : null;
+  const movedMinutes = departureWas
     ? Math.round(
-        (Date.parse(journey.scheduledDeparture) - Date.parse(row.ticketedDeparture)) / 60_000,
+        (flightInstant(journey.scheduledDeparture, departureZone) -
+          flightInstant(row!.ticketedDeparture!, departureZone)) /
+          60_000,
       )
     : null;
   const moved = movedMinutes ? shiftLabel(movedMinutes) : null;

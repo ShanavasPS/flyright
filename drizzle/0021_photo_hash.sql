@@ -1,0 +1,1 @@
+ALTER TABLE `trip_photos` ADD `content_hash` text;

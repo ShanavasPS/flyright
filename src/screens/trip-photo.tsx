@@ -63,7 +63,9 @@ export function TripPhoto() {
     try {
       const picked = await pickImages('library', { limit: 1 });
       if (!picked.length) return;
-      const [id] = await importPhotos(journeyIds[0], userId, picked);
+      const {
+        ids: [id],
+      } = await importPhotos(journeyIds[0], userId, picked);
       if (id) choose({ kind: 'photo', photoId: id });
     } catch (error) {
       if (error instanceof PhotoPermissionError) Alert.alert('Photos are off for FlyRight', 'Allow photo access in Settings to use one of your own.');

@@ -146,11 +146,18 @@ function PostcardComposer() {
       let photo: { photoId: string; storageId: Id<'_storage'>; width: number | null; height: number | null } | null =
         null;
       if (picked) {
-        const [photoId] = await importPhotos(row.id, userId, [picked]);
+        const {
+          ids: [photoId],
+        } = await importPhotos(row.id, userId, [picked]);
         const stored = photoId ? await photoById(photoId) : undefined;
         if (!photoId || !stored) throw new Error('Photo not saved');
-        const storageId = (await uploadPhoto(stored, await generateUploadUrl())) as Id<'_storage'>;
-        await markPhotoUploaded(photoId, storageId);
+        // A picture already in the journal (and on the server) is not sent
+        // a second time: the update points at the file it has.
+        let storageId = stored.storageId as Id<'_storage'> | null;
+        if (!storageId) {
+          storageId = (await uploadPhoto(stored, await generateUploadUrl())) as Id<'_storage'>;
+          await markPhotoUploaded(photoId, storageId);
+        }
         photo = { photoId, storageId, width: stored.width, height: stored.height };
       }
       await post({

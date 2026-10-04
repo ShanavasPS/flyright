@@ -4,6 +4,7 @@
  * or, for photos that arrived through sync, its Convex storage URL. */
 
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { CryptoDigestAlgorithm, digest } from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -99,23 +100,79 @@ export async function pickImages(
   }));
 }
 
+/** What an import did with each picked image: the photo it is now (a new
+ * row, or the trip's existing copy of the very same picture) and how many
+ * of them were already there. */
+export interface ImportResult {
+  ids: string[];
+  reused: number;
+}
+
+/** SHA-256 of a file's bytes, hex; null when it can't be read. The picker
+ * re-encodes a picture the same way each time, so the same photo picked
+ * twice hashes the same. */
+async function contentHashOf(file: File): Promise<string | null> {
+  try {
+    const hash = await digest(CryptoDigestAlgorithm.SHA256, await file.bytes());
+    return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null;
+  }
+}
+
+/** The trip's photos by content hash. Older local photos get theirs worked
+ * out (and kept) now; ones that only exist on the server are left to the
+ * server's own check. */
+async function hashesOf(journeyId: string): Promise<Map<string, string>> {
+  const rows = await db
+    .select()
+    .from(tripPhotos)
+    .where(and(eq(tripPhotos.journeyId, journeyId), isNull(tripPhotos.deletedAt)));
+  const byHash = new Map<string, string>();
+  for (const row of rows) {
+    let hash = row.contentHash;
+    if (!hash && row.uri.startsWith('file://')) {
+      const file = new File(resolvePhotoUri(row.uri));
+      if (file.exists) {
+        hash = await contentHashOf(file);
+        // Local bookkeeping only: updatedAt stays, so nothing re-syncs.
+        if (hash) await db.update(tripPhotos).set({ contentHash: hash }).where(eq(tripPhotos.id, row.id));
+      }
+    }
+    if (hash && !byHash.has(hash)) byHash.set(hash, row.id);
+  }
+  return byHash;
+}
+
 /** Copies each picked image into the document directory and records a row
- * for it. The row is dirty (syncedAt null) so the sync uploads it. Resolves
- * to the new rows' ids, in the order picked. */
+ * for it. The row is dirty (syncedAt null) so the sync uploads it. A picture
+ * the trip already has is not added again — offline, when nothing seems to
+ * upload, it is easy to pick the same photo a dozen times (QR516, Sep 19):
+ * its existing photo stands in. Resolves to the photos' ids, in the order
+ * picked. */
 export async function importPhotos(
   journeyId: string,
   userId: string | null | undefined,
   picked: PickedImage[],
-): Promise<string[]> {
-  const ids: string[] = [];
-  if (!picked.length) return ids;
+): Promise<ImportResult> {
+  const result: ImportResult = { ids: [], reused: 0 };
+  if (!picked.length) return result;
   const dir = photoDir();
   if (!dir.exists) dir.create({ intermediates: true });
+  const known = await hashesOf(journeyId);
   for (const image of picked) {
+    const source = new File(image.uri);
+    const hash = await contentHashOf(source);
+    const existing = hash ? known.get(hash) : undefined;
+    if (existing) {
+      result.ids.push(existing);
+      result.reused += 1;
+      continue;
+    }
     const id = newPhotoId();
-    ids.push(id);
+    result.ids.push(id);
     const target = new File(dir, `${id}.jpg`);
-    await new File(image.uri).copy(target);
+    await source.copy(target);
     const now = new Date().toISOString();
     await db.insert(tripPhotos).values({
       id,
@@ -125,11 +182,13 @@ export async function importPhotos(
       width: image.width,
       height: image.height,
       storageId: null,
+      contentHash: hash,
       createdAt: now,
       updatedAt: now,
     });
+    if (hash) known.set(hash, id);
   }
-  return ids;
+  return result;
 }
 
 /** One photo row by id, read once. */

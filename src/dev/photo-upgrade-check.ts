@@ -15,7 +15,7 @@ export async function checkNativePhotoUpgrade(): Promise<void> {
   const bytes = new Uint8Array([255, 216, 255, 217]);
   const row: TripPhotoRow = {
     id: name, journeyId: 'release-check', userId: null, uri: oldUri,
-    width: 1, height: 1, storageId: null, createdAt: new Date().toISOString(),
+    width: 1, height: 1, storageId: null, contentHash: null, createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(), deletedAt: null, syncedAt: null,
   };
   const expectFailure = async (uri: string, path: string, message: string) => {

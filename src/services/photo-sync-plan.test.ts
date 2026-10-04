@@ -10,6 +10,7 @@ function row(overrides: Partial<TripPhotoRow>): TripPhotoRow {
     width: 3000,
     height: 4000,
     storageId: null,
+    contentHash: null,
     createdAt: '2026-08-01T00:00:00Z',
     updatedAt: '2026-08-01T00:00:00Z',
     deletedAt: null,

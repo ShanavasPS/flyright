@@ -116,6 +116,10 @@ export const tripPhotos = sqliteTable('trip_photos', {
   height: integer('height'),
   /** Convex _storage id after upload; null while local-only. */
   storageId: text('storage_id'),
+  /** SHA-256 of the file as imported, so the same picture is not added to a
+   * trip twice (importPhotos). Local only; null for photos that arrived
+   * through sync or were imported before it existed. */
+  contentHash: text('content_hash'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),

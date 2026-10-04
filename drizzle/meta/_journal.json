@@ -148,6 +148,13 @@
       "when": 1791112370386,
       "tag": "0020_step_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1791115758860,
+      "tag": "0021_photo_hash",
+      "breakpoints": true
     }
   ]
 }

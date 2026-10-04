@@ -6,7 +6,7 @@
  */
 
 import { airportZone } from '@/services/airports';
-import { flightDay, formatTime } from '@/services/dates';
+import { flightDay, flightInstant, formatTime } from '@/services/dates';
 import type { FlightStatus } from '@/services/flight-lookup';
 import { toDomainJourney, updateJourney, type JourneyRow } from '@/services/journeys';
 import { maybeNotifyScheduleChange } from '@/services/notification-lifecycle';
@@ -26,14 +26,20 @@ export async function applyScheduleChange(
   const change = scheduleChange(row, status, now);
   if (!change) return null;
 
+  // Only the first move records a "was" — after that the ticket's own times
+  // are already saved, and overwriting them with the previous *revision*
+  // would lose what the traveler actually booked. A move back onto the
+  // ticket's times clears it: nothing has changed any more.
+  const ticketedDeparture = row.ticketedDeparture ?? row.scheduledDeparture;
+  const ticketedArrival = row.ticketedArrival ?? row.scheduledArrival;
+  const backOnTicket =
+    flightInstant(change.departure, airportZone(row.fromCode)) === flightInstant(ticketedDeparture, airportZone(row.fromCode)) &&
+    flightInstant(change.arrival, airportZone(row.toCode)) === flightInstant(ticketedArrival, airportZone(row.toCode));
   await updateJourney(row.id, {
     scheduledDeparture: change.departure,
     scheduledArrival: change.arrival,
-    // Only the first move records a "was" — after that the ticket's own times
-    // are already saved, and overwriting them with the previous *revision*
-    // would lose what the traveler actually booked.
-    ticketedDeparture: row.ticketedDeparture ?? row.scheduledDeparture,
-    ticketedArrival: row.ticketedArrival ?? row.scheduledArrival,
+    ticketedDeparture: backOnTicket ? null : ticketedDeparture,
+    ticketedArrival: backOnTicket ? null : ticketedArrival,
   });
 
   await maybeNotifyScheduleChange(

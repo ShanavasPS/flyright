@@ -48,7 +48,19 @@ export function TripPhotos({
       setAdding(true);
       try {
         const picked = await pickImages(source);
-        await importPhotos(journeyId, userId, picked);
+        const { reused } = await importPhotos(journeyId, userId, picked);
+        // Said out loud, so a picture that seems not to arrive (offline, the
+        // upload waiting) is not picked again and again.
+        if (reused) {
+          Alert.alert(
+            reused === picked.length
+              ? 'Already in this trip'
+              : `${reused} of these ${reused === 1 ? 'is' : 'are'} already in this trip`,
+            reused === picked.length && reused === 1
+              ? 'That photo is already here, so it was not added again.'
+              : 'Photos already here were not added again.',
+          );
+        }
       } catch (error) {
         if (error instanceof PhotoPermissionError) {
           Alert.alert(
