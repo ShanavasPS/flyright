@@ -11,16 +11,18 @@ import { CollapsingHero, useCollapsingHero } from '@/components/home-base';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { usePlacePhoto } from '@/components/trip-cover';
-import { TripGroupFrame, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
+import { TripConnectionMark, TripGroupFrame, TripGroupHeading, TripStayMark } from '@/components/trip-group-mark';
 import { TripRow } from '@/components/trip-row';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useHomeContext } from '@/hooks/use-home-base';
 import { countryName } from '@/services/airports';
+import { connectionsInto, type Connection } from '@/services/connections';
 import { localDateString } from '@/services/dates';
 import { destinationOf, groupFlights, tripDestination } from '@/services/destination';
 import { samePlace } from '@/services/home-base';
 import { useJourneys } from '@/services/journeys';
-import { buildTripGroups, tripGroupDates, type TripGroup } from '@/services/trip-groups';
+import { buildTripGroups, orderTripGroups, tripGroupDates, tripGroupRows, type TripGroup } from '@/services/trip-groups';
+import { useTripSort } from '@/services/trip-sort';
 
 const monthYear = (iso: string) =>
   new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -37,6 +39,13 @@ function livingFor(since: string, today: string): string {
   return rest ? `${years} yr ${rest} mo` : plural(years, 'year');
 }
 
+/** "Trips to Lisbon" when the trips are all ahead or all behind; split,
+ * "Upcoming trips to Lisbon" over "Past trips to Lisbon". */
+function sectionTitle(key: string, order: { upcoming: TripGroup[]; past: TripGroup[] }, title: string): string {
+  if (!order.upcoming.length || !order.past.length) return title;
+  return `${key === 'upcoming' ? 'Upcoming' : 'Past'} ${title[0]!.toLowerCase()}${title.slice(1)}`;
+}
+
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View style={styles.stat}>
@@ -47,18 +56,28 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 /** One trip drawn the way Flights draws it: the frame and its header band,
- * the flight cards, the stay between them. `title` and `detail` fill the
- * band; `flag` is the country it carries. */
-function TripGroupBlock({ group, title, detail, flag, now }: { group: TripGroup; title: string; detail: string; flag: string; now: Date }) {
-  const entries = group.entries;
+ * the flight cards with the connections between legs, the stays between
+ * them (services/trip-groups tripGroupRows). `title` and `detail` fill the
+ * band; `flag` is the country it carries. A finished trip is read back,
+ * newest leg first, when Flights reads its past that way. */
+function TripGroupBlock({ group, title, detail, flag, now, connections, readBack }: {
+  group: TripGroup;
+  title: string;
+  detail: string;
+  flag: string;
+  now: Date;
+  connections: Map<string, Connection>;
+  readBack: boolean;
+}) {
+  const rows = tripGroupRows(group, connections, readBack);
   return (
     <View testID={`destination-trip-${group.id}`}>
       <TripGroupFrame header country={flag}>
         <TripGroupHeading group={{ ...group, title }} dates={detail} />
       </TripGroupFrame>
-      {entries.map((entry, i) => {
+      {rows.map((entry, i) => {
         const first = i === 0;
-        const last = i === entries.length - 1;
+        const last = i === rows.length - 1;
         if (entry.kind === 'stay') {
           return (
             <TripGroupFrame key={entry.key} first={first} last={last}>
@@ -69,6 +88,7 @@ function TripGroupBlock({ group, title, detail, flag, now }: { group: TripGroup;
         const row = entry.journey;
         return (
           <TripGroupFrame key={entry.key} first={first} last={last}>
+            {entry.connection && <TripConnectionMark connection={entry.connection} />}
             <Link href={{ pathname: '/journey/[id]', params: { id: row.id, from: row.fromCode, to: row.toCode } }} asChild>
               <Pressable style={({ pressed }) => pressed && styles.pressed}>
                 <TripRow trip={row} now={now} />
@@ -96,6 +116,8 @@ export function Destination() {
   const [now] = useState(() => new Date());
   const hero = useCollapsingHero(280);
   const year = now.getFullYear();
+  const sort = useTripSort();
+  const connections = useMemo(() => connectionsInto(rows.filter((r) => !r.deletedAt)), [rows]);
 
   // A home city: today's home, or a home the traveller had.
   const periods = home.state.periods.filter((p) => samePlace(p, place));
@@ -152,40 +174,64 @@ export function Destination() {
     ]).filter((st) => st.n > 0).slice(0, 4);
 
   const stayDays = (g: TripGroup) => g.entries.reduce((n, e) => n + (e.kind === 'stay' ? e.stay.days : 0), 0);
+  // Each list in the order Flights keeps: upcoming (and under way) first,
+  // then the finished ones, both as the Flights sort chips are set.
+  const fromOrder = orderTripGroups(dest.from, now, sort);
+  const toOrder = orderTripGroups(dest.trips, now, sort);
   const fromSection = isHome && dest.from.length > 0 && (
     <>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>Trips from {place.city}</ThemedText>
-      {dest.from.map((g) => (
-        <TripGroupBlock
-          key={g.id}
-          group={g}
-          title={g.title}
-          detail={tripGroupDates(g, year)}
-          flag={tripDestination(g).place.country}
-          now={now}
-        />
+      {[
+        { key: 'upcoming', groups: fromOrder.upcoming, readBack: false },
+        { key: 'past', groups: fromOrder.past, readBack: fromOrder.readBack },
+      ].filter((part) => part.groups.length > 0).map((part) => (
+        <View key={part.key} style={styles.section}>
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>
+            {sectionTitle(part.key, fromOrder, `Trips from ${place.city}`)}
+          </ThemedText>
+          {part.groups.map((g) => (
+            <TripGroupBlock
+              key={g.id}
+              group={g}
+              title={g.title}
+              detail={tripGroupDates(g, year)}
+              flag={tripDestination(g).place.country}
+              now={now}
+              connections={connections}
+              readBack={part.readBack}
+            />
+          ))}
+        </View>
       ))}
     </>
   );
   const toSection = dest.trips.length > 0 && (
     <>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>
-        Trips to {place.city}
-      </ThemedText>
-      {dest.trips.map((g) => {
-        const from = tripDestination(g).from;
-        const days = stayDays(g);
-        return (
-          <TripGroupBlock
-            key={g.id}
-            group={g}
-            title={tripGroupDates(g, year)}
-            detail={[from?.city ? `from ${from.city}` : '', days ? plural(days, 'day') : ''].filter(Boolean).join(' · ')}
-            flag={from?.country ?? place.country}
-            now={now}
-          />
-        );
-      })}
+      {[
+        { key: 'upcoming', groups: toOrder.upcoming, readBack: false },
+        { key: 'past', groups: toOrder.past, readBack: toOrder.readBack },
+      ].filter((part) => part.groups.length > 0).map((part) => (
+        <View key={part.key} style={styles.section}>
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.caps}>
+            {sectionTitle(part.key, toOrder, `Trips to ${place.city}`)}
+          </ThemedText>
+          {part.groups.map((g) => {
+            const from = tripDestination(g).from;
+            const days = stayDays(g);
+            return (
+              <TripGroupBlock
+                key={g.id}
+                group={g}
+                title={tripGroupDates(g, year)}
+                detail={[from?.city ? `from ${from.city}` : '', days ? plural(days, 'day') : ''].filter(Boolean).join(' · ')}
+                flag={from?.country ?? place.country}
+                now={now}
+                connections={connections}
+                readBack={part.readBack}
+              />
+            );
+          })}
+        </View>
+      ))}
     </>
   );
 
@@ -213,6 +259,8 @@ export function Destination() {
                 detail={tripGroupDates(g, year)}
                 flag={from?.country ?? place.country}
                 now={now}
+                connections={connections}
+                readBack={false}
               />
             );
           })}
@@ -249,4 +297,5 @@ const styles = StyleSheet.create({
   // The same as Flights' section headers ("2026", "Upcoming").
   caps: { fontSize: 13, lineHeight: 18, textTransform: 'uppercase', letterSpacing: 1 },
   pressed: { opacity: 0.7 },
+  section: { gap: Spacing.three },
 });

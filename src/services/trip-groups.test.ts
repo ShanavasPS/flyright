@@ -1,7 +1,8 @@
 import { getAirport } from './airports';
 import type { JourneyRow } from './journeys';
 import { tripDestination } from './destination';
-import { buildTripGroups, tripGroupDates, tripHeroGroup, tripListSections } from './trip-groups';
+import { connectionsInto } from './connections';
+import { buildTripGroups, orderTripGroups, tripGroupDates, tripGroupRows, tripHeroGroup, tripListSections } from './trip-groups';
 
 const NOW = new Date('2027-05-01T12:00:00Z');
 function flight(id: string, from: string, to: string, departure: string, arrival: string, extra: Partial<JourneyRow> = {}): JourneyRow {
@@ -427,5 +428,38 @@ describe('grouped list sections', () => {
     expect(tripListSections(rows, new Date('2027-05-28T12:00Z'))[0]!.key).toBe('upcoming');
     expect(tripListSections(rows, new Date('2027-06-02T12:00Z'))[0]!.key).toBe('current');
     expect(tripListSections(rows, new Date('2027-06-25T12:00Z'))[0]!.key).toBe('2027');
+  });
+});
+
+describe('destination pages draw trips as Flights does', () => {
+  const a = flight('a', 'HEL', 'DOH', '2027-05-11T15:20Z', '2027-05-11T21:20Z');
+  const b = flight('b', 'DOH', 'SIN', '2027-05-11T23:10Z', '2027-05-12T06:50Z');
+  const c = flight('c', 'SIN', 'DOH', '2027-05-18T11:25Z', '2027-05-18T19:20Z');
+  const d = flight('d', 'DOH', 'HEL', '2027-05-18T22:20Z', '2027-05-19T04:05Z');
+  const shape = (readBack: boolean) => {
+    const rows = [a, b, c, d];
+    const connections = connectionsInto(rows);
+    return buildTripGroups(rows).flatMap(t => t.groups).flatMap(g => tripGroupRows(g, connections, readBack)).map(r =>
+      r.kind === 'flight' ? (r.connection ? `~${r.journey.id}` : r.journey.id) : 'stay');
+  };
+
+  it('keeps the connections and stays of a trip, in travel order or read back', () => {
+    expect(shape(false)).toEqual(['a', '~b', 'stay', 'c', '~d']);
+    expect(shape(true)).toEqual(['d', '~c', 'stay', 'b', '~a']);
+  });
+
+  it('puts trips still to come first and the finished ones after, as the sort chips say', () => {
+    const groups = buildTripGroups([out, back, flight('old', 'HEL', 'JFK', '2026-03-01T10:00', '2026-03-01T13:00'),
+      flight('old-back', 'JFK', 'HEL', '2026-03-09T18:00', '2026-03-10T08:00'),
+      flight('older', 'HEL', 'JFK', '2025-03-01T10:00', '2025-03-01T13:00', { createdAt: '2027-04-30T10:00:00Z' } as Partial<JourneyRow>)])
+      .flatMap(t => t.groups);
+    const ids = (list: typeof groups) => list.map(g => g.entries.find(e => e.kind === 'flight')!.key);
+    const order = orderTripGroups(groups, NOW);
+    expect(ids(order.upcoming)).toEqual(['flight:out']);
+    expect(ids(order.past)).toEqual(['flight:old', 'flight:older']);
+    expect(order.readBack).toBe(true);
+    const oldest = orderTripGroups(groups, NOW, { upcoming: 'next', past: 'oldest' });
+    expect(ids(oldest.past)).toEqual(['flight:older', 'flight:old']);
+    expect(oldest.readBack).toBe(false);
   });
 });

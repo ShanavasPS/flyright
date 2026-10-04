@@ -372,6 +372,59 @@ export function tripGroupDates(group: TripGroup, currentYear: number): string {
     : `${single(start, false)} – ${single(end, false)}${suffix}`;
 }
 
+/** One destination's rows as Flights draws them: its flights, with the
+ * connection drawn above a leg that continues the one before, and the stays
+ * between. Read back (a finished trip, newest first) the rows run the other
+ * way. The destination page draws its trips with the same rows. */
+export type TripGroupRow =
+  | { kind: 'flight'; key: string; journey: JourneyRow; connection?: Connection }
+  | Extract<TripGroupEntry, { kind: 'stay' }>;
+
+export function tripGroupRows(group: TripGroup, connections: Map<string, Connection>, readBack: boolean): TripGroupRow[] {
+  const rows: TripGroupRow[] = [];
+  let previousId: string | undefined;
+  for (const entry of readBack ? [...group.entries].reverse() : group.entries) {
+    if (entry.kind === 'stay') {
+      rows.push(entry);
+      previousId = undefined;
+      continue;
+    }
+    // The joint is drawn above a row, between it and the one before: in
+    // travel order that is the connection into this leg; read back, the row
+    // above is the later leg, so it is the connection out.
+    const into = readBack ? connections.get(previousId ?? '') : connections.get(entry.journey.id);
+    const joins = readBack ? into?.prevId === entry.journey.id : !!into && into.prevId === previousId;
+    rows.push({ ...entry, connection: joins ? into : undefined });
+    previousId = entry.journey.id;
+  }
+  return rows;
+}
+
+/** Destinations in the order Flights keeps its trips: those still to be
+ * flown (or under way) first, soonest first or most recently saved first;
+ * then the finished ones, by when they got home, newest first, or the
+ * first one first. `readBack` says whether the finished ones are drawn
+ * newest leg first, as Flights draws them. */
+export function orderTripGroups(groups: TripGroup[], now: Date, sort: TripSort = DEFAULT_TRIP_SORT): {
+  upcoming: TripGroup[];
+  past: TripGroup[];
+  readBack: boolean;
+} {
+  const flights = (g: TripGroup) => g.entries.flatMap(e => e.kind === 'flight' ? [e.journey] : []);
+  const added = (g: TripGroup) => Math.max(0, ...flights(g).map(r => Date.parse(r.createdAt) || 0));
+  // Still to come while any of its flights has yet to land.
+  const ahead = (g: TripGroup) => {
+    const legs = flights(g);
+    return legs.length ? legs.some(r => at(arrival(r)) > now.getTime()) : at(g.end) > now.getTime();
+  };
+  const upcoming = groups.filter(ahead)
+    .sort((a, b) => (sort.upcoming === 'added' ? added(b) - added(a) : 0) || at(a.start) - at(b.start));
+  const oldest = sort.past === 'oldest';
+  const past = groups.filter(g => !ahead(g))
+    .sort((a, b) => oldest ? at(a.start) - at(b.start) : at(b.end) - at(a.end));
+  return { upcoming, past, readBack: !oldest };
+}
+
 /** Classify the complete trip before highlighting its active flight row.
  * A trip remains current between its flights and through the hero's arrival
  * window — but only the destination being travelled is shown as current:
@@ -459,22 +512,9 @@ export function tripListSections(
     // oldest first, the past list climbs instead, and so does each trip.
     const readBack = key !== 'current' && key !== 'upcoming' && !oldest;
     for (const group of readBack ? [...trip.groups].reverse() : trip.groups) {
-      const entries = readBack ? [...group.entries].reverse() : group.entries;
       items.push({ kind: 'header', key: `header:${group.id}`, group, dates: tripGroupDates(group, now.getFullYear()) });
-      let previousId: string | undefined;
-      for (const entry of entries) {
-        if (entry.kind === 'stay') {
-          items.push(entry);
-          previousId = undefined;
-        } else {
-          // The joint is drawn above a row, between it and the one before:
-          // in travel order that is the connection into this leg; read back,
-          // the row above is the later leg, so it is the connection out.
-          const into = readBack ? connections.get(previousId ?? '') : connections.get(entry.journey.id);
-          const joins = readBack ? into?.prevId === entry.journey.id : !!into && into.prevId === previousId;
-          items.push({ ...entry, live: phase.get(entry.journey.id) === 'live', hero: entry.journey.id === heroId, connection: joins ? into : undefined });
-          previousId = entry.journey.id;
-        }
+      for (const row of tripGroupRows(group, connections, readBack)) {
+        items.push(row.kind === 'stay' ? row : { ...row, live: phase.get(row.journey.id) === 'live', hero: row.journey.id === heroId });
       }
     }
     if (!items.length) continue;
