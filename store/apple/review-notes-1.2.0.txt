@@ -1,0 +1,13 @@
+What's new to review (1.1.11 was not submitted, so this covers both):
+
+Nothing about purchases or what Free and Pro include changes.
+
+1. Profile. Tapping the photo at the top left of Flights opens a Profile page: name and photo (Edit profile), Memberships, Settings, Account & security, FlyRight Pro, Help & support, and Sign out. Settings now holds only the app's switches.
+2. Account deletion has moved with it: Profile > Account & security > Delete account. Account & security also shows the sign-in email (changed with a code), connected Apple / Google accounts and the devices signed in.
+3. Memberships (frequent flyer cards). Profile > Memberships > "+" adds a programme's card; numbers are stored only on the device and shown only after Face ID or the device passcode (the reason for the Face ID usage description). The lock can be turned off in Settings > Privacy.
+4. Trip details. A trip's "Your ticket" section has Cabin, Price and Baggage boxes; tapping one opens the trip details editor.
+5. Trip progress. On a travel day, a trip's progress strip now starts with "Left home" and ends with "Reached the hotel" or "Home safe"; the steps are tapped by the traveller (no location is used). The expand button on the strip opens Trip progress full screen, where Edit lets the traveller remove steps and add standard ones, then Save. A finished trip keeps its progress as a record.
+
+To see them: sign in with the review account, tap the photo at the top left of Flights for Profile, and open any trip for the ticket and progress sections. The review account already has trips.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method.

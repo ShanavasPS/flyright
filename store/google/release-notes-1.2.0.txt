@@ -1,0 +1,6 @@
+• Trip progress runs door to door: Left home to Reached the hotel or Home safe, so followers know you arrived.
+• Trip progress full screen: every leg, steps you can add or remove, kept after the trip.
+• A profile page for your memberships, settings and account.
+• Frequent flyer cards, locked until you unlock them.
+• Cabin, ticket price and baggage on a trip.
+• Trip pages arranged around your travel day.

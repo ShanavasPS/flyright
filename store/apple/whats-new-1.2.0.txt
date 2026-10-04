@@ -1,0 +1,13 @@
+Trip progress now runs door to door: tap Left home when you set off and Reached the hotel (or Home safe) when you arrive, so the people following you know you are on your way and got there safely.
+
+Open trip progress full screen to see every leg with its icons, and add or remove steps to suit the trip. Steps are suggested from your home base, your connections and where you are going, and finished trips keep their progress so you can look back.
+
+Your profile has a home of its own: tap your photo for your name and photo, your memberships, Settings, your account and help.
+
+Keep your frequent flyer cards in FlyRight: numbers, tiers and miles in a stack you can open, with Face ID before a number shows. They stay on your phone, and trips show which card they can earn on.
+
+Add your cabin, ticket price and baggage allowance to a trip. Boarding passes and booking documents fill in the cabin and baggage, and the price and baggage stay private to you.
+
+Trip pages are arranged around where you are: before you go, on the travel day, just landed and afterwards. All your updates from a trip open on a page of their own, and long journal notes open in place.
+
+Account & security shows how you sign in and every device you are signed in on. Adding the same photo to a trip twice is now caught, even offline.
