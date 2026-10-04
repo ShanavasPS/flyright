@@ -30,6 +30,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
+import { baggageLine, serializeBaggage } from '@/services/baggage';
 import { cabinLabel } from '@/services/cabin';
 import { dayOffset, formatDayLabel, formatTime, localDateString } from '@/services/dates';
 import { recordDelay } from '@/services/disruptions';
@@ -390,6 +391,7 @@ export function ImportDocument() {
           bookingReference: segment.pnr,
           seat: segment.seat,
           cabin: segment.cabin ?? null,
+          baggage: serializeBaggage(segment.baggage),
           ...(segment.ticket
             ? { ticketCode: segment.ticket.code, ticketFormat: segment.ticket.format, ticketCapturedAt: now }
             : {}),
@@ -828,6 +830,7 @@ function SegmentCard({
   const details = [
     operator && `Codeshare · sold as ${marketingName}`,
     cabinLabel(segment.cabin),
+    baggageLine(segment.baggage ?? null),
     segment.seat && `Seat ${segment.seat}`,
     segment.pnr && `Booking ${segment.pnr}`,
     segment.pass && !already && 'Boarding pass kept for the gate',

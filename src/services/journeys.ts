@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
 import migrations from '../../drizzle/migrations';
@@ -87,6 +87,8 @@ export async function addJourney(row: NewJourneyRow) {
     scheduledArrival: row.scheduledArrival,
     ...(row.seat != null ? { seat: row.seat } : {}),
     ...(row.cabin != null ? { cabin: row.cabin } : {}),
+    // Baggage only where the trip has none: what the traveller typed stays.
+    ...(row.baggage != null ? { baggage: sql`coalesce(${journeys.baggage}, ${row.baggage})` } : {}),
     ...(row.bookingReference != null ? { bookingReference: row.bookingReference } : {}),
     // A pass scanned for a trip already in the journal is the newest
     // pass for it: the code and its symbology move together.
@@ -185,13 +187,13 @@ export async function saveJourneyNotes(id: string, text: string) {
 
 /** The boarding-pass barcode for a trip — read off a scanned or imported
  * pass, kept so the gate can read it again (services/boarding-pass). Seat,
- * cabin and booking reference come along when the code names them and the row
+ * cabin, booking reference and (where the trip has none) baggage come along when the code names them and the row
  * lacks them: the pass is the freshest word on both. Replaces any earlier
  * pass; updatedAt moves so the pass follows the trip to other devices. */
 export async function attachBoardingPass(
   id: string,
   pass: StoredPass,
-  details: { seat?: string | null; cabin?: string | null; bookingReference?: string | null } = {},
+  details: { seat?: string | null; cabin?: string | null; baggage?: string | null; bookingReference?: string | null } = {},
 ) {
   const now = new Date().toISOString();
   await db
@@ -202,6 +204,7 @@ export async function attachBoardingPass(
       passCapturedAt: now,
       ...(details.seat ? { seat: details.seat } : {}),
       ...(details.cabin ? { cabin: details.cabin } : {}),
+      ...(details.baggage ? { baggage: sql`coalesce(${journeys.baggage}, ${details.baggage})` } : {}),
       ...(details.bookingReference ? { bookingReference: details.bookingReference } : {}),
       updatedAt: now,
     })

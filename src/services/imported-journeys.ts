@@ -1,6 +1,7 @@
 /** Shared-document matching and patches are pure so every import path uses
  * the same identity rules without replacing the traveller's journal. */
 import { airportZone } from '@/services/airports';
+import { mergeBaggage, parseBaggage, serializeBaggage } from '@/services/baggage';
 import { parseBcbp } from '@/services/bcbp';
 import { legFor } from '@/services/boarding-pass';
 import { flightDay } from '@/services/dates';
@@ -98,6 +99,10 @@ export function importedJourneyPatch(segment: ImportedSegment, row: JourneyRow, 
   const booking = segment.pnr?.trim();
   if (seat && seat !== row.seat) patch.seat = seat;
   if (segment.cabin && segment.cabin !== row.cabin) patch.cabin = segment.cabin;
+  if (segment.baggage) {
+    const baggage = serializeBaggage(mergeBaggage(parseBaggage(row.baggage), segment.baggage));
+    if (baggage !== row.baggage) patch.baggage = baggage;
+  }
   // A partner's locator can differ from the ticket's. Keep the original
   // booking; the operating locator remains available in the attached pass.
   const codeshare = row.number && segment.flight && normalizedFlight(row.number) !== normalizedFlight(segment.flight);

@@ -105,6 +105,9 @@ export default defineSchema({
     seat: v.optional(v.union(v.string(), v.null())),
     /** The cabin flown: 'economy' | 'premium' | 'business' | 'first'. */
     cabin: v.optional(v.union(v.string(), v.null())),
+    /** Baggage allowance JSON. Like the seat and price, never sent to
+     * followers: the follower queries pick their fields by name. */
+    baggage: v.optional(v.union(v.string(), v.null())),
     /** The boarding-pass barcode (payload + symbology) and when it was read,
      * so the pass follows the trip to the account's other devices. Same
      * optionality as the fields above. */

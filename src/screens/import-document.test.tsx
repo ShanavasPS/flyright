@@ -9,6 +9,7 @@ import { FlightLookupError, lookupFlight, type FlightStatus } from '@/services/f
 import { extractItinerary } from '@/services/itinerary';
 import { legSchedule } from '@/services/leg-schedule';
 import { saveImportedJourney, type JourneyRow } from '@/services/journeys';
+import { serializeBaggage } from '@/services/baggage';
 import { keepDocument } from '@/services/trip-documents';
 import { ThemedSwitch } from '@/components/themed-switch';
 import { ImportDocument } from './import-document';
@@ -188,7 +189,7 @@ describe('keeping the document with the trips', () => {
         id: `trip-${segment.flight}`, mode: 'flight', number: segment.flight,
         fromCode: segment.fromCode, toCode: segment.toCode,
         scheduledDeparture: schedule.departure, scheduledArrival: schedule.arrival,
-        seat: segment.seat, cabin: segment.cabin ?? null, bookingReference: segment.pnr,
+        seat: segment.seat, cabin: segment.cabin ?? null, baggage: serializeBaggage(segment.baggage), bookingReference: segment.pnr,
         passCode: segment.pass?.code ?? null, passFormat: segment.pass?.format ?? null,
         ticketCode: segment.ticket?.code ?? null, ticketFormat: segment.ticket?.format ?? null,
         deletedAt: null,

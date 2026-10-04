@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
+import type { BaggageChip } from '@/services/baggage';
 import type { TripCardCell, TripCardClock, TripCardField, TripCardModel, TripCardTone } from '@/services/trip-card';
 
 const TWO_DAYS_MS = 48 * 3_600_000;
@@ -127,6 +128,9 @@ export function TripFactsCard({
               </View>
             ))}
           </View>
+          {section.baggage && (
+            <BaggageRow chips={section.baggage} onPress={onEdit ? () => onEdit('baggage') : undefined} />
+          )}
         </View>
       ))}
       {children}
@@ -222,15 +226,72 @@ function ClockRow({
       <ThemedText type="small" themeColor="textSecondary" style={styles.clockLabel}>
         {label}
       </ThemedText>
-      <ThemedText themeColor="heading" style={[styles.clockBig, color ? { color } : null]}>
-        {big}
-      </ThemedText>
-      {small && (
-        <ThemedText themeColor="textSecondary" style={[styles.clockSmall, !tight && styles.clockUnit]}>
-          {small}
+      {/* The label centres on the strip with the icon; only the figure and
+          its seconds or unit share a baseline. */}
+      <View style={styles.clockValue}>
+        <ThemedText themeColor="heading" style={[styles.clockBig, color ? { color } : null]}>
+          {big}
         </ThemedText>
-      )}
+        {small && (
+          <ThemedText themeColor="textSecondary" style={[styles.clockSmall, !tight && styles.clockUnit]}>
+            {small}
+          </ThemedText>
+        )}
+      </View>
     </View>
+  );
+}
+
+/** The ticket's baggage as the design's chips: what is included with a
+ * tick, what isn't dashed ("No checked bag"). Nothing known offers "Add".
+ * The whole row opens the editor on the baggage. */
+function BaggageRow({ chips, onPress }: { chips: BaggageChip[]; onPress?: () => void }) {
+  const theme = useTheme();
+  const label = chips.length ? `Baggage: ${chips.map((c) => c.label).join(', ')}` : 'Add baggage';
+  return (
+    <Pressable
+      testID="trip-card-baggage"
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={chips.length ? 'Edit' : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.baggage,
+        { backgroundColor: theme.field, borderTopColor: theme.hairline, opacity: pressed ? 0.7 : 1 },
+      ]}>
+      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.cellLabel}>
+        BAGGAGE
+      </ThemedText>
+      {chips.length ? (
+        <View style={styles.baggageChips}>
+          {chips.map((chip) => (
+            <View
+              key={chip.key}
+              style={[
+                styles.baggageChip,
+                chip.included
+                  ? { backgroundColor: `${theme.success}1F` }
+                  : { borderWidth: 1, borderStyle: 'dashed', borderColor: theme.textSecondary },
+              ]}>
+              {chip.included && (
+                <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={11} weight="bold" tintColor={theme.success} />
+              )}
+              <ThemedText type="smallBold" style={[styles.baggageChipText, { color: chip.included ? theme.success : theme.textSecondary }]}>
+                {chip.label}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.addRow}>
+          <SymbolView name={{ ios: 'plus', android: 'add', web: 'add' }} size={14} tintColor={theme.tint} />
+          <ThemedText type="smallBold" style={[styles.addText, { color: theme.tint }]}>
+            Add
+          </ThemedText>
+        </View>
+      )}
+    </Pressable>
   );
 }
 
@@ -280,6 +341,29 @@ function FactCell({ cell, onPress }: { cell: TripCardCell; onPress?: () => void 
 }
 
 const styles = StyleSheet.create({
+  baggage: {
+    borderTopWidth: 1,
+    paddingHorizontal: Spacing.three - Spacing.half,
+    paddingVertical: Spacing.two + Spacing.one,
+    gap: Spacing.two,
+  },
+  baggageChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two - Spacing.half,
+  },
+  baggageChip: {
+    minHeight: 30,
+    paddingHorizontal: Spacing.two + Spacing.half,
+    borderRadius: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  baggageChipText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
   card: {
     borderRadius: 22,
     borderWidth: 1,
@@ -318,6 +402,10 @@ const styles = StyleSheet.create({
   },
   clockRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clockValue: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },

@@ -134,6 +134,13 @@
       "when": 1791084973454,
       "tag": "0018_cabin",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1791088347476,
+      "tag": "0019_baggage",
+      "breakpoints": true
     }
   ]
 }

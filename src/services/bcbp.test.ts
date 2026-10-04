@@ -17,6 +17,7 @@ describe('parseBcbp', () => {
       seat: '001A',
       cabin: 'J',
       sequence: '25',
+      baggage: null,
     });
   });
 
@@ -77,5 +78,23 @@ describe('resolveFlightDate', () => {
   it('only offers day 366 in leap years', () => {
     // 2028 is a leap year; scanned late 2028, day 366 must not become Jan 1 2028+1 midpick.
     expect(resolveFlightDate(366, new Date(2028, 11, 30))).toBe('2028-12-31');
+  });
+});
+
+describe('free baggage allowance', () => {
+  // IATA Resolution 792's two-leg example, with its conditional items.
+  const TWO_LEGS =
+    'M2DESMARAIS/LUC       EABC123 YULFRAAC 0834 326J001A0025 14D>6180WW6225BAC 00141234560032A0141234567890 1AC AC 1234567890123    20KYLX58ZDEF456 FRAGVALH 3664 327C012C0002 12E2A0141234567891 1AC AC 1234567890123    2PCNWQ^164GIWVC5EH7JNT684FVNJ91W2QA4DVN5J8K4F0L0GEQ3DF5TGBN8709HKT5D3DW3GBHFCVHMY7J5T6HFR41W2QA4DVN5J8K4F0L0GE';
+
+  it('reads each leg its own allowance', () => {
+    const pass = parseBcbp(TWO_LEGS)!;
+    expect(pass.legs.map((l) => [l.flight, l.baggage])).toEqual([
+      ['AC834', '20K'],
+      ['LH3664', '2PC'],
+    ]);
+  });
+
+  it('is null on a pass without the conditional items', () => {
+    expect(parseBcbp(CANONICAL)!.legs[0]!.baggage).toBeNull();
   });
 });

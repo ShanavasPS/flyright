@@ -42,6 +42,8 @@ export interface AddFlightDraft {
   seat: string;
   /** The cabin, when the traveller picked one or a scan named it. */
   cabin: CabinClass | null;
+  /** The baggage allowance a scanned pass carried, stored form (services/baggage). */
+  baggage: string | null;
   /** Who sees the trip the moment it is saved. */
   audience: TripVisibility;
   /** The code the scanner read, kept on the trip so it can be shown at the gate. */
@@ -71,6 +73,7 @@ const empty = (): AddFlightDraft => ({
   bookingRef: '',
   seat: '',
   cabin: null,
+  baggage: null,
   audience: getDefaultTripVisibility(),
   scannedPass: null,
   seededFrom: null,

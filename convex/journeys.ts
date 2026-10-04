@@ -36,6 +36,7 @@ const journeyRow = v.object({
   bookingReference: v.optional(v.union(v.string(), v.null())),
   seat: v.optional(v.union(v.string(), v.null())),
   cabin: v.optional(v.union(v.string(), v.null())),
+  baggage: v.optional(v.union(v.string(), v.null())),
   passCode: v.optional(v.union(v.string(), v.null())),
   passFormat: v.optional(v.union(v.string(), v.null())),
   passCapturedAt: v.optional(v.union(v.string(), v.null())),

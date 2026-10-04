@@ -10,9 +10,9 @@
  *   ─┬┬────────┬─────────┬┬──────┬───┬───┬──┬────┬──┬┬───┬────┬┬┬
  *    M│  name (20)       E│pnr(7)│from│to │car│fl(5)│doy│seat│…
  *
- * Only the mandatory items are read; each leg's variable-size field (whose
- * length closes the block) is skipped, which also skips airline-specific and
- * security data appended after the last leg.
+ * The mandatory items are read, and from each leg's variable-size field
+ * only the free baggage allowance (item 118); the rest of it, and the
+ * airline-specific and security data after the last leg, is skipped.
  */
 
 export interface BoardingPassLeg {
@@ -29,6 +29,9 @@ export interface BoardingPassLeg {
   cabin: string | null;
   /** Check-in sequence number ("25" from "00025"), null when blank. */
   sequence: string | null;
+  /** Free baggage allowance as encoded ("2PC", "20K"), null when the pass
+   * doesn't carry the conditional section or leaves it blank. */
+  baggage: string | null;
 }
 
 export interface BoardingPass {
@@ -64,7 +67,28 @@ function parseLeg(block: string): BoardingPassLeg | null {
     seat: seat || null,
     cabin: /^[A-Z]$/.test(cabin) ? cabin : null,
     sequence: /^\d+$/.test(sequence) ? sequence : null,
+    baggage: null,
   };
+}
+
+/** Item 118 from a leg's variable-size field. The first leg's field opens
+ * with the unique conditional items ('>', the version, their hex size, the
+ * items); every leg then has its repeated conditional items: a hex size,
+ * then airline code (3), document number (10), selectee (1), document
+ * verification (1), marketing carrier (3), frequent-flyer airline (3) and
+ * number (16), ID/AD (1) — and the allowance (3). */
+function freeBaggage(field: string, first: boolean): string | null {
+  let at = 0;
+  if (first) {
+    if (field[0] !== '>') return null;
+    const unique = parseInt(field.slice(2, 4), 16);
+    if (Number.isNaN(unique)) return null;
+    at = 4 + unique;
+  }
+  const size = parseInt(field.slice(at, at + 2), 16);
+  if (Number.isNaN(size) || size < 41) return null;
+  const allowance = field.slice(at + 2 + 38, at + 2 + 41).trim();
+  return /^\d{1,3}(PC|K|L)$/.test(allowance) ? allowance : null;
 }
 
 /** Null whenever the payload isn't a plausible boarding pass — loyalty cards,
@@ -87,10 +111,13 @@ export function parseBcbp(data: string): BoardingPass | null {
     }
     const leg = parseLeg(block.padEnd(LEG_LEN));
     if (!leg) return null;
-    legs.push(leg);
 
     // The 2-hex-digit variable-field size closes each block; hop over it.
     const varSize = parseInt(data.slice(offset + LEG_LEN - 2, offset + LEG_LEN), 16);
+    if (!Number.isNaN(varSize) && varSize > 0) {
+      leg.baggage = freeBaggage(data.slice(offset + LEG_LEN, offset + LEG_LEN + varSize), i === 0);
+    }
+    legs.push(leg);
     offset += LEG_LEN + (Number.isNaN(varSize) ? 0 : varSize);
   }
 

@@ -80,7 +80,8 @@ export function tripFacts(trip: JourneyRow, all: JourneyRow[], limit = 3): strin
   return facts.slice(0, limit);
 }
 
-function formatMoney(amount: number, currency: string): string {
+/** "€412", "$736.44"; the bare code when the platform can't format it. */
+export function formatMoney(amount: number, currency: string): string {
   try {
     return new Intl.NumberFormat(undefined, {
       style: 'currency',

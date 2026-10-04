@@ -16,6 +16,7 @@ import { presumedFlightStage } from '../../convex/liveShared';
 
 import type { JourneyRow } from '@/services/journeys';
 import { airportZone, getAirport } from '@/services/airports';
+import { baggageChips, parseBaggage, type BaggageChip } from '@/services/baggage';
 import { cabinLabel } from '@/services/cabin';
 import { flightDay, flightInstant, formatTime } from '@/services/dates';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
@@ -30,9 +31,10 @@ import {
   type TravelDayState,
   type TravelPhase,
 } from '@/services/travel-day';
+import { formatMoney } from '@/services/trip-facts';
 import { typedFields, type TypedField } from '@/services/trip-record';
 
-export type TripCardField = TypedField | 'seat' | 'cabin' | 'bookingReference';
+export type TripCardField = TypedField | 'seat' | 'cabin' | 'bookingReference' | 'ticketPrice' | 'baggage';
 
 export interface TripCardCell {
   field: TripCardField;
@@ -49,6 +51,9 @@ export interface TripCardCell {
 export interface TripCardSection {
   title: string;
   cells: TripCardCell[];
+  /** The ticket's baggage chips (services/baggage); empty offers "Add".
+   * Absent on the airport sections. */
+  baggage?: BaggageChip[];
 }
 
 export type TripCardTone = 'neutral' | 'good' | 'info' | 'late' | 'boarding';
@@ -215,10 +220,21 @@ export function tripCard({ row, facts, state, phase, now, statusKnown, monitorin
   const ticket: TripCardSection = {
     title: 'Your ticket',
     cells: [
-      { field: 'cabin', label: 'Cabin', value: cabinLabel(row.cabin), placeholder: null, byUser: false },
       { field: 'seat', label: 'Seat', value: row.seat, placeholder: null, byUser: false },
-      { field: 'bookingReference', label: 'Booking', value: row.bookingReference, placeholder: null, byUser: false, wide: true },
+      { field: 'bookingReference', label: 'Booking', value: row.bookingReference, placeholder: null, byUser: false },
+      { field: 'cabin', label: 'Cabin', value: cabinLabel(row.cabin), placeholder: null, byUser: false },
+      {
+        field: 'ticketPrice',
+        label: 'Price',
+        value:
+          row.ticketPriceAmount != null && row.ticketPriceCurrency
+            ? formatMoney(row.ticketPriceAmount, row.ticketPriceCurrency)
+            : null,
+        placeholder: null,
+        byUser: false,
+      },
     ],
+    baggage: baggageChips(parseBaggage(row.baggage)),
   };
   const airportKnown = !!(
     facts.terminal ||

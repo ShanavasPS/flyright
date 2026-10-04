@@ -55,6 +55,7 @@ import {
 import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
 import { legFor, passCovers, type StoredPass } from '@/services/boarding-pass';
+import { baggageFromAllowance, serializeBaggage } from '@/services/baggage';
 import { cabinFromCompartment, cabinLabel, isCabin, type CabinClass } from '@/services/cabin';
 import {
   ADD_FLIGHT_PATH,
@@ -162,10 +163,10 @@ function passFields(pass: StoredPass | null, journey: { number: string; fromCode
 
 /** The optional booking reference, seat and cabin as row fields: trimmed,
  * upper-cased, null when blank. */
-function tripDetails(bookingRef: string, seat: string, cabin: CabinClass | null) {
+function tripDetails(bookingRef: string, seat: string, cabin: CabinClass | null, baggage: string | null) {
   const ref = bookingRef.trim().toUpperCase();
   const seatNo = seat.trim().toUpperCase();
-  return { bookingReference: ref || null, seat: seatNo || null, cabin };
+  return { bookingReference: ref || null, seat: seatNo || null, cabin, ...(baggage ? { baggage } : {}) };
 }
 
 /** One step of the flow. Each step is its own screen in the My travels
@@ -218,6 +219,7 @@ export function AddFlight({ step }: { step: Step }) {
     bookingRef,
     seat,
     cabin,
+    baggage,
     audience,
     scannedPass,
   } = draft;
@@ -411,6 +413,7 @@ export function AddFlight({ step }: { step: Step }) {
         await attachBoardingPass(target.id, code, {
           seat: matched.seat,
           cabin: cabinFromCompartment(matched.cabin),
+          baggage: serializeBaggage(baggageFromAllowance(matched.baggage)),
           bookingReference: matched.pnr,
         });
         trackEvent('boarding_pass_attached', { via: 'camera' });
@@ -432,7 +435,7 @@ export function AddFlight({ step }: { step: Step }) {
     if (code) {
       const segment: ImportedSegment = {
         key: `${leg.flight}-${scannedDay}`, flight: leg.flight, date: scannedDay,
-        fromCode: leg.fromCode, toCode: leg.toCode, seat, cabin: cabinFromCompartment(leg.cabin), pnr: leg.pnr, pass: code,
+        fromCode: leg.fromCode, toCode: leg.toCode, seat, cabin: cabinFromCompartment(leg.cabin), baggage: baggageFromAllowance(leg.baggage), pnr: leg.pnr, pass: code,
         arrivalDate: null, depTime: null, arrTime: null, operatedBy: null, sources: ['barcode'],
       };
       try {
@@ -469,6 +472,7 @@ export function AddFlight({ step }: { step: Step }) {
     setBookingRef(leg.pnr);
     setSeat(leg.seat ?? '');
     setCabin(cabinFromCompartment(leg.cabin));
+    patch({ baggage: serializeBaggage(baggageFromAllowance(leg.baggage)) });
     setDate(resolveFlightDate(leg.dayOfYear, today));
     setManualMode(!designator);
     go(designator ? 'result' : 'manual');
@@ -636,7 +640,7 @@ export function AddFlight({ step }: { step: Step }) {
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
       aircraftModel: flight.aircraft?.model ?? null,
       aircraftReg: flight.aircraft?.reg ?? null,
-      ...tripDetails(bookingRef, seat, cabin),
+      ...tripDetails(bookingRef, seat, cabin, baggage),
       ...passFields(scannedPass, { number: flight.flight, fromCode: flight.from.code!, toCode: flight.to.code!, date: flight.date }),
       ...flagsFor(audience),
       createdAt: new Date().toISOString(),
@@ -731,7 +735,7 @@ export function AddFlight({ step }: { step: Step }) {
         distanceKm,
         scheduledDeparture,
         scheduledArrival,
-        ...tripDetails(bookingRef, seat, cabin),
+        ...tripDetails(bookingRef, seat, cabin, baggage),
       });
       finish(`${fromAirport.iata} → ${toAirport.iata}`);
       Observe.logEvent('flight.edited', {
@@ -755,7 +759,7 @@ export function AddFlight({ step }: { step: Step }) {
       distanceKm,
       scheduledDeparture,
       scheduledArrival,
-      ...tripDetails(bookingRef, seat, cabin),
+      ...tripDetails(bookingRef, seat, cabin, baggage),
       ...passFields(scannedPass, { number: flightNumber ?? '', fromCode: fromAirport.iata, toCode: toAirport.iata, date: date ?? undefined }),
       ...flagsFor(audience),
       createdAt: new Date().toISOString(),

@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/expo';
+import { getLocales } from 'expo-localization';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -11,6 +12,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 
+import { BaggageEditor } from '@/components/baggage-editor';
 import { CabinPicker } from '@/components/cabin-picker';
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { ThemedText } from '@/components/themed-text';
@@ -20,15 +22,18 @@ import { useKeyboardOverlap } from '@/hooks/use-keyboard-overlap';
 import { useTheme } from '@/hooks/use-theme';
 import { HeaderButton } from '@/screens/journey-note';
 import { airportZone, getAirport } from '@/services/airports';
+import { parseBaggage, serializeBaggage, type Baggage } from '@/services/baggage';
 import { isCabin, type CabinClass } from '@/services/cabin';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { noteSuccess } from '@/services/haptics';
 import { updateJourney, useJourney, type JourneyRow, type NewJourneyRow } from '@/services/journeys';
+import { parsePrice, priceText } from '@/services/price';
 import type { TripCardField } from '@/services/trip-card';
 import { boardingInstant, parseClock, typedFields, typedPatch, type RecordRow } from '@/services/trip-record';
 
-/** The typed fields; the cabin is chips (CabinPicker), kept apart. */
-type Field = Exclude<TripCardField, 'cabin'>;
+/** The typed fields; the cabin (CabinPicker) and the baggage
+ * (BaggageEditor) are chips, kept apart. */
+type Field = Exclude<TripCardField, 'cabin' | 'baggage'>;
 
 interface FieldSpec {
   field: Field;
@@ -53,6 +58,7 @@ const DEPARTURE: FieldSpec[] = [
 const TICKET: FieldSpec[] = [
   { field: 'seat', label: 'Seat', placeholder: 'e.g. 14A', input: CODE },
   { field: 'bookingReference', label: 'Booking reference', placeholder: 'e.g. FRX7YQ', input: CODE },
+  { field: 'ticketPrice', label: 'Price', placeholder: 'e.g. 412 EUR', input: CODE },
 ];
 const ARRIVAL: FieldSpec[] = [{ field: 'baggageBelt', label: 'Baggage belt', placeholder: 'e.g. 7', input: CODE }];
 
@@ -62,6 +68,7 @@ const placeName = (code: string) => getAirport(code)?.city.replace(/\s*\(.*\)$/,
 /** What a field holds now, as the traveller would type it. */
 function stored(row: JourneyRow, field: Field): string {
   if (field === 'boardingTime') return row.boardingTime ? formatTime(row.boardingTime, airportZone(row.fromCode)) : '';
+  if (field === 'ticketPrice') return priceText(row.ticketPriceAmount, row.ticketPriceCurrency);
   return row[field] ?? '';
 }
 
@@ -95,6 +102,11 @@ export function TripDetailsEdit() {
   const [drafts, setDrafts] = useState<Partial<Record<Field, string>>>({});
   // The cabin is picked, not typed: undefined until a chip is tapped.
   const [cabinDraft, setCabinDraft] = useState<CabinClass | null | undefined>(undefined);
+  const [baggageDraft, setBaggageDraft] = useState<Baggage | undefined>(undefined);
+  // Where the baggage block sits, so a weight field typed in stays in view.
+  const baggageFrame = useRef<{ group: string; y: number; height: number } | null>(null);
+  const openedAtTicket = useRef(false);
+  const [baggageFocused, setBaggageFocused] = useState(0);
 
   // Keep the focused field inside the part of the form the keyboard leaves
   // visible — on focus, and again once the keyboard has taken its room.
@@ -112,6 +124,14 @@ export function TripDetailsEdit() {
       scrollRef.current?.scrollTo({ y: bottom - viewport, animated: true });
     }
   }, [focused, viewport, keyboardPad]);
+
+  // The same for the baggage weights: the block's bottom above the keyboard.
+  useEffect(() => {
+    const frame = baggageFrame.current;
+    if (!baggageFocused || !frame || !viewport) return;
+    const bottom = (groupOffsets.current[frame.group] ?? 0) + frame.y + frame.height + Spacing.four;
+    if (bottom > scrollY.current + viewport) scrollRef.current?.scrollTo({ y: bottom - viewport, animated: true });
+  }, [baggageFocused, viewport, keyboardPad]);
 
   if (error || !loaded || !row) {
     return (
@@ -148,13 +168,17 @@ export function TripDetailsEdit() {
   const order = groups.flatMap((group) => group.specs.map((spec) => spec.field));
   // Opened from the Cabin box, no field takes the keyboard: the chips are
   // right there.
-  const initialFocus = focusParam === 'cabin' ? null : order.includes(focusParam as Field) ? (focusParam as Field) : order[0];
+  const chipsFirst = focusParam === 'cabin' || focusParam === 'baggage';
+  const initialFocus = chipsFirst ? null : order.includes(focusParam as Field) ? (focusParam as Field) : order[0];
   const storedCabin = isCabin(row.cabin) ? row.cabin : null;
   const cabin = cabinDraft === undefined ? storedCabin : cabinDraft;
+  const storedBaggage = parseBaggage(row.baggage) ?? {};
+  const baggage = baggageDraft ?? storedBaggage;
+  const baggageChanged = serializeBaggage(baggage) !== serializeBaggage(storedBaggage);
 
   const valueOf = (field: Field) => drafts[field] ?? stored(row, field);
   const changed = order.filter((field) => drafts[field] != null && drafts[field]!.trim() !== stored(row, field));
-  const dirty = changed.length > 0 || cabin !== storedCabin;
+  const dirty = changed.length > 0 || cabin !== storedCabin || baggageChanged;
   const typed = typedFields(row);
 
   const save = async () => {
@@ -162,10 +186,22 @@ export function TripDetailsEdit() {
     let record: RecordRow = row;
     const patch: Partial<NewJourneyRow> = {};
     if (cabin !== storedCabin) patch.cabin = cabin;
+    if (baggageChanged) patch.baggage = serializeBaggage(baggage);
     for (const field of changed) {
       const text = drafts[field]!.trim();
       if (field === 'seat' || field === 'bookingReference') {
         patch[field] = text ? text.toUpperCase() : null;
+        continue;
+      }
+      if (field === 'ticketPrice') {
+        const price = parsePrice(text, row.ticketPriceCurrency ?? getLocales()[0]?.currencyCode ?? null);
+        if (text && !price) {
+          Alert.alert('Price', 'Enter the amount and its currency as it reads on your booking, like 412 EUR.');
+          inputs.current.ticketPrice?.focus();
+          return;
+        }
+        patch.ticketPriceAmount = price?.amount ?? null;
+        patch.ticketPriceCurrency = price?.currency ?? null;
         continue;
       }
       let value: string | null = text || null;
@@ -236,7 +272,9 @@ export function TripDetailsEdit() {
                 groupOffsets.current[group.title] = e.nativeEvent.layout.y;
                 // Opened from the Cabin box: start at the ticket, where the
                 // chips are, since no field focusing brings it into view.
-                if (focusParam === 'cabin' && group.specs === TICKET) {
+                // Once: the group lays out again whenever a chip opens a field.
+                if (chipsFirst && group.specs === TICKET && !openedAtTicket.current) {
+                  openedAtTicket.current = true;
                   scrollRef.current?.scrollTo({ y: Math.max(0, e.nativeEvent.layout.y - Spacing.three), animated: false });
                 }
               }}>
@@ -257,6 +295,7 @@ export function TripDetailsEdit() {
                 const airportPosted =
                   spec.field !== 'seat' &&
                   spec.field !== 'bookingReference' &&
+                  spec.field !== 'ticketPrice' &&
                   !!row[spec.field] &&
                   !typed.has(spec.field);
                 return (
@@ -298,6 +337,27 @@ export function TripDetailsEdit() {
                   </View>
                 );
               })}
+              {group.specs === TICKET && (
+                <View
+                  testID="trip-details-baggage"
+                  style={styles.field}
+                  onLayout={(e: LayoutChangeEvent) => {
+                    const { y, height } = e.nativeEvent.layout;
+                    baggageFrame.current = { group: group.title, y, height };
+                  }}>
+                  <ThemedText type="smallBold" themeColor="heading">
+                    Baggage
+                  </ThemedText>
+                  <BaggageEditor
+                    value={baggage}
+                    onChange={setBaggageDraft}
+                    onFocusWeight={() => {
+                      setFocused(null);
+                      setBaggageFocused((n) => n + 1);
+                    }}
+                  />
+                </View>
+              )}
             </View>
           ))}
         </ScrollView>

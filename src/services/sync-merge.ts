@@ -36,6 +36,8 @@ export interface RemoteJourney {
   seat?: string | null;
   /** The cabin flown (services/cabin); omitted by clients older than it. */
   cabin?: string | null;
+  /** Baggage allowance JSON (services/baggage); omitted by older clients. */
+  baggage?: string | null;
   /** The boarding-pass barcode and when it was read; omitted by clients
    * older than the pass feature, null when the trip has none. */
   passCode?: string | null;
@@ -101,6 +103,7 @@ export function toRemoteJourney(row: JourneyRow): RemoteJourney {
     bookingReference: row.bookingReference,
     seat: row.seat,
     cabin: row.cabin,
+    baggage: row.baggage,
     passCode: row.passCode,
     passFormat: row.passFormat,
     passCapturedAt: row.passCapturedAt,
