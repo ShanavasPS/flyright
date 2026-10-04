@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import type { StoredPass } from '@/services/boarding-pass';
+import type { CabinClass } from '@/services/cabin';
 import type { TripVisibility } from '@/services/trip-visibility';
 import { getDefaultTripVisibility } from '@/services/trip-visibility-default';
 
@@ -39,6 +40,8 @@ export interface AddFlightDraft {
   airline: { iata: string; name: string; country: string } | null;
   bookingRef: string;
   seat: string;
+  /** The cabin, when the traveller picked one or a scan named it. */
+  cabin: CabinClass | null;
   /** Who sees the trip the moment it is saved. */
   audience: TripVisibility;
   /** The code the scanner read, kept on the trip so it can be shown at the gate. */
@@ -67,6 +70,7 @@ const empty = (): AddFlightDraft => ({
   airline: null,
   bookingRef: '',
   seat: '',
+  cabin: null,
   audience: getDefaultTripVisibility(),
   scannedPass: null,
   seededFrom: null,

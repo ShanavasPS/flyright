@@ -26,6 +26,7 @@ function row(overrides: Partial<JourneyRow>): JourneyRow {
     rating: null,
     bookingReference: null,
     seat: null,
+    cabin: null,
     passCode: null,
     passFormat: null,
     passCapturedAt: null,

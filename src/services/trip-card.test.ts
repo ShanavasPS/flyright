@@ -27,6 +27,7 @@ function row(overrides: Partial<JourneyRow> = {}): JourneyRow {
     rating: null,
     bookingReference: 'FRX7YQ',
     seat: '14A',
+    cabin: null,
     passCode: null,
     passFormat: null,
     passCapturedAt: null,
@@ -84,7 +85,7 @@ describe('tripCard', () => {
     expect(model.clock).toMatchObject({ kind: 'static', label: 'Scheduled departure' });
     expect(model.progress).toBeNull();
     expect(model.sections[0].cells.map(c => c.value)).toEqual(['2', 'Area 200', '53', expect.stringMatching(/15:30|3:30/)]);
-    expect(model.sections[1].cells.map(c => c.value)).toEqual(['14A', 'FRX7YQ']);
+    expect(model.sections[1].cells.map(c => c.value)).toEqual([null, '14A', 'FRX7YQ']);
     expect(model.footnote).toBe('Saved details. Live updates are off.');
   });
 
@@ -94,7 +95,7 @@ describe('tripCard', () => {
     expect(model.clock).toMatchObject({ kind: 'countdown', label: 'Departs in' });
     expect(values(model)).toEqual([
       ['(On the day)', '(On the day)', '(On the day)', '(On the day)'],
-      ['14A', 'FRX7YQ'],
+      ['(add)', '14A', 'FRX7YQ'],
       ['(After landing)'],
     ]);
   });
@@ -180,7 +181,7 @@ describe('tripCard', () => {
   it('a trip without live updates offers every box to fill in', () => {
     const model = card({ at: '2026-09-19T10:00:00Z', row: row({ source: 'manual' }), statusKnown: false });
     expect(model.status.text).toBe('From your ticket');
-    expect(values(model)).toEqual([['(add)', '(add)', '(add)', '(add)'], ['14A', 'FRX7YQ'], ['(add)']]);
+    expect(values(model)).toEqual([['(add)', '(add)', '(add)', '(add)'], ['(add)', '14A', 'FRX7YQ'], ['(add)']]);
     expect(model.footnote).toMatch(/Tap a box/);
   });
 
@@ -194,7 +195,7 @@ describe('tripCard', () => {
 
   it('an empty ticket offers to be filled in', () => {
     const model = card({ at: '2026-09-19T12:00:00Z', row: row({ seat: null, bookingReference: null }) });
-    expect(model.sections[1].cells.map((c) => c.placeholder)).toEqual([null, null]);
+    expect(model.sections[1].cells.map((c) => c.placeholder)).toEqual([null, null, null]);
   });
 });
 

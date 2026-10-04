@@ -24,6 +24,7 @@ import { useMaxBrightness } from '@/hooks/use-max-brightness';
 import { trackEvent } from '@/services/analytics';
 import { airportZone } from '@/services/airports';
 import { asPassFormat, codeFacts as passFacts } from '@/services/boarding-pass';
+import { cabinFromCompartment, cabinLabel } from '@/services/cabin';
 import { formatTime, tripDateTitle } from '@/services/dates';
 import { tapLight } from '@/services/haptics';
 import { removeBoardingPass, removeTicketCode, useJourney } from '@/services/journeys';
@@ -198,7 +199,12 @@ export function BoardingPassScreen() {
               <Fact label="Sequence" value={facts.sequence ?? '—'} />
             </>}
             <Fact label="Booking" value={facts.pnr ?? row.bookingReference ?? '—'} />
-            {facts.cabin && <Fact label="Cabin" value={facts.cabin} />}
+            {(facts.cabin || row.cabin) && (
+              <Fact
+                label="Cabin"
+                value={cabinLabel(row.cabin) ?? cabinLabel(cabinFromCompartment(facts.cabin)) ?? facts.cabin ?? '—'}
+              />
+            )}
             {facts.legs > 1 && <Fact label="Leg" value={`${facts.leg} of ${facts.legs}`} />}
           </View>
 

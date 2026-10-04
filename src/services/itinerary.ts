@@ -24,6 +24,7 @@ import { CARRIERS, operatingBrand } from '@/constants/carriers';
 import { airportRank, hubAirports, isValidIata, largeAirports } from '@/services/airports';
 import { parseBcbp, resolveFlightDate } from '@/services/bcbp';
 import { storablePass, storableTicket, type StoredPass } from '@/services/boarding-pass';
+import { cabinFromCompartment, cabinFromText, type CabinClass } from '@/services/cabin';
 import { parseEticketRecord } from '@/services/eticket';
 import type { WalletFlightDetails } from '@/services/wallet-passes';
 
@@ -60,6 +61,10 @@ export interface ImportedSegment {
   toCode: string | null;
   pnr: string | null;
   seat: string | null;
+  /** The cabin the leg is booked in (services/cabin): the word the page
+   * prints for it, or the boarding pass's compartment letter. Absent or null
+   * when neither names one plainly. */
+  cabin?: CabinClass | null;
   /** The airline the passenger flies with when the document's disclosure
    * line says so ("Operated by: HORIZON AIR AS ALASKAHORIZON" on a Qatar-sold
    * ticket → Alaska Airlines): the brand, not the regional's corporate name.
@@ -1270,6 +1275,7 @@ function segmentsFromText(text: string, today: Date): ImportedSegment[] {
       toCode: airports[1] ?? null,
       pnr,
       seat: normalizeSeat(seatMatch?.[1]),
+      cabin: cabinFromText(tail),
       operatedBy,
       sources: ['text'],
       pass: null,
@@ -1365,6 +1371,7 @@ function segmentsFromBarcodes(
         toCode: leg.toCode,
         pnr: leg.pnr || null,
         seat: normalizeSeat(leg.seat),
+        cabin: cabinFromCompartment(leg.cabin),
         // BCBP's leg block names the operating carrier, so the flight prefix already is it.
         operatedBy: null,
         sources: ['barcode'],
@@ -1492,6 +1499,9 @@ export function extractItinerary(pages: DocumentPage[], today = new Date()): Iti
       fromCode: match.fromCode ?? leg.fromCode,
       toCode: match.toCode ?? leg.toCode,
       seat: match.seat ?? leg.seat,
+      // The page's word for the cabin over the code's letter, which some
+      // airlines fill with the fare's booking class.
+      cabin: leg.cabin ?? match.cabin ?? null,
       pnr: match.pnr ?? leg.pnr,
       sources: ['barcode', 'text'],
       pass: match.pass,

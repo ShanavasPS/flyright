@@ -66,7 +66,7 @@ export async function addJourney(row: NewJourneyRow) {
   // are refreshed from the new source — a receipt that names the operating
   // airline of a codeshare leg must win over the marketing carrier a plain
   // lookup stored earlier. The journal fields (notes, rating, photos) are
-  // never touched; seat and booking reference only when the new source knows
+  // never touched; seat, cabin and booking reference only when the new source knows
   // them. The audience: the add-trip screens pass the traveler's choice,
   // which wins even on a revived row (they saw it before saving); a caller
   // that sets neither flag gets the Settings default ("Show new trips to")
@@ -86,6 +86,7 @@ export async function addJourney(row: NewJourneyRow) {
     scheduledDeparture: row.scheduledDeparture,
     scheduledArrival: row.scheduledArrival,
     ...(row.seat != null ? { seat: row.seat } : {}),
+    ...(row.cabin != null ? { cabin: row.cabin } : {}),
     ...(row.bookingReference != null ? { bookingReference: row.bookingReference } : {}),
     // A pass scanned for a trip already in the journal is the newest
     // pass for it: the code and its symbology move together.
@@ -183,14 +184,14 @@ export async function saveJourneyNotes(id: string, text: string) {
 }
 
 /** The boarding-pass barcode for a trip — read off a scanned or imported
- * pass, kept so the gate can read it again (services/boarding-pass). Seat
- * and booking reference come along when the code names them and the row
+ * pass, kept so the gate can read it again (services/boarding-pass). Seat,
+ * cabin and booking reference come along when the code names them and the row
  * lacks them: the pass is the freshest word on both. Replaces any earlier
  * pass; updatedAt moves so the pass follows the trip to other devices. */
 export async function attachBoardingPass(
   id: string,
   pass: StoredPass,
-  details: { seat?: string | null; bookingReference?: string | null } = {},
+  details: { seat?: string | null; cabin?: string | null; bookingReference?: string | null } = {},
 ) {
   const now = new Date().toISOString();
   await db
@@ -200,6 +201,7 @@ export async function attachBoardingPass(
       passFormat: pass.format,
       passCapturedAt: now,
       ...(details.seat ? { seat: details.seat } : {}),
+      ...(details.cabin ? { cabin: details.cabin } : {}),
       ...(details.bookingReference ? { bookingReference: details.bookingReference } : {}),
       updatedAt: now,
     })

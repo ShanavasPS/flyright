@@ -11,6 +11,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 
+import { CabinPicker } from '@/components/cabin-picker';
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,13 +20,15 @@ import { useKeyboardOverlap } from '@/hooks/use-keyboard-overlap';
 import { useTheme } from '@/hooks/use-theme';
 import { HeaderButton } from '@/screens/journey-note';
 import { airportZone, getAirport } from '@/services/airports';
+import { isCabin, type CabinClass } from '@/services/cabin';
 import { formatDayLabelWithYear, formatTime } from '@/services/dates';
 import { noteSuccess } from '@/services/haptics';
 import { updateJourney, useJourney, type JourneyRow, type NewJourneyRow } from '@/services/journeys';
 import type { TripCardField } from '@/services/trip-card';
 import { boardingInstant, parseClock, typedFields, typedPatch, type RecordRow } from '@/services/trip-record';
 
-type Field = TripCardField;
+/** The typed fields; the cabin is chips (CabinPicker), kept apart. */
+type Field = Exclude<TripCardField, 'cabin'>;
 
 interface FieldSpec {
   field: Field;
@@ -63,8 +66,8 @@ function stored(row: JourneyRow, field: Field): string {
 }
 
 /** Everything the trip card shows, typed in: the departure airport's
- * terminal, check-in, gate and boarding time, the ticket's seat and
- * booking, and the belt. Opened from a box on the card, with that box's
+ * terminal, check-in, gate and boarding time, the ticket's cabin (chips,
+ * not a field), seat and booking, and the belt. Opened from a box on the card, with that box's
  * field focused.
  *
  * The keyboard never covers the field being typed in: the form ends at the
@@ -90,6 +93,8 @@ export function TripDetailsEdit() {
   const inputs = useRef<Partial<Record<Field, TextInput | null>>>({});
   const [focused, setFocused] = useState<Field | null>(null);
   const [drafts, setDrafts] = useState<Partial<Record<Field, string>>>({});
+  // The cabin is picked, not typed: undefined until a chip is tapped.
+  const [cabinDraft, setCabinDraft] = useState<CabinClass | null | undefined>(undefined);
 
   // Keep the focused field inside the part of the form the keyboard leaves
   // visible — on focus, and again once the keyboard has taken its room.
@@ -141,17 +146,22 @@ export function TripDetailsEdit() {
       ]
     : [{ title: 'Your ticket', specs: TICKET }];
   const order = groups.flatMap((group) => group.specs.map((spec) => spec.field));
-  const initialFocus = order.includes(focusParam as Field) ? (focusParam as Field) : order[0];
+  // Opened from the Cabin box, no field takes the keyboard: the chips are
+  // right there.
+  const initialFocus = focusParam === 'cabin' ? null : order.includes(focusParam as Field) ? (focusParam as Field) : order[0];
+  const storedCabin = isCabin(row.cabin) ? row.cabin : null;
+  const cabin = cabinDraft === undefined ? storedCabin : cabinDraft;
 
   const valueOf = (field: Field) => drafts[field] ?? stored(row, field);
   const changed = order.filter((field) => drafts[field] != null && drafts[field]!.trim() !== stored(row, field));
-  const dirty = changed.length > 0;
+  const dirty = changed.length > 0 || cabin !== storedCabin;
   const typed = typedFields(row);
 
   const save = async () => {
     if (!dirty) return;
     let record: RecordRow = row;
     const patch: Partial<NewJourneyRow> = {};
+    if (cabin !== storedCabin) patch.cabin = cabin;
     for (const field of changed) {
       const text = drafts[field]!.trim();
       if (field === 'seat' || field === 'bookingReference') {
@@ -224,10 +234,23 @@ export function TripDetailsEdit() {
               style={styles.group}
               onLayout={(e) => {
                 groupOffsets.current[group.title] = e.nativeEvent.layout.y;
+                // Opened from the Cabin box: start at the ticket, where the
+                // chips are, since no field focusing brings it into view.
+                if (focusParam === 'cabin' && group.specs === TICKET) {
+                  scrollRef.current?.scrollTo({ y: Math.max(0, e.nativeEvent.layout.y - Spacing.three), animated: false });
+                }
               }}>
               <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupTitle}>
                 {group.title.toUpperCase()}
               </ThemedText>
+              {group.specs === TICKET && (
+                <View style={styles.field}>
+                  <ThemedText type="smallBold" themeColor="heading">
+                    Cabin
+                  </ThemedText>
+                  <CabinPicker label="" value={cabin} onChange={setCabinDraft} />
+                </View>
+              )}
               {group.specs.map((spec) => {
                 const index = order.indexOf(spec.field);
                 const last = index === order.length - 1;

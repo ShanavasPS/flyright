@@ -37,6 +37,10 @@ export const journeys = sqliteTable('journeys', {
    *  off a scanned boarding pass. Null when unknown. */
   bookingReference: text('booking_reference'),
   seat: text('seat'),
+  /** The cabin flown — 'economy' | 'premium' | 'business' | 'first'
+   *  (services/cabin). Typed, or read off a boarding pass or booking
+   *  document. Null when unknown. */
+  cabin: text('cabin'),
   /** The boarding-pass barcode read off a scanned or imported pass, kept so
    *  the trip can show it again at the gate: the payload exactly as decoded
    *  and the symbology it came in (services/boarding-pass). One per trip,

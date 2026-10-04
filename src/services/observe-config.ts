@@ -33,6 +33,7 @@ export const PRIVATE_ROUTE_PARAMS = [
   'to',
   'pnr',
   'seat',
+  'cabin',
   'depTime',
   'arrTime',
   'delay',

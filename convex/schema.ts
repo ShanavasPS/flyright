@@ -103,6 +103,8 @@ export default defineSchema({
     rating: v.optional(v.union(v.number(), v.null())),
     bookingReference: v.optional(v.union(v.string(), v.null())),
     seat: v.optional(v.union(v.string(), v.null())),
+    /** The cabin flown: 'economy' | 'premium' | 'business' | 'first'. */
+    cabin: v.optional(v.union(v.string(), v.null())),
     /** The boarding-pass barcode (payload + symbology) and when it was read,
      * so the pass follows the trip to the account's other devices. Same
      * optionality as the fields above. */

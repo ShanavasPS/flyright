@@ -41,6 +41,7 @@ export async function applyRemoteJourney(remote: RemoteJourney, userId: string) 
     rating: remote.rating ?? null,
     bookingReference: remote.bookingReference ?? null,
     seat: remote.seat ?? null,
+    cabin: remote.cabin ?? null,
     passCode: remote.passCode ?? null,
     passFormat: remote.passFormat ?? null,
     passCapturedAt: remote.passCapturedAt ?? null,

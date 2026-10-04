@@ -127,6 +127,13 @@
       "when": 1791049108162,
       "tag": "0017_memberships",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1791084973454,
+      "tag": "0018_cabin",
+      "breakpoints": true
     }
   ]
 }

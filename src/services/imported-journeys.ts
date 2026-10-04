@@ -97,6 +97,7 @@ export function importedJourneyPatch(segment: ImportedSegment, row: JourneyRow, 
   const seat = segment.seat?.trim();
   const booking = segment.pnr?.trim();
   if (seat && seat !== row.seat) patch.seat = seat;
+  if (segment.cabin && segment.cabin !== row.cabin) patch.cabin = segment.cabin;
   // A partner's locator can differ from the ticket's. Keep the original
   // booking; the operating locator remains available in the attached pass.
   const codeshare = row.number && segment.flight && normalizedFlight(row.number) !== normalizedFlight(segment.flight);

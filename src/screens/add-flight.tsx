@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AirlineLogo } from '@/components/airline-logo';
 import { AirlineSheet } from '@/components/airline-sheet';
 import { BoardingPassScanner } from '@/components/boarding-pass-scanner';
+import { CabinPicker } from '@/components/cabin-picker';
 import { CalendarMonth } from '@/components/calendar-month';
 import { AudienceRow, useCircleFollowers, useVisibilityChooser } from '@/components/trip-audience';
 import { YearSheet, type YearRequest } from '@/components/year-sheet';
@@ -54,6 +55,7 @@ import {
 import { trackEvent } from '@/services/analytics';
 import { resolveFlightDate, type BoardingPass } from '@/services/bcbp';
 import { legFor, passCovers, type StoredPass } from '@/services/boarding-pass';
+import { cabinFromCompartment, cabinLabel, isCabin, type CabinClass } from '@/services/cabin';
 import {
   ADD_FLIGHT_PATH,
   useAddFlightDraft,
@@ -158,12 +160,12 @@ function passFields(pass: StoredPass | null, journey: { number: string; fromCode
   return { passCode: pass.code, passFormat: pass.format, passCapturedAt: new Date().toISOString() };
 }
 
-/** The optional booking reference and seat as row fields: trimmed, upper-
- * cased, null when blank. */
-function tripDetails(bookingRef: string, seat: string) {
+/** The optional booking reference, seat and cabin as row fields: trimmed,
+ * upper-cased, null when blank. */
+function tripDetails(bookingRef: string, seat: string, cabin: CabinClass | null) {
   const ref = bookingRef.trim().toUpperCase();
   const seatNo = seat.trim().toUpperCase();
-  return { bookingReference: ref || null, seat: seatNo || null };
+  return { bookingReference: ref || null, seat: seatNo || null, cabin };
 }
 
 /** One step of the flow. Each step is its own screen in the My travels
@@ -186,6 +188,8 @@ export function AddFlight({ step }: { step: Step }) {
     to?: string;
     pnr?: string;
     seat?: string;
+    /** The cabin the document named (services/cabin key). */
+    cabin?: string;
     depTime?: string;
     arrTime?: string;
     /** '1' to open straight on the journal form instead of the lookup. */
@@ -213,6 +217,7 @@ export function AddFlight({ step }: { step: Step }) {
     airline,
     bookingRef,
     seat,
+    cabin,
     audience,
     scannedPass,
   } = draft;
@@ -229,6 +234,7 @@ export function AddFlight({ step }: { step: Step }) {
   const setAirline = (airline: AddFlightDraft['airline']) => patch({ airline });
   const setBookingRef = (bookingRef: string) => patch({ bookingRef });
   const setSeat = (seat: string) => patch({ seat });
+  const setCabin = (cabin: CabinClass | null) => patch({ cabin });
   const setAudience = (audience: TripVisibility) => patch({ audience });
   const setScannedPass = (scannedPass: StoredPass | null) => patch({ scannedPass });
 
@@ -319,6 +325,7 @@ export function AddFlight({ step }: { step: Step }) {
       toInput: prefill.to ?? '',
       bookingRef: prefill.pnr ?? '',
       seat: prefill.seat ?? '',
+      cabin: isCabin(prefill.cabin) ? prefill.cabin : null,
       depTime: prefill.depTime || null,
       arrTime: prefill.arrTime || null,
       manualMode: manual,
@@ -357,6 +364,7 @@ export function AddFlight({ step }: { step: Step }) {
       flightNumber: editRow.number || null,
       bookingRef: editRow.bookingReference ?? '',
       seat: editRow.seat ?? '',
+      cabin: isCabin(editRow.cabin) ? editRow.cabin : null,
       airline,
       depTime: timed ? (wallClock(dep, airportZone(editRow.fromCode)) ?? dep.slice(11, 16)) : null,
       arrTime:
@@ -400,7 +408,11 @@ export function AddFlight({ step }: { step: Step }) {
         return;
       }
       try {
-        await attachBoardingPass(target.id, code, { seat: matched.seat, bookingReference: matched.pnr });
+        await attachBoardingPass(target.id, code, {
+          seat: matched.seat,
+          cabin: cabinFromCompartment(matched.cabin),
+          bookingReference: matched.pnr,
+        });
         trackEvent('boarding_pass_attached', { via: 'camera' });
         router.back();
       } catch {
@@ -420,7 +432,7 @@ export function AddFlight({ step }: { step: Step }) {
     if (code) {
       const segment: ImportedSegment = {
         key: `${leg.flight}-${scannedDay}`, flight: leg.flight, date: scannedDay,
-        fromCode: leg.fromCode, toCode: leg.toCode, seat, pnr: leg.pnr, pass: code,
+        fromCode: leg.fromCode, toCode: leg.toCode, seat, cabin: cabinFromCompartment(leg.cabin), pnr: leg.pnr, pass: code,
         arrivalDate: null, depTime: null, arrTime: null, operatedBy: null, sources: ['barcode'],
       };
       try {
@@ -456,6 +468,7 @@ export function AddFlight({ step }: { step: Step }) {
     setToInput(leg.toCode);
     setBookingRef(leg.pnr);
     setSeat(leg.seat ?? '');
+    setCabin(cabinFromCompartment(leg.cabin));
     setDate(resolveFlightDate(leg.dayOfYear, today));
     setManualMode(!designator);
     go(designator ? 'result' : 'manual');
@@ -623,7 +636,7 @@ export function AddFlight({ step }: { step: Step }) {
       scheduledArrival: flight.scheduledArrival ?? `${flight.date}T00:00:00Z`,
       aircraftModel: flight.aircraft?.model ?? null,
       aircraftReg: flight.aircraft?.reg ?? null,
-      ...tripDetails(bookingRef, seat),
+      ...tripDetails(bookingRef, seat, cabin),
       ...passFields(scannedPass, { number: flight.flight, fromCode: flight.from.code!, toCode: flight.to.code!, date: flight.date }),
       ...flagsFor(audience),
       createdAt: new Date().toISOString(),
@@ -718,7 +731,7 @@ export function AddFlight({ step }: { step: Step }) {
         distanceKm,
         scheduledDeparture,
         scheduledArrival,
-        ...tripDetails(bookingRef, seat),
+        ...tripDetails(bookingRef, seat, cabin),
       });
       finish(`${fromAirport.iata} → ${toAirport.iata}`);
       Observe.logEvent('flight.edited', {
@@ -742,7 +755,7 @@ export function AddFlight({ step }: { step: Step }) {
       distanceKm,
       scheduledDeparture,
       scheduledArrival,
-      ...tripDetails(bookingRef, seat),
+      ...tripDetails(bookingRef, seat, cabin),
       ...passFields(scannedPass, { number: flightNumber ?? '', fromCode: fromAirport.iata, toCode: toAirport.iata, date: date ?? undefined }),
       ...flagsFor(audience),
       createdAt: new Date().toISOString(),
@@ -1292,6 +1305,7 @@ export function AddFlight({ step }: { step: Step }) {
                     style={[styles.input, styles.detailInput, { color: theme.text, backgroundColor: theme.field }]}
                   />
                 </View>
+                <CabinPicker value={cabin} onChange={setCabin} />
                 {audienceRow('card')}
                 <View style={styles.cta}>
                   <PrimaryButton
@@ -1349,9 +1363,9 @@ export function AddFlight({ step }: { step: Step }) {
                       landed={flight.landed}
                     />
                   </View>
-                  {(bookingRef || seat) && (
+                  {(bookingRef || seat || cabin) && (
                     <ThemedText type="small" style={styles.passCarrier} numberOfLines={1}>
-                      {[seat && `Seat ${seat}`, bookingRef && `Booking ${bookingRef}`]
+                      {[cabinLabel(cabin), seat && `Seat ${seat}`, bookingRef && `Booking ${bookingRef}`]
                         .filter(Boolean)
                         .join(' · ')}
                     </ThemedText>

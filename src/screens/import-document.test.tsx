@@ -188,7 +188,7 @@ describe('keeping the document with the trips', () => {
         id: `trip-${segment.flight}`, mode: 'flight', number: segment.flight,
         fromCode: segment.fromCode, toCode: segment.toCode,
         scheduledDeparture: schedule.departure, scheduledArrival: schedule.arrival,
-        seat: segment.seat, bookingReference: segment.pnr,
+        seat: segment.seat, cabin: segment.cabin ?? null, bookingReference: segment.pnr,
         passCode: segment.pass?.code ?? null, passFormat: segment.pass?.format ?? null,
         ticketCode: segment.ticket?.code ?? null, ticketFormat: segment.ticket?.format ?? null,
         deletedAt: null,

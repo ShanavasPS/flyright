@@ -16,6 +16,7 @@ import { presumedFlightStage } from '../../convex/liveShared';
 
 import type { JourneyRow } from '@/services/journeys';
 import { airportZone, getAirport } from '@/services/airports';
+import { cabinLabel } from '@/services/cabin';
 import { flightDay, flightInstant, formatTime } from '@/services/dates';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
 import { shiftLabel } from '@/services/schedule-change';
@@ -31,7 +32,7 @@ import {
 } from '@/services/travel-day';
 import { typedFields, type TypedField } from '@/services/trip-record';
 
-export type TripCardField = TypedField | 'seat' | 'bookingReference';
+export type TripCardField = TypedField | 'seat' | 'cabin' | 'bookingReference';
 
 export interface TripCardCell {
   field: TripCardField;
@@ -214,8 +215,9 @@ export function tripCard({ row, facts, state, phase, now, statusKnown, monitorin
   const ticket: TripCardSection = {
     title: 'Your ticket',
     cells: [
+      { field: 'cabin', label: 'Cabin', value: cabinLabel(row.cabin), placeholder: null, byUser: false },
       { field: 'seat', label: 'Seat', value: row.seat, placeholder: null, byUser: false },
-      { field: 'bookingReference', label: 'Booking', value: row.bookingReference, placeholder: null, byUser: false },
+      { field: 'bookingReference', label: 'Booking', value: row.bookingReference, placeholder: null, byUser: false, wide: true },
     ],
   };
   const airportKnown = !!(
