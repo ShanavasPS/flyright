@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.1.11',
+    date: '2026-10-04',
+    notes: [
+      'Your profile has a home of its own: tap your photo for your name and photo, your memberships, Settings, your account and help, all in one place.',
+      'Keep your frequent flyer cards in FlyRight: numbers, tiers and miles in a stack you can open, with Face ID before a number shows. They stay on your phone, and trips show which card they can earn on.',
+      'Add your cabin, ticket price and baggage allowance to a trip. Boarding passes and booking documents fill in the cabin and baggage where they say them, and the price and baggage stay private to you.',
+      'Trip pages are arranged around where you are: before you go, on the travel day, just landed, and afterwards, with a compact countdown and a progress strip you can scroll.',
+      'Account & security shows how you sign in and every device you are signed in on, and lets you change your email or sign other devices out.',
+      'Pages for a city show connections between flights and list trips in the same order as Flights.',
+    ],
+  },
+  {
     version: '1.1.10',
     date: '2026-10-02',
     notes: [
