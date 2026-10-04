@@ -26,6 +26,11 @@ export default function JourneysStack() {
         name="journey/[id]"
         options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}
       />
+      {/* "See all" under a trip's own updates. */}
+      <Stack.Screen
+        name="journey-updates"
+        options={{ title: 'Your updates', headerBackButtonDisplayMode: 'minimal' }}
+      />
       <Stack.Screen
         name="stats/index"
         options={{ title: 'Travel stats', headerBackButtonDisplayMode: 'minimal' }}

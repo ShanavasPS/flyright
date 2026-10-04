@@ -3,7 +3,6 @@ import { useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Image } from 'expo-image';
-import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { api } from '../../convex/_generated/api';
@@ -31,16 +30,18 @@ export function OwnUpdatesCard({
   row,
   travel,
   now,
+  full = false,
 }: {
   row: JourneyRow;
   travel: TravelDayState;
   now: Date;
+  /** The whole list, on its own screen (journey-updates). */
+  full?: boolean;
 }) {
   const router = useRouter();
   const theme = useTheme();
   const { isSignedIn, userId } = useAuth();
   const updates = useQuery(api.updates.mine, isSignedIn ? { journeyKey: row.id } : 'skip');
-  const [showAll, setShowAll] = useState(false);
   const remove = useMutation(api.updates.remove);
 
   const visibility = visibilityOf(row);
@@ -86,6 +87,7 @@ export function OwnUpdatesCard({
     ) : null;
 
   const share = () => router.push({ pathname: '/trip-update', params: { journeyId: row.id } });
+  const seeAll = () => router.push({ pathname: '/journey-updates', params: { journeyId: row.id } });
   const openUpdate = (updateId: string) =>
     userId &&
     router.push({
@@ -95,9 +97,10 @@ export function OwnUpdatesCard({
 
   // Two or more: newest first in a row of squares that scrolls sideways,
   // so a busy trip doesn't push the rest of the page down. "See all" opens
-  // the full list in place (with the take-down and the names behind each
-  // heart); sharing moves to a small pill in the header.
-  if (posted.length >= 2 && !showAll) {
+  // the full list on its own screen (with the take-down and the names behind
+  // each heart), so the back button returns to the trip; sharing moves to a
+  // small pill in the header.
+  if (posted.length >= 2 && !full) {
     return (
       <Card testID="own-updates">
         <View style={styles.compactHead}>
@@ -122,7 +125,7 @@ export function OwnUpdatesCard({
               testID="own-updates-all"
               accessibilityRole="button"
               hitSlop={Spacing.two}
-              onPress={() => setShowAll(true)}
+              onPress={seeAll}
               style={({ pressed }) => [styles.seeAll, pressed && styles.pressed]}>
               <ThemedText type="smallBold" style={{ color: theme.tint }}>
                 See all
@@ -140,7 +143,7 @@ export function OwnUpdatesCard({
               key={u.updateId}
               accessibilityRole="button"
               accessibilityLabel={`${captionOf(u)}, ${agoLabel(u.createdAt, now)}${u.reactions ? `, ${u.reactions} hearts` : ''}`}
-              onPress={() => (u.photoUrl ? openUpdate(u.updateId) : setShowAll(true))}
+              onPress={() => (u.photoUrl ? openUpdate(u.updateId) : seeAll())}
               style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
               <View style={[styles.tileBox, { backgroundColor: theme.backgroundSelected }]}>
                 {u.photoUrl ? (
@@ -174,7 +177,7 @@ export function OwnUpdatesCard({
   return (
     <UpdatesCard
       testID="own-updates"
-      eyebrow="Your updates"
+      eyebrow={full ? undefined : 'Your updates'}
       updates={posted}
       now={now}
       onRemove={(updateId) => void remove({ updateId: updateId as Id<'tripUpdates'> })}

@@ -40,7 +40,8 @@ export function UpdatesCard({
   emptyText,
   testID,
 }: {
-  eyebrow: string;
+  /** Left out where the screen's title already says it. */
+  eyebrow?: string;
   updates: (TripUpdate | OwnUpdate)[];
   now: Date;
   /** A follower's heart. Absent on the owner's own view and on the web. */
@@ -63,9 +64,11 @@ export function UpdatesCard({
   if (!updates.length && !action) return null;
   return (
     <Card testID={testID}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-        {eyebrow}
-      </ThemedText>
+      {eyebrow ? (
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
+          {eyebrow}
+        </ThemedText>
+      ) : null}
       {action}
       {!updates.length && emptyText ? (
         <ThemedText type="small" themeColor="textSecondary">

@@ -178,6 +178,10 @@ export function JourneyDetail({
   // Slicing the stored instant asks about the wrong day for a departure that
   // straddles UTC midnight (see dates.flightDay).
   const lookupDay = row ? lookupDayFor(row) : undefined;
+  // Set when the traveller runs the free delay check themselves: then a "no
+  // compensation" answer is shown, since they asked. Otherwise a verdict
+  // only appears when there is money on it.
+  const [askedDelay, setAskedDelay] = useState(false);
   const status = useQuery({
     queryKey: ['flight-status', journey?.number, lookupDay, userId ?? 'guest', inboundUnlocked, proLocked],
     queryFn: () =>
@@ -312,6 +316,8 @@ export function JourneyDetail({
       );
   const disruption: Disruption | null =
     delayMinutes != null ? { type: 'delay', delayMinutes } : null;
+  const verdictOwed = !!disruption && !!evaluate(journey, disruption).compensation;
+  const showVerdict = !!disruption && (askedDelay || verdictOwed);
   // A verdict is a bonus on top of the journal — when we can't get live data
   // (manual entries, flights the provider no longer remembers), the trip
   // simply reads as history instead of showing a spinner or an error.
@@ -593,18 +599,22 @@ export function JourneyDetail({
             case 'pro':
               return !isDemo && row && proLocked ? <ProTripCard key={slot} trip={row} /> : null;
             case 'claims':
-              return delayCheck || disruption ? (
+              return delayCheck || showVerdict ? (
                 <View key={slot} style={styles.slot}>
                   {delayCheck && (
                     <Card>
                       <ThemedText type="smallBold">Was this flight delayed?</ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">Check its final arrival delay for free. Preparing a claim with FlyRight needs Pro.</ThemedText>
-                      <PrimaryButton label={status.isFetching ? 'Checking…' : 'Check eligibility'} disabled={status.isFetching} onPress={() => void status.refetch()} />
+                      <PrimaryButton label={status.isFetching ? 'Checking…' : 'Check eligibility'} disabled={status.isFetching} onPress={() => {
+                          setAskedDelay(true);
+                          void status.refetch();
+                        }}
+                      />
                       {status.isError && <ThemedText type="small" themeColor="textSecondary">We couldn’t retrieve the arrival. Try again later. Your flight is still saved.</ThemedText>}
                       {status.data && status.data.delayMinutes == null && <ThemedText type="small" themeColor="textSecondary">The final arrival time isn’t available yet.</ThemedText>}
                     </Card>
                   )}
-                  {disruption && <VerdictCard journey={journey} disruption={disruption} />}
+                  {showVerdict && disruption && <VerdictCard journey={journey} disruption={disruption} />}
                 </View>
               ) : null;
             case 'journal':
@@ -1139,7 +1149,7 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
       {verdict.eligible && verdict.compensation ? (
         <>
           <SheenSweep />
-          <ThemedText type="display" style={{ color: theme.success }}>
+          <ThemedText style={[styles.owedTitle, { color: theme.success }]}>
             You&apos;re owed {shownAmount} {verdict.compensation.currency}
           </ThemedText>
           <ThemedText type="small">{verdict.reason}</ThemedText>
@@ -1198,6 +1208,11 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
 }
 
 const styles = StyleSheet.create({
+  owedTitle: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: 700,
+  },
   slot: {
     gap: Spacing.three,
   },
