@@ -18,6 +18,7 @@ import { db } from '@/db/client';
 import { journeys, travelDay } from '@/db/schema';
 import {
   EMPTY_TRAVEL_DAY,
+  STAGE_ORDER,
   advance,
   applyFlightFacts,
   rewindTo,
@@ -25,6 +26,7 @@ import {
   withoutForeignFlightStamps,
   type FlightFacts,
   type StageRules,
+  type StagePlan,
   type TravelDayState,
   type TravelStage,
 } from '@/services/travel-day';
@@ -39,7 +41,22 @@ export function rowToState(row: TravelDayRow | undefined): TravelDayState {
   } catch {
     // A corrupt stamps blob loses timestamps, not the stage itself.
   }
-  return { stage: (row.stage as TravelStage | null) ?? null, stamps };
+  const plan = parsePlan(row.plan);
+  return { stage: (row.stage as TravelStage | null) ?? null, stamps, ...(plan ? { plan } : {}) };
+}
+
+/** A stored walk, as stages the app knows in the one order; null when
+ * absent or unreadable (the suggested walk then applies). */
+function parsePlan(json: string | null): StagePlan | null {
+  if (!json) return null;
+  try {
+    const raw: unknown = JSON.parse(json);
+    if (!Array.isArray(raw)) return null;
+    const plan = STAGE_ORDER.filter((s) => raw.includes(s));
+    return plan.length ? plan : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The traveler's stage state for one journey, live. */
@@ -142,6 +159,19 @@ export async function repairFlightStages(
   const clean = withoutForeignFlightStamps(state, leg);
   if (clean !== state) await writeState(journeyId, clean);
   return clean;
+}
+
+/** Save the steps the traveller chose for a leg (the trip progress editor),
+ * or null to go back to the suggested walk. Dirties the row so the walk
+ * reaches followers with the next push. */
+export async function setStepPlan(journeyId: string, plan: StagePlan | null): Promise<void> {
+  const now = new Date().toISOString();
+  const value = plan ? JSON.stringify(STAGE_ORDER.filter((s) => plan.includes(s))) : null;
+  await db
+    .insert(travelDay)
+    .values({ journeyId, stamps: '{}', plan: value, updatedAt: now })
+    .onConflictDoUpdate({ target: travelDay.journeyId, set: { plan: value, updatedAt: now } });
+  Observe.logEvent('travel_day.steps_edited', { attributes: { reset: plan ? 'no' : 'yes' } });
 }
 
 /** Lifecycle bookkeeping: when a live surface first appeared / was torn down. */

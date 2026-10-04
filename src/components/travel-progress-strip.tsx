@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { STAGE_ICONS } from '@/components/travel-day-timeline';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
@@ -27,7 +28,7 @@ import {
 
 /** Width of one step: room for "Through security" on two lines. */
 const STEP = 84;
-const DOT = 22;
+const DOT = 30;
 
 const isFlightStage = (stage: TravelStage): boolean => (FLIGHT_STAGES as readonly string[]).includes(stage);
 
@@ -38,7 +39,9 @@ const isFlightStage = (stage: TravelStage): boolean => (FLIGHT_STAGES as readonl
  * what it does in the full timeline (components/travel-day-timeline): ahead
  * advances, an earlier stamped step slides back, the current one undoes.
  * Take-off and landing come from flight data where the flight is tracked.
- * The row opens scrolled to the next step. */
+ * Each step wears its icon. The row opens scrolled to the next step; the
+ * header's expand button opens the full progress screen, where the steps
+ * can be edited. */
 export function TravelProgressStrip({
   journey,
   state,
@@ -47,6 +50,7 @@ export function TravelProgressStrip({
   onAdvance,
   onRewind,
   onUndo,
+  onExpand,
 }: {
   journey: TravelJourney;
   state: TravelDayState;
@@ -55,6 +59,8 @@ export function TravelProgressStrip({
   onAdvance: (stage: TravelStage) => void;
   onRewind: (stage: TravelStage) => void;
   onUndo: () => void;
+  /** Opens the full trip progress screen. */
+  onExpand?: () => void;
 }) {
   const theme = useTheme();
   const now = useNow(60_000);
@@ -101,6 +107,7 @@ export function TravelProgressStrip({
             </ThemedText>
           </Pressable>
         )}
+        {onExpand && <ProgressExpandButton onPress={onExpand} />}
       </View>
 
       <ScrollView
@@ -162,15 +169,25 @@ export function TravelProgressStrip({
                           borderStyle: skipped ? 'dashed' : 'solid',
                         },
                   ]}>
-                  {reached ? (
-                    <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={11} weight="heavy" tintColor="#FFFFFF" />
-                  ) : auto ? (
-                    <SymbolView
-                      name={{ ios: 'antenna.radiowaves.left.and.right', android: 'sensors', web: 'sensors' }}
-                      size={10}
-                      tintColor={theme.textSecondary}
-                    />
-                  ) : null}
+                  <SymbolView
+                    name={STAGE_ICONS[stage]}
+                    size={13}
+                    tintColor={reached ? '#FFFFFF' : isNext ? theme.success : theme.textSecondary}
+                  />
+                  {reached && (
+                    <View style={[styles.tick, { backgroundColor: theme.success, borderColor: theme.backgroundElement }]}>
+                      <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={7} weight="heavy" tintColor="#FFFFFF" />
+                    </View>
+                  )}
+                  {auto && (
+                    <View style={[styles.tick, { backgroundColor: theme.backgroundSelected, borderColor: theme.backgroundElement }]}>
+                      <SymbolView
+                        name={{ ios: 'antenna.radiowaves.left.and.right', android: 'sensors', web: 'sensors' }}
+                        size={7}
+                        tintColor={theme.textSecondary}
+                      />
+                    </View>
+                  )}
                 </View>
                 <View style={[styles.line, { backgroundColor: i === plan.length - 1 ? 'transparent' : lineOut }]} />
               </View>
@@ -186,6 +203,32 @@ export function TravelProgressStrip({
         })}
       </ScrollView>
     </Card>
+  );
+}
+
+/** The round button that opens the full trip progress screen — on the
+ * strip, and on the finished trip's record. */
+export function ProgressExpandButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      testID="trip-progress-expand"
+      accessibilityRole="button"
+      accessibilityLabel="Open trip progress"
+      accessibilityHint="See every step and add or remove steps"
+      hitSlop={Spacing.two}
+      onPress={() => {
+        tapLight();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.expand, { backgroundColor: theme.backgroundSelected }, pressed && styles.pressed]}>
+      <SymbolView
+        name={{ ios: 'arrow.up.left.and.arrow.down.right', android: 'open_in_full', web: 'open_in_full' }}
+        size={13}
+        weight="semibold"
+        tintColor={theme.tint}
+      />
+    </Pressable>
   );
 }
 
@@ -214,6 +257,25 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  expand: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 'auto',
+  },
+  tick: {
+    position: 'absolute',
+    right: -5,
+    bottom: -5,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stripScroll: {
     marginHorizontal: -Spacing.four,

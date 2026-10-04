@@ -61,6 +61,16 @@ export function atHome(code: string, home: HomePlace | null | undefined, fallbac
   return samePlace(airportPlace(code, fallbackCountry), home);
 }
 
+/** Whether an airport is in the home city at a moment, for the trip
+ * progress steps (travel-day-plan's IsHome): null when no home is known. */
+export function homeCheck(state: HomeBaseState, rows: JourneyRow[], now = Date.now()): (iata: string, at: string) => boolean | null {
+  const homeOnDay = homeByDay(state, rows, now);
+  return (iata, at) => {
+    const home = homeOnDay(at.slice(0, 10));
+    return home ? atHome(iata, home) : null;
+  };
+}
+
 /** The local day a row departs. */
 export function departureDay(row: Pick<JourneyRow, 'scheduledDeparture' | 'fromCode'>): string {
   return flightDay(row.scheduledDeparture, airportZone(row.fromCode)).slice(0, 10);

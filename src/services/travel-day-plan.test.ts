@@ -1,4 +1,4 @@
-import { legPlaces, planFromSession, stagePlanFor, stagePlans } from '@/services/travel-day-plan';
+import { itineraryOf, legPlaces, planFromSession, stagePlanFor, stagePlans } from '@/services/travel-day-plan';
 import { DEFAULT_PLAN, stagePlan } from '@/services/travel-day';
 
 type Leg = {
@@ -22,10 +22,18 @@ const TRANSIT_WALK = ['security', 'boarded'];
 const FLIGHT = ['departed', 'landed'];
 
 describe('stagePlan', () => {
-  it('a flight on its own keeps the airport walk and ends at the landing', () => {
-    expect(stagePlan({ connecting: false, onward: false, entersHere: false, bagsHere: false })).toEqual(
-      DEFAULT_PLAN,
-    );
+  it('a flight on its own walks from the door to the door', () => {
+    expect(stagePlan({ connecting: false, onward: false, entersHere: false, bagsHere: false })).toEqual([
+      'left_home',
+      ...DEFAULT_PLAN,
+      'reached_stay',
+    ]);
+  });
+
+  it('the doors follow the home base: from the hotel, and home safe at the end', () => {
+    expect(
+      stagePlan({ connecting: false, onward: false, entersHere: false, bagsHere: false, fromHome: false, toHome: true }),
+    ).toEqual(['left_stay', ...DEFAULT_PLAN, 'home_safe']);
   });
 
   it('a connecting leg starts airside and clears passport control after landing', () => {
@@ -34,11 +42,13 @@ describe('stagePlan', () => {
       ...FLIGHT,
       'arrival_immigration',
       'bags_collected',
+      'reached_stay',
     ]);
   });
 
   it('a first point of entry collects the bags and drops them again', () => {
     expect(stagePlan({ connecting: false, onward: true, entersHere: true, bagsHere: true })).toEqual([
+      'left_home',
       ...AIRPORT_WALK,
       ...FLIGHT,
       'arrival_immigration',
@@ -55,8 +65,8 @@ describe('legPlaces / stagePlans', () => {
       leg('b', 'DOH', 'BOM', '2026-10-01T20:00Z', '2026-10-02T00:30Z'),
     ];
     const planOf = stagePlans(legs);
-    expect(planOf('a')).toEqual([...AIRPORT_WALK, ...FLIGHT]);
-    expect(planOf('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'arrival_immigration', 'bags_collected']);
+    expect(planOf('a')).toEqual(['left_home', ...AIRPORT_WALK, ...FLIGHT]);
+    expect(planOf('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'arrival_immigration', 'bags_collected', 'reached_stay']);
   });
 
   it('HEL → JFK → LAX: everything clears at JFK, the domestic leg ends at the belt', () => {
@@ -66,13 +76,14 @@ describe('legPlaces / stagePlans', () => {
     ];
     const planOf = stagePlans(legs);
     expect(planOf('a')).toEqual([
+      'left_home',
       ...AIRPORT_WALK,
       ...FLIGHT,
       'arrival_immigration',
       'bags_collected',
       'bags_rechecked',
     ]);
-    expect(planOf('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'bags_collected']);
+    expect(planOf('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'bags_collected', 'reached_stay']);
   });
 
   it('LHR → JFK → GRU: the US clears international transfers too', () => {
@@ -81,8 +92,8 @@ describe('legPlaces / stagePlans', () => {
       leg('b', 'JFK', 'GRU', '2026-10-01T22:00Z', '2026-10-02T08:00Z'),
     ];
     const placeOf = legPlaces(legs);
-    expect(placeOf('a')).toEqual({ connecting: false, onward: true, entersHere: true, bagsHere: true });
-    expect(placeOf('b')).toEqual({ connecting: true, onward: false, entersHere: true, bagsHere: true });
+    expect(placeOf('a')).toMatchObject({ connecting: false, onward: true, entersHere: true, bagsHere: true });
+    expect(placeOf('b')).toMatchObject({ connecting: true, onward: false, entersHere: true, bagsHere: true });
   });
 
   it('BOM → FRA → HEL: passport control at the first Schengen airport, bags run through', () => {
@@ -91,9 +102,9 @@ describe('legPlaces / stagePlans', () => {
       leg('b', 'FRA', 'HEL', '2026-10-01T11:00Z', '2026-10-01T13:50Z'),
     ];
     const placeOf = legPlaces(legs);
-    expect(placeOf('a')).toEqual({ connecting: false, onward: true, entersHere: true, bagsHere: false });
-    expect(placeOf('b')).toEqual({ connecting: true, onward: false, entersHere: false, bagsHere: true });
-    expect(stagePlans(legs)('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'bags_collected']);
+    expect(placeOf('a')).toMatchObject({ connecting: false, onward: true, entersHere: true, bagsHere: false });
+    expect(placeOf('b')).toMatchObject({ connecting: true, onward: false, entersHere: false, bagsHere: true });
+    expect(stagePlans(legs)('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'bags_collected', 'reached_stay']);
   });
 
   it('DOH → DEL → BOM: an international → domestic connection reclaims the bags at Delhi', () => {
@@ -102,8 +113,8 @@ describe('legPlaces / stagePlans', () => {
       leg('b', 'DEL', 'BOM', '2026-10-01T11:00Z', '2026-10-01T13:10Z'),
     ];
     const placeOf = legPlaces(legs);
-    expect(placeOf('a')).toEqual({ connecting: false, onward: true, entersHere: true, bagsHere: true });
-    expect(placeOf('b')).toEqual({ connecting: true, onward: false, entersHere: false, bagsHere: true });
+    expect(placeOf('a')).toMatchObject({ connecting: false, onward: true, entersHere: true, bagsHere: true });
+    expect(placeOf('b')).toMatchObject({ connecting: true, onward: false, entersHere: false, bagsHere: true });
   });
 
   it('LAX → DEN → JFK: no passport control anywhere, bags at the end', () => {
@@ -112,8 +123,8 @@ describe('legPlaces / stagePlans', () => {
       leg('b', 'DEN', 'JFK', '2026-10-01T19:00Z', '2026-10-02T01:00Z'),
     ];
     const planOf = stagePlans(legs);
-    expect(planOf('a')).toEqual([...AIRPORT_WALK, ...FLIGHT]);
-    expect(planOf('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'bags_collected']);
+    expect(planOf('a')).toEqual(['left_home', ...AIRPORT_WALK, ...FLIGHT]);
+    expect(planOf('b')).toEqual([...TRANSIT_WALK, ...FLIGHT, 'bags_collected', 'reached_stay']);
   });
 
   it('legs that do not connect are flights on their own', () => {
@@ -121,9 +132,32 @@ describe('legPlaces / stagePlans', () => {
       leg('a', 'HEL', 'LHR', '2026-10-01T08:00Z', '2026-10-01T10:35Z'),
       leg('b', 'LHR', 'HEL', '2026-10-08T12:00Z', '2026-10-08T16:35Z'),
     ];
-    expect(stagePlans(legs)('a')).toEqual(DEFAULT_PLAN);
-    expect(stagePlans(legs)('b')).toEqual(DEFAULT_PLAN);
+    expect(stagePlans(legs)('a')).toEqual(['left_home', ...DEFAULT_PLAN, 'reached_stay']);
+    expect(stagePlans(legs)('b')).toEqual(['left_home', ...DEFAULT_PLAN, 'reached_stay']);
     expect(stagePlanFor({ id: 'zzz' }, legs)).toEqual(DEFAULT_PLAN);
+  });
+
+  it('the home base turns the way back into hotel → home', () => {
+    const legs = [
+      leg('a', 'HEL', 'LHR', '2026-10-01T08:00Z', '2026-10-01T10:35Z'),
+      leg('b', 'LHR', 'HEL', '2026-10-08T12:00Z', '2026-10-08T16:35Z'),
+    ];
+    const isHome = (iata: string) => iata === 'HEL';
+    const planOf = stagePlans(legs, isHome);
+    expect(planOf('a')[0]).toBe('left_home');
+    expect(planOf('a').at(-1)).toBe('reached_stay');
+    expect(planOf('b')[0]).toBe('left_stay');
+    expect(planOf('b').at(-1)).toBe('home_safe');
+  });
+
+  it('an itinerary is walked leg by leg', () => {
+    const legs = [
+      leg('a', 'HEL', 'DOH', '2026-10-01T10:00Z', '2026-10-01T17:30Z'),
+      leg('b', 'DOH', 'BOM', '2026-10-01T20:00Z', '2026-10-02T00:30Z'),
+      leg('c', 'BOM', 'HEL', '2026-10-09T20:00Z', '2026-10-10T05:30Z'),
+    ];
+    expect(itineraryOf({ id: 'b' }, legs).map((l) => l.id)).toEqual(['a', 'b']);
+    expect(itineraryOf({ id: 'c' }, legs).map((l) => l.id)).toEqual(['c']);
   });
 });
 

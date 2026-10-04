@@ -16,6 +16,15 @@ import { dayOffset, dayOffsetMark, flightInstant, formatTime } from '@/services/
 import type { FlightPosition } from '@/services/flight-lookup';
 import type { JourneyRow } from '@/services/journeys';
 
+/** The door before the airport: leaving home, or the hotel on the way back.
+ * The traveller stamps it; it is the first step of an itinerary's first leg
+ * (stagePlan), never of a connection. */
+export const SETOFF_STAGES = ['left_home', 'left_stay'] as const;
+
+/** The door after the last landing: the hotel reached, or home again. The
+ * last step of an itinerary's last leg. */
+export const ARRIVED_STAGES = ['reached_stay', 'home_safe'] as const;
+
 /** The departure-airport walk, in order. Skipping is normal — not every
  * trip has a bag drop or an immigration desk. */
 export const AIRPORT_STAGES = [
@@ -39,10 +48,21 @@ export const ARRIVAL_STAGES = ['arrival_immigration', 'bags_collected', 'bags_re
 /** Every stage, in the one order every plan is a subset of. Stage indexes
  * compare across plans because of this: a connecting leg's walk is this
  * list with rows removed, never reordered. */
-export const STAGE_ORDER = [...AIRPORT_STAGES, ...FLIGHT_STAGES, ...ARRIVAL_STAGES] as const;
+export const STAGE_ORDER = [
+  ...SETOFF_STAGES,
+  ...AIRPORT_STAGES,
+  ...FLIGHT_STAGES,
+  ...ARRIVAL_STAGES,
+  ...ARRIVED_STAGES,
+] as const;
 
 /** Stages the traveler advances by tapping. */
-export const TRAVELER_STAGES = [...AIRPORT_STAGES, ...ARRIVAL_STAGES] as const;
+export const TRAVELER_STAGES = [
+  ...SETOFF_STAGES,
+  ...AIRPORT_STAGES,
+  ...ARRIVAL_STAGES,
+  ...ARRIVED_STAGES,
+] as const;
 
 export type TravelStage = (typeof STAGE_ORDER)[number];
 
@@ -70,6 +90,11 @@ export interface LegPlace {
    * a point of entry that sends arrivals through customs with their bags
    * before they fly on (the US, an international→domestic connection). */
   bagsHere: boolean;
+  /** The itinerary starts at home (the home base on that day), so the first
+   * step is leaving home rather than the hotel. Unknown counts as home. */
+  fromHome?: boolean;
+  /** The itinerary ends at home: the last step is home safe, not the hotel. */
+  toHome?: boolean;
 }
 
 /** The walk a leg gets from its place in the itinerary. A connecting leg
@@ -78,12 +103,33 @@ export interface LegPlace {
  * ends with the bags; a US-style entry collects them and drops them again
  * before the onward flight. */
 export function stagePlan(place: LegPlace): StagePlan {
-  const before: TravelStage[] = place.connecting ? ['security', 'boarded'] : [...AIRPORT_STAGES];
+  const before: TravelStage[] = place.connecting
+    ? ['security', 'boarded']
+    : [place.fromHome === false ? 'left_stay' : 'left_home', ...AIRPORT_STAGES];
   const after: TravelStage[] = [];
   if (place.entersHere) after.push('arrival_immigration');
   if (place.bagsHere) after.push('bags_collected');
   if (place.bagsHere && place.onward) after.push('bags_rechecked');
+  if (!place.onward) after.push(place.toHome ? 'home_safe' : 'reached_stay');
   return [...before, ...FLIGHT_STAGES, ...after];
+}
+
+/** Stages a traveller may add to or remove from a leg's walk. The flight
+ * itself is never optional. */
+export const OPTIONAL_STAGES: readonly TravelStage[] = TRAVELER_STAGES;
+
+/** The walk the traveller chose for a leg, else the suggested one. A saved
+ * walk keeps the flight in it, every step that was marked (a stamp never
+ * vanishes from the record because the list left it out) and the one stage
+ * order, whatever was stored. */
+export function chosenPlan(
+  state: Pick<TravelDayState, 'plan'> & Partial<Pick<TravelDayState, 'stamps'>>,
+  suggested: StagePlan,
+): StagePlan {
+  if (!state.plan?.length) return suggested;
+  const marked = Object.keys(state.stamps ?? {}) as TravelStage[];
+  const keep = new Set<TravelStage>([...state.plan, ...FLIGHT_STAGES, ...marked]);
+  return STAGE_ORDER.filter((s) => keep.has(s));
 }
 
 /** Stages of the plan that come after the landing. */
@@ -91,6 +137,8 @@ export const arrivalStepsOf = (plan: StagePlan): TravelStage[] =>
   plan.filter((s) => stageIndex(s) > stageIndex('landed'));
 
 export const STAGE_LABELS: Record<TravelStage, string> = {
+  left_home: 'Left home',
+  left_stay: 'Left the hotel',
   at_airport: 'At the airport',
   checked_in: 'Checked in',
   bag_dropped: 'Bags dropped',
@@ -102,11 +150,15 @@ export const STAGE_LABELS: Record<TravelStage, string> = {
   arrival_immigration: 'Through immigration',
   bags_collected: 'Bags collected',
   bags_rechecked: 'Bags re-checked',
+  reached_stay: 'Reached the hotel',
+  home_safe: 'Home safe',
 };
 
 /** One-word stage labels for the tightest surfaces (the Dynamic Island's
  * compact trailing slot) — status at a glance, not a sentence. */
 export const STAGE_COMPACT: Record<TravelStage, string> = {
+  left_home: 'On the way',
+  left_stay: 'On the way',
   at_airport: 'Airport',
   checked_in: 'Checked in',
   bag_dropped: 'Bags',
@@ -118,12 +170,16 @@ export const STAGE_COMPACT: Record<TravelStage, string> = {
   arrival_immigration: 'Passport',
   bags_collected: 'Bags',
   bags_rechecked: 'Bags',
+  reached_stay: 'Hotel',
+  home_safe: 'Home',
 };
 
 /** Imperative labels for the tap targets ("Tap when you're…"). The flight
  * stages' prompts only ever surface on manual journal trips, where the
  * traveler stamps them too (no status feed to do it). */
 export const STAGE_PROMPTS: Record<TravelStage, string> = {
+  left_home: "I've left home",
+  left_stay: "I've left the hotel",
   at_airport: "I'm at the airport",
   checked_in: "I've checked in",
   bag_dropped: 'Bags are dropped',
@@ -135,6 +191,8 @@ export const STAGE_PROMPTS: Record<TravelStage, string> = {
   arrival_immigration: "I'm through immigration",
   bags_collected: 'I have my bags',
   bags_rechecked: 'Bags are re-checked',
+  reached_stay: "I'm at the hotel",
+  home_safe: "I'm home",
 };
 
 /** What the traveler should do NEXT, keyed by the stage that tap will
@@ -145,6 +203,8 @@ export const STAGE_PROMPTS: Record<TravelStage, string> = {
  * server's push copy); that's news to them. The gate step is composed in
  * nextStepLabel because it folds in the gate and boarding time. */
 export const NEXT_STEP_LABELS: Record<TravelStage, string> = {
+  left_home: 'Leave for the airport',
+  left_stay: 'Leave for the airport',
   at_airport: 'Head to the airport',
   checked_in: 'Check in',
   bag_dropped: 'Drop your bags',
@@ -156,10 +216,14 @@ export const NEXT_STEP_LABELS: Record<TravelStage, string> = {
   arrival_immigration: 'Passport control',
   bags_collected: 'Collect your bags',
   bags_rechecked: 'Re-check your bags',
+  reached_stay: 'Head to your hotel',
+  home_safe: 'Head home',
 };
 
 /** One-word form of the next step for the Dynamic Island / status-bar chip. */
 export const NEXT_STEP_COMPACT: Record<TravelStage, string> = {
+  left_home: 'Leave',
+  left_stay: 'Leave',
   at_airport: 'Airport',
   checked_in: 'Check in',
   bag_dropped: 'Bag drop',
@@ -171,6 +235,8 @@ export const NEXT_STEP_COMPACT: Record<TravelStage, string> = {
   arrival_immigration: 'Passport',
   bags_collected: 'Bags',
   bags_rechecked: 'Bag drop',
+  reached_stay: 'Hotel',
+  home_safe: 'Home',
 };
 
 export interface TravelDayState {
@@ -178,6 +244,9 @@ export interface TravelDayState {
   stage: TravelStage | null;
   /** ISO timestamp per reached stage. Skipped stages are simply absent. */
   stamps: Partial<Record<TravelStage, string>>;
+  /** The walk the traveller chose for this leg (chosenPlan); absent while
+   * they keep the suggested one. */
+  plan?: StagePlan;
 }
 
 export const EMPTY_TRAVEL_DAY: TravelDayState = { stage: null, stamps: {} };
@@ -247,6 +316,49 @@ export interface StageRules {
    * tap. Null while the flight is still due, where the tap time is all there
    * is. */
   landedAt?: string | null;
+  /** The clock the rules were built at, and the earliest instant each step
+   * may be marked (stepOpensAt) — nobody is on board three days before the
+   * flight. Built by stageRules; absent means no time gate (tests, sketches). */
+  now?: number;
+  opensAt?: (stage: TravelStage) => number;
+}
+
+const HOUR = 3_600_000;
+
+/** How long before the scheduled take-off each step can first be marked.
+ * Leaving home and online check-in belong to the day before; the airport
+ * walk to the morning of the flight; boarding and the flight itself to the
+ * last two hours. A delay only ever pushes the flight later, so the
+ * timetable is a safe earliest bound. Steps after the landing wait for the
+ * landing anyway. */
+const OPENS_BEFORE_DEPARTURE: Record<TravelStage, number> = {
+  left_home: 24 * HOUR,
+  left_stay: 24 * HOUR,
+  checked_in: 24 * HOUR,
+  at_airport: 6 * HOUR,
+  bag_dropped: 6 * HOUR,
+  security: 6 * HOUR,
+  immigration: 6 * HOUR,
+  boarded: 2 * HOUR,
+  departed: 2 * HOUR,
+  landed: 2 * HOUR,
+  arrival_immigration: 0,
+  bags_collected: 0,
+  bags_rechecked: 0,
+  reached_stay: 0,
+  home_safe: 0,
+};
+
+/** The earliest instant a step of this leg may be marked done. A trip saved
+ * without real times (a manual entry pinned to noon) opens every step at the
+ * start of its day, since the hour is unknown. */
+export function stepOpensAt(
+  j: Pick<TravelJourney, 'source' | 'scheduledDeparture' | 'scheduledArrival' | 'fromCode'>,
+  stage: TravelStage,
+): number {
+  const zone = airportZone(j.fromCode);
+  if (!hasRealTime(j)) return flightInstant(`${j.scheduledDeparture.slice(0, 10)}T00:00:00`, zone);
+  return flightInstant(j.scheduledDeparture, zone) - OPENS_BEFORE_DEPARTURE[stage];
 }
 
 /** When a flight with no reported arrival is reckoned to have landed — the
@@ -329,6 +441,8 @@ export function stageRules(
   return {
     manualTrip: j.source === 'manual',
     plan,
+    now: now.getTime(),
+    opensAt: (stage) => stepOpensAt(j, stage),
     mayStampLanding,
     landedAt:
       mayStampLanding && reckoned !== null && Date.parse(reckoned) <= now.getTime()
@@ -359,6 +473,7 @@ export function canAdvanceTo(
 ): boolean {
   const { manualTrip = false, plan = DEFAULT_PLAN, mayStampLanding = false } = rules;
   if (!plan.includes(target)) return false;
+  if (rules.now !== undefined && rules.opensAt && rules.now < rules.opensAt(target)) return false;
   if (!travelerMaySet(target, manualTrip, mayStampLanding)) return false;
   if (isArrivalStage(target) && !hasLanded(state.stage) && !mayStampLanding) return false;
   return stageIndex(target) > stageIndex(state.stage);
@@ -392,7 +507,10 @@ export function advance(
  * and the in-app stepper always point at the same thing. */
 export function nextStage(state: TravelDayState, rules: StageRules = {}): TravelStage | null {
   const plan = rules.plan ?? DEFAULT_PLAN;
-  return plan.find((s) => canAdvanceTo(state, s, rules)) ?? null;
+  // Guidance, not permission: the step after "through immigration" is the
+  // gate even before boarding opens — canAdvanceTo still refuses the tap.
+  const untimed: StageRules = { ...rules, now: undefined };
+  return plan.find((s) => canAdvanceTo(state, s, untimed)) ?? null;
 }
 
 /** Undo the most recent stamp only — one level, and on tracked flights never
@@ -556,6 +674,9 @@ const MAX_AFTER_DEPARTURE_MS = 36 * HOUR_MS;
  * steps are still to tap: an immigration queue and a belt can take most
  * of this. Half an hour once the walk is done, as for a direct flight. */
 const ARRIVAL_WALK_MS = 2 * HOUR_MS;
+/** The same while the last step is the door at the end (the hotel, or home):
+ * the ride from the airport comes on top of the queue and the belt. */
+const DOOR_WALK_MS = 4 * HOUR_MS;
 const AFTER_LANDING_MS = 30 * 60_000;
 
 /** Where the trip sits in its travel-day arc. Non-flights and manual rows
@@ -587,7 +708,8 @@ export function travelWindow(
     const lastStep = steps[steps.length - 1];
     const walkDone = !lastStep || stageIndex(state.stage) >= stageIndex(lastStep);
     if (!walkDone) {
-      end = landed + ARRIVAL_WALK_MS;
+      const toDoor = (ARRIVED_STAGES as readonly string[]).includes(lastStep);
+      end = landed + (toDoor ? DOOR_WALK_MS : ARRIVAL_WALK_MS);
     } else {
       const lastStamp = state.stage ? Date.parse(state.stamps[state.stage] ?? '') : NaN;
       end = Math.max(landed, Number.isNaN(lastStamp) ? landed : lastStamp) + AFTER_LANDING_MS;

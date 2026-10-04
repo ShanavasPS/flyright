@@ -26,6 +26,12 @@ export default function JourneysStack() {
         name="journey/[id]"
         options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}
       />
+      {/* The trip progress strip's expand button: every leg's steps, and
+          the editor for them. */}
+      <Stack.Screen
+        name="trip-progress"
+        options={{ title: 'Trip progress', headerBackButtonDisplayMode: 'minimal' }}
+      />
       {/* "See all" under a trip's own updates. */}
       <Stack.Screen
         name="journey-updates"

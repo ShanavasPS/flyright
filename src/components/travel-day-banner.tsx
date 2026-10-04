@@ -1,7 +1,7 @@
 import { useHasPro } from '@/services/purchases';
 import { useRouter } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -19,6 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { TravelStatsHeader, TravelStatsStrip } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
+import { useStepPlans } from '@/hooks/use-step-plans';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
 import { trackEvent } from '@/services/analytics';
@@ -35,7 +36,6 @@ import {
 } from '@/services/travel-day';
 import { noteWarning, tapLight } from '@/services/haptics';
 import { factsFor } from '@/services/travel-day-lifecycle';
-import { stagePlans } from '@/services/travel-day-plan';
 import { useTravelDayStates } from '@/services/travel-day-store';
 import type { TripHeroGroup } from '@/services/trip-groups';
 import { flagEmoji } from '@/services/travel-recap';
@@ -60,7 +60,7 @@ export function useHeroTrip(
   // to plain stats while a later trip is genuinely live.
   const pro = useHasPro();
   const stateOf = useTravelDayStates();
-  const planOf = useMemo(() => stagePlans(journeys), [journeys]);
+  const planOf = useStepPlans(journeys, stateOf);
   const active = activeJourney(journeys, now, stateOf, planOf);
   if (!pro || !active) return null;
   const state = stateOf(active.id);

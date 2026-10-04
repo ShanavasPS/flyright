@@ -44,7 +44,9 @@ const isFlightStage = (stage: TravelStage): boolean =>
 
 /** Filled glyphs read as solid objects inside the node circles; the outline
  * variants looked like line art next to the bold labels. */
-const STAGE_ICONS: Record<TravelStage, SymbolViewProps['name']> = {
+export const STAGE_ICONS: Record<TravelStage, SymbolViewProps['name']> = {
+  left_home: { ios: 'house.fill', android: 'home', web: 'home' },
+  left_stay: { ios: 'building.2.fill', android: 'apartment', web: 'apartment' },
   at_airport: { ios: 'location.fill', android: 'location_on', web: 'location_on' },
   checked_in: { ios: 'ticket.fill', android: 'confirmation_number', web: 'confirmation_number' },
   bag_dropped: { ios: 'suitcase.fill', android: 'luggage', web: 'luggage' },
@@ -56,6 +58,8 @@ const STAGE_ICONS: Record<TravelStage, SymbolViewProps['name']> = {
   arrival_immigration: { ios: 'person.text.rectangle.fill', android: 'badge', web: 'badge' },
   bags_collected: { ios: 'suitcase.rolling.fill', android: 'luggage', web: 'luggage' },
   bags_rechecked: { ios: 'suitcase.fill', android: 'luggage', web: 'luggage' },
+  reached_stay: { ios: 'bed.double.fill', android: 'hotel', web: 'hotel' },
+  home_safe: { ios: 'house.fill', android: 'home', web: 'home' },
 };
 
 const CHECK: SymbolViewProps['name'] = { ios: 'checkmark', android: 'check', web: 'check' };

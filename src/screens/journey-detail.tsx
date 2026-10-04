@@ -28,7 +28,8 @@ import { SheenSweep } from '@/components/sheen-card';
 import { FlashToast } from '@/components/flash-toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TravelProgressStrip } from '@/components/travel-progress-strip';
+import { ProgressExpandButton, TravelProgressStrip } from '@/components/travel-progress-strip';
+import { TravelDayTimeline } from '@/components/travel-day-timeline';
 import { TripClockStrip, TripFactsCard, TripStatusRow } from '@/components/trip-card';
 import { TripDocuments } from '@/components/trip-documents';
 import { TripPhotos } from '@/components/trip-photos';
@@ -60,7 +61,7 @@ import { FlightLookupError, lookupFlight } from '@/services/flight-lookup';
 import { useFlightPath } from '@/services/flight-path';
 import { inboundNewsworthy, inboundOutlook, type InboundOutlook } from '@/services/inbound';
 import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
-import { noteSuccess } from '@/services/haptics';
+import { noteSuccess, tapLight } from '@/services/haptics';
 import {
   deleteJourney,
   setJourneyVisibility,
@@ -72,7 +73,7 @@ import {
 } from '@/services/journeys';
 import { MoveCard } from '@/components/home-base';
 import { useHomeContext } from '@/hooks/use-home-base';
-import { airportPlace, autoHome, departureDay, markMove, moveCandidate } from '@/services/home-base';
+import { airportPlace, autoHome, departureDay, homeCheck, markMove, moveCandidate } from '@/services/home-base';
 import { dismissHomePrompt, updateHomeBase } from '@/services/home-base-store';
 import { ProTripCard } from '@/components/pro-trip-card';
 import { hasPro, useProLocked } from '@/services/purchases';
@@ -80,9 +81,11 @@ import { shiftLabel } from '@/services/schedule-change';
 import { applyScheduleChange, lookupDayFor } from '@/services/schedule-change-lifecycle';
 import {
   DEFAULT_PLAN,
+  chosenPlan,
   EMPTY_FACTS,
   flightProgress,
   hasLanded,
+  isTravelerStage,
   stageRules,
   travelWindow,
   type TravelStage,
@@ -254,8 +257,12 @@ export function JourneyDetail({
   // flight on its own, transit security and the arrival steps for a leg of
   // a longer itinerary — read off the journal, since the other legs decide.
   const travelPlan = useMemo(
-    () => (row && journal ? stagePlanFor(row, journal) : DEFAULT_PLAN),
-    [row, journal],
+    () =>
+      chosenPlan(
+        travelState,
+        row && journal ? stagePlanFor(row, journal, homeCheck(homeContext.state, journal)) : DEFAULT_PLAN,
+      ),
+    [row, journal, travelState, homeContext.state],
   );
   // What the traveller may tap right now. Depends on the clock as well as the
   // row: a flight overdue with no arrival reported opens its own landing, so
@@ -572,6 +579,30 @@ export function JourneyDetail({
                 </TripFactsCard>
               ) : null;
             case 'progress':
+              // A flown trip keeps its progress as a record: which steps were
+              // marked and when — when the traveller marked any. Take-off and
+              // landing alone come from flight data on every tracked flight,
+              // and a walk nobody used would be a column of "Skipped".
+              if (!travelActive && row && moment === 'past') {
+                const marked = travelPlan.some(
+                  (s) => travelState.stamps[s] !== undefined && (row.source === 'manual' || isTravelerStage(s)),
+                );
+                return marked ? (
+                  <TravelDayTimeline
+                    key={slot}
+                    journey={row}
+                    state={travelState}
+                    facts={facts}
+                    plan={travelPlan}
+                    readOnly
+                    action={
+                      <ProgressExpandButton
+                        onPress={() => router.push({ pathname: '/trip-progress', params: { journeyId: row.id } })}
+                      />
+                    }
+                  />
+                ) : null;
+              }
               return travelActive && row ? (
                 <TravelProgressStrip
                   key={slot}
@@ -588,6 +619,7 @@ export function JourneyDetail({
                   onUndo={() => {
                     void undoStage(row.id, travelRules).then(() => reconcileTravelDay());
                   }}
+                  onExpand={() => router.push({ pathname: '/trip-progress', params: { journeyId: row.id } })}
                 />
               ) : null;
             case 'updates':
@@ -727,7 +759,7 @@ function orderedSlots(moment: TripMoment): Slot[] {
     case 'landed':
       return ['airport', 'claims', 'progress', 'journal', 'updates', 'about', 'ticket', 'pass'];
     case 'past':
-      return ['claims', 'pro', 'journal', 'updates', 'ticket', 'airport', 'about', 'pass'];
+      return ['claims', 'pro', 'journal', 'progress', 'updates', 'ticket', 'airport', 'about', 'pass'];
   }
 }
 
@@ -929,8 +961,11 @@ function RatingRow({ row }: { row: JourneyRow }) {
   );
 }
 
+/** Lines of a note the journal card shows before "Read more". */
+const NOTE_LINES = 4;
+
 /** The traveler's notes with their last-edited stamp, or the prompt to write
- * some. The whole block opens the editor. */
+ * some. A long note expands in place; Edit opens the editor. */
 function NotesBlock({
   row,
   now,
@@ -943,29 +978,65 @@ function NotesBlock({
   onEdit: () => void;
 }) {
   const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
+  // Whether the note runs past the four lines the card shows: measured on a
+  // hidden, unclamped copy, since a clamped Text reports only its 4 lines.
+  const [fullLines, setFullLines] = useState(0);
+  const long = fullLines > NOTE_LINES;
   if (row.notes) {
-    // The note is plain, selectable text (copyable, readable by assistive
-    // tech); the whole panel opens the editor, Edit says so.
+    // The note reads in place: four lines, then "Read more" opens the rest
+    // right here — a paragraph does not need a screen of its own. Edit is
+    // its own button; the text stays plain and selectable.
     return (
-      <Pressable
-        testID="journal-note"
-        accessibilityRole="button"
-        accessibilityLabel={`Your note: ${row.notes}`}
-        accessibilityHint="Edit"
-        onPress={onEdit}
-        style={({ pressed }) => [styles.notePanel, { backgroundColor: theme.background, borderColor: theme.hairline }, pressed && { opacity: 0.7 }]}>
-        <ThemedText style={styles.notesText} numberOfLines={4}>
-          {row.notes}
-        </ThemedText>
+      <View testID="journal-note" style={[styles.notePanel, { backgroundColor: theme.background, borderColor: theme.hairline }]}>
+        <View>
+          <ThemedText
+            style={[styles.notesText, styles.noteMeasure]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            onTextLayout={(e) => setFullLines(e.nativeEvent.lines.length)}>
+            {row.notes}
+          </ThemedText>
+          <ThemedText
+            style={styles.notesText}
+            selectable
+            numberOfLines={expanded ? undefined : NOTE_LINES}
+            accessibilityLabel={`Your note: ${row.notes}`}>
+            {row.notes}
+          </ThemedText>
+        </View>
+        {long && (
+          <Pressable
+            testID="journal-note-more"
+            accessibilityRole="button"
+            hitSlop={Spacing.two}
+            onPress={() => {
+              tapLight();
+              setExpanded((x) => !x);
+            }}
+            style={({ pressed }) => [styles.noteMore, pressed && { opacity: 0.6 }]}>
+            <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              {expanded ? 'Show less' : 'Read more'}
+            </ThemedText>
+          </Pressable>
+        )}
         <View style={styles.noteMeta}>
           <ThemedText type="small" themeColor="textSecondary">
             {row.notesUpdatedAt ? `Note · edited ${editedLabel(row.notesUpdatedAt, new Date(now))}` : 'Note'}
           </ThemedText>
-          <ThemedText type="smallBold" style={{ color: theme.tint }}>
-            Edit
-          </ThemedText>
+          <Pressable
+            testID="journal-note-edit"
+            accessibilityRole="button"
+            accessibilityLabel="Edit note"
+            hitSlop={Spacing.two}
+            onPress={onEdit}
+            style={({ pressed }) => pressed && { opacity: 0.6 }}>
+            <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              Edit
+            </ThemedText>
+          </Pressable>
         </View>
-      </Pressable>
+      </View>
     );
   }
   const prompt = tripAge > 0 ? 'Write about this trip…' : 'Write a note for this trip…';
@@ -1345,6 +1416,16 @@ const styles = StyleSheet.create({
   notesText: {
     marginTop: Spacing.one,
     marginBottom: Spacing.one,
+  },
+  noteMeasure: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    opacity: 0,
+  },
+  noteMore: {
+    alignSelf: 'flex-start',
+    marginTop: -Spacing.one,
   },
   journal: {
     gap: Spacing.two,

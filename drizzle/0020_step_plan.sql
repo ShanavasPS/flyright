@@ -1,0 +1,1 @@
+ALTER TABLE `travel_day` ADD `plan` text;

@@ -6,6 +6,7 @@ import { flightInstant } from '@/services/dates';
 import { presumedStage, spanLabel } from '@/services/public-session';
 import {
   AIRPORT_STAGES,
+  SETOFF_STAGES,
   hasLanded,
   type TravelStage,
 } from '@/services/travel-day';
@@ -83,7 +84,7 @@ export function railStatus(
   // Still on the ground: the ring is the walk through the airport, the
   // stages this leg's plan has, as far as the traveller has tapped.
   const walk = planFromSession(session.plan).filter((s) =>
-    (AIRPORT_STAGES as readonly string[]).includes(s),
+    (SETOFF_STAGES as readonly string[]).includes(s) || (AIRPORT_STAGES as readonly string[]).includes(s),
   );
   const done = stage ? walk.indexOf(stage) + 1 : 0;
   return {

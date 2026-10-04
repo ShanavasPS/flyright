@@ -23,6 +23,8 @@ const IMMERSIVE = [
   /^\/person\/[^/]+\/world$/, // their travel, full bleed
   /^\/trip\/[^/]+$/, // a live trip you follow
   /^\/journey\/[^/]+$/, // one of your own
+  /^\/journey-updates$/, // its updates, all of them
+  /^\/trip-progress$/, // its progress, every leg
   /^\/add(?:-[a-z]+)?$/, // adding a flight, step by step — a task, not a place
 ];
 

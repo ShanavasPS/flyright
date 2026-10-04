@@ -1,16 +1,16 @@
 import { useHasPro } from '@/services/purchases';
 import { useAuth } from '@clerk/expo';
 import { useConvexAuth, useMutation } from 'convex/react';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { api } from '../../convex/_generated/api';
 import { tripIsOver } from '../../convex/liveShared';
 
 import { db } from '@/db/client';
+import { useStepPlans } from '@/hooks/use-step-plans';
 import { journeys, travelDay } from '@/db/schema';
 import { getActivityId } from '@/services/live-activity';
 import { useLiveRows } from '@/services/live-rows';
-import { stagePlans } from '@/services/travel-day-plan';
 import { isDirty, markTravelDaySynced, rowToState } from '@/services/travel-day-store';
 
 /** Push-only mirror of the traveler's stage state into the Convex live
@@ -28,17 +28,12 @@ export function TravelDaySync() {
   // Enough of every trip to tell which have flown and how the legs chain —
   // a leg's stage plan (its place in the itinerary) travels up with its
   // stamps so followers see the walk the traveler sees.
-  const { data: trips } = useLiveRows(
-    db
-      .select({
-        id: journeys.id,
-        fromCode: journeys.fromCode,
-        toCode: journeys.toCode,
-        scheduledDeparture: journeys.scheduledDeparture,
-        scheduledArrival: journeys.scheduledArrival,
-      })
-      .from(journeys),
+  const { data: trips } = useLiveRows(db.select().from(journeys));
+  const stateOf = useCallback(
+    (journeyId: string) => rowToState(rows?.find((r) => r.journeyId === journeyId)),
+    [rows],
   );
+  const planOf = useStepPlans(trips, stateOf);
   const busy = useRef(false);
 
   useEffect(() => {
@@ -56,7 +51,6 @@ export function TravelDaySync() {
     });
     if (!dirty.length) return;
 
-    const planOf = stagePlans(trips);
     busy.current = true;
     void (async () => {
       try {
@@ -77,7 +71,7 @@ export function TravelDaySync() {
         busy.current = false;
       }
     })();
-  }, [pro, userId, isAuthenticated, rows, trips, setStage]);
+  }, [pro, userId, isAuthenticated, rows, trips, setStage, planOf]);
 
   return null;
 }

@@ -57,40 +57,52 @@ const crossesBorder = (leg: LegLike): boolean => {
 
 type Leg = LegLike & { id: string };
 
-function placeInChain(chain: Leg[], i: number): LegPlace {
+/** Whether an airport is in the traveller's home city at a moment (the home
+ * base on that day); null when no home is known. Built by homeCheck in
+ * services/home-base so this module stays free of the home-base state. */
+export type IsHome = (iata: string, at: string) => boolean | null;
+
+function placeInChain(chain: Leg[], i: number, isHome?: IsHome): LegPlace {
   const leg = chain[i]!;
   const connecting = i > 0;
   const next = chain[i + 1];
   const onward = !!next;
+  // The doors either side of the trip: leaving home (or the hotel, on the
+  // way back) and arriving at the hotel (or home). No home base reads as
+  // setting off from home to somewhere else.
+  const first = chain[0]!;
+  const last = chain[chain.length - 1]!;
+  const fromHome = isHome?.(first.fromCode, first.scheduledDeparture) ?? true;
+  const toHome = isHome?.(last.toCode, last.scheduledArrival) ?? false;
   // A flight on its own keeps the walk it always had: the arrival steps
   // are an itinerary's, where the landing is a stop rather than the end.
   if (!connecting && !onward) {
-    return { connecting: false, onward: false, entersHere: false, bagsHere: false };
+    return { connecting: false, onward: false, entersHere: false, bagsHere: false, fromHome, toHome };
   }
   const country = getAirport(leg.toCode)?.country ?? null;
   const entersHere =
     crossesBorder(leg) &&
     (!next || !crossesBorder(next) || (country !== null && CLEARS_AT_FIRST_AIRPORT.has(country)));
   const bagsHere = !onward || (entersHere && zoneOf(leg.toCode) !== 'SCHENGEN');
-  return { connecting, onward, entersHere, bagsHere };
+  return { connecting, onward, entersHere, bagsHere, fromHome, toHome };
 }
 
 /** Where each leg sits in its itinerary, for every leg of the journal at
  * once — the chains are built a single time, so the surfaces that walk
  * every trip (the hero, the lifecycle reconciler) pay for them once. Legs
  * the journal doesn't hold get a direct flight's place. */
-export function legPlaces<T extends Leg>(legs: T[]): (journeyId: string) => LegPlace {
+export function legPlaces<T extends Leg>(legs: T[], isHome?: IsHome): (journeyId: string) => LegPlace {
   const byId = new Map<string, LegPlace>();
   for (const chain of chainLegs(legs, instant)) {
-    chain.forEach((leg, i) => byId.set(leg.id, placeInChain(chain, i)));
+    chain.forEach((leg, i) => byId.set(leg.id, placeInChain(chain, i, isHome)));
   }
   return (journeyId) =>
     byId.get(journeyId) ?? { connecting: false, onward: false, entersHere: false, bagsHere: false };
 }
 
 /** The stage plan of every leg of the journal, by journey id. */
-export function stagePlans<T extends Leg>(legs: T[]): (journeyId: string) => StagePlan {
-  const placeOf = legPlaces(legs);
+export function stagePlans<T extends Leg>(legs: T[], isHome?: IsHome): (journeyId: string) => StagePlan {
+  const placeOf = legPlaces(legs, isHome);
   const cache = new Map<string, StagePlan>();
   return (journeyId) => {
     let plan = cache.get(journeyId);
@@ -103,8 +115,15 @@ export function stagePlans<T extends Leg>(legs: T[]): (journeyId: string) => Sta
 }
 
 /** One leg's stage plan, given the journal it sits in. */
-export function stagePlanFor<T extends Leg>(leg: Pick<T, 'id'>, legs: T[]): StagePlan {
-  return legs.some((l) => l.id === leg.id) ? stagePlans(legs)(leg.id) : DEFAULT_PLAN;
+export function stagePlanFor<T extends Leg>(leg: Pick<T, 'id'>, legs: T[], isHome?: IsHome): StagePlan {
+  return legs.some((l) => l.id === leg.id) ? stagePlans(legs, isHome)(leg.id) : DEFAULT_PLAN;
+}
+
+/** The legs of the itinerary a leg belongs to, in flying order — the trip
+ * progress screen walks them all. The leg alone when it is not in the
+ * journal. */
+export function itineraryOf<T extends Leg>(leg: Pick<T, 'id'>, legs: T[]): T[] {
+  return chainLegs(legs, instant).find((chain) => chain.some((l) => l.id === leg.id)) ?? legs.filter((l) => l.id === leg.id);
 }
 
 /** A plan as the server hands it back: only stages the app knows, in the

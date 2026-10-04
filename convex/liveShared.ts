@@ -5,6 +5,10 @@ import { airportZone, flightDay, flightInstant } from './airportZones';
 import type { Doc } from './_generated/dataModel';
 
 export const STAGE_ORDER = [
+  // Out of the door: home, or the hotel on the way back — the first step
+  // of an itinerary's first leg.
+  'left_home',
+  'left_stay',
   'at_airport',
   'checked_in',
   'bag_dropped',
@@ -20,6 +24,10 @@ export const STAGE_ORDER = [
   'arrival_immigration',
   'bags_collected',
   'bags_rechecked',
+  // In the door at the end: the hotel, or home again — the last step of an
+  // itinerary's last leg.
+  'reached_stay',
+  'home_safe',
 ] as const;
 
 export const stageIndex = (stage: string | null): number =>
@@ -37,7 +45,7 @@ export const landedOrLater = (stage: string | null): boolean => stageIndex(stage
 const flightStageKnown = (stage: string | null): boolean => stageIndex(stage) >= DEPARTED_INDEX;
 
 /** The walk a session shows when the device didn't say: a direct flight's. */
-export const DEFAULT_PLAN: readonly string[] = STAGE_ORDER.slice(0, LANDED_INDEX + 1);
+export const DEFAULT_PLAN: readonly string[] = STAGE_ORDER.slice(stageIndex('at_airport'), LANDED_INDEX + 1);
 
 /** Every stage pushes to followers — the whole point of a circle is that
  * nobody has to text "boarded yet?". Each stage pushes at most once per
@@ -45,6 +53,8 @@ export const DEFAULT_PLAN: readonly string[] = STAGE_ORDER.slice(0, LANDED_INDEX
 export const NOTIFY_STAGES = new Set<string>(STAGE_ORDER);
 
 export const STAGE_PUSH_COPY: Record<string, (name: string, to: string) => string> = {
+  left_home: (n) => `${n} has left home for the airport`,
+  left_stay: (n) => `${n} has left the hotel for the airport`,
   at_airport: (n) => `${n} is at the airport`,
   checked_in: (n) => `${n} has checked in`,
   bag_dropped: (n) => `${n} has dropped the bags`,
@@ -56,6 +66,8 @@ export const STAGE_PUSH_COPY: Record<string, (name: string, to: string) => strin
   arrival_immigration: (n) => `${n} is through immigration`,
   bags_collected: (n) => `${n} has the bags`,
   bags_rechecked: (n) => `${n} has re-checked the bags`,
+  reached_stay: (n) => `${n} reached the hotel safely`,
+  home_safe: (n) => `${n} is home safe`,
 };
 
 const HOUR_MS = 3_600_000;
@@ -362,6 +374,8 @@ export function nextPollDelayMs(session: Doc<'liveSessions'>, now: number): numb
 }
 
 export const STAGE_LABELS: Record<string, string> = {
+  left_home: 'Left home',
+  left_stay: 'Left the hotel',
   at_airport: 'At the airport',
   checked_in: 'Checked in',
   bag_dropped: 'Bags dropped',
@@ -373,6 +387,8 @@ export const STAGE_LABELS: Record<string, string> = {
   arrival_immigration: 'Through immigration',
   bags_collected: 'Bags collected',
   bags_rechecked: 'Bags re-checked',
+  reached_stay: 'Reached the hotel',
+  home_safe: 'Home safe',
 };
 
 /** A flight time as its own airport reads it — the clock the traveler is
@@ -421,6 +437,8 @@ function countdownBit(departureMs: number, now: number): string {
  * at 'boarded' — flight data takes over — and resumes with the plan's
  * arrival steps once the landing is in. */
 const NEXT_STEP_LABELS: Record<string, string> = {
+  left_home: 'Leave for the airport',
+  left_stay: 'Leave for the airport',
   at_airport: 'Head to the airport',
   checked_in: 'Check in',
   bag_dropped: 'Drop your bags',
@@ -430,6 +448,8 @@ const NEXT_STEP_LABELS: Record<string, string> = {
   arrival_immigration: 'Passport control',
   bags_collected: 'Collect your bags',
   bags_rechecked: 'Re-check your bags',
+  reached_stay: 'Head to your hotel',
+  home_safe: 'Head home',
 };
 const NEXT_STEP_COMPACT: Record<string, string> = {
   checked_in: 'Check in',
@@ -440,6 +460,8 @@ const NEXT_STEP_COMPACT: Record<string, string> = {
   arrival_immigration: 'Passport',
   bags_collected: 'Bags',
   bags_rechecked: 'Bag drop',
+  reached_stay: 'Hotel',
+  home_safe: 'Home',
 };
 const STAGE_COMPACT: Record<string, string> = {
   boarded: 'Boarded',
@@ -448,6 +470,8 @@ const STAGE_COMPACT: Record<string, string> = {
   arrival_immigration: 'Passport',
   bags_collected: 'Bags',
   bags_rechecked: 'Bags',
+  reached_stay: 'Hotel',
+  home_safe: 'Home',
 };
 const BOARDED_INDEX = stageIndex('boarded');
 

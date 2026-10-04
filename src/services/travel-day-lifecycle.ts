@@ -30,6 +30,7 @@ import {
 import { liveUpdateLines } from '@/services/live-update-copy';
 import { getPushEnabled } from '@/services/notifications';
 import {
+  chosenPlan,
   EMPTY_FACTS,
   liveContent,
   liveContentSchedule,
@@ -39,6 +40,8 @@ import {
   type TravelJourney,
 } from '@/services/travel-day';
 import { stagePlans } from '@/services/travel-day-plan';
+import { homeCheck } from '@/services/home-base';
+import { getHomeBase } from '@/services/home-base-store';
 import { withRecord, type RecordRow } from '@/services/trip-record';
 import { recordAirportFacts } from '@/services/trip-record-store';
 import {
@@ -198,14 +201,16 @@ async function doReconcile(): Promise<void> {
 
   await ensureChannel();
   const now = new Date();
-  const journeyRows: (TravelJourney & RecordRow & { id: string })[] = await db
-    .select()
-    .from(journeys)
-    .where(isNull(journeys.deletedAt));
+  const allRows = await db.select().from(journeys).where(isNull(journeys.deletedAt));
+  const journeyRows: (TravelJourney & RecordRow & { id: string })[] = allRows;
   // Each leg's walk depends on the legs around it (a connecting leg has
   // arrival steps, a direct flight none) — and so does how long its window
   // outlives the landing.
-  const planOf = stagePlans(journeyRows);
+  // The home base decides the doors either side (leaving home or the hotel);
+  // the steps the traveller chose in the editor win over the suggestion.
+  const userId = allRows.find((j) => j.userId)?.userId ?? null;
+  const suggestedOf = stagePlans(journeyRows, homeCheck(getHomeBase(userId), allRows));
+  const planOf = (journeyId: string) => chosenPlan(rowToState(byJourney.get(journeyId)), suggestedOf(journeyId));
 
   // iOS ends every Live Activity eight hours after it starts, silently: the
   // id we remember then points at a dimmed leftover that swallows updates.

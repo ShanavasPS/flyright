@@ -153,6 +153,9 @@ export const travelDay = sqliteTable('travel_day', {
   stage: text('stage'),
   /** JSON Record<TravelStage, ISO timestamp> of every reached stage. */
   stamps: text('stamps').notNull().default('{}'),
+  /** JSON TravelStage[]: the steps the traveller chose for this leg in the
+   * trip progress editor; null keeps the suggested walk (stagePlan). */
+  plan: text('plan'),
   /** When a live surface (widget/ongoing notification) was first shown. */
   activityStartedAt: text('activity_started_at'),
   /** Set when the travel window closes and surfaces are torn down. */

@@ -1,5 +1,6 @@
 import { formatTime } from '@/services/dates';
 import {
+  chosenPlan,
   EMPTY_FACTS,
   EMPTY_TRAVEL_DAY,
   STAGE_ORDER,
@@ -546,7 +547,10 @@ describe('stage plans (connecting legs)', () => {
   const liveNow = new Date('2026-08-25T05:00Z');
   // A leg that connects off another and ends the trip: transit security,
   // the gate, the flight, then passport control and the bags.
-  const LAST_LEG = stagePlan({ connecting: true, onward: false, entersHere: true, bagsHere: true });
+  // (Without the hotel at the end — the airport side is what these test.)
+  const LAST_LEG = stagePlan({ connecting: true, onward: false, entersHere: true, bagsHere: true }).filter(
+    (st) => st !== 'reached_stay',
+  );
   // A US first point of entry with a domestic leg to follow.
   const ENTRY_LEG = stagePlan({ connecting: false, onward: true, entersHere: true, bagsHere: true });
   const rules = { plan: LAST_LEG };
@@ -916,3 +920,89 @@ describe('liveContentSchedule — the cards for when the app is asleep', () => {
     expect(liveContentSchedule(journey(), down, EMPTY_FACTS, new Date('2026-08-25T10:40Z'))).toEqual([]);
   });
 });
+
+describe('the doors either side of the trip', () => {
+  const liveNow = new Date('2026-08-25T05:00Z');
+  const DOOR_TO_DOOR = stagePlan({ connecting: false, onward: false, entersHere: false, bagsHere: false });
+
+  it('leaving home is the first tap, before the airport', () => {
+    const rules = { plan: DOOR_TO_DOOR };
+    expect(nextStage(EMPTY_TRAVEL_DAY, rules)).toBe('left_home');
+    const out = advance(EMPTY_TRAVEL_DAY, 'left_home', liveNow, rules);
+    expect(out.stage).toBe('left_home');
+    expect(nextStage(out, rules)).toBe('at_airport');
+    expect(undoLast(out, rules)).toEqual(EMPTY_TRAVEL_DAY);
+  });
+
+  it('the hotel waits for the landing, then ends the walk', () => {
+    const rules = { plan: DOOR_TO_DOOR };
+    const boarded = advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, rules);
+    expect(canAdvanceTo(boarded, 'reached_stay', rules)).toBe(false);
+    const landed = applyFlightFacts(boarded, facts({ actualArrival: '2026-08-25T10:40Z' }));
+    expect(nextStage(landed, rules)).toBe('reached_stay');
+    const there = advance(landed, 'reached_stay', liveNow, rules);
+    expect(nextStage(there, rules)).toBeNull();
+  });
+
+  it('keeps the live window open for the ride to the hotel', () => {
+    const j = journey(); // lands 2026-08-25T10:35Z
+    const landed: TravelDayState = { stage: 'landed', stamps: { landed: '2026-08-25T10:40Z' } };
+    expect(travelWindow(j, landed, new Date('2026-08-25T14:00Z'), DOOR_TO_DOOR).phase).toBe('live');
+    expect(travelWindow(j, landed, new Date('2026-08-25T14:45Z'), DOOR_TO_DOOR).phase).toBe('ended');
+  });
+
+  it('a chosen walk wins over the suggestion and always keeps the flight', () => {
+    expect(chosenPlan({}, DOOR_TO_DOOR)).toBe(DOOR_TO_DOOR);
+    expect(chosenPlan({ plan: ['security', 'left_home', 'reached_stay'] }, DOOR_TO_DOOR)).toEqual([
+      'left_home',
+      'security',
+      'departed',
+      'landed',
+      'reached_stay',
+    ]);
+    // A marked step stays, even when the saved list left it out.
+    expect(
+      chosenPlan({ plan: ['left_home'], stamps: { security: '2026-08-25T05:00Z' } }, DOOR_TO_DOOR),
+    ).toEqual(['left_home', 'security', 'departed', 'landed']);
+  });
+});
+
+describe('steps open on the travel day, not before', () => {
+  // Departs HEL 08:00Z.
+  const rulesAt = (iso: string, overrides: Partial<TravelJourney> = {}) =>
+    stageRules(journey(overrides), EMPTY_TRAVEL_DAY, EMPTY_FACTS, new Date(iso), [
+      'left_home',
+      ...STAGE_ORDER.slice(STAGE_ORDER.indexOf('at_airport'), STAGE_ORDER.indexOf('landed') + 1),
+    ]);
+
+  it('nothing three days before the flight', () => {
+    const rules = rulesAt('2026-08-22T08:00Z');
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'left_home', rules)).toBe(false);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'boarded', rules)).toBe(false);
+    expect(advance(EMPTY_TRAVEL_DAY, 'boarded', new Date('2026-08-22T08:00Z'), rules)).toBe(EMPTY_TRAVEL_DAY);
+  });
+
+  it('leaving home and check-in the day before, the airport that morning, boarding at the end', () => {
+    const dayBefore = rulesAt('2026-08-24T12:00Z');
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'left_home', dayBefore)).toBe(true);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'checked_in', dayBefore)).toBe(true);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'security', dayBefore)).toBe(false);
+    const morning = rulesAt('2026-08-25T03:00Z');
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'security', morning)).toBe(true);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'boarded', morning)).toBe(false);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'boarded', rulesAt('2026-08-25T06:30Z'))).toBe(true);
+  });
+
+  it('still names the next step while it is not open yet', () => {
+    const rules = rulesAt('2026-08-25T03:00Z');
+    const through = advance(EMPTY_TRAVEL_DAY, 'security', new Date('2026-08-25T03:00Z'), rules);
+    expect(nextStage(through, rules)).toBe('immigration');
+  });
+
+  it('a trip without times opens on its day', () => {
+    const untimed = { source: 'manual' as const, scheduledDeparture: '2026-08-25T12:00:00', scheduledArrival: '2026-08-25T12:00:00' };
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'boarded', rulesAt('2026-08-24T18:00Z', untimed))).toBe(false);
+    expect(canAdvanceTo(EMPTY_TRAVEL_DAY, 'boarded', rulesAt('2026-08-25T06:00Z', untimed))).toBe(true);
+  });
+});
+

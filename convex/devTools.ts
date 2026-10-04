@@ -106,9 +106,13 @@ export const insertUpdate = internalMutation({
     minutesAgo: v.number(),
     stage: v.optional(v.string()),
     place: v.optional(v.string()),
+    /** Who hearted it — each a minute after the post. */
+    reactedBy: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const at = new Date(Date.now() - args.minutesAgo * 60_000).toISOString();
+    const reactedBy = args.reactedBy ?? [];
+    const heartAt = new Date(Date.parse(at) + 60_000).toISOString();
     return await ctx.db.insert('tripUpdates', {
       userId: args.userId,
       journeyKey: args.journeyKey,
@@ -119,8 +123,8 @@ export const insertUpdate = internalMutation({
       height: null,
       stage: args.stage ?? null,
       place: args.place ?? null,
-      reactedBy: [],
-      reactedAt: {},
+      reactedBy,
+      reactedAt: Object.fromEntries(reactedBy.map((id) => [id, heartAt])),
       createdAt: at,
     });
   },
