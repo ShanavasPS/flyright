@@ -159,6 +159,8 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 17,
+    letterSpacing: 0,
+    lineHeight: 22,
     paddingVertical: Spacing.one,
     minHeight: 32,
   },

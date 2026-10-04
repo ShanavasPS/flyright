@@ -442,6 +442,8 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     color: WHITE,
     fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0,
   },
   send: { width: 36, height: 36, borderRadius: 18, backgroundColor: TINT, alignItems: 'center', justifyContent: 'center' },
   sendOff: { opacity: 0.4 },

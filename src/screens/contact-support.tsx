@@ -170,6 +170,8 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 16,
+    lineHeight: 22,
+    letterSpacing: 0,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,

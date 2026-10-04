@@ -11,7 +11,6 @@ import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -464,6 +463,7 @@ const styles = StyleSheet.create({
   editor: {
     minHeight: 96,
     fontSize: 20,
+    letterSpacing: 0,
     lineHeight: 28,
     paddingTop: 0,
     paddingHorizontal: 0,
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   },
   autoText: { flex: 1 },
   headerButton: {
-    paddingHorizontal: Platform.OS === 'android' ? Spacing.two : 0,
+    paddingHorizontal: Spacing.two,
   },
   headerLabel: {
     fontSize: 17,

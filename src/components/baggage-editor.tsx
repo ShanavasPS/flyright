@@ -214,5 +214,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: Spacing.three,
     fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: 0,
   },
 });

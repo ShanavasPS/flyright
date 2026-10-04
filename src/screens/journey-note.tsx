@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DataErrorState, LoadingState, MissingState } from '@/components/data-state';
 import { ThemedText } from '@/components/themed-text';
@@ -172,13 +172,14 @@ const styles = StyleSheet.create({
   editor: {
     flex: 1,
     fontSize: 17,
+    letterSpacing: 0,
     lineHeight: 26,
     paddingTop: 0,
     paddingHorizontal: 0,
   },
   // Android's header gives headerLeft/Right no inset of their own.
   headerButton: {
-    paddingHorizontal: Platform.OS === 'android' ? Spacing.two : 0,
+    paddingHorizontal: Spacing.two,
   },
   headerLabel: {
     fontSize: 17,

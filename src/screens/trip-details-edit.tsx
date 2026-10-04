@@ -394,6 +394,8 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: 0,
     minHeight: 48,
     borderRadius: 12,
     borderWidth: 1,

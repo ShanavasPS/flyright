@@ -389,6 +389,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
+    lineHeight: 20,
+    letterSpacing: 0,
   },
   dateRow: {
     flexDirection: 'row',

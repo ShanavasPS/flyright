@@ -217,6 +217,7 @@ const styles = StyleSheet.create({
   details: {
     minHeight: 96,
     fontSize: 16,
+    letterSpacing: 0,
     lineHeight: 22,
     padding: Spacing.three,
     borderRadius: Spacing.three,

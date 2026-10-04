@@ -199,6 +199,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: 0,
     paddingVertical: Spacing.three,
   },
   row: {

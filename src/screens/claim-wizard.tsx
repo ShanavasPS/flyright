@@ -490,6 +490,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
+    lineHeight: 20,
+    letterSpacing: 0,
   },
   cta: {
     marginTop: Spacing.two,

@@ -552,6 +552,8 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: 0,
     paddingVertical: Spacing.two,
   },
   list: {

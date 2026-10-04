@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six + BottomTabInset, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   auto: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, borderWidth: 1, borderRadius: 16, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + 2 },
-  search: { minHeight: 48, borderRadius: 16, borderWidth: 1, paddingHorizontal: Spacing.three, fontSize: 16 },
+  search: { minHeight: 48, borderRadius: 16, borderWidth: 1, paddingHorizontal: Spacing.three, fontSize: 16, lineHeight: 20, letterSpacing: 0 },
   caps: { textTransform: 'uppercase', letterSpacing: 1.2 },
   list: { padding: 0, gap: 0, overflow: 'hidden' },
   option: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + 2 },
