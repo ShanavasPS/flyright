@@ -47,7 +47,8 @@ final class FlyRightPhysicalUITests: XCTestCase {
         return friends.waitForExistence(timeout: 5) ? friends : app.tabBars.buttons["People"]
     }
 
-    /// Settings is pushed from the ringed avatar at the top of Flights.
+    /// Settings is a row on Profile, which the ringed avatar at the top of
+    /// Flights opens (since 1.1.11).
     private func openSettings() {
         tapTab("Flights")
         let avatar = app.buttons.matching(NSPredicate(
@@ -55,6 +56,9 @@ final class FlyRightPhysicalUITests: XCTestCase {
         )).firstMatch
         XCTAssertTrue(avatar.waitForExistence(timeout: 30), "No profile button on Flights")
         avatar.tap()
+        let settings = app.descendants(matching: .any)["profile-settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 20), "No Settings row on Profile")
+        settings.tap()
     }
 
     private func tapTab(_ title: String) {
