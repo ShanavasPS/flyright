@@ -333,6 +333,8 @@ export function WorldCanvas({
           colors={{ ...globePalette(dark), tint: theme.tint, background: theme.background }}
           holdFit={moved}
           daylight={daylight}
+          // The sun in the sky too, once the globe is zoomed out to make room.
+          sun
           beacon={beacon}
           // The overview faces the trip of the day when there is one: All
           // travels and Recenter both land with it in the middle.
@@ -683,8 +685,13 @@ function AllTravelsButton({ onPress }: { onPress: () => void }) {
 /** Day and night on the globe, on or off — an icon that is lit when the
  * globe is. The same round button as Share, no label: the globe itself
  * shows what it does. Remembered across sessions. */
+/** The sun disc's own colour, so the control reads as the sun it switches:
+ * the deeper amber on a light sky, the paler gold on a dark one. */
+const SUN_TINT = { light: '#F59E0B', dark: '#FFC857' } as const;
+
 function DaylightButton({ on }: { on: boolean }) {
   const theme = useTheme();
+  const dark = useColorScheme() === 'dark';
   return (
     <Pressable
       accessibilityRole="button"
@@ -704,7 +711,7 @@ function DaylightButton({ on }: { on: boolean }) {
         }
         size={18}
         weight="semibold"
-        tintColor={on ? theme.tint : theme.textSecondary}
+        tintColor={on ? SUN_TINT[dark ? 'dark' : 'light'] : theme.textSecondary}
       />
     </Pressable>
   );

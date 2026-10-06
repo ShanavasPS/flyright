@@ -11,11 +11,13 @@ import {
   ImageShader,
   MipmapMode,
   Path,
+  RadialGradient,
   Shader,
   Skia,
   Text,
   matchFont,
   useClock,
+  vec,
   type SkFont,
 } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -41,6 +43,12 @@ import {
   MAX_SCALE,
   MAX_TILT,
   MIN_SCALE,
+  SKY_SCALE,
+  SUN_FOCAL,
+  faceSun,
+  smoothstep,
+  sunPlacement,
+  type SkyBounds,
   cometAlpha,
   cometRange,
   fitCamera,
@@ -92,6 +100,9 @@ const BEACON_REACH = 23;
 const BEACON_STROKE = 2;
 /** A soft halo under the rings, so the spot is marked even between pulses. */
 const BEACON_HALO = 8;
+/** Switching the sun on with it out of frame orbits the camera to the
+ * sunrise: the sun this many of its radii clear of the Earth's limb. */
+const SUN_RISE_CLEARANCE = 3;
 /** The sun moves a quarter of a degree a minute — under a pixel here. */
 const SUN_TICK_MS = 60_000;
 /** Flipping the switch fades between the two lightings. */
@@ -178,7 +189,10 @@ export interface GlobeLivePlane {
  * Lighting is one of two: a fixed studio light from the upper left, or —
  * `daylight` — the sun where it actually is at `sunAt` (now, ticking, when
  * not given), so the day side, the night side and the twilight band between
- * them are the earth's own for that moment (see services/sun).
+ * them are the earth's own for that moment (see services/sun). With `sun`
+ * the sun itself is drawn too, out in the sky where the light comes from,
+ * once the globe is zoomed out enough to leave it room (services/globe
+ * sunPlacement).
  *
  * Planes are drawn only where there is still something to fly: upcoming
  * routes (pulsing by the origin) and a flight in the air (at the end of its
@@ -215,6 +229,7 @@ export function GlobeView({
   livePlane = null,
   pastPlanes = false,
   tilt = false,
+  sun = false,
   onSelect,
   onMoved,
   testID,
@@ -261,6 +276,8 @@ export function GlobeView({
   /** Sway with the phone's tilt (hooks/use-device-tilt) — pass true only
    * while the globe is on screen in a foregrounded app. */
   tilt?: boolean;
+  /** Draw the sun in the sky when the globe is lit by it (`daylight`). */
+  sun?: boolean;
   onSelect?: (key: string | null) => void;
   /** The traveller took the camera somewhere: the fit no longer holds. */
   onMoved?: () => void;
@@ -270,6 +287,13 @@ export function GlobeView({
   const cx = width / 2;
   const cy = strip.top + stripHeight / 2;
   const fitR = fitRadius(width, stripHeight);
+  // The sun's sky: the strip, so it never sits under an overlay.
+  const sky = useMemo<SkyBounds>(
+    () => ({ left: 0, top: strip.top, right: width, bottom: height - strip.bottom }),
+    [strip.top, strip.bottom, width, height],
+  );
+  // With the sun to show, the globe may rest zoomed out below the fit.
+  const skyRoom = sun && daylight;
 
   // Route samples as unit vectors, converted once; each frame only rotates.
   const packed = useMemo<PackedRoute[]>(
@@ -375,6 +399,46 @@ export function GlobeView({
     };
   }, [ticking]);
   const sunDir = useMemo(() => sunVector(sunAt ?? sunNow), [sunAt, sunNow]);
+
+  // Switching the sun on reveals it: the globe eases out to SKY_SCALE so
+  // there is sky around it, and if the sun is out of frame — behind the
+  // camera on the day side, or eclipsed behind the Earth — the camera orbits
+  // the least that brings it up past the limb (the traveller asked for a sun
+  // they see, not one to go looking for). Off again, a globe left below the
+  // fit comes back to it, as a pinch would. On the transition only — the fit
+  // itself stays the overview Recenter returns to.
+  const skyRoomWas = useRef(skyRoom);
+  useEffect(() => {
+    if (skyRoomWas.current === skyRoom) return;
+    skyRoomWas.current = skyRoom;
+    const easing = Easing.inOut(Easing.cubic);
+    if (skyRoom) {
+      cancelAnimation(scale);
+      cancelAnimation(lambda);
+      cancelAnimation(phi);
+      scale.value = withTiming(SKY_SCALE, { duration: FIT_MS, easing });
+      const here = { lambda: lambda.value, phi: phi.value };
+      const r = fitR * SKY_SCALE;
+      const frame = { cx, cy, r };
+      const [vx, vy, vz] = toView(sunDir[0], sunDir[1], sunDir[2], rotation(here));
+      const shown = sunPlacement([vx, vy, vz], frame, sky);
+      // In frame and clear of the Earth already: leave the view alone.
+      const clear = Math.hypot(shown.x - cx, shown.y - cy) > r + shown.r;
+      if (shown.opacity < 0.5 || !clear) {
+        // The sunrise: just past the limb at the zoomed-out size.
+        const rise = Math.atan((r + shown.r * SUN_RISE_CLEARANCE) / (r * SUN_FOCAL));
+        const face = faceSun(here, sunDir, -Math.cos(rise));
+        lambda.value = withTiming(nearestLambda(lambda.value, face.lambda), { duration: FIT_MS, easing }, () => {
+          'worklet';
+          lambda.value = wrapLambda(lambda.value);
+        });
+        phi.value = withTiming(face.phi, { duration: FIT_MS, easing });
+      }
+      onMoved?.();
+    } else if (scale.value < 1) {
+      scale.value = withTiming(1, { duration: FIT_MS, easing });
+    }
+  }, [skyRoom, sunDir, fitR, cx, cy, sky, lambda, phi, scale, onMoved]);
   const daylightMix = useSharedValue(daylight ? 1 : 0);
   useEffect(() => {
     daylightMix.value = withTiming(daylight ? 1 : 0, { duration: DAYLIGHT_FADE_MS });
@@ -443,6 +507,10 @@ export function GlobeView({
   const dotsPath = useDerivedValue(() => paths.value.dots);
 
   const font = useMemo(() => labelFont(), []);
+  const darkSky = useMemo(() => {
+    const [r, g, b] = rgb(colors.background);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+  }, [colors.background]);
   const camera = { lambda: viewLambda, phi: viewPhi, scale, cx, cy, fitR };
 
   const moved = () => onMoved?.();
@@ -486,7 +554,7 @@ export function GlobeView({
     })
     .onChange((e) => {
       const r0 = fitR * scale.value;
-      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, pinchStart.value * e.scale));
+      const next = Math.min(MAX_SCALE, Math.max(skyRoom ? SKY_SCALE : MIN_SCALE, pinchStart.value * e.scale));
       const r1 = fitR * next;
       // Keep the point under the fingers under the fingers: the part of
       // the globe there moves out from the centre as it grows, so turn the
@@ -501,7 +569,7 @@ export function GlobeView({
       phi.value = clampTilt(phi.value - dy / r1);
     })
     .onEnd(() => {
-      if (scale.value < 1) scale.value = withTiming(1, { duration: 260 });
+      if (scale.value < 1 && !skyRoom) scale.value = withTiming(1, { duration: 260 });
       runOnJS(moved)();
     });
 
@@ -590,6 +658,8 @@ export function GlobeView({
       }
       testID={testID}>
       <Canvas style={styles.canvas}>
+        {/* Under the globe: the Earth hides the sun when it is behind it. */}
+        {sun && <SunDisc dir={sunDir} camera={camera} sky={sky} mix={daylightMix} dark={darkSky} />}
         {textures.base && (
           <Fill>
             <Shader source={SHADER} uniforms={uniforms}>
@@ -726,6 +796,54 @@ function PulsingPlanes({
  * dot out to BEACON_REACH while fading, the rings a fraction of a period
  * apart so one is always on its way. Still — a single soft ring — when the
  * screen is not animating or the traveller prefers reduced motion. */
+/** The sun, out in the sky along the direction the light comes from —
+ * a soft warm disc with a wide glow, stylised, nowhere near to scale (see
+ * services/globe sunPlacement). Fades with the lighting switch. */
+function SunDisc({
+  dir,
+  camera,
+  sky,
+  mix,
+  dark,
+}: {
+  dir: readonly [number, number, number];
+  camera: Camera;
+  sky: SkyBounds;
+  /** The daylight fade, 0–1. */
+  mix: SharedValue<number>;
+  /** A dark page behind the globe: paler, brighter sun. */
+  dark: boolean;
+}) {
+  const { lambda, phi, scale, cx, cy, fitR } = camera;
+  const place = useDerivedValue(() => {
+    const rot = rotation({ lambda: lambda.value, phi: phi.value });
+    const [vx, vy, vz] = toView(dir[0], dir[1], dir[2], rot);
+    return sunPlacement([vx, vy, vz], { cx, cy, r: fitR * scale.value }, sky);
+  });
+  // A unit sun, moved and scaled into place — so the gradients scale too.
+  const transform = useDerivedValue(() => [
+    { translateX: place.value.x },
+    { translateY: place.value.y },
+    { scale: place.value.r },
+  ]);
+  const core = useDerivedValue(() => place.value.opacity * mix.value);
+  const glow = useDerivedValue(() => place.value.opacity * mix.value * 0.6);
+  const coreColors = dark ? ['#FFFBEA', '#FFE28A', '#FFC857'] : ['#FFF3C4', '#FFC24D', '#F59E0B'];
+  const glowColors = dark
+    ? ['rgba(255, 200, 87, 0.85)', 'rgba(255, 200, 87, 0)']
+    : ['rgba(245, 158, 11, 0.7)', 'rgba(245, 158, 11, 0)'];
+  return (
+    <Group transform={transform}>
+      <Circle cx={0} cy={0} r={3.4} opacity={glow}>
+        <RadialGradient c={vec(0, 0)} r={3.4} colors={glowColors} />
+      </Circle>
+      <Circle cx={0} cy={0} r={1} opacity={core}>
+        <RadialGradient c={vec(0, 0)} r={1} colors={coreColors} positions={[0, 0.7, 1]} />
+      </Circle>
+    </Group>
+  );
+}
+
 function Beacon({
   v,
   camera,
@@ -910,12 +1028,6 @@ function nowMs(): number {
 function clampTilt(value: number): number {
   'worklet';
   return Math.max(-MAX_TILT, Math.min(MAX_TILT, value));
-}
-
-function smoothstep(a: number, b: number, x: number): number {
-  'worklet';
-  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
 }
 
 /** "#RRGGBB" → [r, g, b] in 0–1, for shader uniforms. */

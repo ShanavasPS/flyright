@@ -1,8 +1,10 @@
 import {
   DEG,
   MAX_SCALE,
+  SUN_FOCAL,
   cometAlpha,
   cometRange,
+  faceSun,
   fitCamera,
   mergeSegments,
   nearestLambda,
@@ -13,7 +15,9 @@ import {
   projectPoint,
   projectPolyline,
   rotation,
+  sunPlacement,
   toVector,
+  toView,
   unprojectPoint,
   wrapLambda,
   RAD,
@@ -202,5 +206,75 @@ describe('helpers', () => {
     expect(cometAlpha(range, 50, 0.28)).toBeCloseTo(1, 6);
     expect(cometAlpha(range, 22, 0.28)).toBeLessThan(0.05);
     expect(cometRange(101, 0.001, 0.28)).toBeNull();
+  });
+});
+
+describe('sunPlacement', () => {
+  const sky = { left: 0, top: 0, right: 400, bottom: 600 };
+
+  it('is out of frame while the sun is on the camera’s side of the Earth', () => {
+    expect(sunPlacement([1, 0, 0.3], frame, sky).opacity).toBe(0);
+    expect(sunPlacement([0, 0, 1], frame, sky).opacity).toBe(0);
+  });
+
+  it('sits straight behind the Earth when the sun is dead behind it', () => {
+    const sun = sunPlacement([0, 0, -1], frame, sky);
+    expect(sun.x).toBeCloseTo(frame.cx);
+    expect(sun.y).toBeCloseTo(frame.cy);
+    expect(sun.opacity).toBeCloseTo(1);
+  });
+
+  it('emerges past the limb and sweeps outward as the sun comes off that axis', () => {
+    const a = sunPlacement([Math.sin(0.5), 0, -Math.cos(0.5)], frame, sky);
+    const b = sunPlacement([Math.sin(0.8), 0, -Math.cos(0.8)], frame, sky);
+    expect(a.x - frame.cx).toBeCloseTo(frame.r * SUN_FOCAL * Math.tan(0.5));
+    expect(b.x).toBeGreaterThan(a.x);
+    expect(b.x).toBeGreaterThan(frame.cx + frame.r);
+    expect(b.opacity).toBeCloseTo(1);
+    // Screen y grows downward: a sun to the north is drawn above the centre.
+    expect(sunPlacement([0, 0.6, -0.8], frame, sky).y).toBeLessThan(frame.cy);
+  });
+
+  it('fades out at the edge of the sky instead of popping, and is gone near the horizon', () => {
+    expect(sunPlacement([0.999, 0, -0.045], frame, sky).opacity).toBe(0);
+    const near = sunPlacement([Math.sin(0.9), 0, -Math.cos(0.9)], frame, sky);
+    expect(near.opacity).toBeGreaterThan(0);
+    expect(near.opacity).toBeLessThan(1);
+  });
+});
+
+describe('faceSun', () => {
+  const dz = (o: { lambda: number; phi: number }, sun: [number, number, number]) => toView(sun[0], sun[1], sun[2], rotation(o))[2];
+
+  it('leaves a globe that already has the sun at the asked height alone', () => {
+    const o = facing(0, 0);
+    const sun = toVector(0, Math.acos(-0.7) * DEG);
+    expect(faceSun(o, sun, -0.7)).toBe(o);
+  });
+
+  it('turns the least that brings the sun forward to the asked height', () => {
+    const o = facing(0, 0);
+    const sun = toVector(0, 90);
+    const next = faceSun(o, sun, 0.35);
+    expect(dz(next, sun)).toBeCloseTo(0.35, 5);
+    expect(next.lambda * DEG).toBeCloseTo(90 - Math.acos(0.35) * DEG, 4);
+    expect(next.phi).toBeCloseTo(0, 6);
+  });
+
+  it('sends a sun that is in front of the camera round behind the Earth', () => {
+    const sun = toVector(0, 0);
+    const next = faceSun(facing(0, 0), sun, -0.7);
+    expect(dz(next, sun)).toBeCloseTo(-0.7, 5);
+  });
+
+  it('brings a sun dead behind the Earth up past the limb', () => {
+    const sun = toVector(0, 180);
+    const next = faceSun(facing(0, 0), sun, -0.7);
+    expect(dz(next, sun)).toBeCloseTo(-0.7, 5);
+  });
+
+  it('keeps the tilt within the globe’s limits', () => {
+    const next = faceSun(facing(80, 0), toVector(-80, 180), -0.7);
+    expect(Math.abs(next.phi)).toBeLessThanOrEqual(85 * RAD + 1e-9);
   });
 });

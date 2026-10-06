@@ -82,7 +82,15 @@ a change to it.
 The globe is lit by the real sun by default (`src/services/sun.ts`, the
 subsolar point; the shader mixes it with the old studio light by the
 `daylight` uniform). The World tab header's sun button switches it and the
-choice is remembered (`src/services/globe-daylight.ts`); the trip inset places
+choice is remembered (`src/services/globe-daylight.ts`); with it on, the sun
+itself is drawn as a body out in space (`sun` prop, `sunPlacement` in
+`services/globe.ts`): a drag orbits the camera, so facing the day side the
+sun is behind the viewer and out of frame, and facing the night side it
+rises past the limb and sweeps the sky (`SUN_FOCAL` perspective) —
+stylised, nowhere near to scale. Switching the sun on eases the globe out
+to `SKY_SCALE` and, if the sun is out of frame, orbits the least that
+brings it up past the limb (`faceSun`); off again returns a globe left
+below the fit. The trip inset places
 the sun at take-off / landing / now. The inset's caption stays the one word
 it was ("Overview" / "Flown path") — the user does not want sun or plane
 notes added to it. Planes are

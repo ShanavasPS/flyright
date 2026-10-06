@@ -233,6 +233,9 @@ export interface GlobeCamera extends GlobeOrientation {
  * points, where coastlines still read as lines rather than steps. */
 export const MAX_SCALE = 12;
 export const MIN_SCALE = 0.7;
+/** With the sun in the sky the globe may be pinched down this far, so
+ * there is room around it for the sun to sit in. */
+export const SKY_SCALE = 0.55;
 
 /** Undo the antimeridian split the map SDKs needed: a route's samples in
  * one list, the two ±180° edge points collapsed into one hop. On a sphere
@@ -355,4 +358,107 @@ export function cometRange(
 export function cometAlpha(range: { last: number; tail: number }, i: number, length: number): number {
   'worklet';
   return Math.max(0, Math.min(1, (i / range.last - range.tail) / length));
+}
+
+/** Hermite 0→1 over [a, b]. */
+export function smoothstep(a: number, b: number, x: number): number {
+  'worklet';
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+/** The sky the sun may sit in: the canvas minus the overlays, in points. */
+export interface SkyBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface SunPlacement {
+  x: number;
+  y: number;
+  /** Disc radius in points — stylised, nothing like to scale. */
+  r: number;
+  /** 0 when the sun is out of the picture, 1 when fully shown. */
+  opacity: number;
+}
+
+/** How far the camera stands from the Earth, in globe radii, for the
+ * sun's perspective. A sun straight behind the Earth is hidden by it; from
+ * about 40° off that axis it emerges past the limb (`atan(1 / SUN_FOCAL)`),
+ * and it reaches the canvas edge well before it comes level with the
+ * camera. Smaller: a wider cone hidden behind the Earth, a longer sweep. */
+export const SUN_FOCAL = 1.25;
+
+/** Where the sun is drawn, given its direction in view space (`toView` of
+ * the sun vector) and the globe's frame.
+ *
+ * The sun is a body out in space, and the camera orbits the Earth: that is
+ * what a drag does, in the Earth's own frame. A sun on the camera's side
+ * of the Earth (dz > 0) is behind the camera and out of frame — the day
+ * side faces us. A sun beyond the Earth (dz < 0) is in front of the camera
+ * at the vanishing point of its direction, `SUN_FOCAL` radii of perspective:
+ * straight behind the Earth it is eclipsed (drawn under the globe, only its
+ * glow showing round the limb), off that axis it emerges and sweeps out to
+ * the canvas edge, where it fades rather than pops. Stylised in size and
+ * distance — a true sun is 109 Earths wide and 11,700 away. */
+export function sunPlacement(
+  view: readonly [number, number, number],
+  frame: GlobeFrame,
+  sky: SkyBounds,
+): SunPlacement {
+  'worklet';
+  const [dx, dy, dz] = view;
+  const r = frame.r;
+  const sunR = Math.max(9, Math.min(26, r * 0.11));
+  if (dz >= -0.02) return { x: frame.cx, y: frame.cy, r: sunR, opacity: 0 };
+  const k = (r * SUN_FOCAL) / -dz;
+  const x = frame.cx + dx * k;
+  const y = frame.cy - dy * k;
+  // The glow's width inside the sky, then a fade over two more radii.
+  const m = sunR * 2.6;
+  const edge = Math.min(x - sky.left, sky.right - x, y - sky.top, sky.bottom - y);
+  return { x, y, r: sunR, opacity: smoothstep(m, m + sunR * 2, edge) };
+}
+
+/** The orientation that puts the sun at view-space height `dz` (the cosine
+ * of its angle from the view axis) with the least turn: the screen centre
+ * moved in the plane of the centre and the sun, toward the sun to bring it
+ * forward, away to send it round behind the Earth. Unchanged when it is
+ * there already. A sun dead ahead or dead behind has no such plane; the
+ * turn is then made toward the east. */
+export function faceSun(
+  orientation: GlobeOrientation,
+  sun: readonly [number, number, number],
+  dz: number,
+): GlobeOrientation {
+  'worklet';
+  const [cx, cy, cz] = toVector(orientation.phi * DEG, orientation.lambda * DEG);
+  const dot = Math.max(-1, Math.min(1, cx * sun[0] + cy * sun[1] + cz * sun[2]));
+  const theta = Math.acos(dot);
+  const want = Math.acos(Math.max(-1, Math.min(1, dz)));
+  const delta = theta - want;
+  if (Math.abs(delta) < 1e-6) return orientation;
+  // The direction, perpendicular to the centre, that leads toward the sun.
+  let wx = sun[0] - dot * cx;
+  let wy = sun[1] - dot * cy;
+  let wz = sun[2] - dot * cz;
+  const len = Math.hypot(wx, wy, wz);
+  if (len < 1e-6) {
+    wx = Math.cos(orientation.lambda);
+    wy = 0;
+    wz = -Math.sin(orientation.lambda);
+  } else {
+    wx /= len;
+    wy /= len;
+    wz /= len;
+  }
+  const c = Math.cos(delta);
+  const sn = Math.sin(delta);
+  const x = c * cx + sn * wx;
+  const y = c * cy + sn * wy;
+  const z = c * cz + sn * wz;
+  const phi = Math.max(-MAX_TILT, Math.min(MAX_TILT, Math.asin(Math.max(-1, Math.min(1, y)))));
+  return { lambda: Math.atan2(x, z), phi };
 }
