@@ -283,7 +283,7 @@ function RootLayout() {
                   presentation: "formSheet",
                   headerShown: false,
                   sheetGrabberVisible: true,
-                  sheetAllowedDetents: [0.9],
+                  sheetAllowedDetents: [0.97],
                 }}
               />
               {/* A home base city's picture: Wikipedia's, your own, or the flag. */}
@@ -348,6 +348,15 @@ function RootLayout() {
               />
               <Stack.Screen
                 name="membership"
+                options={{
+                  presentation: "modal",
+                  headerShown: true,
+                  gestureEnabled: false,
+                }}
+              />
+              {/* A lounge pass added or edited: the same card modal. */}
+              <Stack.Screen
+                name="lounge-pass-edit"
                 options={{
                   presentation: "modal",
                   headerShown: true,

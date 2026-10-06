@@ -49,7 +49,7 @@ export function ProOffer() {
   return <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={[styles.body, { paddingBottom: Math.max(insets.bottom, Spacing.four) }]}>
     <ProHeader onClose={close} closeLabel="Close Pro offer" />
       {reminding && trip && CONVEX_URL && userId ? <ReminderEditor trip={trip} userId={userId} saved={!!reminder} onDone={close} onPlans={plans} /> : <>
-        <ProHero title={feature === 'postcard' ? 'Share postcards with Pro' : feature === 'claim' ? 'Prepare your claim with Pro' : 'What Pro adds'} trip={trip} />
+        <ProHero title={feature === 'postcard' ? 'Share postcards with Pro' : feature === 'claim' ? 'Prepare your claim with Pro' : feature === 'lounge-passes' ? 'Track lounge passes with Pro' : 'What Pro adds'} trip={trip} />
         <ProBenefits />
         <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>Updates where available. Family follows free.</ThemedText>
         <View style={styles.actions}>

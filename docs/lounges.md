@@ -7,7 +7,7 @@ and "How it works" (Technical plan, Feasibility).
 
 ## Status
 
-Steps 0–3 are built (the first release): a lounge line on the trip page before the day, and on the travel day a lounge card and sheet.
+Steps 0–4 are built: a lounge line on the trip page before the day, on the travel day a lounge card and sheet, and lounge passes with logged visits.
 
 | Piece | File | State |
 | --- | --- | --- |
@@ -22,7 +22,10 @@ Steps 0–3 are built (the first release): a lounge line on the trip page before
 | Travel-day card (A3) | `src/components/lounge-card.tsx`, slot `'lounge'` after progress in the 'travel' moment | Built |
 | Lounge sheet (A4) | `src/screens/lounge-sheet.tsx`, route `/lounge?journeyId=&lounge=` (form sheet) | Built: Show boarding pass, Member number, Not today |
 | Shared verdicts, "Not today" | `src/hooks/use-lounge-options.ts`, `src/services/lounge-dismissals.ts` | Built |
-| Passes and visits (device-only tables) | — | Step 4, a later release |
+| Passes and visits (device-only tables) | `lounge_passes`, `lounge_visits` (migration 0022), `src/services/lounge-passes.ts` (+ `.web.ts`: none on web) | Built |
+| Pass maths: networks, membership year, visits left | `src/services/lounge-pass-logic.ts` (+ test) | Built |
+| Passes in Memberships (B1), add/edit (B2), detail (B3) | `src/components/lounge-pass-list.tsx`, `lounge-pass-card.tsx`, `src/screens/lounge-pass-edit.tsx` (`/lounge-pass-edit`), `lounge-pass-detail.tsx` (`/lounge-pass`) | Built; adding a pass is Pro |
+| "I'm in the lounge", in-lounge card (A3), Undo, "I've left" | `src/screens/lounge-sheet.tsx`, `src/components/lounge-card.tsx` | Built |
 | Booking evidence (`booking_loyalty`) | — | Step 5 |
 
 ## Rules
@@ -31,8 +34,16 @@ Steps 0–3 are built (the first release): a lounge line on the trip page before
   a delay (FlightFacts `estimatedDeparture`) moves it and the verdicts. The
   card is gone once that time passes. Walk times to gates are not in the
   directory yet.
-- **Not in the first release:** pass visits, "I'm in the lounge", visit
-  counting (step 4, device tables), the connection card, U1/U3/U4.
+- **Free visits left** = free visits a year − (what was typed as used when
+  the pass was added, if that was this membership year) − pass visits
+  logged since the year began (`renewsOn`'s last anniversary). Undo deletes
+  the visit, so it gives the visit back. "Running low" from 2 left.
+- **A visit closes itself** at its leave-by time; "I've left" closes it
+  sooner. Visits are logged for every way in (status, cabin, pass, pay),
+  device-only, and never reach followers.
+- **No pass company publishes a link into its app**, so "Open Priority Pass"
+  opens its App Store page (it shows Open when installed) or the network's
+  site; the desk scans their app, never FlyRight.
 
 - **FlyRight is never what the desk scans.** The desk reads the boarding
   pass, a pass company's own app, or a payment card. Copy says "Have ready",
@@ -67,7 +78,9 @@ the coverage is measured, with a licence read like docs/flight-paths.md.
 `python3 scripts/seed-lounge-trips.py <SQLite-dir> likely|included|none|travel|clear`
 writes an anonymous AY5 HEL→JFK (and a Finnair Plus Platinum membership)
 into a stopped app; `.maestro/lounge-trip-line.yaml` with `CASE=` checks the
-line; `.maestro/lounge-travel-day.yaml` with `JOURNEY=` (the id the
+line; `.maestro/lounge-pass.yaml` with `JOURNEY=` (the `pass` seed: QR3
+from DOH with a Priority Pass) logs an Al Maha visit and undoes it;
+`.maestro/lounge-travel-day.yaml` with `JOURNEY=` (the id the
 `travel` seed prints) walks card → sheet → boarding pass → Not today. iOS reads the line as one accessibility label, so the flow matches
 with `.*…*`. The days-before cases depart 15:40 Helsinki time so every HEL
 lounge is open.

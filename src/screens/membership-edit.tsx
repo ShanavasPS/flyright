@@ -46,7 +46,7 @@ const EMPTY: Draft = {
 };
 
 /** "62 400" / "62,400" / "62400" → 62400; '' → null; anything else → NaN. */
-function parseCount(text: string): number | null {
+export function parseCount(text: string): number | null {
   const bare = text.replace(/[\s,.' ]/g, '');
   if (!bare) return null;
   return /^\d{1,9}$/.test(bare) ? Number(bare) : NaN;
@@ -65,7 +65,7 @@ function parseMonth(text: string): string | null | undefined {
 }
 
 /** "31/12/2026" → "2026-12-31"; '' → null; anything else → undefined. */
-function parseDay(text: string): string | null | undefined {
+export function parseDay(text: string): string | null | undefined {
   const t = text.trim();
   if (!t) return null;
   const m = /^(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{4})$/.exec(t);

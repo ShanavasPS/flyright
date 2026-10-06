@@ -5,16 +5,20 @@
 import { useAuth } from '@clerk/expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { VerdictChip } from '@/components/lounge-card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useLoungeOptions } from '@/hooks/use-lounge-options';
+import { passNamer, useLoungeOptions } from '@/hooks/use-lounge-options';
+import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
+import { showFlash } from '@/services/flash';
 import { hideLoungesFor } from '@/services/lounge-dismissals';
+import { networkInfo, visitsLeftLabel } from '@/services/lounge-pass-logic';
+import { isOngoing, logLoungeVisit } from '@/services/lounge-passes';
 import { fixLine, leaveBy, leaveByLabel, onBooking, wayLine } from '@/services/lounge-trip';
 import { describeMembership } from '@/services/loyalty-programmes';
 import { useJourney } from '@/services/journeys';
@@ -41,6 +45,7 @@ export function LoungeSheet() {
   const { row } = useJourney(journeyId, userId);
   const facts = row ? factsFor(row) : undefined;
   const result = useLoungeOptions(row, facts);
+  const now = useNow(60_000).getTime();
   const option = result?.options.find((o) => o.lounge.loungeId === loungeId);
   if (!row || !result || !option) return <ThemedView style={styles.container} />;
 
@@ -51,10 +56,37 @@ export function LoungeSheet() {
   const numberOnPass = membership ? onBooking(row, membership) === true : false;
   const until = leaveBy(row, result.zone, facts);
   const fix = fixLine(option, result.memberships, hasPass);
-  const why = wayLine(option, result.memberships, row.number);
+  const why = wayLine(option, result.memberships, row.number, passNamer(result.passes));
 
   const notToday = () => {
     hideLoungesFor(row.id);
+    router.back();
+  };
+
+  // The pass a 'pass' visit uses, or the one whose fee a paid visit pays.
+  const passId = way?.kind === 'pass' ? way.passId : way?.kind === 'pay' ? way.passId : null;
+  const pass = passId ? result.passes.find((p) => p.id === passId) : undefined;
+  const network = pass ? networkInfo(pass.network) : undefined;
+  const openApp = () => {
+    if (network) void Linking.openURL(Platform.OS === 'ios' ? network.ios : network.android);
+  };
+  const inLounge = result.visits.some((v) => v.journeyId === row.id && isOngoing(v, now));
+
+  const enter = async () => {
+    if (!way) return;
+    await logLoungeVisit(userId, {
+      journeyId: row.id,
+      loungeId: lounge.loungeId,
+      loungeName: lounge.name,
+      airport: lounge.airport,
+      way: way.kind,
+      passId,
+      paidCents: way.kind === 'pay' ? way.price.amount : null,
+      currency: way.kind === 'pay' ? way.price.currency : null,
+      leaveBy: until != null ? new Date(until).toISOString() : null,
+    });
+    const left = way.kind === 'pass' && way.visitsLeft != null ? way.visitsLeft - 1 : null;
+    showFlash('Visit logged', network ? `${network.name} · ${visitsLeftLabel(left)}` : lounge.name);
     router.back();
   };
 
@@ -104,6 +136,22 @@ export function LoungeSheet() {
 
         <View style={styles.section}>
           <ThemedText type="smallBold" themeColor="textSecondary">Have ready at the desk</ThemedText>
+          {network && (
+            <View style={[styles.ready, { borderColor: theme.hairline }]}>
+              <SymbolView name={{ ios: 'wallet.pass', android: 'badge', web: 'badge' }} size={22} tintColor={theme.heading} />
+              <View style={styles.grow}>
+                <ThemedText type="default" style={styles.strong}>
+                  {network.name} card
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {network.desk}
+                </ThemedText>
+              </View>
+              <Pressable accessibilityRole="button" onPress={openApp} hitSlop={8}>
+                <ThemedText type="link">Open</ThemedText>
+              </Pressable>
+            </View>
+          )}
           <View style={[styles.ready, { borderColor: theme.hairline }]}>
             <SymbolView name={{ ios: 'qrcode', android: 'qr_code_2', web: 'qr_code_2' }} size={22} tintColor={theme.heading} />
             <View style={styles.grow}>
@@ -114,9 +162,18 @@ export function LoungeSheet() {
                   : 'The desk scans it'}
               </ThemedText>
             </View>
-            <ThemedText type="smallBold" style={{ color: hasPass ? theme.success : theme.textSecondary }}>
-              {hasPass ? 'Saved' : 'Not saved'}
-            </ThemedText>
+            {network && way?.kind === 'pass' && hasPass ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push({ pathname: '/boarding-pass', params: { journeyId: row.id } })}
+                hitSlop={8}>
+                <ThemedText type="link">Show</ThemedText>
+              </Pressable>
+            ) : (
+              <ThemedText type="smallBold" style={{ color: hasPass ? theme.success : theme.textSecondary }}>
+                {hasPass ? 'Saved' : 'Not saved'}
+              </ThemedText>
+            )}
           </View>
           {way?.kind === 'pay' && !way.passId && (
             <ThemedText type="small" themeColor="textSecondary">
@@ -126,7 +183,9 @@ export function LoungeSheet() {
         </View>
 
         <View style={styles.actions}>
-          {hasPass ? (
+          {network && way?.kind === 'pass' ? (
+            <PrimaryButton label={`Open ${network.name}`} onPress={openApp} />
+          ) : hasPass ? (
             <PrimaryButton
               label="Show boarding pass"
               onPress={() => router.push({ pathname: '/boarding-pass', params: { journeyId: row.id } })}
@@ -136,6 +195,17 @@ export function LoungeSheet() {
               label="Add boarding pass"
               onPress={() => router.push({ pathname: '/add', params: { scan: '1', journeyId: row.id } })}
             />
+          )}
+          {!inLounge && way && (
+            <Pressable
+              testID="lounge-enter"
+              accessibilityRole="button"
+              onPress={() => void enter()}
+              style={({ pressed }) => [styles.secondary, { borderColor: theme.hairline }, pressed && { opacity: 0.6 }]}>
+              <ThemedText type="default" style={[styles.strong, { color: theme.tint }]}>
+                I’m in the lounge
+              </ThemedText>
+            </Pressable>
           )}
           <View style={styles.links}>
             {membership && (
@@ -158,7 +228,7 @@ export function LoungeSheet() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.four, paddingTop: Spacing.four, gap: Spacing.four },
+  content: { padding: Spacing.four, paddingTop: Spacing.four, gap: Spacing.three },
   head: { gap: Spacing.one },
   chipRow: { flexDirection: 'row' },
   tiles: { flexDirection: 'row', gap: Spacing.two },
@@ -175,7 +245,8 @@ const styles = StyleSheet.create({
   },
   grow: { flex: 1, minWidth: 0 },
   strong: { fontWeight: '600' },
-  actions: { gap: Spacing.three },
+  actions: { gap: Spacing.two },
+  secondary: { alignItems: 'center', borderWidth: 1, borderRadius: Spacing.three, paddingVertical: Spacing.three - 1 },
   links: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.five },
   checked: { textAlign: 'center' },
 });

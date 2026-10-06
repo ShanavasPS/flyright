@@ -170,8 +170,14 @@ export function verdictLabel(option: LoungeOption): { text: string; tone: 'succe
 }
 
 /** How the traveller gets in, in a few words: "Finnair Plus Platinum ·
- * oneworld Emerald", "Business on AY5", "Pay at the desk". */
-export function wayLine(option: LoungeOption, memberships: MembershipLike[], flight: string): string | null {
+ * oneworld Emerald", "Business on AY5", "Priority Pass · 5 free visits
+ * left", "Pay at the desk". `passName` names a pass by its id. */
+export function wayLine(
+  option: LoungeOption,
+  memberships: MembershipLike[],
+  flight: string,
+  passName: (id: string) => string | null = () => null,
+): string | null {
   const way = option.way;
   if (!way) return null;
   switch (way.kind) {
@@ -182,8 +188,11 @@ export function wayLine(option: LoungeOption, memberships: MembershipLike[], fli
       const name = m ? `${describeMembership(m).name} ${m.tier ?? ''}`.trim() : null;
       return name ? `${name} · ${levelName(way.level)}` : levelName(way.level);
     }
-    case 'pass':
-      return way.visitsLeft == null ? 'With your lounge pass' : `Lounge pass · ${way.visitsLeft} free visits left`;
+    case 'pass': {
+      const name = passName(way.passId) ?? 'Lounge pass';
+      if (way.visitsLeft == null) return `${name} · unlimited visits`;
+      return `${name} · ${way.visitsLeft} free ${way.visitsLeft === 1 ? 'visit' : 'visits'} left`;
+    }
     case 'pay':
       return way.passId ? 'Your free visits are used' : 'Pay at the desk';
   }

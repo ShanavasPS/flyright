@@ -107,6 +107,10 @@ export default function JourneysStack() {
         options={{ title: 'Memberships', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
       />
       <Stack.Screen
+        name="lounge-pass"
+        options={{ title: 'Lounge pass', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
+      />
+      <Stack.Screen
         name="settings"
         options={{ title: 'Settings', headerBackButtonDisplayMode: 'minimal', headerShadowVisible: false }}
       />

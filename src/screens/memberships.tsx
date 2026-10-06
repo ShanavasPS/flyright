@@ -8,6 +8,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SectionLabel } from '@/components/grouped-list';
+import { LoungePassList } from '@/components/lounge-pass-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { carrierFor } from '@/constants/carriers';
@@ -212,6 +213,7 @@ export function Memberships() {
               )}
             </>
           )}
+          {rows !== undefined && <LoungePassList />}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>

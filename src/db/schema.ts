@@ -252,3 +252,62 @@ export const memberships = sqliteTable('memberships', {
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 });
+
+/** Lounge passes beside the airline cards in Memberships (docs/lounges.md):
+ * Priority Pass, DragonPass and the like. Device-only, never synced, like
+ * memberships. The free visits left are counted here, not fetched: what the
+ * traveller typed as used when adding it, plus the visits logged since. */
+export const loungePasses = sqliteTable('lounge_passes', {
+  id: text('id').primaryKey(),
+  /** See journeys.userId. */
+  userId: text('user_id'),
+  /** A LoungeNetwork ('priority-pass', 'dragonpass' …). */
+  network: text('network').notNull(),
+  /** The plan as the pass names it ("Standard Plus"), optional. */
+  plan: text('plan'),
+  /** Membership number exactly as typed; masked like memberships. */
+  number: text('number').notNull(),
+  /** Free visits a membership year; null for unlimited. */
+  freeVisits: integer('free_visits'),
+  /** Visits already used this membership year when the pass was added. */
+  usedBefore: integer('used_before').notNull().default(0),
+  /** The day the membership year starts again, 'YYYY-MM-DD'. */
+  renewsOn: text('renews_on'),
+  /** What a visit past the allowance and a guest cost, in minor units of
+   *  `currency`. */
+  extraVisitCents: integer('extra_visit_cents'),
+  guestCents: integer('guest_cents'),
+  currency: text('currency'),
+  position: integer('position').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
+/** Lounge visits the traveller logged ("I'm in the lounge"), by any way in.
+ * Device-only; followers never see them (no travel-day stage). A visit
+ * with no leftAt closes itself at the leave-by time. */
+export const loungeVisits = sqliteTable('lounge_visits', {
+  id: text('id').primaryKey(),
+  userId: text('user_id'),
+  /** The trip it was on; null for one logged without a trip. */
+  journeyId: text('journey_id'),
+  /** The directory's loungeId, and the name and airport as shown then. */
+  loungeId: text('lounge_id').notNull(),
+  loungeName: text('lounge_name').notNull(),
+  airport: text('airport').notNull(),
+  /** How they got in: 'status' | 'cabin' | 'pass' | 'pay'. */
+  way: text('way').notNull(),
+  /** The pass a 'pass' visit (or a paid one past its allowance) used. */
+  passId: text('pass_id'),
+  guests: integer('guests').notNull().default(0),
+  paidCents: integer('paid_cents'),
+  currency: text('currency'),
+  enteredAt: text('entered_at').notNull(),
+  leftAt: text('left_at'),
+  /** The leave-by time the visit had, an instant. */
+  leaveBy: text('leave_by'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});

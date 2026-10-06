@@ -1,0 +1,57 @@
+# Lounge passes and visits (docs/lounges.md, step 4). Seed a stopped test
+# app first and pass the printed id as JOURNEY:
+#   python3 scripts/seed-lounge-trips.py <SQLite-directory> pass
+# The deployment needs DOH in the lounge directory (node scripts/lounges/seed.mjs DOH).
+# Logs a Priority Pass visit at Al Maha, checks the count, then undoes it.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright://memberships"
+- scrollUntilVisible:
+    element: "Lounge passes"
+    direction: DOWN
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Priority Pass, Standard Plus. 6 of 10 left"
+    direction: DOWN
+    timeout: 10000
+- openLink: "flyright://journey/${JOURNEY}"
+- extendedWaitUntil:
+    visible: "QR3 · Qatar Airways"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "Lounges at DOH"
+    direction: DOWN
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: "lounge-row-doh-al-maha-north"
+    direction: DOWN
+    timeout: 10000
+- assertVisible: ".*Priority Pass · 6 free visits left.*"
+- tapOn:
+    id: "lounge-row-doh-al-maha-north"
+- extendedWaitUntil:
+    visible: "Open Priority Pass"
+    timeout: 10000
+- assertVisible: "Priority Pass card"
+- tapOn:
+    id: "lounge-enter"
+- extendedWaitUntil:
+    visible: "Priority Pass · 5 free visits left"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "lounge-left"
+    timeout: 10000
+- takeScreenshot: ${SHOTS}/lounge-visit
+- tapOn:
+    id: "lounge-undo"
+- extendedWaitUntil:
+    visible: "Lounges at DOH"
+    timeout: 10000
+- assertVisible: ".*Priority Pass · 6 free visits left.*"
