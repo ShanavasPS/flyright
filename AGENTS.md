@@ -96,6 +96,23 @@ over oceans and on the ground) carried forward along its track, else from the
 timetable (`flightProgress`). The server side of this (`providerFetch`,
 `flightNormalize`) reaches production with the next backend + hosting deploy.
 
+# Home-screen widget (expo-widgets, iOS)
+
+The "Next flight" widget (small, medium, Lock Screen rectangular and inline)
+is `src/widgets/next-flight.tsx`. Its `'widget'` function runs in the
+extension's own JS runtime: only `@expo/ui/swift-ui` components and modifiers,
+no hooks, nothing declared outside the function. The timeline is built by
+`src/services/home-widget-content.ts` (pure, tested) and pushed by
+`src/services/home-widget.ts` at the end of every `reconcileTravelDay`. Each
+entry is a moment the card changes by itself: midnight, T−4h, take-off,
+landing, window close. The live travel-day card is Pro, like the Live
+Activity, and everyone else gets the plain next-flight card. The extension
+(`com.shanavasshaji.flyright.widgets`) shares the existing
+`group.com.shanavasshaji.flyright.wallet` app group, so linking that group to
+the new bundle id needs the one-time cookie login described under Release
+flow → builds. Android widgets exist in expo-widgets only as an opt-in
+(`enableAndroid`) and are not used.
+
 # The design system (Claude artifact)
 
 Before you design, redesign or mock up anything visual — a marketing page, a

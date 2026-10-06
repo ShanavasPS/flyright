@@ -227,6 +227,28 @@
         }
       ],
       [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.shanavasshaji.flyright.widgets",
+          "groupIdentifier": "group.com.shanavasshaji.flyright.wallet",
+          "widgets": [
+            {
+              "name": "NextFlight",
+              "displayName": "Next flight",
+              "description": "Your next flight at a glance — and live through the travel day.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "accessoryRectangular",
+                  "accessoryInline"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "FlyRight reads tickets and boarding passes you upload from your library, and lets you attach photos to the trips in your travel journal.",

@@ -28,6 +28,7 @@ import {
   updateTravelActivity,
 } from '@/services/live-activity';
 import { liveUpdateLines } from '@/services/live-update-copy';
+import { refreshHomeWidget } from '@/services/home-widget';
 import { getPushEnabled } from '@/services/notifications';
 import {
   chosenPlan,
@@ -158,9 +159,17 @@ let reconciling: Promise<void> | null = null;
 
 /** Serialized like reconcileNotifications — mutations can fire it blindly. */
 export function reconcileTravelDay(): Promise<void> {
-  const run = (reconciling ?? Promise.resolve()).then(doReconcile).catch((error) => {
-    console.warn('[travel-day-lifecycle] reconcile failed', error);
-  });
+  const run = (reconciling ?? Promise.resolve())
+    .then(doReconcile)
+    .catch((error) => {
+      console.warn('[travel-day-lifecycle] reconcile failed', error);
+    })
+    // After the surfaces, so it sees the stages they repaired; and whether
+    // or not they are switched on — the next-flight card is for everyone.
+    .then(refreshWidget)
+    .catch((error) => {
+      console.warn('[travel-day-lifecycle] widget refresh failed', error);
+    });
   reconciling = run;
   return run;
 }
@@ -183,9 +192,43 @@ async function teardown(
   }
 }
 
-async function doReconcile(): Promise<void> {
+/** The journal as every travel-day surface reads it: live trips, their
+ * stamps, and each leg's walk. */
+async function readJournal() {
   const stateRows = await allTravelDayRows();
   const byJourney = new Map(stateRows.map((row) => [row.journeyId, row]));
+  const allRows = await db.select().from(journeys).where(isNull(journeys.deletedAt));
+  const journeyRows: (TravelJourney & RecordRow & { id: string })[] = allRows;
+  // Each leg's walk depends on the legs around it (a connecting leg has
+  // arrival steps, a direct flight none) — and so does how long its window
+  // outlives the landing.
+  // The home base decides the doors either side (leaving home or the hotel);
+  // the steps the traveller chose in the editor win over the suggestion.
+  const userId = allRows.find((j) => j.userId)?.userId ?? null;
+  const suggestedOf = stagePlans(journeyRows, homeCheck(getHomeBase(userId), allRows));
+  const planOf = (journeyId: string) => chosenPlan(rowToState(byJourney.get(journeyId)), suggestedOf(journeyId));
+  return { stateRows, byJourney, journeyRows, planOf };
+}
+
+async function refreshWidget(): Promise<void> {
+  if (Platform.OS !== 'ios') return;
+  const { byJourney, journeyRows, planOf } = await readJournal();
+  const rows = new Map(journeyRows.map((j) => [j.id, j]));
+  refreshHomeWidget({
+    rows: journeyRows,
+    stateOf: (id) => rowToState(byJourney.get(id)),
+    planOf,
+    factsOf: (id) => {
+      const row = rows.get(id);
+      return row ? factsFor(row) : EMPTY_FACTS;
+    },
+    live: !(await proLocked()),
+    now: new Date(),
+  });
+}
+
+async function doReconcile(): Promise<void> {
+  const { stateRows, byJourney, journeyRows, planOf } = await readJournal();
 
   // The Android ongoing notification needs the push permission; the iOS Live
   // Activity has its own OS consent, so only our own switch gates it there.
@@ -201,16 +244,6 @@ async function doReconcile(): Promise<void> {
 
   await ensureChannel();
   const now = new Date();
-  const allRows = await db.select().from(journeys).where(isNull(journeys.deletedAt));
-  const journeyRows: (TravelJourney & RecordRow & { id: string })[] = allRows;
-  // Each leg's walk depends on the legs around it (a connecting leg has
-  // arrival steps, a direct flight none) — and so does how long its window
-  // outlives the landing.
-  // The home base decides the doors either side (leaving home or the hotel);
-  // the steps the traveller chose in the editor win over the suggestion.
-  const userId = allRows.find((j) => j.userId)?.userId ?? null;
-  const suggestedOf = stagePlans(journeyRows, homeCheck(getHomeBase(userId), allRows));
-  const planOf = (journeyId: string) => chosenPlan(rowToState(byJourney.get(journeyId)), suggestedOf(journeyId));
 
   // iOS ends every Live Activity eight hours after it starts, silently: the
   // id we remember then points at a dimmed leftover that swallows updates.
