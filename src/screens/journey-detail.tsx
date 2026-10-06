@@ -93,7 +93,7 @@ import {
   travelWindow,
   type TravelStage,
 } from '@/services/travel-day';
-import { stagePlanFor } from '@/services/travel-day-plan';
+import { itineraryOf, stagePlanFor } from '@/services/travel-day-plan';
 import { tripCard } from '@/services/trip-card';
 import { tripFacts } from '@/services/trip-facts';
 import { carrierCode, earningLine } from '@/services/loyalty-programmes';
@@ -157,6 +157,14 @@ export function JourneyDetail({
     () => (row && journal && homeContext.state.loaded && !embedded ? moveCandidate(homeContext.state, journal, row, new Date(now)) : null),
     [row, journal, homeContext.state, embedded, now],
   );
+  // The leg before this one in the same itinerary: at a connection the
+  // lounge card says how long the stop is (docs/lounges.md, design A4).
+  const inbound = useMemo(() => {
+    if (!row || !journal) return null;
+    const chain = itineraryOf(row, journal);
+    const at = chain.findIndex((l) => l.id === row.id);
+    return at > 0 ? chain[at - 1] : null;
+  }, [row, journal]);
   const answerMove = (moved: boolean) => {
     if (!row || !moveTo) return;
     if (!moved) return dismissHomePrompt(userId, `move:${row.id}`);
@@ -597,7 +605,7 @@ export function JourneyDetail({
               ) : null;
             case 'lounge':
               return row && !isDemo && row.mode === 'flight' ? (
-                <LoungeCard key={slot} trip={row} facts={facts} now={now} />
+                <LoungeCard key={slot} trip={row} facts={facts} now={now} inbound={inbound} />
               ) : null;
             case 'progress':
               // A flown trip keeps its progress as a record: which steps were

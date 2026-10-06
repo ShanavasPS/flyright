@@ -129,9 +129,11 @@ export async function undoLoungeVisit(id: string): Promise<void> {
 }
 
 /** Whether a visit is still going: not left, and before its leave-by time
- * (a visit closes itself then — nobody taps "I've left" at the gate). */
-export function isOngoing(visit: Pick<LoungeVisitRow, 'leftAt' | 'leaveBy'>, now: number): boolean {
+ * (a visit closes itself then — nobody taps "I've left" at the gate). A
+ * delay moves the leave-by time: pass the current one as `until`. */
+export function isOngoing(visit: Pick<LoungeVisitRow, 'leftAt' | 'leaveBy'>, now: number, until?: number | null): boolean {
   if (visit.leftAt) return false;
-  const until = visit.leaveBy ? Date.parse(visit.leaveBy) : NaN;
-  return Number.isNaN(until) || now < until;
+  const stored = visit.leaveBy ? Date.parse(visit.leaveBy) : NaN;
+  const end = Math.max(Number.isNaN(stored) ? -Infinity : stored, until ?? -Infinity);
+  return end === -Infinity || now < end;
 }

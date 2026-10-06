@@ -44,8 +44,9 @@ export async function leaveLoungeVisit(): Promise<void> {}
 
 export async function undoLoungeVisit(): Promise<void> {}
 
-export function isOngoing(visit: Pick<LoungeVisitRow, 'leftAt' | 'leaveBy'>, now: number): boolean {
+export function isOngoing(visit: Pick<LoungeVisitRow, 'leftAt' | 'leaveBy'>, now: number, until?: number | null): boolean {
   if (visit.leftAt) return false;
-  const until = visit.leaveBy ? Date.parse(visit.leaveBy) : NaN;
-  return Number.isNaN(until) || now < until;
+  const stored = visit.leaveBy ? Date.parse(visit.leaveBy) : NaN;
+  const end = Math.max(Number.isNaN(stored) ? -Infinity : stored, until ?? -Infinity);
+  return end === -Infinity || now < end;
 }

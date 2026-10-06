@@ -15,7 +15,8 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayLabelWithYear } from '@/services/dates';
-import { membershipYearStart, networkInfo, runningLow, visitsLeft, visitsLeftLabel, visitsUsed } from '@/services/lounge-pass-logic';
+import { membershipYearStart, networkInfo, passYear, runningLow, visitsLeft, visitsLeftLabel, visitsUsed } from '@/services/lounge-pass-logic';
+import { priceLabel } from '@/services/lounge-trip';
 import { useLoungePass, useLoungeVisits } from '@/services/lounge-passes';
 import { unlockMemberships } from '@/services/memberships';
 
@@ -42,6 +43,7 @@ export function LoungePassDetail() {
   const start = membershipYearStart(pass.renewsOn, today);
   const mine = visits.filter((v) => v.passId === pass.id && (!start || v.enteredAt.slice(0, 10) >= start));
   const info = networkInfo(pass.network);
+  const year = passYear(pass, visits, today);
 
   const reveal = async () => {
     if (revealed) setRevealed(false);
@@ -114,6 +116,25 @@ export function LoungePassDetail() {
             <PrimaryButton label={`Open ${info.name}`} onPress={() => void Linking.openURL(Platform.OS === 'ios' ? info.ios : info.android)} />
           </View>
         )}
+
+        <SectionLabel>This year</SectionLabel>
+        <ThemedView type="backgroundElement" style={styles.list} testID="lounge-pass-year">
+          <View style={styles.row}>
+            <ThemedText style={styles.grow}>Free visits used</ThemedText>
+            <ThemedText style={styles.strong}>{year.free}</ThemedText>
+          </View>
+          <View style={[styles.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.hairline }]}>
+            <ThemedText style={styles.grow}>Paid visits, after the free ones</ThemedText>
+            <ThemedText style={styles.strong}>
+              {year.paid}
+              {year.paidCents && year.currency ? ` · ${priceLabel({ amount: year.paidCents, currency: year.currency })}` : ''}
+            </ThemedText>
+          </View>
+        </ThemedView>
+        <ThemedText type="small" themeColor="textSecondary">
+          Counted from what you typed when adding the pass and the visits you log here. Paid and guest visits are billed by the pass company, often weeks later:
+          compare with your statement now and then.
+        </ThemedText>
 
         <SectionLabel>Visits this year</SectionLabel>
         {mine.length === 0 ? (

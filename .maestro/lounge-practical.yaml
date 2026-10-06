@@ -1,0 +1,46 @@
+# Lounges on a delay and at a long connection (docs/lounges.md, step 6).
+# Seed a stopped test app and pass the printed id as JOURNEY:
+#   python3 scripts/seed-lounge-trips.py <SQLite-directory> delay|layover
+# CASE=delay: the card says how late, and the leave-by time it replaces.
+# CASE=layover: the card says how long the stop is, with the entry-window note.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright://journey/${JOURNEY}"
+- runFlow:
+    when:
+      true: ${CASE === 'delay'}
+    commands:
+      - extendedWaitUntil:
+          visible: "AY5 · Finnair"
+          timeout: 30000
+      - scrollUntilVisible:
+          element: "Lounges at HEL"
+          direction: DOWN
+          timeout: 20000
+      - assertVisible: "Delayed 1 h 40 min: more time before boarding"
+      - scrollUntilVisible:
+          element: "Leave a lounge by .*, was .*"
+          direction: DOWN
+          timeout: 10000
+- runFlow:
+    when:
+      true: ${CASE === 'layover'}
+    commands:
+      - extendedWaitUntil:
+          visible: "QR836 · Qatar Airways"
+          timeout: 30000
+      - scrollUntilVisible:
+          element: "Lounges at DOH"
+          direction: DOWN
+          timeout: 20000
+      - assertVisible: "9 h to connect"
+      - scrollUntilVisible:
+          element: "Most lounges let you in from 3 h before departure.*"
+          direction: DOWN
+          timeout: 10000
+- takeScreenshot: ${SHOTS}/lounge-${CASE}

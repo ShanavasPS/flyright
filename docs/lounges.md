@@ -7,7 +7,7 @@ and "How it works" (Technical plan, Feasibility).
 
 ## Status
 
-Steps 0–5 are built: a lounge line on the trip page before the day, on the travel day a lounge card and sheet, lounge passes with logged visits, and what a boarding pass says about the traveller's memberships.
+Steps 0–6 are built: a lounge line on the trip page before the day, on the travel day a lounge card and sheet, lounge passes with logged visits, what a boarding pass says about the traveller's memberships, and the practical cases (delay, connection, long layover, the pass year).
 
 | Piece | File | State |
 | --- | --- | --- |
@@ -29,6 +29,8 @@ Steps 0–5 are built: a lounge line on the trip page before the day, on the tra
 | "Also on this pass" (B4) under a saved boarding pass | `src/components/pass-loyalty.tsx` on `/boarding-pass`, `passLoyalty` in `lounge-trip.ts` | Built, from the barcode |
 | Add a membership found on a pass (B5) | `/membership?fromJourney=` (`membershipFromPass`) | Built: programme and number filled in; the tier is the traveller's to pick |
 | Printed tier from Wallet passes and documents (`booking_loyalty`) | — | Not built: import keeps no tier today; the barcode carries none |
+| Delay (U1), connection (A4), long layover (U3) on the card | `LoungeCard` `inbound`, `connectionMinutes`, `delayNote` in `lounge-trip.ts` | Built |
+| The pass year (U4) | `passYear` in `lounge-pass-logic.ts`, "This year" on the pass | Built: free used, paid and what was paid |
 
 ## Rules
 
@@ -36,6 +38,15 @@ Steps 0–5 are built: a lounge line on the trip page before the day, on the tra
   a delay (FlightFacts `estimatedDeparture`) moves it and the verdicts. The
   card is gone once that time passes. Walk times to gates are not in the
   directory yet.
+- **Connections:** the card on an onward leg says "2 h 55 min to connect"
+  (inbound landing, actual when known, to this departure, delays
+  included) and stays away under 60 min. From 4 h it adds the 3-hour entry
+  window and what leaving the airport means.
+- **Delays** move the departure the verdicts use, the leave-by time ("was
+  14:55") and an open visit's leave-by; from 2 h the card mentions vouchers.
+- **Not possible yet:** walk times to gates, door-price equivalents ("worth
+  it"), visits status would also have covered, stay limits, live crowding.
+  The directory has none of these.
 - **Free visits left** = free visits a year − (what was typed as used when
   the pass was added, if that was this membership year) − pass visits
   logged since the year began (`renewsOn`'s last anniversary). Undo deletes
@@ -84,7 +95,8 @@ the coverage is measured, with a licence read like docs/flight-paths.md.
 `python3 scripts/seed-lounge-trips.py <SQLite-dir> likely|included|none|travel|clear`
 writes an anonymous AY5 HEL→JFK (and a Finnair Plus Platinum membership)
 into a stopped app; `.maestro/lounge-trip-line.yaml` with `CASE=` checks the
-line; `.maestro/lounge-pass-read.yaml` (`travel` seed with CASE=saved,
+line; `.maestro/lounge-practical.yaml` (`delay` or `layover` seed, same
+CASE) checks the delay and connection wording; `.maestro/lounge-pass-read.yaml` (`travel` seed with CASE=saved,
 `unsaved` seed with CASE=unsaved) checks "Also on this pass" and adding the
 membership from it; `.maestro/lounge-pass.yaml` with `JOURNEY=` (the `pass` seed: QR3
 from DOH with a Priority Pass) logs an Al Maha visit and undoes it;

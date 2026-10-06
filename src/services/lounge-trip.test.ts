@@ -1,5 +1,8 @@
 import { loungeOptions, type Lounge } from './lounge-access';
 import {
+  connectionMinutes,
+  delayNote,
+  durationLabel,
   fixLine,
   leaveBy,
   leaveByLabel,
@@ -204,5 +207,30 @@ describe('passLoyalty', () => {
     expect(passLoyalty(trip(), [finnair()])).toBeNull();
     expect(passLoyalty(trip({ passCode: pass('').replace('AY AY ', 'AY    ') }), [finnair()])).toBeNull();
     expect(membershipFromPass(trip())).toBeNull();
+  });
+});
+
+describe('practical cases', () => {
+  const t = trip({ fromCode: 'DOH', toCode: 'BKK', number: 'QR836', scheduledDeparture: '2026-10-09T17:35:00+03:00' });
+  const inbound = { toCode: 'DOH', scheduledArrival: '2026-10-09T08:25:00+03:00' };
+
+  it('measures the time to connect, delays included', () => {
+    expect(connectionMinutes(inbound, t, 'Asia/Qatar')).toBe(550);
+    expect(durationLabel(550)).toBe('9 h 10 min');
+    expect(connectionMinutes({ ...inbound, actualArrival: '2026-10-09T09:00:00+03:00' }, t, 'Asia/Qatar')).toBe(515);
+    const delayed = { terminal: null, boardingTime: null, estimatedDeparture: '2026-10-09T18:35:00+03:00' };
+    expect(connectionMinutes(inbound, t, 'Asia/Qatar', delayed)).toBe(610);
+    expect(connectionMinutes({ ...inbound, toCode: 'HEL' }, t, 'Asia/Qatar')).toBeNull();
+    expect([durationLabel(45), durationLabel(120)]).toEqual(['45 min', '2 h']);
+  });
+
+  it('says how a delay moves the leave-by time', () => {
+    const hel = trip();
+    const delayed = { terminal: null, boardingTime: null, estimatedDeparture: '2026-10-09T17:20:00+03:00', delayMinutes: 100 };
+    const note = delayNote(hel, 'Europe/Helsinki', delayed)!;
+    expect(note.minutes).toBe(100);
+    expect(new Date(note.was).toISOString()).toBe('2026-10-09T11:55:00.000Z');
+    expect(delayNote(hel, 'Europe/Helsinki', { ...delayed, delayMinutes: 5 })).toBeNull();
+    expect(delayNote(hel, 'Europe/Helsinki', undefined)).toBeNull();
   });
 });

@@ -37,6 +37,7 @@ export interface LoungeFacts {
   terminal: string | null;
   boardingTime: string | null;
   estimatedDeparture: string | null;
+  delayMinutes?: number | null;
 }
 
 /** The departure as the engine wants it, or null when the trip lacks what
@@ -267,4 +268,56 @@ export function membershipFromPass(trip: LoungeTrip): { programme: string; numbe
   const flyer = pass ? legFor(pass, trip)?.frequentFlyer : null;
   const programme = flyer ? PROGRAMMES.find((p) => p.carriers.includes(flyer.airline)) : null;
   return flyer && programme ? { programme: programme.id, number: flyer.number } : null;
+}
+
+/** Below this, a connection has no time for a lounge: the card stays away
+ * and the traveller goes to the gate (design A4). */
+export const SHORT_CONNECTION_MINUTES = 60;
+/** From this, a stop is a long layover (design U3). */
+export const LONG_LAYOVER_MINUTES = 240;
+/** From this, a delay is long enough for airline vouchers to be worth asking about. */
+export const VOUCHER_DELAY_MINUTES = 120;
+
+/** "2 h 55 min", "45 min", "9 h". */
+export function durationLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+}
+
+/** The previous leg of the same itinerary, as far as a connection needs it. */
+export interface InboundLeg {
+  toCode: string;
+  scheduledArrival: string;
+  actualArrival?: string | null;
+}
+
+/** Minutes on the ground between the inbound leg and this departure (a
+ * delay on either side moves it); null when the legs don't meet at this
+ * airport or a time doesn't read. */
+export function connectionMinutes(
+  inbound: InboundLeg,
+  trip: Pick<LoungeTrip, 'fromCode' | 'scheduledDeparture'>,
+  zone: string | null,
+  facts?: LoungeFacts,
+): number | null {
+  if (inbound.toCode.toUpperCase() !== trip.fromCode.toUpperCase()) return null;
+  const landed = flightInstant(inbound.actualArrival ?? inbound.scheduledArrival, zone);
+  const leaves = flightInstant(facts?.estimatedDeparture ?? trip.scheduledDeparture, zone);
+  if (Number.isNaN(landed) || Number.isNaN(leaves)) return null;
+  return Math.round((leaves - landed) / 60_000);
+}
+
+/** On a delay that moves the leave-by time later (design U1): how late,
+ * and the leave-by time it replaces. Null when on time. */
+export function delayNote(
+  trip: LoungeTrip,
+  zone: string | null,
+  facts: LoungeFacts | undefined,
+): { minutes: number; was: number } | null {
+  const minutes = facts?.delayMinutes ?? 0;
+  if (minutes < 15) return null;
+  const was = leaveBy(trip, zone);
+  const now = leaveBy(trip, zone, facts);
+  return was != null && now != null && now > was ? { minutes, was } : null;
 }

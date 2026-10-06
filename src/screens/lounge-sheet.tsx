@@ -70,7 +70,7 @@ export function LoungeSheet() {
   const openApp = () => {
     if (network) void Linking.openURL(Platform.OS === 'ios' ? network.ios : network.android);
   };
-  const inLounge = result.visits.some((v) => v.journeyId === row.id && isOngoing(v, now));
+  const inLounge = result.visits.some((v) => v.journeyId === row.id && isOngoing(v, now, until));
 
   const enter = async () => {
     if (!way) return;

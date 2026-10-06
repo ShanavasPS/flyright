@@ -3,6 +3,7 @@ import {
   enginePass,
   membershipYearStart,
   networkInfo,
+  passYear,
   runningLow,
   visitsLeft,
   visitsLeftLabel,
@@ -106,5 +107,19 @@ describe('enginePass', () => {
   it('knows the networks by id', () => {
     expect(networkInfo('priority-pass')?.name).toBe('Priority Pass');
     expect(enginePass(pass({ network: 'unknown' }), [], '2026-10-06')).toBeNull();
+  });
+});
+
+describe('passYear', () => {
+  it('counts free visits as the card does, and paid visits this year', () => {
+    const visits = [
+      visit('2026-10-03T08:00:00Z'),
+      visit('2026-10-04T08:00:00Z', { way: 'pay', paidCents: 3500 }),
+      visit('2026-10-05T08:00:00Z', { way: 'pay', paidCents: 3500, deletedAt: '2026-10-05T08:01:00Z' }),
+      visit('2026-02-01T08:00:00Z'),
+      visit('2026-10-05T09:00:00Z', { passId: 'other' }),
+    ];
+    // 4 typed as used when the pass was added, plus the one logged.
+    expect(passYear(pass(), visits, '2026-10-06')).toEqual({ free: 5, paid: 1, paidCents: 3500, currency: 'EUR' });
   });
 });

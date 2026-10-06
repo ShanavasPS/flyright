@@ -10,6 +10,9 @@ Scenarios:
   unsaved   as travel, but no Finnair Plus saved: the pass offers to add it (step 5)
   pass      QR3 DOH→LHR leaving in 2 h 30 min, economy, with a Priority Pass
             (10 free visits, 4 used): Al Maha shows as a pass visit (step 4)
+  layover   QR304 HEL→DOH landed 5 h ago, QR836 DOH→BKK leaving in 4 h with
+            a Priority Pass: the connection card and long-layover note (step 6)
+  delay     as travel, with a 100 min delay in the live facts (step 6)
   clear     marks the fixtures deleted
 Only rows whose ids start with "lounge-test-" are written; they are anonymous
 and private. A signed-in app adopts anonymous trips and syncs them to that
@@ -26,10 +29,10 @@ import sys
 from zoneinfo import ZoneInfo
 
 directory, scenario = Path(sys.argv[1]), sys.argv[2]
-assert scenario in {"likely", "included", "none", "travel", "unsaved", "pass", "clear"}
+assert scenario in {"likely", "included", "none", "travel", "unsaved", "pass", "layover", "delay", "clear"}
 now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
 prefix = "lounge-test-"
-journey = prefix + (f"{scenario}-{now:%H%M}" if scenario in {"travel", "unsaved", "pass"} else "out")
+journey = prefix + (f"{scenario}-{now:%H%M}" if scenario in {"travel", "unsaved", "pass", "layover", "delay"} else "out")
 number = "600123454821"
 
 # Days before: 15:40 Helsinki time in ten days, when every HEL lounge is
@@ -37,7 +40,7 @@ number = "600123454821"
 helsinki = ZoneInfo("Europe/Helsinki")
 departure = (
     now + timedelta(hours=2, minutes=30)
-    if scenario in {"travel", "unsaved", "pass"}
+    if scenario in {"travel", "unsaved", "pass", "delay"}
     else (now + timedelta(days=10)).astimezone(helsinki).replace(hour=15, minute=40)
 )
 arrival = departure + timedelta(hours=9)
@@ -59,15 +62,27 @@ with sqlite3.connect(directory / "flyright.db") as db:
     db.execute(f"UPDATE journeys SET deleted_at = ?, updated_at = ? WHERE id LIKE '{prefix}%'", (stamp, stamp))
     db.execute(f"UPDATE memberships SET deleted_at = ?, updated_at = ? WHERE id LIKE '{prefix}%'", (stamp, stamp))
     db.execute(f"UPDATE lounge_passes SET deleted_at = ?, updated_at = ? WHERE id LIKE '{prefix}%'", (stamp, stamp))
-    if scenario == "pass":
+    if scenario in {"pass", "layover"}:
+        if scenario == "layover":
+            departure = now + timedelta(hours=4)
+            landed = now - timedelta(hours=5)
+            db.execute("DELETE FROM journeys WHERE id = ?", (journey + "-in",))
+            db.execute(
+                """INSERT INTO journeys
+                (id,user_id,mode,carrier,carrier_country,number,from_code,from_country,to_code,to_country,
+                 distance_km,scheduled_departure,scheduled_arrival,created_at,updated_at,source,private_trip,cabin)
+                VALUES (?,NULL,'flight','Qatar Airways','QA','QR304','HEL','FI','DOH','QA',4566,?,?,?,?,'manual',1,'economy')""",
+                (journey + "-in", (landed - timedelta(hours=6)).isoformat(), landed.isoformat(), now.isoformat(), now.isoformat()))
         db.execute("DELETE FROM journeys WHERE id = ?", (journey,))
         db.execute(f"DELETE FROM lounge_passes WHERE id = '{prefix}pp'")
         db.execute(
             """INSERT INTO journeys
             (id,user_id,mode,carrier,carrier_country,number,from_code,from_country,to_code,to_country,
              distance_km,scheduled_departure,scheduled_arrival,created_at,updated_at,source,private_trip,cabin)
-            VALUES (?,NULL,'flight','Qatar Airways','QA','QR3','DOH','QA','LHR','GB',5222,?,?,?,?,'manual',1,'economy')""",
-            (journey, departure.isoformat(), (departure + timedelta(hours=7)).isoformat(), now.isoformat(), now.isoformat()))
+            VALUES (?,NULL,'flight','Qatar Airways','QA',?,'DOH','QA',?,?,5222,?,?,?,?,'manual',1,'economy')""",
+            (journey, "QR836" if scenario == "layover" else "QR3", "BKK" if scenario == "layover" else "LHR",
+             "TH" if scenario == "layover" else "GB", departure.isoformat(), (departure + timedelta(hours=7)).isoformat(),
+             now.isoformat(), now.isoformat()))
         db.execute(
             """INSERT INTO lounge_passes (id,user_id,network,plan,number,free_visits,used_before,renews_on,
              extra_visit_cents,guest_cents,currency,position,created_at,updated_at)
@@ -76,7 +91,7 @@ with sqlite3.connect(directory / "flyright.db") as db:
     elif scenario != "clear":
         db.execute("DELETE FROM journeys WHERE id = ?", (journey,))
         db.execute(f"DELETE FROM memberships WHERE id = '{prefix}ay'")
-        with_pass = scenario in {"included", "travel", "unsaved"}
+        with_pass = scenario in {"included", "travel", "unsaved", "delay"}
         db.execute(
             """INSERT INTO journeys
             (id,user_id,mode,carrier,carrier_country,number,from_code,from_country,to_code,to_country,
@@ -93,4 +108,14 @@ with sqlite3.connect(directory / "flyright.db") as db:
                 (prefix + "ay", number, now.isoformat(), now.isoformat()))
     db.commit()
     db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+if scenario == "delay":
+    # The live flight facts the app keeps per trip (services/travel-day-lifecycle).
+    import json
+    facts = {"delayMinutes": 100, "gate": None, "terminal": "2", "checkInDesk": None, "baggageBelt": None,
+             "boardingTime": None, "estimatedDeparture": (departure + timedelta(minutes=100)).isoformat(),
+             "actualDeparture": None, "estimatedArrival": None, "actualArrival": None, "position": None,
+             "observedAt": now.isoformat()}
+    with sqlite3.connect(directory / "ExpoSQLiteStorage") as kv:
+        kv.execute("INSERT OR REPLACE INTO storage (key,value) VALUES (?,?)", ("travel-facts-" + journey, json.dumps(facts)))
+        kv.commit()
 print("Marked the fixtures deleted" if scenario == "clear" else f"Seeded {scenario}: journey {journey} departing {departure.isoformat()}")

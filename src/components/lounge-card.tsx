@@ -10,26 +10,57 @@ import { passNamer, useLoungeOptions } from '@/hooks/use-lounge-options';
 import { type LoungeOption } from '@/services/lounge-access';
 import { useLoungesHidden } from '@/services/lounge-dismissals';
 import { isOngoing, leaveLoungeVisit, undoLoungeVisit, type LoungeVisitRow } from '@/services/lounge-passes';
-import { leaveBy, leaveByLabel, verdictLabel, wayLine, type LoungeFacts, type LoungeTrip } from '@/services/lounge-trip';
+import {
+  connectionMinutes,
+  delayNote,
+  durationLabel,
+  leaveBy,
+  leaveByLabel,
+  LONG_LAYOVER_MINUTES,
+  SHORT_CONNECTION_MINUTES,
+  verdictLabel,
+  VOUCHER_DELAY_MINUTES,
+  wayLine,
+  type InboundLeg,
+  type LoungeFacts,
+  type LoungeTrip,
+} from '@/services/lounge-trip';
 
 /** At most this many lounges on the card; the rest wait in the directory. */
 const MAX_ROWS = 3;
 
 /** The travel-day lounge card on the trip page (docs/lounges.md, design
  * A3): the lounges this traveller can use or pay for at the departure
- * airport, each opening the lounge sheet, and when to leave. Gone once
- * that time passes, after "Not today", and where the directory has none. */
-export function LoungeCard({ trip, facts, now }: { trip: LoungeTrip & { id: string }; facts: LoungeFacts; now: number }) {
+ * airport, each opening the lounge sheet, and when to leave. At a
+ * connection it says how long the stop is (A4) and stays away under an
+ * hour; a delay moves the leave-by time and says so (U1); a long layover
+ * gets the entry-window note (U3). Gone once that time passes, after "Not
+ * today", and where the directory has none. */
+export function LoungeCard({
+  trip,
+  facts,
+  now,
+  inbound,
+}: {
+  trip: LoungeTrip & { id: string };
+  facts: LoungeFacts;
+  now: number;
+  /** The previous leg of the same itinerary, when this one is a connection. */
+  inbound?: InboundLeg | null;
+}) {
   const theme = useTheme();
   const router = useRouter();
   const hidden = useLoungesHidden(trip.id);
   const result = useLoungeOptions(trip, facts);
   if (!result) return null;
-  const visit = result.visits.find((v) => v.journeyId === trip.id && isOngoing(v, now));
-  if (visit) return <InLoungeCard visit={visit} zone={result.zone} />;
-  if (hidden) return null;
   const until = leaveBy(trip, result.zone, facts);
+  const visit = result.visits.find((v) => v.journeyId === trip.id && isOngoing(v, now, until));
+  if (visit) return <InLoungeCard visit={visit} zone={result.zone} until={until} />;
+  if (hidden) return null;
   if (until != null && now > until) return null;
+  const stop = inbound ? connectionMinutes(inbound, trip, result.zone, facts) : null;
+  if (stop != null && stop < SHORT_CONNECTION_MINUTES) return null;
+  const delay = delayNote(trip, result.zone, facts);
   const rows = result.options
     .filter((o) => o.verdict === 'included' || o.verdict === 'likely' || o.verdict === 'visit' || o.verdict === 'pay')
     .slice(0, MAX_ROWS);
@@ -41,6 +72,16 @@ export function LoungeCard({ trip, facts, now }: { trip: LoungeTrip & { id: stri
         <ThemedText type="smallBold" themeColor="heading">
           Lounges at {trip.fromCode}
         </ThemedText>
+        {stop != null && (
+          <ThemedText type="small" themeColor="textSecondary">
+            {durationLabel(stop)} to connect
+          </ThemedText>
+        )}
+        {delay && (
+          <ThemedText type="small" style={{ color: theme.warning }}>
+            Delayed {durationLabel(delay.minutes)}: more time before boarding
+          </ThemedText>
+        )}
       </View>
       {rows.map((option, i) => {
         const way = wayLine(option, result.memberships, trip.number, passNamer(result.passes));
@@ -82,8 +123,20 @@ export function LoungeCard({ trip, facts, now }: { trip: LoungeTrip & { id: stri
             <ThemedText type="smallBold" themeColor="heading">
               {leaveByLabel(until, result.zone)}
             </ThemedText>
+            {delay ? `, was ${leaveByLabel(delay.was, result.zone)}` : ''}
           </ThemedText>
         </View>
+      )}
+      {stop != null && stop >= LONG_LAYOVER_MINUTES && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Most lounges let you in from 3 h before departure. Leaving the airport? You go through passport control
+          and security again; mark “Through security” and the lounges come back.
+        </ThemedText>
+      )}
+      {delay && delay.minutes >= VOUCHER_DELAY_MINUTES && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Long delays sometimes come with airline vouchers. Ask at the transfer desk.
+        </ThemedText>
       )}
     </Card>
   );
@@ -91,9 +144,11 @@ export function LoungeCard({ trip, facts, now }: { trip: LoungeTrip & { id: stri
 
 /** The card while a logged visit lasts (design A3): where, when to leave,
  * "I've left", and Undo for a visit logged by mistake. */
-function InLoungeCard({ visit, zone }: { visit: LoungeVisitRow; zone: string | null }) {
+function InLoungeCard({ visit, zone, until: current }: { visit: LoungeVisitRow; zone: string | null; until: number | null }) {
   const theme = useTheme();
-  const until = visit.leaveBy ? Date.parse(visit.leaveBy) : NaN;
+  // A delay since the visit began moves its leave-by time.
+  const stored = visit.leaveBy ? Date.parse(visit.leaveBy) : NaN;
+  const until = current ?? stored;
   return (
     <Card testID="trip-lounge-visit">
       <ThemedText type="small" themeColor="textSecondary">

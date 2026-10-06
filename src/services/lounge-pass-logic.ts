@@ -68,6 +68,7 @@ export interface VisitLike {
   passId: string | null;
   way: string;
   enteredAt: string;
+  paidCents?: number | null;
   deletedAt?: string | null;
 }
 
@@ -126,4 +127,27 @@ export function enginePass(pass: PassLike, visits: VisitLike[], today: string): 
 export function visitsLeftLabel(left: number | null): string {
   if (left == null) return 'Unlimited visits';
   return `${left} free ${left === 1 ? 'visit' : 'visits'} left`;
+}
+
+/** The pass's membership year so far (design U4): free visits used (what
+ * was typed when the pass was added, plus the visits logged since), visits
+ * paid past the allowance and what they cost. Counts what FlyRight saw; the pass company's statement is the
+ * record. */
+export function passYear(
+  pass: PassLike,
+  visits: VisitLike[],
+  today: string,
+): { free: number; paid: number; paidCents: number; currency: string | null } {
+  const start = membershipYearStart(pass.renewsOn, today);
+  const mine = visits.filter(
+    (v) => v.passId === pass.id && !v.deletedAt && (!start || v.enteredAt.slice(0, 10) >= start),
+  );
+  const paid = mine.filter((v) => v.way === 'pay');
+  return {
+    // The same count as "free visits left": typed when added, plus logged.
+    free: visitsUsed(pass, visits, today),
+    paid: paid.length,
+    paidCents: paid.reduce((sum, v) => sum + (v.paidCents ?? 0), 0),
+    currency: pass.currency,
+  };
 }
