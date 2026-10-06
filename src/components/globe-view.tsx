@@ -31,9 +31,11 @@ import Animated, {
   useSharedValue,
   withDecay,
   withTiming,
+  type DerivedValue,
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { useDeviceTilt } from '@/hooks/use-device-tilt';
 import { COMET_LENGTH, routePlane, type GeoAirport, type GeoRoute, type LatLng } from '@/services/geo';
 import {
   MAX_SCALE,
@@ -212,6 +214,7 @@ export function GlobeView({
   fitFocus = null,
   livePlane = null,
   pastPlanes = false,
+  tilt = false,
   onSelect,
   onMoved,
   testID,
@@ -255,6 +258,9 @@ export function GlobeView({
   livePlane?: GlobeLivePlane | null;
   /** Draw a plane on flown routes too (the trip page's inset). */
   pastPlanes?: boolean;
+  /** Sway with the phone's tilt (hooks/use-device-tilt) — pass true only
+   * while the globe is on screen in a foregrounded app. */
+  tilt?: boolean;
   onSelect?: (key: string | null) => void;
   /** The traveller took the camera somewhere: the fit no longer holds. */
   onMoved?: () => void;
@@ -318,6 +324,13 @@ export function GlobeView({
   const scale = useSharedValue(fit.scale);
   const opacity = useSharedValue(0);
 
+  // What is drawn is the camera plus the phone's tilt. The tilt is a sway on
+  // top, never written into the camera: gestures and the fit own `lambda`
+  // and `phi`, and everything that draws or hit-tests reads these.
+  const sway = useDeviceTilt(tilt);
+  const viewLambda = useDerivedValue(() => lambda.value + sway.lambda.value);
+  const viewPhi = useDerivedValue(() => clampTilt(phi.value + sway.phi.value));
+
   // Back to the fit whenever it changes (new routes, a resize) or the hold
   // is released, the short way round. The very first fit is the initial
   // value above.
@@ -373,8 +386,8 @@ export function GlobeView({
   const uniforms = useDerivedValue(() => ({
     centre: [cx, cy],
     radius: fitR * scale.value,
-    lambda: lambda.value,
-    phi: phi.value,
+    lambda: viewLambda.value,
+    phi: viewPhi.value,
     baseSize: [BASE_SIZE.width, BASE_SIZE.height],
     tile: TILE,
     useDetail: detail && scale.value >= DETAIL_SCALE ? 1 : 0,
@@ -391,7 +404,7 @@ export function GlobeView({
 
   // Route paths, built together so the projection runs once per frame.
   const paths = useDerivedValue(() => {
-    const rot = rotation({ lambda: lambda.value, phi: phi.value });
+    const rot = rotation({ lambda: viewLambda.value, phi: viewPhi.value });
     const frame = { cx, cy, r: fitR * scale.value };
     const flown = Skia.PathBuilder.Make();
     const upcoming = Skia.PathBuilder.Make();
@@ -430,7 +443,7 @@ export function GlobeView({
   const dotsPath = useDerivedValue(() => paths.value.dots);
 
   const font = useMemo(() => labelFont(), []);
-  const camera = { lambda, phi, scale, cx, cy, fitR };
+  const camera = { lambda: viewLambda, phi: viewPhi, scale, cx, cy, fitR };
 
   const moved = () => onMoved?.();
   const select = (key: string | null) => onSelect?.(key);
@@ -493,7 +506,7 @@ export function GlobeView({
     });
 
   const selectAt = (x: number, y: number) => {
-    const orientation = { lambda: lambda.value, phi: phi.value };
+    const orientation = { lambda: viewLambda.value, phi: viewPhi.value };
     const frame = { cx, cy, r: fitR * scale.value };
     select(
       nearestProjected(
@@ -636,8 +649,9 @@ export function GlobeView({
 }
 
 interface Camera {
-  lambda: SharedValue<number>;
-  phi: SharedValue<number>;
+  /** The drawn orientation: the camera plus the tilt sway. */
+  lambda: DerivedValue<number>;
+  phi: DerivedValue<number>;
   scale: SharedValue<number>;
   cx: number;
   cy: number;

@@ -227,6 +227,12 @@
         }
       ],
       [
+        "expo-sensors",
+        {
+          "motionPermission": false
+        }
+      ],
+      [
         "expo-widgets",
         {
           "bundleIdentifier": "com.shanavasshaji.flyright.widgets",

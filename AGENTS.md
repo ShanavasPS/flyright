@@ -93,7 +93,14 @@ has left, its plane moves: `hooks/use-live-plane` + `services/flight-position`
 place it from the provider's last reported position (AeroDataBox
 `withLocation=true`, normalised as `position` on the flight status — null
 over oceans and on the ground) carried forward along its track, else from the
-timetable (`flightProgress`). The server side of this (`providerFetch`,
+timetable (`flightProgress`).
+
+The World tab's globe sways with the phone's tilt (`tilt` prop,
+`hooks/use-device-tilt` + `services/tilt`, expo-sensors DeviceMotion): a
+glimpse of up to ~17° that eases back while the phone is still, added on top
+of the camera so pan, pinch and the fit stay the traveller's. The sensor runs
+only while the tab is focused in a foregrounded app, never with Reduce
+Motion, and needs no permission (`motionPermission: false` in app.json). The server side of this (`providerFetch`,
 `flightNormalize`) reaches production with the next backend + hosting deploy.
 
 # Home-screen widget (expo-widgets, iOS)

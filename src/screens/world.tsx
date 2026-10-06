@@ -341,6 +341,9 @@ export function WorldCanvas({
           // Comets and pulses only while the tab is on screen in a
           // foregrounded app — animation for nobody would burn battery.
           animate={focused && appActive}
+          // Sways with the phone's tilt — the sensor runs only while the
+          // tab is on screen in a foregrounded app, like the animations.
+          tilt={focused && appActive}
           onSelect={(key) => {
             setChoosing(false);
             setSelectedKey(key);
