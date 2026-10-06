@@ -2,6 +2,23 @@
 
 Shared release log for Codex and Claude. Read before a release and prepend dated observations afterwards. Query EAS and both stores before acting; this file records observations, not automatically refreshed status. Follow [release-workflow.md](release-workflow.md).
 
+## 2026-10-06 — 1.2.1 (iOS 82, Android 82): lounges, lounge passes, travel-day haptics, friends' whole trips, honest lookup reach — IN PROGRESS
+
+The owner asked to commit, push, deploy hosting, include the other Claude session's work (flyright-91: haptics, onboarding, friends' trips, `convex/circle.ts` `wholeTrips`) and submit new builds. 1.2.0 was READY_FOR_SALE on the App Store when this release started.
+
+| Item | Observed result |
+| --- | --- |
+| Code | Lounge access steps 0–6 + directory batches 1–4 (`c5dbf17`..`faf09ea`, 184 lounges at 25 airports, already seeded on prod); `a900d23`/`28f40d3` travel-day haptics (new local module `modules/flyright-haptics`); `36e2df6` stays named by city; `a0cc0e0` onboarding; `abb378e`/`3ef2676` friends' trips (whole trips only, `circle.person`/`previewMe` `wholeTrips`); `4b3b013` lookup reach = provider plan's 180 days (`services/lookup-reach.ts`, route `422 too_old`; a customer's Nov 2025 BA lookups were 400s shown as "try again"); `ebb46c1` bump + notes. Suite **1,481 tests**; typecheck and eslint clean. |
+| Backend | `release:deploy-backend` **82** functions on production and development; `release:preflight` and `release:journal` passed. |
+| Hosting | Deployment `u5q2zs8ini`; flyright.expo.app and getflyright.com serve `entry-ff42d1af…` matching the export (production Convex `limitless-oyster-269`, `pk_live_`, no dev URL). Live check: `BA269 2025-11-05` → `422 too_old`. `.env.production.local` removed. |
+| iOS | Local Xcode 27 build `FlyRight-1.2.1-82.ipa`: `1.2.1 (82)`, `iphoneos27.0`, scene manifest, production Convex + `pk_live_`, FlyRightHaptics linked. `eas submit` uploaded it; ASC build `d2ef5ed1-c9a2-4783-8e7e-87dd230fccd2` **VALID**, internal TestFlight **IN_BETA_TESTING**. Version record `8c664e90-34cf-442c-8bc8-02448a806bf2` (1.2.1, `AFTER_APPROVAL`, `PREPARE_FOR_SUBMISSION`) with build 82, What's New on `d90d5047`, reviewer notes on `0eee255a` (demo account kept). **Not submitted for review yet.** |
+| Android | EAS build `11f9b70c-fed0-4880-a147-b3b55bd2390c` 1.2.1 (82) **FINISHED**; auto-submit `4abc1647-53fe-4605-bc52-6b9d44a01137` to internal in progress. Not promoted. |
+| Store text | `store/apple/whats-new-1.2.1.txt` (901 chars), `store/apple/review-notes-1.2.1.txt` (lounges, Pro lounge passes, boarding-pass frequent flyer number, haptics, 6-month lookup), `store/google/release-notes-1.2.1.txt` (422 chars). |
+| Checks | `release:devices --mode native` (Metro 8081) **passed on both** (evidence `.maestro/out/release/2026-10-06T12-03-00.992Z`); first iOS run failed on Maestro's XCTest driver connection, first Android run on Android's "System UI isn't responding" dialog under build load (load ~30). Physical iPhone 15 Pro: connected by cable, locked, still 1.2.0 (81). Pixel 9a: not visible to adb. **Physical and signed-in candidate checks pending.** |
+| Screenshots | Carried forward: no listing panel shows a changed screen. |
+| Dev apps | iPhone 17 sim `53F70378` Debug **1.2.1 (82)**, Android `FlyRight_Dev` (`emulator-5554`) Debug **1.2.1 (82)**, both on Metro 8081. |
+| Git | `git push` was refused by the session's permission check; main is ahead of origin until the owner pushes. |
+
 ## 2026-10-04 — 1.2.0 (iOS 81, Android 81): trip progress door to door, editable steps, kept after the trip — Android on production, iOS in App Review
 
 The owner asked to commit and prepare the next build named 1.2.0, skipping the physical-device checks. As with 1.1.10 and 1.1.11, "prepare" was taken as builds uploaded for testing — **no App Review submission and no Play production promotion**. 1.1.11 was never submitted (no ASC version record; App Store still serves 1.1.10), so the 1.2.0 store text covers 1.1.11 and 1.2.0.
