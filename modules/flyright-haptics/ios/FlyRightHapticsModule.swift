@@ -110,13 +110,22 @@ public final class FlyRightHapticsModule: Module {
     case "takeOff":
       // The take-off roll builds, and stops dead as the wheels leave; the
       // gear tucks away a beat later.
-      return ramp(from: 0, duration: 0.9, steps: 9, intensity: (0.15, 0.85), sharpness: (0.05, 0.4))
-        + [tap(1.05, intensity: 0.45, sharpness: 0.8)]
+      return ramp(from: 0, duration: 1.8, steps: 18, intensity: (0.15, 0.85), sharpness: (0.05, 0.4))
+        + [tap(2.0, intensity: 0.45, sharpness: 0.8)]
     case "landed":
-      // Main gear thud, the rumble of the roll-out fading, nose gear down.
-      return [tap(0, intensity: 1, sharpness: 0.25)]
-        + ramp(from: 0.02, duration: 0.7, steps: 7, intensity: (0.55, 0.05), sharpness: (0.1, 0.02))
-        + [tap(0.3, intensity: 0.6, sharpness: 0.35)]
+      // Touchdown as felt from the cabin: both main gears hit a beat apart,
+      // the roll-out rumbles over runway joints, the nose gear drops, then
+      // reverse thrust roars and dies away while the joints slow down.
+      let joints: [TimeInterval] = [0.22, 0.42, 0.62, 1.2, 1.45, 1.75, 2.1, 2.5]
+      return [
+        tap(0, intensity: 1, sharpness: 0.15),
+        tap(0.06, intensity: 0.7, sharpness: 0.2),
+        hum(0.06, duration: 0.74, intensity: 0.35, sharpness: 0.05),
+        tap(0.8, intensity: 0.85, sharpness: 0.2),
+      ]
+        + ramp(from: 0.9, duration: 0.45, steps: 5, intensity: (0.3, 0.75), sharpness: (0.1, 0.15))
+        + ramp(from: 1.35, duration: 1.3, steps: 10, intensity: (0.75, 0.05), sharpness: (0.15, 0))
+        + joints.map { tap($0, intensity: 0.35, sharpness: 0.4) }
     case "owed":
       // Coins: three rising taps and a short shimmer.
       return [

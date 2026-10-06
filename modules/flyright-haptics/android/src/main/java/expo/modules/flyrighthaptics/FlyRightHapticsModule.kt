@@ -64,14 +64,23 @@ class FlyRightHapticsModule : Module() {
     )
     // The roll builds and stops dead as the wheels leave; gear up a beat later.
     "takeOff" -> listOf(
-      Step(Composition.PRIMITIVE_SLOW_RISE, 0.8f),
-      Step(Composition.PRIMITIVE_TICK, 0.6f, 140),
+      Step(Composition.PRIMITIVE_SLOW_RISE, 0.45f),
+      Step(Composition.PRIMITIVE_SLOW_RISE, 0.65f),
+      Step(Composition.PRIMITIVE_SLOW_RISE, 0.85f),
+      Step(Composition.PRIMITIVE_TICK, 0.6f, 200),
     )
-    // Main gear thud, the roll-out fading, nose gear down.
+    // Both main gears a beat apart, runway joints, nose gear, reverse thrust
+    // roaring and dying away while the joints slow.
     "landed" -> listOf(
       Step(Composition.PRIMITIVE_THUD, 1f),
-      Step(Composition.PRIMITIVE_QUICK_FALL, 0.5f),
-      Step(Composition.PRIMITIVE_THUD, 0.5f, 120),
+      Step(Composition.PRIMITIVE_THUD, 0.7f, 40),
+      Step(Composition.PRIMITIVE_LOW_TICK, 0.5f, 120),
+      Step(Composition.PRIMITIVE_LOW_TICK, 0.5f, 160),
+      Step(Composition.PRIMITIVE_THUD, 0.85f, 150),
+      Step(Composition.PRIMITIVE_SLOW_RISE, 0.7f, 60),
+      Step(Composition.PRIMITIVE_QUICK_FALL, 0.6f),
+      Step(Composition.PRIMITIVE_LOW_TICK, 0.4f, 250),
+      Step(Composition.PRIMITIVE_LOW_TICK, 0.3f, 350),
     )
     // Coins: three rising ticks and a lift.
     "owed" -> listOf(
