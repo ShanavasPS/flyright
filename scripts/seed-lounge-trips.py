@@ -7,9 +7,11 @@ Scenarios:
   none      the trip without any seeded membership
   travel    AY5 leaving in 2 h 30 min with the pass (the travel-day card, step 3);
             a new trip id each run, printed, since "Not today" is kept per trip
-  clear     removes the fixtures
-Only rows whose ids start with "lounge-test-" are written or removed; they are
-anonymous and private. Memberships an account already has on the device
+  clear     marks the fixtures deleted
+Only rows whose ids start with "lounge-test-" are written; they are anonymous
+and private. A signed-in app adopts anonymous trips and syncs them to that
+account, so `clear` marks them deleted (the tombstone syncs) instead of
+removing them, which would let the server copy come back. Memberships an account already has on the device
 still count, so use a test installation for the exact wording. The airport
 directory must be seeded on the deployment the app uses
 (node scripts/lounges/seed.mjs HEL).
@@ -50,9 +52,12 @@ def boarding_pass() -> str:
 
 
 with sqlite3.connect(directory / "flyright.db") as db:
-    db.execute(f"DELETE FROM journeys WHERE id LIKE '{prefix}%'")
-    db.execute(f"DELETE FROM memberships WHERE id LIKE '{prefix}%'")
+    stamp = now.isoformat()
+    db.execute(f"UPDATE journeys SET deleted_at = ?, updated_at = ? WHERE id LIKE '{prefix}%'", (stamp, stamp))
+    db.execute(f"UPDATE memberships SET deleted_at = ?, updated_at = ? WHERE id LIKE '{prefix}%'", (stamp, stamp))
     if scenario != "clear":
+        db.execute("DELETE FROM journeys WHERE id = ?", (journey,))
+        db.execute(f"DELETE FROM memberships WHERE id = '{prefix}ay'")
         with_pass = scenario in {"included", "travel"}
         db.execute(
             """INSERT INTO journeys
@@ -70,4 +75,4 @@ with sqlite3.connect(directory / "flyright.db") as db:
                 (prefix + "ay", number, now.isoformat(), now.isoformat()))
     db.commit()
     db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-print(f"Seeded {scenario}: journey {journey} departing {departure.isoformat()}")
+print("Marked the fixtures deleted" if scenario == "clear" else f"Seeded {scenario}: journey {journey} departing {departure.isoformat()}")
