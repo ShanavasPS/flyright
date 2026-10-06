@@ -7,7 +7,7 @@ and "How it works" (Technical plan, Feasibility).
 
 ## Status
 
-Steps 0 (groundwork) and 1 (directory) are built; nothing shows in the app yet.
+Steps 0–2 are built: the trip page shows a lounge line under the departure airport before the day.
 
 | Piece | File | State |
 | --- | --- | --- |
@@ -17,7 +17,9 @@ Steps 0 (groundwork) and 1 (directory) are built; nothing shows in the app yet.
 | Lounge directory | `convex/lounges.ts` (`atAirports`, public), `convex/loungesInternal.ts` (`replaceAirport`), `convex/loungeShared.ts` (shape, `loungeProblem`) | Built, seeded on dev only |
 | Directory data and scripts | `scripts/lounges/directory.json` (+ test), `seed.mjs`, `check.mjs` | HEL, DOH |
 | App side, offline copy | `src/services/lounges.ts` (`useLounges`) | Built, unused |
-| Trip-page line, travel-day card, sheet | — | Steps 2–3 |
+| Trip facts for the engine, boarding-pass match, the line's wording | `src/services/lounge-trip.ts` (+ test) | Built |
+| Trip-page line (design A1) | `src/components/lounge-line.tsx`, `TripFactsCard` `afterFirst` | Built, saved and travel moments |
+| Travel-day card, sheet | — | Step 3 |
 | Passes and visits (device-only tables) | — | Step 4, a later release |
 | Booking evidence (`booking_loyalty`) | — | Step 5 |
 
@@ -50,6 +52,15 @@ Every lounge has `checkedOn`; a script flags entries older than 90 days
 before each release. An empty answer from the server hides every lounge
 surface, which is also the kill switch. A paid feed is considered only after
 the coverage is measured, with a licence read like docs/flight-paths.md.
+
+## Testing on a device
+
+`python3 scripts/seed-lounge-trips.py <SQLite-dir> likely|included|none|travel|clear`
+writes an anonymous AY5 HEL→JFK (and a Finnair Plus Platinum membership)
+into a stopped app; `.maestro/lounge-trip-line.yaml` with `CASE=` checks the
+line. iOS reads the line as one accessibility label, so the flow matches
+with `.*…*`. The days-before cases depart 15:40 Helsinki time so every HEL
+lounge is open.
 
 ## Updating the directory
 

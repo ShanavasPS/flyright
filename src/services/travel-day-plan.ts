@@ -55,6 +55,15 @@ const crossesBorder = (leg: LegLike): boolean => {
   return !from || !to || from !== to;
 };
 
+/** Whether a flight between two airports goes through passport control,
+ * for lounge access (services/lounge-trip); null when either airport is
+ * unknown, where crossesBorder assumes it does. */
+export function crossesPassportControl(fromCode: string, toCode: string): boolean | null {
+  const from = zoneOf(fromCode);
+  const to = zoneOf(toCode);
+  return from && to ? from !== to : null;
+}
+
 type Leg = LegLike & { id: string };
 
 /** Whether an airport is in the traveller's home city at a moment (the home

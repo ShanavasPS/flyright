@@ -30,6 +30,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ProgressExpandButton, TravelProgressStrip } from '@/components/travel-progress-strip';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { LoungeLine } from '@/components/lounge-line';
 import { TripClockStrip, TripFactsCard, TripStatusRow } from '@/components/trip-card';
 import { TripDocuments } from '@/components/trip-documents';
 import { TripPhotos } from '@/components/trip-photos';
@@ -576,6 +577,9 @@ export function JourneyDetail({
                   testID="trip-airport-card"
                   model={card}
                   part="airport"
+                  afterFirst={
+                    row.mode === 'flight' && (moment === 'saved' || moment === 'travel') ? <LoungeLine trip={row} /> : null
+                  }
                   onEdit={(field) => router.push({ pathname: '/trip-details', params: { journeyId: row.id, field } })}
                 />
               ) : null;

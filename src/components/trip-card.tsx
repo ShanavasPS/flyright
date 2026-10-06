@@ -89,8 +89,10 @@ const TICKET = 'Your ticket';
 /** One of the trip's fact cards: 'airport' is the departure airport's
  * terminal, check-in, gate and boarding with the belt at the other end;
  * 'ticket' is the seat and booking. Every box opens the trip-details editor
- * on its field. `children` go under the boxes (the ticket's earning line);
- * the airport card carries the model's footnote. Nothing when the model has
+ * on its field. `children` go under the boxes (the ticket's earning line),
+ * `afterFirst` under the first section's (the departure airport's lounge
+ * line, which must not read as being about the arrival); the airport card
+ * carries the model's footnote. Nothing when the model has
  * no such section (a flown trip with nothing recorded shows its ticket
  * alone). */
 export function TripFactsCard({
@@ -98,12 +100,14 @@ export function TripFactsCard({
   part,
   onEdit,
   children,
+  afterFirst,
   testID,
 }: {
   model: TripCardModel;
   part: 'airport' | 'ticket';
   onEdit?: (field: TripCardField) => void;
   children?: React.ReactNode;
+  afterFirst?: React.ReactNode;
   testID?: string;
 }) {
   const theme = useTheme();
@@ -131,6 +135,7 @@ export function TripFactsCard({
           {section.baggage && (
             <BaggageRow chips={section.baggage} onPress={onEdit ? () => onEdit('baggage') : undefined} />
           )}
+          {i === 0 && afterFirst}
         </View>
       ))}
       {children}

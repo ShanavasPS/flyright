@@ -1,0 +1,43 @@
+# The lounge line under the departure airport on a trip page, days before
+# (docs/lounges.md, step 2). Seed a stopped test app first:
+#   python3 scripts/seed-lounge-trips.py <SQLite-directory> <CASE>
+# CASE: likely | included | none. The deployment the app talks to needs HEL
+# in the lounge directory (node scripts/lounges/seed.mjs HEL). On a device
+# whose account already has oneworld memberships, 'none' still shows lounges.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright://journey/lounge-test-out"
+- extendedWaitUntil:
+    visible: "AY5 · Finnair"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "trip-lounges"
+    direction: DOWN
+    timeout: 20000
+- runFlow:
+    when:
+      true: ${CASE === 'likely'}
+    commands:
+      - assertVisible: ".*Finnair Platinum Wing likely.*"
+- runFlow:
+    when:
+      true: ${CASE === 'included'}
+    commands:
+      - assertVisible: ".*Finnair Platinum Wing included.*"
+- runFlow:
+    when:
+      true: ${CASE === 'none'}
+    commands:
+      - assertVisible: ".*3 lounges at HEL.*"
+      - tapOn:
+          id: "trip-lounges"
+      - extendedWaitUntil:
+          visible: "Memberships"
+          timeout: 10000
+- takeScreenshot: ${SHOTS}/lounge-line-${CASE}

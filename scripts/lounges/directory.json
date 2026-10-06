@@ -3,7 +3,7 @@
     {
       "loungeId": "hel-finnair-business-schengen",
       "airport": "HEL",
-      "name": "Finnair Business Lounge",
+      "name": "Finnair Business Lounge, Schengen",
       "terminal": null,
       "location": "Schengen, near gate 21, 3rd floor",
       "afterPassportControl": false,
@@ -33,7 +33,7 @@
     {
       "loungeId": "hel-finnair-business-non-schengen",
       "airport": "HEL",
-      "name": "Finnair Business Lounge",
+      "name": "Finnair Business Lounge, non-Schengen",
       "terminal": null,
       "location": "Non-Schengen, near gate 52",
       "afterPassportControl": true,

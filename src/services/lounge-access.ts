@@ -104,7 +104,25 @@ export function loungeOptions(
   return lounges
     .filter((lounge) => lounge.airport === departure.airport)
     .map((lounge) => optionFor(lounge, departure, statuses, passes, thisMonth))
-    .sort((a, b) => RANK[a.verdict] - RANK[b.verdict] || a.lounge.name.localeCompare(b.lounge.name));
+    .sort(
+      (a, b) =>
+        RANK[a.verdict] - RANK[b.verdict] || breadth(a) - breadth(b) || a.lounge.name.localeCompare(b.lounge.name),
+    );
+}
+
+/** How many kinds of traveller the way in admits: among lounges equally
+ * open to this traveller, the one fewer others can use comes first (the
+ * Platinum Wing before the business lounge, Al Safwa before Al Mourjan). */
+function breadth(option: LoungeOption): number {
+  const { access } = option.lounge;
+  switch (option.way?.kind) {
+    case 'status':
+      return access.status?.levels.length ?? 0;
+    case 'cabin':
+      return access.cabin?.cabins.length ?? 0;
+    default:
+      return 0;
+  }
 }
 
 function optionFor(
