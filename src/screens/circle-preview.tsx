@@ -55,8 +55,8 @@ export function CirclePreview({ memberId, close }: { memberId?: string; close?: 
   // belongs to, and the person shown is derived from the followers list.
   const [tier, setTier] = useState<Tier | null>(null);
   const [member, setMember] = useState<string | null | undefined>(undefined);
-  const closeData = useQuery(api.circle.previewMe, { close: true });
-  const restData = useQuery(api.circle.previewMe, { close: false });
+  const closeData = useQuery(api.circle.previewMe, { close: true, wholeTrips: true });
+  const restData = useQuery(api.circle.previewMe, { close: false, wholeTrips: true });
   const followers = closeData?.followers ?? restData?.followers ?? [];
   const now = new Date();
 

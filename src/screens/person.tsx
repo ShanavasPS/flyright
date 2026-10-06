@@ -59,7 +59,7 @@ export function Person({
   const router = useRouter();
   const leaveThePage = onGone ?? (() => router.back());
   const theme = useTheme();
-  const data = useQuery(api.circle.person, { userId });
+  const data = useQuery(api.circle.person, { userId, wholeTrips: true });
   // Embedded in the People split view, the page is People's, which marks itself.
   useMarkInteractive(!embedded && data !== undefined);
   const setMuted = useMutation(api.circle.setMuted);

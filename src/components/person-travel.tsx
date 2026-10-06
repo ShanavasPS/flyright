@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
@@ -114,6 +114,25 @@ export type PersonTravelData = {
   flown: number;
 };
 
+/** The fewest flown legs a follower is shown (convex/circle PAST_TRIPS_SHOWN). */
+export const PAST_LEGS_SHOWN = 10;
+
+/** Their flown list cut at whole trips, never inside one: trips are taken
+ * newest first, each whole, until at least `atLeast` legs are in. A cut by
+ * legs dropped a trip's outbound and kept its return, so the trip was
+ * headed by the wrong dates and its stay had nothing to be measured from.
+ * The server sends extra legs for this (`wholeTrips`); a shorter list (an
+ * older server) is shown as it is. */
+export function wholeTripsPast(past: PersonTrip[], atLeast = PAST_LEGS_SHOWN): PersonTrip[] {
+  if (past.length <= atLeast) return past;
+  const trips = buildTripGroups(past.map(asJourneyRow), personHomeAt(past));
+  const keep = new Set<string>();
+  for (let i = trips.length - 1; i >= 0 && keep.size < atLeast; i--) {
+    for (const leg of trips[i]!.journeys) keep.add(leg.id);
+  }
+  return past.filter((t) => keep.has(t.journeyId));
+}
+
 /** Every trip they share, in the shape the map draws. */
 export function routesOf(p: { upcoming: PersonTrip[]; past: PersonTrip[] }): RouteSource[] {
   return [...p.upcoming, ...p.past].map((t) => ({
@@ -136,7 +155,7 @@ export function routesOf(p: { upcoming: PersonTrip[]; past: PersonTrip[] }): Rou
  * is where it explains what is missing. */
 export function PersonTravel({
   name,
-  data: p,
+  data,
   now,
   onOpenWorld,
   onOpenTrip,
@@ -167,6 +186,9 @@ export function PersonTravel({
   dimFor?: (journeyId: string) => boolean;
   afterUpcoming?: React.ReactNode;
 }) {
+  // Whole trips only, once, for everything below: the globe, the lists and
+  // "Showing the last N of M".
+  const p = useMemo(() => ({ ...data, past: wholeTripsPast(data.past) }), [data]);
   const routes = routesOf(p);
   const { liveJourneyId } = p;
   // The trip they are on, for the globe: its plane where the timetable puts

@@ -489,6 +489,14 @@ function publicTrip(j: Doc<'journeys'>, home: TripHome = {}) {
  * controls, and those must not sit below a year of somebody else's flights. */
 const PAST_TRIPS_SHOWN = 10;
 
+/** Flown legs sent to an app that cuts the list at whole trips itself
+ * (`wholeTrips`): enough that the trip the tenth leg belongs to arrives
+ * whole, so a follower never sees a trip's return without its outbound, or a
+ * stay with nothing to measure it from. The app shows whole trips until it
+ * has at least PAST_TRIPS_SHOWN legs (components/person-travel). Older apps
+ * don't ask and still get PAST_TRIPS_SHOWN. */
+const PAST_LEGS_FOR_WHOLE_TRIPS = 40;
+
 /** My active session for one of this owner's trips, if I'm following one. */
 async function liveFor(ctx: QueryCtx, me: string, ownerId: string) {
   const follows = await ctx.db
@@ -519,6 +527,8 @@ async function travelOf(
   session: Doc<'liveSessions'> | null,
   /** Who is reading — their own heart on an update is theirs to see. */
   viewerId: string | null,
+  /** The app trims to whole trips itself, so send it enough legs to. */
+  wholeTrips = false,
 ) {
   const now = Date.now();
   const upcoming: Doc<'journeys'>[] = [];
@@ -555,7 +565,7 @@ async function travelOf(
   // outward from today in both directions.
   upcoming.sort((a, b) => Date.parse(a.scheduledDeparture) - Date.parse(b.scheduledDeparture));
   past.sort((a, b) => Date.parse(b.scheduledDeparture) - Date.parse(a.scheduledDeparture));
-  const shownPast = past.slice(0, PAST_TRIPS_SHOWN);
+  const shownPast = past.slice(0, wholeTrips ? PAST_LEGS_FOR_WHOLE_TRIPS : PAST_TRIPS_SHOWN);
   // The owner's home per listed trip, so a member groups these trips the way
   // the owner's own Flights tab does — never the periods themselves.
   const base = await ctx.db.query('homeBases').withIndex('by_user', (q) => q.eq('userId', ownerId)).unique();
@@ -639,8 +649,8 @@ async function liveCard(
  * touches a trip, because a follower has no business changing one — mute and
  * leave (circle.setMuted / circle.leave) are the whole of what they own. */
 export const person = query({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
+  args: { userId: v.string(), wholeTrips: v.optional(v.boolean()) },
+  handler: async (ctx, { userId, wholeTrips }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const me = identity.subject;
@@ -665,6 +675,7 @@ export const person = query({
         !!theirs.close,
         live ? session : null,
         me,
+        !!wholeTrips,
       );
       return {
         ...who,
@@ -714,8 +725,8 @@ export const person = query({
  * this tier's view — let the preview mark and explain what a member is not
  * told. */
 export const previewMe = query({
-  args: { memberId: v.optional(v.string()), close: v.optional(v.boolean()) },
-  handler: async (ctx, { memberId, close }) => {
+  args: { memberId: v.optional(v.string()), close: v.optional(v.boolean()), wholeTrips: v.optional(v.boolean()) },
+  handler: async (ctx, { memberId, close, wholeTrips }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const me = identity.subject;
@@ -750,7 +761,7 @@ export const previewMe = query({
       close: seesHidden,
       followers,
       live,
-      ...(await travelOf(ctx, me, seesHidden, live ? session : null, me)),
+      ...(await travelOf(ctx, me, seesHidden, live ? session : null, me, !!wholeTrips)),
     };
   },
 });
