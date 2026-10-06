@@ -210,4 +210,15 @@ describe('loungeOptions', () => {
     expect(loungeOptions([intl], aaFirst, [], [], MONTH)[0].verdict).toBe('included');
     expect(loungeOptions([intl], { ...aaFirst, international: false }, [], [], MONTH)[0].verdict).toBe('no');
   });
+
+  it('keeps domestic lounges from international departures and the other way round', () => {
+    const domestic = { ...PLAZA, loungeId: 'hel-d', name: 'Domestic', serves: 'domestic' as const, afterPassportControl: false };
+    const intl = { ...PLAZA, loungeId: 'hel-i', name: 'International', serves: 'international' as const };
+    const out = departure({ international: true });
+    const home = departure({ international: false, crossesBorder: false });
+    expect(loungeOptions([domestic], out, [], [priorityPass(3)], MONTH)[0]).toMatchObject({ verdict: 'no', fix: 'other-terminal' });
+    expect(loungeOptions([domestic], home, [], [priorityPass(3)], MONTH)[0].verdict).toBe('visit');
+    expect(loungeOptions([intl], home, [], [priorityPass(3)], MONTH)[0].verdict).toBe('no');
+    expect(loungeOptions([intl], out, [], [priorityPass(3)], MONTH)[0].verdict).toBe('visit');
+  });
 });

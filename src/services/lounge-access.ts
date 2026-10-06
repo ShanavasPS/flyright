@@ -138,6 +138,13 @@ function optionFor(
   if (lounge.afterPassportControl === true && departure.crossesBorder === false) {
     return { lounge, verdict: 'no', way: null, fix: 'past-passport-control' };
   }
+  // Unknown counts as reachable: the traveller sees it, the desk decides.
+  if (
+    (lounge.serves === 'domestic' && departure.international === true) ||
+    (lounge.serves === 'international' && departure.international === false)
+  ) {
+    return { lounge, verdict: 'no', way: null, fix: 'other-terminal' };
+  }
 
   const best = bestWay(lounge, departure, statuses, passes, thisMonth);
   if (best.verdict !== 'no' && !openBefore(lounge, departure.departsLocal)) {

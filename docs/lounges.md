@@ -160,6 +160,33 @@ Review before production, in particular:
 `cabin.anyCarrier` (any airline's business class, TRV) and
 `cabin.internationalOnly` were added to the shape for this batch.
 
+## Batch 3 (2026-10-06): airports with two travellers each
+
+BGO 1, BLR 5, AYT 2, SIN 18, NRT 8, ARN 6, LAS 2, AMS 4, AUH 1, KUL 11:
+58 lounges, 159 in all at 19 airports. Seeded on dev only. Research used
+web search and fetch only (no local browser).
+
+Review before production, in particular:
+- **Access from alliance policy, not the cited page:** SIN Qantas, BA,
+  Cathay and Qatar (Changi's pages say "airline eligibility"); NRT JAL and
+  ANA (jal.co.jp and ana.co.jp blocked reads; existence and hours from the
+  airport's page).
+- **ARN SAS lounges:** rules from Swedavia's pages; flysas.com was blocked.
+- **AMS** is incomplete: the research ran out of searches after the KLM
+  Crown and Aspire lounges.
+- **Left out:** Etihad's AUH lounges and Turkish Airlines' AYT domestic
+  lounge (seen only in search snippets), AYT Elite (bundled meet-and-assist
+  price), SIN First Class SilverKris and The Private Room (snippets only),
+  NRT IASS Executive Lounge 1 (sources disagree on whether it serves
+  departures), KrisFlyer Gold lounges (carrier-restricted status), and
+  airline lounges at NRT whose rules could not be read (United, Korean,
+  Turkish, China Airlines, Emirates).
+
+`serves` ('international' | 'domestic') was added to the shape for this
+batch: a domestic terminal's lounge (KUL, AYT, BLR) no longer shows for an
+international departure, and an international-only lounge's walk-in price
+(BGO) no longer shows for a domestic one.
+
 ## Decisions (2026-10-06)
 
 1. Boarding passes keep syncing as issued (docs/memberships.md, privacy policy).

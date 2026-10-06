@@ -31,6 +31,10 @@ export const loungeFields = {
   /** Where it is, as a traveller would look for it: "Non-Schengen, near gate 52". */
   location: v.union(v.string(), v.null()),
   afterPassportControl: v.union(v.boolean(), v.null()),
+  /** Which departures can reach it, where the airport splits them: a
+   *  domestic terminal's lounge, or one for international flights only.
+   *  Absent: any departure from the airport. */
+  serves: v.optional(v.union(v.literal('international'), v.literal('domestic'))),
   hours: v.union(v.object({ open: v.string(), close: v.string() }), v.null()),
   access: v.object({
     /** Cabins that get in when flying one of `carriers`, any member of

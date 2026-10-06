@@ -2613,5 +2613,1358 @@
       "checkedOn": "2026-10-06",
       "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr30-plaza-premium-lounge-terminal-5-departures"
     }
+  ],
+  "BGO": [
+    {
+      "loungeId": "bgo-bergen-lounge",
+      "airport": "BGO",
+      "name": "Bergen Lounge",
+      "terminal": null,
+      "location": "International departures",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "BT",
+            "AF",
+            "WK",
+            "AY",
+            "IB",
+            "FI",
+            "KL",
+            "LO",
+            "LH",
+            "SK"
+          ],
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        },
+        "networks": [
+          "dragonpass"
+        ],
+        "door": {
+          "amount": 44500,
+          "currency": "NOK"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://avinor.no/en/airport/bergen-airport/plan-your-trip/bergen-lounge",
+      "serves": "international"
+    }
+  ],
+  "BLR": [
+    {
+      "loungeId": "blr-080-domestic-lounge-t1-level-2",
+      "airport": "BLR",
+      "name": "080 Domestic Lounge (T1, Level 2)",
+      "terminal": "T1",
+      "location": "Terminal 1, domestic departures, after security, Level 2, above Swarovski and opposite Fossil",
+      "afterPassportControl": false,
+      "serves": "domestic",
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/lounges/india/kempegowda-international/blr8-080-domestic-lounge"
+    },
+    {
+      "loungeId": "blr-080-domestic-lounge-t1-level-1",
+      "airport": "BLR",
+      "name": "080 Domestic Lounge (T1, Level 1)",
+      "terminal": "T1",
+      "location": "Terminal 1, domestic departures, after security, Level 1, opposite Gate 34, next to Starbucks",
+      "afterPassportControl": false,
+      "serves": "domestic",
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/kempegowda-international/blr11-080-domestic-lounge"
+    },
+    {
+      "loungeId": "blr-t1-lounge-kerbside",
+      "airport": "BLR",
+      "name": "T1 Lounge (Kerbside)",
+      "terminal": "T1",
+      "location": "Terminal 1, landside before security, outside T1 Arrivals near Arrivals Gate 13",
+      "afterPassportControl": false,
+      "serves": "domestic",
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/kempegowda-international/blr17-t1-lounge-kerbside"
+    },
+    {
+      "loungeId": "blr-080-lounge-domestic-t2",
+      "airport": "BLR",
+      "name": "080 Lounge (Domestic T2)",
+      "terminal": "T2",
+      "location": "Terminal 2, domestic departures, after security, Level 4",
+      "afterPassportControl": false,
+      "serves": "domestic",
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/kempegowda-international/blr9-080-lounge-domestic-t2"
+    },
+    {
+      "loungeId": "blr-080-international-lounge",
+      "airport": "BLR",
+      "name": "080 International Lounge",
+      "terminal": "T2",
+      "location": "Terminal 2, international departures, after security and emigration, Level 3",
+      "afterPassportControl": true,
+      "serves": "international",
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/kempegowda-international/blr10-080-international-lounge"
+    }
+  ],
+  "AYT": [
+    {
+      "loungeId": "ayt-comfort-lounge-t2",
+      "airport": "AYT",
+      "name": "Comfort Lounge",
+      "terminal": "T2",
+      "location": "International Terminal 2, departures, after security and passport control, floor 3",
+      "afterPassportControl": true,
+      "serves": "international",
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ],
+        "door": {
+          "amount": 8500,
+          "currency": "EUR"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/lounges/turkey/antalya/ayt5-comfort-lounge"
+    },
+    {
+      "loungeId": "ayt-cip-lounge-domestic",
+      "airport": "AYT",
+      "name": "CIP Lounge Domestic",
+      "terminal": "Domestic",
+      "location": "Domestic Terminal, airside, 2nd floor: turn right after security, next to Gate 7",
+      "afterPassportControl": false,
+      "serves": "domestic",
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ],
+        "door": {
+          "amount": 200000,
+          "currency": "TRY"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/turkey/antalya/ayt6-cip-lounge-domestic"
+    }
+  ],
+  "SIN": [
+    {
+      "loungeId": "sin-silverkris-lounge-t2",
+      "airport": "SIN",
+      "name": "SilverKris Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, transit area, level 3, nearer to E gates",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "SQ"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/singapore-airlines-lounges.html"
+    },
+    {
+      "loungeId": "sin-silverkris-lounge-t3",
+      "airport": "SIN",
+      "name": "SilverKris Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, transit area, level 3, nearer to A gates",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "SQ"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/singapore-airlines-lounges.html"
+    },
+    {
+      "loungeId": "sin-qantas-first-lounge",
+      "airport": "SIN",
+      "name": "Qantas First Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, transit area, level 3",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/qantas-lounge.html"
+    },
+    {
+      "loungeId": "sin-qantas-business-lounge",
+      "airport": "SIN",
+      "name": "Qantas Business Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, transit area, level 3",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/qantas-lounge.html"
+    },
+    {
+      "loungeId": "sin-british-airways-lounge",
+      "airport": "SIN",
+      "name": "British Airways Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, transit area, level 3",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "15:00",
+        "close": "23:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/british-airways-lounge.html"
+    },
+    {
+      "loungeId": "sin-qatar-airways-premium-lounge",
+      "airport": "SIN",
+      "name": "Qatar Airways Premium Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, transit area, level 3",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/qatar-airways-lounge.html"
+    },
+    {
+      "loungeId": "sin-emirates-lounge",
+      "airport": "SIN",
+      "name": "Emirates Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, transit area, level 3 (escalator near gate C1)",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/emirates-lounge.html"
+    },
+    {
+      "loungeId": "sin-cathay-pacific-lounge",
+      "airport": "SIN",
+      "name": "Cathay Pacific Lounge",
+      "terminal": "4",
+      "location": "Terminal 4, transit area, level 2M",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/cathay-pacific-lounge.html"
+    },
+    {
+      "loungeId": "sin-plaza-premium-lounge-t1",
+      "airport": "SIN",
+      "name": "Plaza Premium Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, transit area, level 3, Departure/Transit Lounge West",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ],
+        "door": {
+          "amount": 5500,
+          "currency": "SGD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/plaza-premium-lounge.html"
+    },
+    {
+      "loungeId": "sin-ambassador-transit-lounge-t2",
+      "airport": "SIN",
+      "name": "Ambassador Transit Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, transit area, level 3; signs to 'Pay Per Use Lounge'/'Sunflower Garden', escalator behind UOB Gold",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ],
+        "door": {
+          "amount": 5500,
+          "currency": "SGD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/ambassador-transit-lounge.html"
+    },
+    {
+      "loungeId": "sin-ambassador-transit-lounge-t3",
+      "airport": "SIN",
+      "name": "Ambassador Transit Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, transit area, level 3, next to the Movie Theatre; escalator before gate B1",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ],
+        "door": {
+          "amount": 5500,
+          "currency": "SGD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/ambassador-transit-lounge.html"
+    },
+    {
+      "loungeId": "sin-sats-premier-lounge-t1",
+      "airport": "SIN",
+      "name": "SATS Premier Lounge (Terminal 1)",
+      "terminal": "1",
+      "location": "Terminal 1, transit area, level 3; first escalator to the airline lounges",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/singapore/singapore-changi-airport/sin12-sats-premier-lounge"
+    },
+    {
+      "loungeId": "sin-sats-premier-lounge-t2",
+      "airport": "SIN",
+      "name": "SATS Premier Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, transit area, level 3; first escalator behind the Information counter",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/singapore/singapore-changi-airport/sin13-sats-premier-lounge"
+    },
+    {
+      "loungeId": "sin-sats-premier-lounge-t3",
+      "airport": "SIN",
+      "name": "SATS Premier Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, transit area, level 3; first escalator to the airline lounges",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/singapore/singapore-changi-airport/sin14-sats-premier-lounge"
+    },
+    {
+      "loungeId": "sin-marhaba-lounge-t1",
+      "airport": "SIN",
+      "name": "Marhaba Lounge (Terminal 1)",
+      "terminal": "1",
+      "location": "Terminal 1, transit level 3, directly above Departure Immigration, opposite Crystal Jade",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/singapore/singapore-changi-airport/sin17-marhaba-lounge"
+    },
+    {
+      "loungeId": "sin-marhaba-lounge-t3",
+      "airport": "SIN",
+      "name": "Marhaba Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, transit area, level 3, opposite Singapore Food Street",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/singapore/singapore-changi-airport/sin9-marhaba-lounge"
+    },
+    {
+      "loungeId": "sin-blossom-sats-plaza-premium-lounge-t4",
+      "airport": "SIN",
+      "name": "Blossom – SATS & Plaza Premium Lounge",
+      "terminal": "4",
+      "location": "Terminal 4, transit area, level 2M (Heritage Zone mezzanine)",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ],
+        "door": {
+          "amount": 5500,
+          "currency": "SGD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/blossom-sats-and-plaza-premium-lounge.html"
+    },
+    {
+      "loungeId": "sin-changi-lounge-jewel",
+      "airport": "SIN",
+      "name": "Changi Lounge (Jewel)",
+      "terminal": null,
+      "location": "Jewel Changi Airport, level 1, near Lift Lobby E, opposite the early check-in counters (public area)",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "06:00",
+        "close": "22:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "loungekey",
+          "dragonpass"
+        ],
+        "door": {
+          "amount": 3200,
+          "currency": "SGD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.changiairport.com/en/at-changi/facilities-and-services-directory/changi-lounge.html"
+    }
+  ],
+  "NRT": [
+    {
+      "loungeId": "nrt-iass-executive-lounge-2",
+      "airport": "NRT",
+      "name": "IASS Executive Lounge 2",
+      "terminal": "2",
+      "location": "Terminal 2, Main Building, 4th floor, before security; escalator next to check-in counter G (north side), then left",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "07:00",
+        "close": "21:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "dragonpass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.iass.co.jp/en/lounge/narita.html"
+    },
+    {
+      "loungeId": "nrt-iass-superior-lounge-noa",
+      "airport": "NRT",
+      "name": "IASS Superior Lounge NOA",
+      "terminal": "1",
+      "location": "Terminal 1, Central Building, 3rd floor, after security and departure immigration, near Gate 26",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "dragonpass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.iass.co.jp/en/lounge/narita2.html"
+    },
+    {
+      "loungeId": "nrt-iass-superior-lounge-kocoo",
+      "airport": "NRT",
+      "name": "IASS Superior Lounge KoCoo",
+      "terminal": "2",
+      "location": "Terminal 2, Main Building, 4th floor, after security and departure immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "dragonpass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.iass.co.jp/en/lounge/narita2.html"
+    },
+    {
+      "loungeId": "nrt-jal-sakura-lounge",
+      "airport": "NRT",
+      "name": "JAL Sakura Lounge (International)",
+      "terminal": "2",
+      "location": "Terminal 2, Main Building, 3rd floor, after security and departure immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "07:30",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.narita-airport.jp/en/service/lounge/airport/"
+    },
+    {
+      "loungeId": "nrt-jal-first-class-lounge",
+      "airport": "NRT",
+      "name": "JAL First Class Lounge",
+      "terminal": "2",
+      "location": "Terminal 2, Main Building, 3rd floor, after security and departure immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "07:30",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.narita-airport.jp/en/service/lounge/airport/"
+    },
+    {
+      "loungeId": "nrt-ana-suite-lounge-satellite-5",
+      "airport": "NRT",
+      "name": "ANA SUITE LOUNGE (Satellite 5)",
+      "terminal": "1",
+      "location": "Terminal 1, Satellite 5, 4th floor, after security and departure immigration",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "Star Alliance",
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.ana.co.jp/en/jp/guide/lounge/international/nrt/"
+    },
+    {
+      "loungeId": "nrt-ana-lounge-satellite-5",
+      "airport": "NRT",
+      "name": "ANA LOUNGE (Satellite 5)",
+      "terminal": "1",
+      "location": "Terminal 1, Satellite 5, 4th floor, after security and departure immigration",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "Star Alliance",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.ana.co.jp/en/jp/guide/lounge/international/nrt/"
+    },
+    {
+      "loungeId": "nrt-ana-lounge-satellite-2",
+      "airport": "NRT",
+      "name": "ANA LOUNGE (Satellite 2)",
+      "terminal": "1",
+      "location": "Terminal 1, Satellite 2, 2nd floor, after security and departure immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "13:00",
+        "close": "19:10"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "Star Alliance",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.ana.co.jp/en/jp/guide/lounge/international/nrt/"
+    }
+  ],
+  "ARN": [
+    {
+      "loungeId": "arn-sas-lounge",
+      "airport": "ARN",
+      "name": "SAS Lounge",
+      "terminal": "5",
+      "location": "Terminal 5, upstairs at gate E1, after security",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "SkyTeam"
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.swedavia.com/arlanda/service/sas-business-scandinavian2/"
+    },
+    {
+      "loungeId": "arn-sas-lounge-by-mastercard",
+      "airport": "ARN",
+      "name": "SAS Lounge by Mastercard",
+      "terminal": "5",
+      "location": "Terminal 5, near gate F26 (pier F), after security",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:00",
+        "close": "20:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "SkyTeam"
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.swedavia.com/about-swedavia/swedaviasnewsroom/2025/sas-opens-a-new-lounge-at-arlanda--easy-access-to-premium-benefits-regardless-of-your-departure-gate/"
+    },
+    {
+      "loungeId": "arn-aspire-lounge-schengen",
+      "airport": "ARN",
+      "name": "Aspire Lounge (Schengen)",
+      "terminal": "5",
+      "location": "Terminal 5, start of pier E, one floor up near gate E1, Schengen side, after security",
+      "afterPassportControl": false,
+      "hours": null,
+      "access": {
+        "networks": [
+          "priority-pass",
+          "dragonpass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/sweden/stockholm-arlanda/arn10-aspire-lounge-schengen"
+    },
+    {
+      "loungeId": "arn-aspire-lounge-non-schengen",
+      "airport": "ARN",
+      "name": "Aspire Lounge (non-Schengen)",
+      "terminal": "5",
+      "location": "Terminal 5, start of pier F, one floor up, non-Schengen, after passport control",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "06:00",
+        "close": "22:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "dragonpass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/sweden/stockholm-arlanda/arn9-aspire-lounge-non-schengen"
+    },
+    {
+      "loungeId": "arn-pearl-lounge-t5",
+      "airport": "ARN",
+      "name": "Pearl Lounge T5",
+      "terminal": "5",
+      "location": "Terminal 5, above gate C37, after security; 10/20/30 min walk from gate areas D/E/F",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:30",
+        "close": "20:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "dragonpass",
+          "loungekey"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/sweden/stockholm-arlanda/arn4-pearl-lounge-t5"
+    },
+    {
+      "loungeId": "arn-pearl-lounge-t2",
+      "airport": "ARN",
+      "name": "Pearl Lounge T2",
+      "terminal": "2",
+      "location": "Terminal 2, departures, after security and duty free, before passport control; up the first (green) staircase",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "04:45",
+        "close": "21:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "dragonpass",
+          "loungekey"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/sweden/stockholm-arlanda/arn2-pearl-lounge"
+    }
+  ],
+  "LAS": [
+    {
+      "loungeId": "las-the-club-las-d-gates",
+      "airport": "LAS",
+      "name": "The Club LAS (D Gates)",
+      "terminal": "1",
+      "location": "D gates, Level 2, after security; Blue Line train to the D gates (or Red Line from Terminal 3)",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "23:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "loungekey"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/harry-reid-international/las4-the-club-las"
+    },
+    {
+      "loungeId": "las-the-club-las-e-gates",
+      "airport": "LAS",
+      "name": "The Club LAS (E Gates)",
+      "terminal": "3",
+      "location": "Terminal 3, E gates, after security, opposite gate E2",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "23:59"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "loungekey"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/harry-reid-international/las3-the-club-las"
+    }
+  ],
+  "AMS": [
+    {
+      "loungeId": "ams-klm-crown-lounge-52",
+      "airport": "AMS",
+      "name": "KLM Crown Lounge (Non-Schengen)",
+      "terminal": null,
+      "location": "Non-Schengen, after passport control, Holland Boulevard",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "04:45",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "SkyTeam"
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://afkldocs.info/assets/228_AFK_lounge_guide.pdf"
+    },
+    {
+      "loungeId": "ams-klm-crown-lounge-25",
+      "airport": "AMS",
+      "name": "KLM Crown Lounge (Schengen)",
+      "terminal": null,
+      "location": "Schengen area, Lounge 1 (Terminal D)",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "04:45",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "SkyTeam"
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://afkldocs.info/assets/228_AFK_lounge_guide.pdf"
+    },
+    {
+      "loungeId": "ams-aspire-lounge-41",
+      "airport": "AMS",
+      "name": "Aspire Lounge 41 (Non-Schengen)",
+      "terminal": null,
+      "location": "Non-Schengen, Departure Hall 2, Panorama Deck, 3rd floor; not for M-gate departures",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/lounges/netherlands/amsterdam-schiphol/ams-aspire-lounge-no-41"
+    },
+    {
+      "loungeId": "ams-aspire-lounge-26",
+      "airport": "AMS",
+      "name": "Aspire Lounge 26 (Schengen)",
+      "terminal": null,
+      "location": "Schengen area, Departure Hall 1, level 3, signposted",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/lounges/netherlands/amsterdam-schiphol"
+    }
+  ],
+  "AUH": [
+    {
+      "loungeId": "auh-pearl-lounge",
+      "airport": "AUH",
+      "name": "Pearl Lounge",
+      "terminal": "A",
+      "location": "Terminal A, departures, airside after security, Level 1, near gate D43",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/abu-dhabi-international/auh12-pearl-lounge"
+    }
+  ],
+  "KUL": [
+    {
+      "loungeId": "kul-mh-golden-lounge-satellite",
+      "airport": "KUL",
+      "name": "Malaysia Airlines Golden Lounge International (Satellite)",
+      "terminal": "1",
+      "location": "Terminal 1, Satellite Building, West Zone, Level 2, Mezzanine Floor, international departures, after immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.malaysiaairlines.com/my/en/experience/lounge.html"
+    },
+    {
+      "loungeId": "kul-mh-golden-lounge-regional",
+      "airport": "KUL",
+      "name": "Malaysia Airlines Regional Golden Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, International Main Terminal Building, Gate H, Level 4, Mezzanine Floor, after immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "05:00",
+        "close": "23:59"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.malaysiaairlines.com/my/en/experience/lounge.html"
+    },
+    {
+      "loungeId": "kul-mh-golden-lounge-domestic",
+      "airport": "KUL",
+      "name": "Malaysia Airlines Domestic Golden Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, Domestic Main Terminal Building, Gate A, Level 3, domestic departures",
+      "afterPassportControl": false,
+      "serves": "domestic",
+      "hours": {
+        "open": "05:00",
+        "close": "23:59"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.malaysiaairlines.com/my/en/experience/lounge.html"
+    },
+    {
+      "loungeId": "kul-plaza-premium-lounge-t1-contact-pier",
+      "airport": "KUL",
+      "name": "Plaza Premium Lounge (Terminal 1, Contact Pier)",
+      "terminal": "1",
+      "location": "Terminal 1, Contact Pier International, Level 2, near Gate G2, international departures, after immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul27-plaza-premium-lounge"
+    },
+    {
+      "loungeId": "kul-travel-club-lounge-t1-satellite",
+      "airport": "KUL",
+      "name": "Travel Club Lounge (Terminal 1 Satellite)",
+      "terminal": "1",
+      "location": "Terminal 1, Satellite Building, Mezzanine Level, near Gates C11-C17, international departures, after immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul28-travel-club-lounge"
+    },
+    {
+      "loungeId": "kul-sky-suite-airport-lounge-t1-satellite",
+      "airport": "KUL",
+      "name": "Sky Suite Airport Lounge (Terminal 1 Satellite)",
+      "terminal": "1",
+      "location": "Terminal 1, Satellite Building (Aerotrain after immigration), Mezzanine Level next to Gate C5",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul7-sky-suite-airport-lounge"
+    },
+    {
+      "loungeId": "kul-sphere-lounge",
+      "airport": "KUL",
+      "name": "Sphere Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, landside, at the Sama-Sama Hotel; Skybridge from the terminal, free 24-hour buggy",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "07:00",
+        "close": "23:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul11-sphere-lounge"
+    },
+    {
+      "loungeId": "kul-plaza-premium-lounge-t2",
+      "airport": "KUL",
+      "name": "Plaza Premium Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, landside: travellator next to 'Hometown Hainan Coffee' in the Arrival Hall up to Level 2M",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul5-plaza-premium-lounge"
+    },
+    {
+      "loungeId": "kul-sky-suite-airport-lounge-t2",
+      "airport": "KUL",
+      "name": "Sky Suite Airport Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, landside, Level 3 Departure Hall, next to the check-in counters (Row S)",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul8-sky-suite-airport-lounge"
+    },
+    {
+      "loungeId": "kul-travel-club-lounge-t2-gate-l8",
+      "airport": "KUL",
+      "name": "Travel Club Lounge (Terminal 2, Gate L8)",
+      "terminal": "2",
+      "location": "Terminal 2, international departures, next to Gate L8, after immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul20-travel-club-lounge"
+    },
+    {
+      "loungeId": "kul-travel-club-lounge-t2-satellite",
+      "airport": "KUL",
+      "name": "Travel Club Lounge (Terminal 2, Satellite)",
+      "terminal": "2",
+      "location": "Terminal 2, international departures, Sector 6, Satellite Building, after immigration",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul21-travel-club-lounge"
+    }
   ]
 }
