@@ -120,6 +120,18 @@ both App IDs in the developer portal on 2026-10-06 (the wallet group stays the
 share extension's). Android widgets exist in expo-widgets only as an opt-in
 (`enableAndroid`) and are not used.
 
+# Store rating prompt (expo-store-review)
+
+`src/services/review-prompt.ts` asks for a rating through the OS sheet from
+the Flights screen, three seconds after the journal has loaded, when
+`src/services/review-moment.ts` (pure, tested) says so: a flight added before
+it left has landed 2 h–7 days ago, the install is 3+ days old, no ask yet on
+this app version, 4+ months since the last ask, and no flight leaves within
+6 h. Never from a button, never with a question of ours first. The history
+lives in kv-store under `review-prompt`; to test on a simulator, backdate
+`firstSeenAt` in `Documents/SQLite/ExpoSQLiteStorage` while the app is
+terminated. TestFlight installs never show the sheet (`isAvailableAsync`).
+
 # The design system (Claude artifact)
 
 Before you design, redesign or mock up anything visual — a marketing page, a

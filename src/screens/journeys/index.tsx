@@ -4,7 +4,7 @@ import { carrierCode, earningLine } from '@/services/loyalty-programmes';
 import { useMemberships } from '@/services/memberships';
 import { useAuth, useUser } from '@clerk/expo';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { Link, useRouter } from 'expo-router';
+import { Link, useIsFocused, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -60,6 +60,7 @@ import { airportZone } from '@/services/airports';
 import { countdown, flightDay, flightInstant, localDateString } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
+import { maybeAskForReview } from '@/services/review-prompt';
 import { canPromptForPush } from '@/services/notifications';
 import {
   clearPushRemind,
@@ -170,6 +171,16 @@ export function Journeys() {
       router.push('/onboarding');
     }
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A store rating, after a flight FlyRight came along on (review-moment.ts
+  // decides; the OS may still decline). Never on top of onboarding, and only
+  // once the screen has settled and is still the one in front.
+  const focused = useIsFocused();
+  useEffect(() => {
+    if (!loaded || !focused || !onboardingSeen()) return;
+    const timer = setTimeout(() => void maybeAskForReview(journeys!), 3000);
+    return () => clearTimeout(timer);
+  }, [loaded, focused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The "Remind me later" promise from onboarding's push pitch: one follow-up
   // sheet on a later session (24h+), and only while the one-shot OS prompt is
