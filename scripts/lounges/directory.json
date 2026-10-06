@@ -1108,8 +1108,7 @@
       "access": {
         "cabin": {
           "cabins": [
-            "business",
-            "first"
+            "business"
           ],
           "carriers": [
             "DL",
@@ -1138,8 +1137,7 @@
       "access": {
         "cabin": {
           "cabins": [
-            "business",
-            "first"
+            "business"
           ],
           "carriers": [
             "DL",
@@ -2612,6 +2610,38 @@
       },
       "checkedOn": "2026-10-06",
       "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr30-plaza-premium-lounge-terminal-5-departures"
+    },
+    {
+      "loungeId": "lhr-air-france-lounge-t4",
+      "airport": "LHR",
+      "name": "Air France Lounge",
+      "terminal": "4",
+      "location": "Terminal 4",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AF",
+            "KL"
+          ]
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.afkldocs.info/assets/228_AFK_lounge_guide.pdf"
     }
   ],
   "BGO": [
@@ -3965,6 +3995,579 @@
       },
       "checkedOn": "2026-10-06",
       "source": "https://www.prioritypass.com/en-GB/lounges/malaysia/kuala-lumpur-international/kul21-travel-club-lounge"
+    }
+  ],
+  "BOM": [
+    {
+      "loungeId": "bom-adani-lounge-east",
+      "airport": "BOM",
+      "name": "Adani Lounge East",
+      "terminal": "T2",
+      "location": "Airside, international departures, Level 4, near Gates 45 and 46, next to McDonald's",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/chhatrapati-shivaji-international/bom20-adani-lounge-east",
+      "serves": "international"
+    },
+    {
+      "loungeId": "bom-adani-silver-lounge",
+      "airport": "BOM",
+      "name": "Adani Silver Lounge",
+      "terminal": "T2",
+      "location": "Airside, international departures, after Duty Free, next to the Superdry store",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/chhatrapati-shivaji-international/bom26-adani-silver-lounge",
+      "serves": "international"
+    },
+    {
+      "loungeId": "bom-travel-club-t2",
+      "airport": "BOM",
+      "name": "Travel Club (T2)",
+      "terminal": "T2",
+      "location": "Airside, domestic departures and domestic transit, opposite Gate 44",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/chhatrapati-shivaji-international/bom10-travel-club",
+      "serves": "domestic"
+    },
+    {
+      "loungeId": "bom-aviserv-lounge-west",
+      "airport": "BOM",
+      "name": "Aviserv Lounge - West",
+      "terminal": "T2",
+      "location": "Landside, before security and passport control, Level 2, near Gate A",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/chhatrapati-shivaji-international/bom27-aviserv-lounge-west"
+    },
+    {
+      "loungeId": "bom-adani-lounge-t1",
+      "airport": "BOM",
+      "name": "Adani Lounge (T1)",
+      "terminal": "T1",
+      "location": "Terminal 1B, airside, domestic departures: Mezzanine Floor near Gate 9",
+      "afterPassportControl": false,
+      "hours": null,
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/chhatrapati-shivaji-international/bom21-adani-lounge",
+      "serves": "domestic"
+    }
+  ],
+  "SEA": [
+    {
+      "loungeId": "sea-the-club-concourse-a",
+      "airport": "SEA",
+      "name": "The Club SEA (Concourse A)",
+      "terminal": "Concourse A",
+      "location": "Concourse A, across from gate A11",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "01:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "loungekey"
+        ],
+        "door": {
+          "amount": 5000,
+          "currency": "USD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://theclubairportlounges.com/lounges/sea-the-club-concourse-a"
+    },
+    {
+      "loungeId": "sea-the-club-concourse-s",
+      "airport": "SEA",
+      "name": "The Club SEA (South Satellite)",
+      "terminal": "South Satellite",
+      "location": "South Satellite, mezzanine above gate S9/S10; elevator next to gate S9",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:00",
+        "close": "01:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "loungekey"
+        ],
+        "door": {
+          "amount": 6000,
+          "currency": "USD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://theclubairportlounges.com/lounges/sea-the-club-concourse-s"
+    },
+    {
+      "loungeId": "sea-delta-one-lounge-a11",
+      "airport": "SEA",
+      "name": "Delta One Lounge",
+      "terminal": "Concourse A",
+      "location": "Concourse A, near gate A11, upper level of the A11 Delta Sky Club",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "08:00",
+        "close": "21:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "DL",
+            "AF",
+            "KL",
+            "KE",
+            "LA",
+            "VS"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/delta-one-lounge"
+    },
+    {
+      "loungeId": "sea-delta-sky-club-a11",
+      "airport": "SEA",
+      "name": "Delta Sky Club (A11)",
+      "terminal": "Concourse A",
+      "location": "Concourse A, near gate A11",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "SkyTeam",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.portseattle.org/services-amenities/airport-lounges"
+    },
+    {
+      "loungeId": "sea-delta-sky-club-a1",
+      "airport": "SEA",
+      "name": "Delta Sky Club (A1)",
+      "terminal": "Concourse A",
+      "location": "Concourse A, near gate A1",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "SkyTeam",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.portseattle.org/services-amenities/airport-lounges"
+    }
+  ],
+  "SZG": [
+    {
+      "loungeId": "szg-business-lounge",
+      "airport": "SZG",
+      "name": "Business Lounge",
+      "terminal": "1",
+      "location": "Terminal 1",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "BA",
+            "EW",
+            "FZ",
+            "LH",
+            "TK"
+          ]
+        },
+        "networks": [
+          "priority-pass"
+        ],
+        "door": {
+          "amount": 4500,
+          "currency": "EUR"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.salzburg-airport.com/en/atthe-airport/services/business-lounge"
+    }
+  ],
+  "CLT": [
+    {
+      "loungeId": "clt-the-club-clt",
+      "airport": "CLT",
+      "name": "The Club CLT",
+      "terminal": "A",
+      "location": "Concourse A, on the left of the corridor before gates A22 and A21",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "21:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "loungekey"
+        ],
+        "door": {
+          "amount": 6000,
+          "currency": "USD"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.theclubairportlounges.com/lounges/clt-the-club-main-terminal"
+    }
+  ],
+  "JFK": [
+    {
+      "loungeId": "jfk-delta-one-lounge-t4",
+      "airport": "JFK",
+      "name": "Delta One Lounge",
+      "terminal": "4",
+      "location": "Terminal 4, between Concourses A & B, next to the main security checkpoint",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:30",
+        "close": "23:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "DL",
+            "VS",
+            "LA"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/delta-one-lounge"
+    },
+    {
+      "loungeId": "jfk-delta-sky-club-t4-concourse-a",
+      "airport": "JFK",
+      "name": "Delta Sky Club (Concourse A)",
+      "terminal": "4",
+      "location": "Terminal 4, Concourse A",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "DL"
+          ],
+          "alliance": "SkyTeam",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/access"
+    },
+    {
+      "loungeId": "jfk-delta-sky-club-t4-concourse-b",
+      "airport": "JFK",
+      "name": "Delta Sky Club (Concourse B)",
+      "terminal": "4",
+      "location": "Terminal 4, Concourse B",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "DL"
+          ],
+          "alliance": "SkyTeam",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/access"
+    },
+    {
+      "loungeId": "jfk-virgin-atlantic-clubhouse-t4",
+      "airport": "JFK",
+      "name": "Virgin Atlantic Clubhouse",
+      "terminal": "4",
+      "location": "Terminal 4, above boarding gates A4 and A5, after security",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "13:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/john-f-kennedy-international/jfk22-virgin-atlantic-clubhouse"
+    },
+    {
+      "loungeId": "jfk-air-india-maharaja-lounge-t4",
+      "airport": "JFK",
+      "name": "Air India Maharaja Lounge",
+      "terminal": "4",
+      "location": "Terminal 4, Level 4, departures after security",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "08:00",
+        "close": "22:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/john-f-kennedy-international/jfk33-air-india-lounge"
+    },
+    {
+      "loungeId": "jfk-air-france-lounge-t1",
+      "airport": "JFK",
+      "name": "Air France Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, airside near the Air France boarding area by Gate 1",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "07:00",
+        "close": "21:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AF"
+          ]
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        },
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://afkldocs.info/assets/228_AFK_lounge_guide.pdf"
+    },
+    {
+      "loungeId": "jfk-turkish-airlines-lounge-t1",
+      "airport": "JFK",
+      "name": "Turkish Airlines Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, airside after TSA security, between Gates 2 and 3",
+      "afterPassportControl": null,
+      "serves": "international",
+      "hours": {
+        "open": "09:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/john-f-kennedy-international/jfk21-turkish-airlines-lounge"
+    },
+    {
+      "loungeId": "jfk-korean-air-lounge-t1",
+      "airport": "JFK",
+      "name": "Korean Air Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, airside after security, across from Gate 3",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "21:30",
+        "close": "00:50"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/john-f-kennedy-international/jfk-korean-air-lounge"
+    },
+    {
+      "loungeId": "jfk-primeclass-lounge-t1",
+      "airport": "JFK",
+      "name": "Primeclass Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, departures after security, near Gates 8 and 9",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/john-f-kennedy-international/jfk14-primeclass-lounge"
+    },
+    {
+      "loungeId": "jfk-vip-one-lounge-t1",
+      "airport": "JFK",
+      "name": "VIP ONE Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, landside departure level, behind counters E and F next to the TSA checkpoint",
+      "afterPassportControl": null,
+      "serves": "international",
+      "hours": {
+        "open": "08:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/john-f-kennedy-international/jfk25-vip-one-lounge"
+    },
+    {
+      "loungeId": "jfk-jetblue-bluehouse-t5",
+      "airport": "JFK",
+      "name": "JetBlue BlueHouse",
+      "terminal": "5",
+      "location": "Terminal 5, across from gate 526",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "B6"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.jfkairport.com/explore-jfk/terminals/terminal-5"
+    }
+  ],
+  "BGI": [
+    {
+      "loungeId": "bgi-airlines-executive-lounge",
+      "airport": "BGI",
+      "name": "Airlines Executive Lounge",
+      "terminal": null,
+      "location": "Departures Terminal, airside after security and passport control, between Gates 12 and 13; up the lift or stairs",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "11:30",
+        "close": "20:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/barbados/grantley-adams-international/bgi-airlines-executive-lounge"
     }
   ]
 }

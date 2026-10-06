@@ -187,6 +187,28 @@ batch: a domestic terminal's lounge (KUL, AYT, BLR) no longer shows for an
 international departure, and an international-only lounge's walk-in price
 (BGO) no longer shows for a domestic one.
 
+## Batch 4 and rechecks (2026-10-06)
+
+BOM 5, SEA 5, JFK 11, SZG 1, CLT 1, BGI 1, plus the Air France lounge at
+LHR T4: 184 lounges at 25 airports, about 84% of production departures.
+VAA has no lounge (Finavia); KGD's site renders only with JavaScript.
+Seeded on dev only. The session's web-search allowance ran out early in
+this batch, so most of it came from fetching known official pages.
+
+Still missing, because the official sites blocked automated reads:
+- **JFK Terminal 8** (BA, American, Admirals Club, Flagship) and T7 (Aer
+  Lingus); **CLT** Admirals Clubs; **SEA** United Club, Alaska Lounges and
+  BA; **BOM** Adani and Air India airline lounges.
+- **Rechecks that found nothing new:** Etihad at AUH; United, Korean,
+  Turkish, China Airlines, Emirates and Aspire at NRT (Narita's page says
+  "check with your airline"); other lounges at AMS; Lufthansa, United,
+  Emirates, Etihad, Gulf Air and Saudia at LHR.
+These need a pass from a network where those sites load, or by hand.
+
+Fixed in this pass: Delta One lounges (LAX, SEA, JFK) admit business
+only; listing "first" with DL would have called Delta's domestic first
+"Included".
+
 ## Decisions (2026-10-06)
 
 1. Boarding passes keep syncing as issued (docs/memberships.md, privacy policy).
