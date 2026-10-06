@@ -1,0 +1,13 @@
+What's new to review in 1.2.1:
+
+Nothing about purchases, prices or the existing Free and Pro features changes. One new feature is part of Pro: tracking lounge passes (below).
+
+1. Airport lounges. On a trip's travel day, a "Lounges at <airport>" card lists the lounges at the departure airport with how the traveller can get in (cabin, airline status, a lounge pass, or the door price); tapping it opens a sheet with each lounge's details. Before the travel day, the trip page shows a one-line lounge summary. The lounge list is FlyRight's own hand-checked directory; FlyRight never grants access itself, it only tells the traveller what the lounge's published rules say. Lounges appear only at airports in the directory (for example HEL, DOH, LHR, FRA, DXB, JFK).
+2. Lounge passes. Profile > Memberships > Lounge passes. Adding a pass (Priority Pass, DragonPass and similar) is a FlyRight Pro feature; free users see the Pro offer. Pass numbers stay on the device.
+3. Boarding passes. A saved boarding pass shows the frequent flyer number printed in its barcode, with a button to add it to Memberships.
+4. Haptics. Boarding, take-off, landing and the compensation card have custom vibration patterns.
+5. Flight lookup. The add-flight calendar now covers the last 6 months (the reach of our flight data provider); older trips are added by hand in the journal.
+
+To see them: sign in with the review account, open Profile (photo at the top left of Flights) > Memberships for lounge passes, and open any trip for the trip page. The review account already has trips.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method.
