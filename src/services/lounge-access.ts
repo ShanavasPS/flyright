@@ -156,10 +156,12 @@ function bestWay(
   const { access } = lounge;
 
   const cabin = departure.cabin;
-  if (access.cabin && cabin && access.cabin.cabins.includes(cabin) && departure.carrier) {
+  // Unknown counts as international, as for status: the desk decides.
+  const cabinCounts = !access.cabin?.internationalOnly || departure.international !== false;
+  if (access.cabin && cabin && access.cabin.cabins.includes(cabin) && departure.carrier && cabinCounts) {
     const byCarrier = access.cabin.carriers?.includes(departure.carrier) ?? false;
     const byAlliance = !!access.cabin.alliance && allianceOf(departure.carrier) === access.cabin.alliance;
-    if (byCarrier || byAlliance) return { verdict: 'included', way: { kind: 'cabin', cabin }, fix: null };
+    if (byCarrier || byAlliance || access.cabin.anyCarrier) return { verdict: 'included', way: { kind: 'cabin', cabin }, fix: null };
   }
 
   const status = statusWay(lounge, departure, statuses, thisMonth);

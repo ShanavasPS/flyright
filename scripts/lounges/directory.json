@@ -247,5 +247,2371 @@
       "checkedOn": "2026-10-06",
       "source": "https://www.prioritypass.com/de-DE/lounges/qatar/hamad-international/doh7-al-maha-lounge-southeast"
     }
+  ],
+  "COK": [
+    {
+      "loungeId": "cok-earth-lounge",
+      "airport": "COK",
+      "name": "Earth Lounge",
+      "terminal": "T3",
+      "location": "Terminal 3 international departures, airside: after security and passport control, take the escalator on the right to the 3rd floor",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/lounges/india/cochin-international/cok2-earth-lounge"
+    },
+    {
+      "loungeId": "cok-travel-club-lounge",
+      "airport": "COK",
+      "name": "Travel Club Lounge",
+      "terminal": "T1",
+      "location": "Terminal 1 domestic departures, after security, 2nd floor by lift, next to KFC",
+      "afterPassportControl": false,
+      "hours": null,
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/cochin-international/cok5-travel-club-lounge-cok-domestic"
+    }
+  ],
+  "FRA": [
+    {
+      "loungeId": "fra-lufthansa-first-class-terminal",
+      "airport": "FRA",
+      "name": "Lufthansa First Class Terminal",
+      "terminal": "1",
+      "location": "Terminal 1, Area A, Level 0 (separate First Class Terminal building)",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:30",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "carriers": [
+            "LH"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-first-class-terminal/lufthansa-first-class-terminal.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-first-class-lounge-a",
+      "airport": "FRA",
+      "name": "Lufthansa First Class Lounge, Area A",
+      "terminal": "1",
+      "location": "Terminal 1, Area A (Schengen), Level 2",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "05:30",
+        "close": "21:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "carriers": [
+            "LH"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-first-class-lounge/lh-firstclass-lounge-1.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-first-class-lounge-b",
+      "airport": "FRA",
+      "name": "Lufthansa First Class Lounge, Area B",
+      "terminal": "1",
+      "location": "Terminal 1, Area B (non-Schengen), Level 2",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "06:00",
+        "close": "21:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "carriers": [
+            "LH"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-first-class-lounge/lh-firstclass-lounge.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-senator-lounge-a",
+      "airport": "FRA",
+      "name": "Lufthansa Senator Lounge, Area A",
+      "terminal": "1",
+      "location": "Terminal 1, Area A (Schengen), Level 2",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-senator-lounge/lh-senator-4.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-senator-lounge-z",
+      "airport": "FRA",
+      "name": "Lufthansa Senator Lounge, Area Z",
+      "terminal": "1",
+      "location": "Terminal 1, Area Z (non-Schengen level above the A gates), Level 3",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-senator-lounge/lh-senator-3.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-senator-lounge-b",
+      "airport": "FRA",
+      "name": "Lufthansa Senator Lounge, Area B",
+      "terminal": "1",
+      "location": "Terminal 1, Area B (non-Schengen), Level 3",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "06:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-senator-lounge/lh-senator.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-panorama-lounge-a26",
+      "airport": "FRA",
+      "name": "Lufthansa Panorama Lounge A26",
+      "terminal": "1",
+      "location": "Terminal 1, Area A (Schengen), Level 2, near gate A26",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "06:00",
+        "close": "21:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-business-lounge/lh-business-lounge-2.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-business-lounge-a-level-2",
+      "airport": "FRA",
+      "name": "Lufthansa Business Lounge, Area A (Level 2)",
+      "terminal": "1",
+      "location": "Terminal 1, Area A (Schengen), Level 2",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-business-lounge/lh-business-lounge-5.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-business-lounge-a-level-3",
+      "airport": "FRA",
+      "name": "Lufthansa Business Lounge, Area A (Level 3)",
+      "terminal": "1",
+      "location": "Terminal 1, Area A, Level 3",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:00",
+        "close": "21:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-business-lounge/lh-business-lounge-4.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-business-lounge-z",
+      "airport": "FRA",
+      "name": "Lufthansa Business Lounge, Area Z",
+      "terminal": "1",
+      "location": "Terminal 1, Area Z (non-Schengen level above the A gates), Level 3",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-business-lounge/lh-business-lounge-3.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-business-lounge-b-1",
+      "airport": "FRA",
+      "name": "Lufthansa Business Lounge, Area B (open until 22:00)",
+      "terminal": "1",
+      "location": "Terminal 1, Area B (non-Schengen), Level 2",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "06:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-business-lounge/lh-business-lounge.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-business-lounge-b-2",
+      "airport": "FRA",
+      "name": "Lufthansa Business Lounge, Area B (open until 21:30)",
+      "terminal": "1",
+      "location": "Terminal 1, Area B (non-Schengen), Level 2",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "06:00",
+        "close": "21:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-business-lounge/lh-business-lounge-1.html"
+    },
+    {
+      "loungeId": "fra-lufthansa-bistro-lounge-c",
+      "airport": "FRA",
+      "name": "Lufthansa Bistro Lounge (Non-Schengen)",
+      "terminal": "1",
+      "location": "Terminal 1, Area C (non-Schengen), Level 2",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "07:30",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/lufthansa-business-lounge/lufthansa-bistro-lounge-non-schengen.html"
+    },
+    {
+      "loungeId": "fra-air-canada-lounge",
+      "airport": "FRA",
+      "name": "Air Canada Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, Area B (non-Schengen), Level 3",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/a/air-canada-lounge/air-canada-lounge.html"
+    },
+    {
+      "loungeId": "fra-luxx-lounge",
+      "airport": "FRA",
+      "name": "LuxxLounge",
+      "terminal": "1",
+      "location": "Terminal 1, Area C, Level 3, public (landside) area, before security",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:30",
+        "close": "21:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass",
+          "loungekey"
+        ],
+        "door": {
+          "amount": 3900,
+          "currency": "EUR"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/l/luxx-lounge/luxx-lounge.html"
+    },
+    {
+      "loungeId": "fra-priority-lounge-t3",
+      "airport": "FRA",
+      "name": "Priority Lounge",
+      "terminal": "3",
+      "location": "Terminal 3, Area J (non-Schengen), Level 5: after passport control, turn right at the duty-free market place towards the J pier",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA",
+            "QR",
+            "KC",
+            "AH",
+            "GF",
+            "HY",
+            "CX",
+            "TU",
+            "CZ",
+            "UL",
+            "EY",
+            "WY"
+          ]
+        },
+        "networks": [
+          "priority-pass",
+          "loungekey"
+        ],
+        "door": {
+          "amount": 4900,
+          "currency": "EUR"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritylounge-fra.com/access/"
+    },
+    {
+      "loungeId": "fra-emirates-lounge",
+      "airport": "FRA",
+      "name": "Emirates Lounge",
+      "terminal": "3",
+      "location": "Terminal 3, Area J (non-Schengen), Level 5",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first",
+            "business"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/e/emirates-lounge/emirates-lounge-1.html"
+    },
+    {
+      "loungeId": "fra-air-france-klm-lounge",
+      "airport": "FRA",
+      "name": "Air France Lounge",
+      "terminal": "3",
+      "location": "Terminal 3, Area H (Schengen), Level 5",
+      "afterPassportControl": false,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "AF",
+            "KL"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.frankfurt-airport.com/en/locations/a/air-france-lounge/air-france-lounge.html"
+    }
+  ],
+  "LAX": [
+    {
+      "loungeId": "lax-star-alliance-lounge-tbit",
+      "airport": "LAX",
+      "name": "Star Alliance Lounge",
+      "terminal": "B",
+      "location": "Tom Bradley International Terminal, after security, level 6 via the elevator at the clock tower in the main atrium",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "08:00",
+        "close": "01:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "Star Alliance"
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.staralliance.com/en/lounge/los-angeles"
+    },
+    {
+      "loungeId": "lax-los-angeles-business-lounge-tbit",
+      "airport": "LAX",
+      "name": "oneworld Business Lounge (operated by Qantas)",
+      "terminal": "B",
+      "location": "Tom Bradley International Terminal, airside departures, level 5",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:30",
+        "close": "24:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.qantas.com/en-au/at-the-airport/lounges/locations/los-angeles-international-business"
+    },
+    {
+      "loungeId": "lax-air-france-lounge-tbit",
+      "airport": "LAX",
+      "name": "Air France Lounge",
+      "terminal": "B",
+      "location": "Tom Bradley International Terminal, after security, close to the Air France boarding gates",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "09:00",
+        "close": "23:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AF",
+            "KL"
+          ],
+          "alliance": "SkyTeam"
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://corporate.airfrance.com/en/news/air-france-opens-new-lounge-los-angeles-international-airport"
+    },
+    {
+      "loungeId": "lax-korean-air-lounge-tbit",
+      "airport": "LAX",
+      "name": "Korean Air Lounge",
+      "terminal": "B",
+      "location": "Tom Bradley International Terminal, after security",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "KE"
+          ],
+          "alliance": "SkyTeam"
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.koreanair.com/contents/plan-your-travel/at-the-airport/lounge"
+    },
+    {
+      "loungeId": "lax-emirates-lounge",
+      "airport": "LAX",
+      "name": "Emirates Lounge",
+      "terminal": null,
+      "location": null,
+      "afterPassportControl": null,
+      "hours": {
+        "open": "12:40",
+        "close": "16:40"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.emirates.com/us/english/experience/our-lounges/worldwide/"
+    },
+    {
+      "loungeId": "lax-virgin-atlantic-clubhouse-tbit",
+      "airport": "LAX",
+      "name": "Virgin Atlantic Clubhouse",
+      "terminal": "B",
+      "location": "Tom Bradley International Terminal, beyond the TSA checkpoint, 6th floor; elevator at the clock tower in the main atrium",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "VS",
+            "DL"
+          ],
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.virginatlantic.com/en-US/experience/upper-class/clubhouse-airport-lounges/los-angeles-clubhouse"
+    },
+    {
+      "loungeId": "lax-admirals-club-tbit",
+      "airport": "LAX",
+      "name": "Admirals Club (Tom Bradley International Terminal)",
+      "terminal": "B",
+      "location": "Tom Bradley International Terminal, concourse level, between gates 151 and 153",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:30",
+        "close": "00:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/web/i18n/travelInformation/airportAmenities/lax-club.html"
+    },
+    {
+      "loungeId": "lax-admirals-club-t4",
+      "airport": "LAX",
+      "name": "Admirals Club (Terminal 4)",
+      "terminal": "4",
+      "location": "Terminal 4, concourse level, near gate 41",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:30",
+        "close": "01:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/web/i18n/travelInformation/airportAmenities/lax-club.html"
+    },
+    {
+      "loungeId": "lax-admirals-club-regional-terminal",
+      "airport": "LAX",
+      "name": "Admirals Club (American Eagle Regional Terminal)",
+      "terminal": "Regional Terminal",
+      "location": "American Eagle Regional Terminal, across from gates 52D and 52E",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:15",
+        "close": "21:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/web/i18n/travelInformation/airportAmenities/lax-club.html"
+    },
+    {
+      "loungeId": "lax-flagship-lounge-t4",
+      "airport": "LAX",
+      "name": "Flagship Lounge",
+      "terminal": "4",
+      "location": "Terminal 4, near gate 41",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:30",
+        "close": "01:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/web/i18n/travel-info/clubs/flagship-lounge.html"
+    },
+    {
+      "loungeId": "lax-delta-one-lounge-t3",
+      "airport": "LAX",
+      "name": "Delta One Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, across from the Food Court",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:15",
+        "close": "23:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "DL",
+            "AF",
+            "KL",
+            "KE",
+            "LA",
+            "VS"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/delta-one-lounge"
+    },
+    {
+      "loungeId": "lax-delta-one-lounge-t2",
+      "airport": "LAX",
+      "name": "Delta One Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, Mezzanine Level",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "07:00",
+        "close": "23:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "DL",
+            "AF",
+            "KL",
+            "KE",
+            "LA",
+            "VS"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/delta-one-lounge"
+    },
+    {
+      "loungeId": "lax-delta-sky-club-t3",
+      "airport": "LAX",
+      "name": "Delta Sky Club (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, Sky Way",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:15",
+        "close": "00:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "DL"
+          ],
+          "alliance": "SkyTeam",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/locations"
+    },
+    {
+      "loungeId": "lax-united-club-t7",
+      "airport": "LAX",
+      "name": "United Club",
+      "terminal": "7",
+      "location": "Terminal 7, next to Gate 71A",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:30",
+        "close": "23:45"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "UA"
+          ],
+          "alliance": "Star Alliance",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.united.com/en/us/fly/travel/airport/united-club-and-lounge-locations.html"
+    },
+    {
+      "loungeId": "lax-united-polaris-lounge-t7",
+      "airport": "LAX",
+      "name": "United Polaris lounge",
+      "terminal": "7",
+      "location": "Terminal 7, between Gates 73 and 75A",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "UA",
+            "LH",
+            "LX",
+            "NH",
+            "NZ",
+            "AZ",
+            "OS",
+            "SN"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.united.com/en/us/fly/travel/airport/lounge-access.html"
+    },
+    {
+      "loungeId": "lax-maple-leaf-lounge-t6",
+      "airport": "LAX",
+      "name": "Air Canada Maple Leaf Lounge",
+      "terminal": "6",
+      "location": "Terminal 6",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AC"
+          ],
+          "alliance": "Star Alliance",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aircanada.com/us/en/aco/home/fly/premium-services/maple-leaf-lounges/maple-leaf-lounge-details.html#/!lounge@losangeles"
+    }
+  ],
+  "DFW": [
+    {
+      "loungeId": "dfw-admirals-club-a24",
+      "airport": "DFW",
+      "name": "Admirals Club, Terminal A",
+      "terminal": "A",
+      "location": "Terminal A, after security, across from gate A24",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:00",
+        "close": "22:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA",
+            "EI"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/i18n/travelInformation/airportAmenities/dfw-club.jsp"
+    },
+    {
+      "loungeId": "dfw-admirals-club-b3",
+      "airport": "DFW",
+      "name": "Admirals Club, Terminal B",
+      "terminal": "B",
+      "location": "Terminal B, after security, between gates B3 and B4",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:30",
+        "close": "22:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA",
+            "EI"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/i18n/travelInformation/airportAmenities/dfw-club.jsp"
+    },
+    {
+      "loungeId": "dfw-admirals-club-c20",
+      "airport": "DFW",
+      "name": "Admirals Club and Executive Center, Terminal C",
+      "terminal": "C",
+      "location": "Terminal C, after security, between gates C19 and C20",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA",
+            "EI"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/i18n/travelInformation/airportAmenities/dfw-club.jsp"
+    },
+    {
+      "loungeId": "dfw-admirals-club-d24",
+      "airport": "DFW",
+      "name": "Admirals Club, Terminal D",
+      "terminal": "D",
+      "location": "Terminal D, after security, near gate D24",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA",
+            "EI"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/i18n/travelInformation/airportAmenities/dfw-club.jsp"
+    },
+    {
+      "loungeId": "dfw-admirals-club-e-satellite",
+      "airport": "DFW",
+      "name": "Admirals Club, Terminal E",
+      "terminal": "E",
+      "location": "Terminal E, E Satellite, mezzanine level",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:00",
+        "close": "22:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA",
+            "EI"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/i18n/travelInformation/airportAmenities/dfw-club.jsp"
+    },
+    {
+      "loungeId": "dfw-flagship-lounge-d23",
+      "airport": "DFW",
+      "name": "Flagship Lounge",
+      "terminal": "D",
+      "location": "Terminal D, near gate D23",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:15"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA",
+            "EI"
+          ],
+          "alliance": "oneworld",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/i18n/travel-info/clubs/flagship-lounge.jsp"
+    },
+    {
+      "loungeId": "dfw-flagship-dining-d23",
+      "airport": "DFW",
+      "name": "Flagship Dining",
+      "terminal": "D",
+      "location": "Terminal D, near gate D23, inside the Flagship Lounge",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "12:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "AA"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/web/i18n/travel-info/experience/dining/flagship-dining.html"
+    },
+    {
+      "loungeId": "dfw-the-club-d27",
+      "airport": "DFW",
+      "name": "The Club DFW",
+      "terminal": "D",
+      "location": "Terminal D, mezzanine level across from gate D27",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:00",
+        "close": "22:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://theclubairportlounges.com/lounges/dfw-the-club-terminal-d"
+    },
+    {
+      "loungeId": "dfw-plaza-premium-lounge-e31",
+      "airport": "DFW",
+      "name": "Plaza Premium Lounge, Terminal E",
+      "terminal": "E",
+      "location": "Terminal E, airside near gate E31",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "06:00",
+        "close": "20:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-states-of-america/dallas-fort-worth-international/dfw14-plaza-premium-lounge"
+    },
+    {
+      "loungeId": "dfw-delta-sky-club-e10",
+      "airport": "DFW",
+      "name": "Delta Sky Club",
+      "terminal": "E",
+      "location": "Terminal E, between gates E10 and E11",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "SkyTeam",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "SkyTeam",
+          "levels": [
+            "elite-plus"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.delta.com/us/en/delta-sky-club/locations"
+    },
+    {
+      "loungeId": "dfw-united-club-e6",
+      "airport": "DFW",
+      "name": "United Club",
+      "terminal": "E",
+      "location": "Terminal E, between gates E6 and E7",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "04:30",
+        "close": "19:45"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "Star Alliance",
+          "internationalOnly": true
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ],
+          "internationalOnly": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.united.com/en/us/fly/travel/airport/united-club-and-lounge-locations.html"
+    }
+  ],
+  "DXB": [
+    {
+      "loungeId": "dxb-emirates-first-class-lounge-concourse-a",
+      "airport": "DXB",
+      "name": "Emirates First Class Lounge (Concourse A)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse A, departures",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.emirates.com/english/experience/our-lounges/first-class/"
+    },
+    {
+      "loungeId": "dxb-emirates-business-class-lounge-concourse-a",
+      "airport": "DXB",
+      "name": "Emirates Business Class Lounge (Concourse A)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse A, departures (direct boarding from the lounge)",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.emirates.com/english/experience/our-lounges/business-class/"
+    },
+    {
+      "loungeId": "dxb-emirates-first-class-lounge-concourse-b",
+      "airport": "DXB",
+      "name": "Emirates First Class Lounge (Concourse B)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse B, departures",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.emirates.com/english/experience/our-lounges/first-class/"
+    },
+    {
+      "loungeId": "dxb-emirates-business-class-lounge-concourse-b",
+      "airport": "DXB",
+      "name": "Emirates Business Class Lounge (Concourse B)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse B, departures",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.emirates.com/english/experience/our-lounges/business-class/"
+    },
+    {
+      "loungeId": "dxb-emirates-business-class-lounge-concourse-c",
+      "airport": "DXB",
+      "name": "Emirates Business Class Lounge (Concourse C)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse C, departures",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.emirates.com/english/experience/our-lounges/first-class/"
+    },
+    {
+      "loungeId": "dxb-emirates-lounge-concourse-c-gate-c9",
+      "airport": "DXB",
+      "name": "Emirates Lounge (Concourse C, near Gate C9)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse C, departures, near gate C9",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "EK"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.emirates.com/english/experience/our-lounges/paid-lounge-access/"
+    },
+    {
+      "loungeId": "dxb-marhaba-lounge-concourse-a",
+      "airport": "DXB",
+      "name": "marhaba Lounge (Concourse A)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse A, departures level, west end, between gates A2 and A3",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb4-marhaba-lounge"
+    },
+    {
+      "loungeId": "dxb-marhaba-lounge-concourse-b",
+      "airport": "DXB",
+      "name": "marhaba Lounge (Concourse B)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse B, departures, near gates B21/B23, lift from level 3 departures",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb3-marhaba-lounge"
+    },
+    {
+      "loungeId": "dxb-marhaba-lounge-terminal-1",
+      "airport": "DXB",
+      "name": "marhaba Lounge (Terminal 1)",
+      "terminal": "1",
+      "location": "Terminal 1, concourse D, departures (train to the gates, then up to the lounge level)",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb8-marhaba-lounge"
+    },
+    {
+      "loungeId": "dxb-marhaba-lounge-terminal-2",
+      "airport": "DXB",
+      "name": "marhaba Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, departures, after security, opposite gates F3 and F4",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb5-marhaba-lounge"
+    },
+    {
+      "loungeId": "dxb-ahlan-lounge-concourse-a",
+      "airport": "DXB",
+      "name": "Ahlan Lounge (Concourse A, Gate A1)",
+      "terminal": "3",
+      "location": "Terminal 3, concourse A, departures, lift next to the souvenir shop to level 6",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb16-ahlan-lounge"
+    },
+    {
+      "loungeId": "dxb-ahlan-lounge-concourse-b",
+      "airport": "DXB",
+      "name": "Ahlan Lounge at B",
+      "terminal": "3",
+      "location": "Terminal 3, concourse B, departures level, east side next to gate B26 (entrance inside Cadiz Tapas Bar)",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb6-ahlan-lounge-at-b"
+    },
+    {
+      "loungeId": "dxb-ahlan-lounge-concourse-c",
+      "airport": "DXB",
+      "name": "Ahlan Lounge @C13",
+      "terminal": "3",
+      "location": "Terminal 3, concourse C, departures, near gate C13",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb13-ahlan-lounge-c13"
+    },
+    {
+      "loungeId": "dxb-ahlan-lounge-terminal-1",
+      "airport": "DXB",
+      "name": "Ahlan Lounge (Terminal 1)",
+      "terminal": "1",
+      "location": "Terminal 1, concourse D, departures, near gate D13",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb20-ahlan-lounge"
+    },
+    {
+      "loungeId": "dxb-ahlan-business-class-lounge-terminal-1",
+      "airport": "DXB",
+      "name": "Ahlan Business Class Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, concourse D, departures, level 2 above the departure gates",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb-ahlan-business-class-lounge"
+    },
+    {
+      "loungeId": "dxb-ahlan-first-class-lounge-terminal-1",
+      "airport": "DXB",
+      "name": "Ahlan First Class Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, concourse D, departures, near the food court",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "dragonpass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://en.dragonpass.com.cn/lounge/339995"
+    },
+    {
+      "loungeId": "dxb-plaza-premium-lounge-concourse-a",
+      "airport": "DXB",
+      "name": "Plaza Premium Lounge",
+      "terminal": "3",
+      "location": "Terminal 3, concourse A, departures, between gates A2 and A3, west wing, lift from duty free to level 4",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-arab-emirates/dubai-international/dxb11-plaza-premium-lounge"
+    },
+    {
+      "loungeId": "dxb-british-airways-lounge-terminal-1",
+      "airport": "DXB",
+      "name": "British Airways Lounge",
+      "terminal": "1",
+      "location": "Terminal 1, concourse D, departures",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "carriers": [
+            "BA"
+          ]
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://mediacentre.britishairways.com/news/10102025/a-new-generation-british-airways-showcases-the-future-of-its-lounges-with-a-brand-new-opening-in-dubai"
+    },
+    {
+      "loungeId": "dxb-flydubai-business-class-lounge-terminal-2",
+      "airport": "DXB",
+      "name": "flydubai Business Class Lounge",
+      "terminal": "2",
+      "location": "Terminal 2, departures, after passport control and security",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "FZ"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.flydubai.com/en/flying-with-us/business-class/business-class-lounge/"
+    }
+  ],
+  "TRV": [
+    {
+      "loungeId": "trv-the-lounge-t1",
+      "airport": "TRV",
+      "name": "The Lounge (Terminal 1)",
+      "terminal": "T1",
+      "location": "Terminal 1, domestic departures, post-security hold area, opposite the passenger lift",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "anyCarrier": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://thiruvananthapuram.adaniairports.com/en/airport-services/lounges"
+    },
+    {
+      "loungeId": "trv-adani-lounge-by-tfs",
+      "airport": "TRV",
+      "name": "Adani Lounge by TFS",
+      "terminal": "T2",
+      "location": "Terminal 2, international departures, after security, near boarding gates 1 and 2",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "anyCarrier": true
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://thiruvananthapuram.adaniairports.com/en/airport-services/lounges"
+    },
+    {
+      "loungeId": "trv-the-lounge-t2",
+      "airport": "TRV",
+      "name": "The Lounge (Terminal 2)",
+      "terminal": "T2",
+      "location": "Terminal 2, international departures, after security, near gate 4",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/india/thiruvananthapuram-international/trv2-the-lounge"
+    }
+  ],
+  "LHR": [
+    {
+      "loungeId": "lhr-ba-galleries-club-south-t5",
+      "airport": "LHR",
+      "name": "British Airways Galleries Club Lounge (Terminal 5A South)",
+      "terminal": "5",
+      "location": "Terminal 5, main building (5A), after security, south",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.britishairways.com/content/information/airport-information/london-heathrow-airport/heathrow-t5"
+    },
+    {
+      "loungeId": "lhr-ba-galleries-club-north-t5",
+      "airport": "LHR",
+      "name": "British Airways Galleries Club Lounge (Terminal 5A North)",
+      "terminal": "5",
+      "location": "Terminal 5, main building (5A), after security, north",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.britishairways.com/content/information/airport-information/london-heathrow-airport/heathrow-t5"
+    },
+    {
+      "loungeId": "lhr-ba-galleries-club-t5b",
+      "airport": "LHR",
+      "name": "British Airways Galleries Club Lounge (Terminal 5B)",
+      "terminal": "5",
+      "location": "Terminal 5, satellite 5B, after security (5C departures use the 5A/5B lounges)",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:30",
+        "close": "22:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.britishairways.com/content/information/airport-information/london-heathrow-airport/heathrow-t5"
+    },
+    {
+      "loungeId": "lhr-ba-galleries-first-south-t5",
+      "airport": "LHR",
+      "name": "British Airways Galleries First Lounge (Terminal 5A South)",
+      "terminal": "5",
+      "location": "Terminal 5, main building (5A), after security, south",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.britishairways.com/content/information/airport-information/london-heathrow-airport/heathrow-t5"
+    },
+    {
+      "loungeId": "lhr-ba-concorde-room-t5",
+      "airport": "LHR",
+      "name": "British Airways Concorde Room",
+      "terminal": "5",
+      "location": "Terminal 5, main building (5A), after security, south",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "carriers": [
+            "BA"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.britishairways.com/content/information/airport-information/london-heathrow-airport/heathrow-t5"
+    },
+    {
+      "loungeId": "lhr-ba-galleries-club-t3",
+      "airport": "LHR",
+      "name": "British Airways Galleries Club Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, after security, Zone F",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.britishairways.com/content/information/airport-information/london-heathrow-airport/heathrow-t3"
+    },
+    {
+      "loungeId": "lhr-ba-galleries-first-t3",
+      "airport": "LHR",
+      "name": "British Airways Galleries First Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, after security, Zone F",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.britishairways.com/content/information/airport-information/london-heathrow-airport/heathrow-t3"
+    },
+    {
+      "loungeId": "lhr-qantas-london-international-lounge-t3",
+      "airport": "LHR",
+      "name": "Qantas London International Lounge",
+      "terminal": "3",
+      "location": "Terminal 3, after security, Lounge B",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.qantas.com/en-gb/at-the-airport/lounges/locations/london-international"
+    },
+    {
+      "loungeId": "lhr-cathay-pacific-lounge-t3",
+      "airport": "LHR",
+      "name": "Cathay Pacific Lounge",
+      "terminal": "3",
+      "location": "Terminal 3, after security, Lounge C, near Gate 11",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:30",
+        "close": "21:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.cathaypacific.com/cx/en_GB/destinations/lounges/london-lhr/cathay-pacific-lounge.html"
+    },
+    {
+      "loungeId": "lhr-virgin-atlantic-clubhouse-t3",
+      "airport": "LHR",
+      "name": "Virgin Atlantic Clubhouse",
+      "terminal": "3",
+      "location": "Terminal 3, Upper Class Wing, after security, Zone H",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:30",
+        "close": "22:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business"
+          ],
+          "carriers": [
+            "VS",
+            "DL"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.virginatlantic.com/en-IN/experience/upper-class/clubhouse-airport-lounges/london-heathrow-clubhouse"
+    },
+    {
+      "loungeId": "lhr-american-admirals-club-t3",
+      "airport": "LHR",
+      "name": "American Airlines Admirals Club",
+      "terminal": "3",
+      "location": "Terminal 3, departure level, after security, lounge area H",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "17:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aa.com/web/i18n/travelInformation/airportAmenities/lhr-club.html"
+    },
+    {
+      "loungeId": "lhr-no1-lounge-t3",
+      "airport": "LHR",
+      "name": "No1 Lounge (Terminal 3)",
+      "terminal": "3",
+      "location": "Terminal 3, after security: walkway left of World Duty Free, follow signs for 'Lounge F' and Gates 13-22, one floor up",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr25-no1-lounge-heathrow"
+    },
+    {
+      "loungeId": "lhr-my-lounge-t3",
+      "airport": "LHR",
+      "name": "My Lounge by No1 Lounges",
+      "terminal": "3",
+      "location": "Terminal 3, after security: follow 'All Airline Lounges' towards Gate 9; signed 'Lounge D'",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr16-my-lounge"
+    },
+    {
+      "loungeId": "lhr-singapore-airlines-silverkris-lounge-t2",
+      "airport": "LHR",
+      "name": "Singapore Airlines SilverKris Lounge",
+      "terminal": "2",
+      "location": "Terminal 2B, departure level via lift lobby, next to World Duty Free, near Gate B36",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:30",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first",
+            "business"
+          ],
+          "carriers": [
+            "SQ"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.singaporeair.com/en_UK/gb/plan-travel/local-promotions/heathrow-silverkris-lounge/"
+    },
+    {
+      "loungeId": "lhr-air-canada-maple-leaf-lounge-t2",
+      "airport": "LHR",
+      "name": "Air Canada Maple Leaf Lounge",
+      "terminal": "2",
+      "location": "Terminal 2B, after security",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "premium",
+            "business"
+          ],
+          "carriers": [
+            "AC"
+          ]
+        },
+        "status": {
+          "alliance": "Star Alliance",
+          "levels": [
+            "star-gold"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.aircanada.com/fr/en/aco/home/fly/at-the-airport/airport-information/london-heathrow.html"
+    },
+    {
+      "loungeId": "lhr-no1-lounge-t2",
+      "airport": "LHR",
+      "name": "No1 Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, departures, after security",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "21:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr33-no-1-lounge-heathrow-t2"
+    },
+    {
+      "loungeId": "lhr-plaza-premium-lounge-t2",
+      "airport": "LHR",
+      "name": "Plaza Premium Lounge (Terminal 2)",
+      "terminal": "2",
+      "location": "Terminal 2, after security, Level 4 departures, next to the Terminal Transfer area",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "21:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr11-plaza-premium-lounge"
+    },
+    {
+      "loungeId": "lhr-qatar-airways-premium-lounge-t4",
+      "airport": "LHR",
+      "name": "Qatar Airways Premium Lounge",
+      "terminal": "4",
+      "location": "Terminal 4, after security",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.heathrow.com/content/experience-fragments/heathrow/en/lounge/t4/other-lounges/master/jcr:content/root/responsivegrid/loungecards.html"
+    },
+    {
+      "loungeId": "lhr-plaza-premium-lounge-t4",
+      "airport": "LHR",
+      "name": "Plaza Premium Lounge (Terminal 4)",
+      "terminal": "4",
+      "location": "Terminal 4, departures, after security",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:00",
+        "close": "22:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr13-plaza-premium-lounge"
+    },
+    {
+      "loungeId": "lhr-blush-lounge-plaza-premium-t4",
+      "airport": "LHR",
+      "name": "Blush Lounge by Plaza Premium Group",
+      "terminal": "4",
+      "location": "Terminal 4, departures, after security, near Gate 2",
+      "afterPassportControl": null,
+      "hours": null,
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr31-blush-lounge-by-plaza-premium-group"
+    },
+    {
+      "loungeId": "lhr-plaza-premium-lounge-t5",
+      "airport": "LHR",
+      "name": "Plaza Premium Lounge (Terminal 5)",
+      "terminal": "5",
+      "location": "Terminal 5, main building (5A), after security, next to Gate A7",
+      "afterPassportControl": null,
+      "hours": {
+        "open": "05:30",
+        "close": "21:30"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/united-kingdom/heathrow/lhr30-plaza-premium-lounge-terminal-5-departures"
+    }
   ]
 }

@@ -33,8 +33,17 @@ export const loungeFields = {
   afterPassportControl: v.union(v.boolean(), v.null()),
   hours: v.union(v.object({ open: v.string(), close: v.string() }), v.null()),
   access: v.object({
+    /** Cabins that get in when flying one of `carriers`, any member of
+     *  `alliance`, or any airline (`anyCarrier`); `internationalOnly` when
+     *  the cabin only counts on international flights. */
     cabin: v.optional(
-      v.object({ cabins: v.array(cabin), carriers: v.optional(v.array(v.string())), alliance: v.optional(alliance) }),
+      v.object({
+        cabins: v.array(cabin),
+        carriers: v.optional(v.array(v.string())),
+        alliance: v.optional(alliance),
+        anyCarrier: v.optional(v.boolean()),
+        internationalOnly: v.optional(v.boolean()),
+      }),
     ),
     status: v.optional(
       v.object({ alliance, levels: v.array(level), internationalOnly: v.optional(v.boolean()) }),
@@ -72,6 +81,8 @@ export function loungeProblem(lounge: LoungeRecord): string | null {
   if (!/^https:\/\//.test(lounge.source)) return `${lounge.loungeId}: source must be an https link`;
   const { cabin, status, networks, door } = lounge.access;
   if (!cabin && !status && !networks?.length && !door) return `${lounge.loungeId}: no way in`;
-  if (cabin && !cabin.carriers?.length && !cabin.alliance) return `${lounge.loungeId}: cabin access needs carriers or an alliance`;
+  if (cabin && !cabin.carriers?.length && !cabin.alliance && !cabin.anyCarrier) {
+    return `${lounge.loungeId}: cabin access needs carriers, an alliance or anyCarrier`;
+  }
   return null;
 }

@@ -201,4 +201,13 @@ describe('loungeOptions', () => {
   it('ignores a tier the catalogue does not know', () => {
     expect(loungeOptions([PLATINUM_WING], departure(), [status({ tier: 'Diamond' })], [], MONTH)[0].verdict).toBe('no');
   });
+
+  it('counts a cabin on any airline, or on international flights only', () => {
+    const any = { ...PLAZA, loungeId: 'trv-x', name: 'Any business', access: { cabin: { cabins: ['business' as const], anyCarrier: true } } };
+    expect(loungeOptions([any], departure({ carrier: '6E', cabin: 'business' }), [], [], MONTH)[0].verdict).toBe('included');
+    const intl = { ...PLAZA, loungeId: 'hel-y', name: 'Admirals', access: { cabin: { cabins: ['first' as const], carriers: ['AA'], internationalOnly: true } } };
+    const aaFirst = departure({ carrier: 'AA', cabin: 'first' });
+    expect(loungeOptions([intl], aaFirst, [], [], MONTH)[0].verdict).toBe('included');
+    expect(loungeOptions([intl], { ...aaFirst, international: false }, [], [], MONTH)[0].verdict).toBe('no');
+  });
 });

@@ -125,6 +125,41 @@ Mourjan entries carry no hours (unknown, never shown as closed); confirm
 them by hand before seeding production. Al Mourjan is for Business and
 First tickets only; status holders use the Platinum and Gold lounges.
 
+## Batch 2 (2026-10-06): the airports travellers use
+
+Chosen by counting departure airports across production accounts
+(2026-10-06: 28 accounts, 158 departures, 48 airports; HEL and DOH covered
+24% of departures). COK, FRA, LAX, DFW, DXB, TRV and LHR take it to about
+58% of departures and 59% of upcoming trips. Researched one airport per
+agent, each entry from the operator's, airline's or airport's own page, then
+reviewed here: 90 lounges added, 101 in all. Seeded on dev only.
+
+Review before production, in particular:
+- **FRA Lufthansa lounges:** Fraport's pages say only "eligible passengers";
+  the cabin and Star Alliance Gold rules are Lufthansa's published policy,
+  not quoted from the cited page. FRA Terminal 3 opened 23 April 2026.
+- **LHR oneworld airline lounges** (Qantas, Cathay, AA, Qatar): the access
+  rule is oneworld.com's general lounge policy; the cited page is the
+  airline's.
+- **US airline lounges** (AA, United, Delta, Air Canada at DFW/LAX): cabin
+  and status marked `internationalOnly`, which is stricter than the rules
+  for some members (another oneworld programme's Sapphire on a domestic
+  flight). Walk-in passes left out: who may buy them is restricted.
+- **DXB Emirates lounges:** no walk-in price (sold to Emirates passengers
+  only); marhaba A/B take Priority Pass only for Emirates and Qantas flights.
+- **LAX terminal "B"** is Tom Bradley; LAX is renumbering terminals for 2026.
+- **Left out** (no way in the schema can express, closing, or unconfirmed):
+  card-only lounges (Amex Centurion, Capital One, Chase), LHR Clubrooms
+  (Priority Pass pays extra) and Club Aspire T5 (closed 2 Nov 2026 to
+  spring 2027), FRA SkyTeam Lounge and several LHR airline lounges whose
+  rules could not be read, arrivals lounges, Indian bank-card and DreamFolks
+  access, Emirates Skywards status.
+- Research agents read some blocked airline pages through the Chrome debug
+  profile on port 9222; they opened and closed their own tabs.
+
+`cabin.anyCarrier` (any airline's business class, TRV) and
+`cabin.internationalOnly` were added to the shape for this batch.
+
 ## Decisions (2026-10-06)
 
 1. Boarding passes keep syncing as issued (docs/memberships.md, privacy policy).
