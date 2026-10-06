@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.2.1',
+    date: '2026-10-06',
+    notes: [
+      'Airport lounges: on your travel day, FlyRight shows the lounges at your departure airport and how you get in: your cabin, your airline status or a lounge pass, or the price at the door. Days before, the trip page tells you whether a lounge is likely.',
+      'Track your lounge passes with FlyRight Pro: visits left this membership year, what an extra visit costs, and a log of your lounge visits. Boarding passes now show the frequent flyer number they carry.',
+      'Delays, tight connections and long layovers now come with lounge advice that fits the time you have.',
+      'Boarding, take-off, landing and money owed to you each have their own feel in your hand.',
+      "Friends' trips look like your own Flights, connections included, and friends only ever see whole trips. Stays abroad are named by the city, such as 6 days in Bangkok.",
+      'Looking up a flight now says up front that records reach back about 6 months, instead of failing with try again. Older trips go straight into your journal.',
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-10-04',
     notes: [
