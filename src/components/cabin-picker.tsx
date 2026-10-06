@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { CABIN_LABELS, CABINS, type CabinClass } from '@/services/cabin';
-import { tapLight } from '@/services/haptics';
+import { tick } from '@/services/haptics';
 
 /** The cabin a trip is flown in, as four chips — Economy, Premium economy,
  * Business, First. Tapping the chosen one again clears it: the cabin is
@@ -38,7 +38,7 @@ export function CabinPicker({
               accessibilityState={{ selected }}
               accessibilityHint={selected ? 'Tap again to clear' : undefined}
               onPress={() => {
-                tapLight();
+                tick();
                 onChange(selected ? null : cabin);
               }}
               style={({ pressed }) => [

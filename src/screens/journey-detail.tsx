@@ -64,7 +64,7 @@ import { FlightLookupError, lookupFlight } from '@/services/flight-lookup';
 import { useFlightPath } from '@/services/flight-path';
 import { inboundNewsworthy, inboundOutlook, type InboundOutlook } from '@/services/inbound';
 import { formatDelay, inboundLegLabel } from '@/services/notification-plan';
-import { noteSuccess, tapLight } from '@/services/haptics';
+import { noteOwed, tapLight } from '@/services/haptics';
 import {
   deleteJourney,
   setJourneyVisibility,
@@ -1223,7 +1223,7 @@ function VerdictCard({ journey, disruption }: { journey: Journey; disruption: Di
   useEffect(() => {
     if (owed && !celebratedJourneys.has(journey.id)) {
       celebratedJourneys.add(journey.id);
-      noteSuccess();
+      noteOwed();
     }
   }, [owed, journey.id]);
 

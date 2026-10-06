@@ -4,6 +4,7 @@ import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, StyleShe
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { tick } from '@/services/haptics';
 
 import type { YearWheelProps } from './year-wheel';
 
@@ -29,6 +30,16 @@ export function YearWheel({ value, years, onChange }: YearWheelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The row under the band, so each year passing it ticks like the iOS rotor.
+  // Starts on the mounted year: the initial scrollTo stays silent.
+  const under = useRef(index);
+  const pass = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const i = Math.min(years.length - 1, Math.max(0, Math.round(e.nativeEvent.contentOffset.y / ROW)));
+    if (i === under.current) return;
+    under.current = i;
+    tick();
+  };
+
   const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const i = Math.round(e.nativeEvent.contentOffset.y / ROW);
     const year = years[Math.min(years.length - 1, Math.max(0, i))];
@@ -47,6 +58,8 @@ export function YearWheel({ value, years, onChange }: YearWheelProps) {
         snapToInterval={ROW}
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
+        onScroll={pass}
+        scrollEventThrottle={16}
         onMomentumScrollEnd={settle}
         onScrollEndDrag={settle}
         contentContainerStyle={{ paddingVertical: pad * ROW }}>

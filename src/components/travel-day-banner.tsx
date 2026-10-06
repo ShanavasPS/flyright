@@ -4,6 +4,7 @@ import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -30,11 +31,13 @@ import {
   activeJourney,
   liveContent,
   travelWindow,
+  type LiveContent,
   type StagePlan,
   type TravelDayState,
   type TravelPhase,
 } from '@/services/travel-day';
-import { noteWarning, tapLight } from '@/services/haptics';
+import { noteBoarding, noteLanded, noteTakeOff, noteWarning, tapLight } from '@/services/haptics';
+import { liveMoments, rememberLive, type LiveMemory } from '@/services/live-moments';
 import { factsFor } from '@/services/travel-day-lifecycle';
 import { useTravelDayStates } from '@/services/travel-day-store';
 import type { TripHeroGroup } from '@/services/trip-groups';
@@ -298,7 +301,7 @@ function HeroContent({
 
       {/* Keyed by journey so a hero handover never inherits the previous
        * flight's delay/gate memory and false-flashes. */}
-      <StatusFlash key={active.id} delayLabel={content.delayLabel} gate={content.gate} />
+      <StatusFlash key={active.id} content={content} />
       <RunningBorder color={statusColor} radius={BORDER_RADIUS} running />
     </SheenCard>
     {variant === 'full' && <TravelStatsStrip stats={stats} />}
@@ -381,37 +384,59 @@ function MovedFrom({ clock }: { clock: string }) {
   );
 }
 
-/** Status changes should land, not repaint: a new or grown delay washes the
+/** Status changes should land, not repaint. A new or grown delay washes the
  * card amber once with a warning haptic; a gate change gets a light tick (the
- * fact line's re-entry handles the visual). Mount is silent — old news. */
-function StatusFlash({ delayLabel, gate }: { delayLabel: string | null; gate: string | null }) {
-  const wash = useSharedValue(0);
-  const prevDelay = useRef(delayLabel);
-  const prevGate = useRef(gate);
+ * fact line's re-entry handles the visual). The travel day's big steps play
+ * their own patterns — two beeps at boarding, the roll at take-off, and a
+ * green wash with the touchdown at landing. One haptic per change, the
+ * biggest, so a landing that also revises the delay doesn't stutter. Mount
+ * is silent — old news (see liveMoments). */
+function StatusFlash({ content }: { content: LiveContent }) {
+  const warn = useSharedValue(0);
+  const good = useSharedValue(0);
+  const memory = useRef<LiveMemory | null>(null);
+  const { delayLabel, gate, tone, countdownKind } = content;
 
   useEffect(() => {
-    if (delayLabel && delayLabel !== prevDelay.current) {
-      wash.value = withSequence(
+    const next = { delayLabel, gate, tone, countdownKind };
+    if (!memory.current) {
+      memory.current = rememberLive(next);
+      return;
+    }
+    const { moments, memory: remembered } = liveMoments(memory.current, next);
+    memory.current = remembered;
+    if (!moments.length) return;
+
+    const flash = (value: SharedValue<number>) => {
+      value.value = withSequence(
         withTiming(0.16, { duration: 250 }),
         withTiming(0, { duration: 700 }),
       );
-      noteWarning();
-    }
-    prevDelay.current = delayLabel;
-  }, [delayLabel, wash]);
+    };
+    if (moments.includes('landed')) flash(good);
+    if (moments.includes('delay')) flash(warn);
 
-  useEffect(() => {
-    if (gate && gate !== prevGate.current) tapLight();
-    prevGate.current = gate;
-  }, [gate]);
+    if (moments.includes('landed')) noteLanded();
+    else if (moments.includes('takeOff')) noteTakeOff();
+    else if (moments.includes('boarding')) noteBoarding();
+    else if (moments.includes('delay')) noteWarning();
+    else if (moments.includes('gate')) tapLight();
+  }, [delayLabel, gate, tone, countdownKind, warn, good]);
 
   const theme = useTheme();
-  const style = useAnimatedStyle(() => ({ opacity: wash.value }));
+  const warnStyle = useAnimatedStyle(() => ({ opacity: warn.value }));
+  const goodStyle = useAnimatedStyle(() => ({ opacity: good.value }));
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.wash, { backgroundColor: theme.warning }, style]}
-    />
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.wash, { backgroundColor: theme.warning }, warnStyle]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.wash, { backgroundColor: theme.success }, goodStyle]}
+      />
+    </>
   );
 }
 

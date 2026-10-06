@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Baggage } from '@/services/baggage';
-import { tapLight } from '@/services/haptics';
+import { tick } from '@/services/haptics';
 
 type Choice<T> = { value: T; label: string };
 
@@ -118,7 +118,7 @@ function Chips<T extends boolean | number>({
             accessibilityState={{ selected }}
             accessibilityHint={selected ? 'Tap again to clear' : undefined}
             onPress={() => {
-              tapLight();
+              tick();
               onChange(selected ? undefined : choice.value);
             }}
             style={({ pressed }) => [

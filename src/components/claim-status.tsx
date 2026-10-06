@@ -12,7 +12,7 @@ import {
 import type { ClaimRow } from '@/services/claims';
 import { recordOutcome } from '@/services/claims';
 import { formatDayLabelWithYear } from '@/services/dates';
-import { noteSuccess, noteWarning, tapLight } from '@/services/haptics';
+import { noteOwed, noteWarning, tick } from '@/services/haptics';
 
 /** Chip + guidance color per status. Sent/acknowledged ride the action tint,
  * money lands green, rejection red, escalation (and an overdue sent claim)
@@ -88,9 +88,9 @@ export function showOutcomeMenu(claim: ClaimRow): void {
   if (!options.length) return;
 
   const pick = (next: ClaimStatus) => {
-    if (next === 'paid') noteSuccess();
+    if (next === 'paid') noteOwed();
     else if (next === 'rejected') noteWarning();
-    else tapLight();
+    else tick();
     void recordOutcome(claim.id, next);
   };
 
