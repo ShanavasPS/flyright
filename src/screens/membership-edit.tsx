@@ -25,6 +25,8 @@ import {
   useMembership,
   type MembershipInput,
 } from '@/services/memberships';
+import { useJourney } from '@/services/journeys';
+import { membershipFromPass } from '@/services/lounge-trip';
 import { HeaderButton } from '@/screens/journey-note';
 
 type Draft = Record<
@@ -100,19 +102,26 @@ function draftOf(row: NonNullable<ReturnType<typeof useMembership>>): Draft {
  * list; editing opens straight on the form. Only the number is required —
  * everything else is what the traveller wants the card to remember. */
 export function MembershipEdit() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, fromJourney } = useLocalSearchParams<{ id?: string; fromJourney?: string }>();
   const router = useRouter();
   const { userId } = useAuth();
   const existing = useMembership(id);
+  // "Add" under a boarding pass (design B5): the programme and number the
+  // pass carries, read on this phone. Only the trip id travels in the link.
+  const { row: passTrip } = useJourney(fromJourney ?? '', userId);
+  const prefill = useMemo(() => (!id && passTrip ? membershipFromPass(passTrip) : null), [id, passTrip]);
   const [programme, setProgramme] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
   const editing = !!id;
-  const chosen = programme ?? existing?.programme ?? null;
-  const base = useMemo(() => (existing ? draftOf(existing) : EMPTY), [existing]);
+  const chosen = programme ?? existing?.programme ?? prefill?.programme ?? null;
+  const base = useMemo(
+    () => (existing ? draftOf(existing) : prefill ? { ...EMPTY, number: prefill.number } : EMPTY),
+    [existing, prefill],
+  );
   const values = draft ?? base;
-  const dirty = !!chosen && (draft != null || (!!programme && programme !== existing?.programme));
+  const dirty = !!chosen && (draft != null || !!prefill || (!!programme && programme !== existing?.programme));
 
   const set = (key: keyof Draft) => (text: string) => setDraft({ ...values, [key]: text });
 

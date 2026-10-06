@@ -5,7 +5,9 @@ import {
   leaveByLabel,
   loungeDeparture,
   loungeLine,
+  membershipFromPass,
   onBooking,
+  passLoyalty,
   statusEvidence,
   verdictLabel,
   wayLine,
@@ -169,5 +171,38 @@ describe('travel-day wording', () => {
     const [option] = loungeOptions([paid], loungeDeparture(t, null)!, [], [], '2026-10');
     expect(verdictLabel(option)).toEqual({ text: '€45', tone: 'neutral' });
     expect(wayLine(option, [], 'AY5')).toBe('Pay at the desk');
+  });
+});
+
+describe('passLoyalty', () => {
+  const withPass = trip({ passCode: pass('600123454821') });
+
+  it('names the membership on the booking and matches the saved one', () => {
+    expect(passLoyalty(withPass, [finnair()])).toEqual({
+      airline: 'AY',
+      last4: '4821',
+      programme: { id: 'ay', name: 'Finnair Plus' },
+      matchId: 'ay',
+      otherNumberSaved: false,
+      fastTrack: true,
+    });
+  });
+
+  it('offers to add a membership the traveller never saved', () => {
+    expect(passLoyalty(withPass, [])).toMatchObject({ matchId: null, otherNumberSaved: false });
+    expect(membershipFromPass(withPass)).toEqual({ programme: 'ay', number: '600123454821' });
+  });
+
+  it('notices another number saved for the same programme', () => {
+    expect(passLoyalty(trip({ passCode: pass('699999999999') }), [finnair()])).toMatchObject({
+      matchId: null,
+      otherNumberSaved: true,
+    });
+  });
+
+  it('is null without a pass or with blank fields', () => {
+    expect(passLoyalty(trip(), [finnair()])).toBeNull();
+    expect(passLoyalty(trip({ passCode: pass('').replace('AY AY ', 'AY    ') }), [finnair()])).toBeNull();
+    expect(membershipFromPass(trip())).toBeNull();
   });
 });

@@ -1,0 +1,40 @@
+# "Also on this pass" under a saved boarding pass (docs/lounges.md, step 5).
+# Seed a stopped test app and pass the printed id as JOURNEY:
+#   python3 scripts/seed-lounge-trips.py <SQLite-directory> travel|unsaved
+# CASE=saved (travel seed: Finnair Plus saved) or CASE=unsaved (adds it from
+# the pass and checks that it then matches).
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright://boarding-pass?journeyId=${JOURNEY}"
+- extendedWaitUntil:
+    visible: "Finnair AY5"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "Fast track"
+    direction: DOWN
+    timeout: 10000
+- assertVisible: "Finnair Plus •••• 4821"
+- runFlow:
+    when:
+      true: ${CASE === 'unsaved'}
+    commands:
+      - assertVisible: "Not in Memberships yet"
+      - tapOn:
+          id: "pass-loyalty-add"
+      - extendedWaitUntil:
+          visible: "Add membership"
+          timeout: 10000
+      - assertVisible: "600123454821"
+      - tapOn: "Platinum"
+      - tapOn: "Save"
+      - extendedWaitUntil:
+          visible: "Finnair Plus •••• 4821"
+          timeout: 10000
+- assertVisible: "Matches your membership"
+- assertVisible: "On this booking"
+- takeScreenshot: ${SHOTS}/pass-read-${CASE}

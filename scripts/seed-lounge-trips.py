@@ -7,6 +7,7 @@ Scenarios:
   none      the trip without any seeded membership
   travel    AY5 leaving in 2 h 30 min with the pass (the travel-day card, step 3);
             a new trip id each run, printed, since "Not today" is kept per trip
+  unsaved   as travel, but no Finnair Plus saved: the pass offers to add it (step 5)
   pass      QR3 DOH→LHR leaving in 2 h 30 min, economy, with a Priority Pass
             (10 free visits, 4 used): Al Maha shows as a pass visit (step 4)
   clear     marks the fixtures deleted
@@ -25,10 +26,10 @@ import sys
 from zoneinfo import ZoneInfo
 
 directory, scenario = Path(sys.argv[1]), sys.argv[2]
-assert scenario in {"likely", "included", "none", "travel", "pass", "clear"}
+assert scenario in {"likely", "included", "none", "travel", "unsaved", "pass", "clear"}
 now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
 prefix = "lounge-test-"
-journey = prefix + (f"{scenario}-{now:%H%M}" if scenario in {"travel", "pass"} else "out")
+journey = prefix + (f"{scenario}-{now:%H%M}" if scenario in {"travel", "unsaved", "pass"} else "out")
 number = "600123454821"
 
 # Days before: 15:40 Helsinki time in ten days, when every HEL lounge is
@@ -36,7 +37,7 @@ number = "600123454821"
 helsinki = ZoneInfo("Europe/Helsinki")
 departure = (
     now + timedelta(hours=2, minutes=30)
-    if scenario in {"travel", "pass"}
+    if scenario in {"travel", "unsaved", "pass"}
     else (now + timedelta(days=10)).astimezone(helsinki).replace(hour=15, minute=40)
 )
 arrival = departure + timedelta(hours=9)
@@ -75,7 +76,7 @@ with sqlite3.connect(directory / "flyright.db") as db:
     elif scenario != "clear":
         db.execute("DELETE FROM journeys WHERE id = ?", (journey,))
         db.execute(f"DELETE FROM memberships WHERE id = '{prefix}ay'")
-        with_pass = scenario in {"included", "travel"}
+        with_pass = scenario in {"included", "travel", "unsaved"}
         db.execute(
             """INSERT INTO journeys
             (id,user_id,mode,carrier,carrier_country,number,from_code,from_country,to_code,to_country,
@@ -85,7 +86,7 @@ with sqlite3.connect(directory / "flyright.db") as db:
             (journey, departure.isoformat(), arrival.isoformat(), now.isoformat(), now.isoformat(),
              boarding_pass() if with_pass else None, "aztec" if with_pass else None,
              now.isoformat() if with_pass else None))
-        if scenario != "none":
+        if scenario not in {"none", "unsaved"}:
             db.execute(
                 """INSERT INTO memberships (id,user_id,programme,number,tier,tier_until,position,created_at,updated_at)
                 VALUES (?,NULL,'ay',?,'Platinum','2027-03',-1,?,?)""",

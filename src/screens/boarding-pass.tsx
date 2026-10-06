@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AirlineLogo } from '@/components/airline-logo';
 import { Barcode } from '@/components/barcode';
 import { cityLabel } from '@/components/route-hero';
+import { PassLoyalty } from '@/components/pass-loyalty';
 import { Spacing } from '@/constants/theme';
 import { useMaxBrightness } from '@/hooks/use-max-brightness';
 import { trackEvent } from '@/services/analytics';
@@ -243,6 +244,7 @@ export function BoardingPassScreen() {
               {ticket ? 'Ticket code for check-in. Your airline issues a boarding pass after check-in.' : 'Saved on this phone. Ready to show without an internet connection.'}
             </Text>
           )}
+          {!ticket && <PassLoyalty trip={row} />}
         </ScrollView>
       )}
     </View>

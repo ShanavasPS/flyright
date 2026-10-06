@@ -13,6 +13,7 @@ import {
   carrierCode,
   describeMembership,
   programmeById,
+  PROGRAMMES,
   tierLine,
   type AllianceLevel,
   type MembershipLike,
@@ -220,4 +221,50 @@ export function fixLine(option: LoungeOption, memberships: MembershipLike[], has
     default:
       return null;
   }
+}
+
+/** What a trip's boarding pass says about the traveller's memberships
+ * (design B4): the frequent flyer number on the booking, which saved
+ * membership it is, and fast track. Null without a readable pass or when
+ * the pass leaves the fields blank. The full number is never returned —
+ * only its last four, and the programme it belongs to. */
+export interface PassLoyalty {
+  /** The airline code the pass files the number under, e.g. "AY". */
+  airline: string;
+  last4: string;
+  /** The catalogue programme of that airline, when there is one. */
+  programme: { id: string; name: string } | null;
+  /** The saved membership with this number, if any. */
+  matchId: string | null;
+  /** A membership of the same programme is saved, with another number. */
+  otherNumberSaved: boolean;
+  fastTrack: boolean | null;
+}
+
+export function passLoyalty(trip: LoungeTrip, memberships: MembershipLike[]): PassLoyalty | null {
+  if (!trip.passCode) return null;
+  const pass = parseBcbp(trip.passCode);
+  const leg = pass ? legFor(pass, trip) : null;
+  const flyer = leg?.frequentFlyer;
+  if (!leg || !flyer) return null;
+  const programme = PROGRAMMES.find((p) => p.carriers.includes(flyer.airline)) ?? null;
+  const match = memberships.find((m) => onBooking(trip, m) === true) ?? null;
+  return {
+    airline: flyer.airline,
+    last4: flyer.number.slice(-4),
+    programme: programme ? { id: programme.id, name: programme.name } : null,
+    matchId: match?.id ?? null,
+    otherNumberSaved: !match && !!programme && memberships.some((m) => m.programme === programme.id),
+    fastTrack: leg.fastTrack,
+  };
+}
+
+/** The membership a pass carries, ready for the add form (design B5):
+ * programme and full number. Only for the form on this phone. */
+export function membershipFromPass(trip: LoungeTrip): { programme: string; number: string } | null {
+  if (!trip.passCode) return null;
+  const pass = parseBcbp(trip.passCode);
+  const flyer = pass ? legFor(pass, trip)?.frequentFlyer : null;
+  const programme = flyer ? PROGRAMMES.find((p) => p.carriers.includes(flyer.airline)) : null;
+  return flyer && programme ? { programme: programme.id, number: flyer.number } : null;
 }

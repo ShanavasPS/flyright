@@ -7,7 +7,7 @@ and "How it works" (Technical plan, Feasibility).
 
 ## Status
 
-Steps 0–4 are built: a lounge line on the trip page before the day, on the travel day a lounge card and sheet, and lounge passes with logged visits.
+Steps 0–5 are built: a lounge line on the trip page before the day, on the travel day a lounge card and sheet, lounge passes with logged visits, and what a boarding pass says about the traveller's memberships.
 
 | Piece | File | State |
 | --- | --- | --- |
@@ -26,7 +26,9 @@ Steps 0–4 are built: a lounge line on the trip page before the day, on the tra
 | Pass maths: networks, membership year, visits left | `src/services/lounge-pass-logic.ts` (+ test) | Built |
 | Passes in Memberships (B1), add/edit (B2), detail (B3) | `src/components/lounge-pass-list.tsx`, `lounge-pass-card.tsx`, `src/screens/lounge-pass-edit.tsx` (`/lounge-pass-edit`), `lounge-pass-detail.tsx` (`/lounge-pass`) | Built; adding a pass is Pro |
 | "I'm in the lounge", in-lounge card (A3), Undo, "I've left" | `src/screens/lounge-sheet.tsx`, `src/components/lounge-card.tsx` | Built |
-| Booking evidence (`booking_loyalty`) | — | Step 5 |
+| "Also on this pass" (B4) under a saved boarding pass | `src/components/pass-loyalty.tsx` on `/boarding-pass`, `passLoyalty` in `lounge-trip.ts` | Built, from the barcode |
+| Add a membership found on a pass (B5) | `/membership?fromJourney=` (`membershipFromPass`) | Built: programme and number filled in; the tier is the traveller's to pick |
+| Printed tier from Wallet passes and documents (`booking_loyalty`) | — | Not built: import keeps no tier today; the barcode carries none |
 
 ## Rules
 
@@ -58,6 +60,10 @@ Steps 0–4 are built: a lounge line on the trip page before the day, on the tra
   A lounge visit stays on the phone; followers never see it.
 - **No new journey columns.** Lounge facts are recomputed from `passCode`,
   `cabin`, `terminal` and `gate`; `passCode` is read, never rewritten.
+- **Evidence is read live from the saved barcode**, never copied: the
+  verdicts, the airport-card line and "Also on this pass" all parse
+  `passCode` when shown. Only the add form sees the full number, on this
+  phone; links carry the trip id, never the number.
 - **The frequent flyer number from a pass is never stored on its own.** Only
   the match against a saved membership and the last four characters, on the
   phone.
@@ -78,7 +84,9 @@ the coverage is measured, with a licence read like docs/flight-paths.md.
 `python3 scripts/seed-lounge-trips.py <SQLite-dir> likely|included|none|travel|clear`
 writes an anonymous AY5 HEL→JFK (and a Finnair Plus Platinum membership)
 into a stopped app; `.maestro/lounge-trip-line.yaml` with `CASE=` checks the
-line; `.maestro/lounge-pass.yaml` with `JOURNEY=` (the `pass` seed: QR3
+line; `.maestro/lounge-pass-read.yaml` (`travel` seed with CASE=saved,
+`unsaved` seed with CASE=unsaved) checks "Also on this pass" and adding the
+membership from it; `.maestro/lounge-pass.yaml` with `JOURNEY=` (the `pass` seed: QR3
 from DOH with a Priority Pass) logs an Al Maha visit and undoes it;
 `.maestro/lounge-travel-day.yaml` with `JOURNEY=` (the id the
 `travel` seed prints) walks card → sheet → boarding pass → Not today. iOS reads the line as one accessibility label, so the flow matches

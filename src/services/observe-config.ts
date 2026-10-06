@@ -14,6 +14,8 @@ export const PRIVATE_ROUTE_PARAMS = [
   'token',
   'id',
   'journeyId',
+  // A trip whose boarding pass fills the membership form (B5).
+  'fromJourney',
   'journeyKey',
   'editId',
   'memberId',
