@@ -2,10 +2,11 @@ import { loungeOptions, type Lounge, type LoungeDeparture, type LoungePass, type
 import { type MembershipLike } from './loyalty-programmes';
 
 const PLATINUM_WING: Lounge = {
-  id: 'hel-platinum-wing',
+  loungeId: 'hel-platinum-wing',
   airport: 'HEL',
   name: 'Finnair Platinum Wing',
   terminal: null,
+  location: null,
   afterPassportControl: true,
   hours: { open: '05:00', close: '01:00' },
   access: {
@@ -13,11 +14,12 @@ const PLATINUM_WING: Lounge = {
     status: { alliance: 'oneworld', levels: ['emerald'] },
   },
   checkedOn: '2026-10-06',
+  source: 'https://example.com',
 };
 
 const BUSINESS_LOUNGE: Lounge = {
   ...PLATINUM_WING,
-  id: 'hel-business',
+  loungeId: 'hel-business',
   name: 'Finnair Lounge',
   access: {
     cabin: { cabins: ['business', 'first'], alliance: 'oneworld' },
@@ -26,25 +28,29 @@ const BUSINESS_LOUNGE: Lounge = {
 };
 
 const PLAZA: Lounge = {
-  id: 'hel-plaza',
+  loungeId: 'hel-plaza',
   airport: 'HEL',
   name: 'Plaza Premium Lounge',
   terminal: null,
+  location: null,
   afterPassportControl: true,
   hours: { open: '06:00', close: '22:00' },
   access: { networks: ['priority-pass'], door: { amount: 4500, currency: 'EUR' } },
   checkedOn: '2026-10-06',
+  source: 'https://example.com',
 };
 
 const STAR_LOUNGE: Lounge = {
-  id: 'fra-senator',
+  loungeId: 'fra-senator',
   airport: 'FRA',
   name: 'Lufthansa Senator Lounge',
   terminal: '1',
+  location: null,
   afterPassportControl: null,
   hours: null,
   access: { status: { alliance: 'Star Alliance', levels: ['star-gold'], internationalOnly: true } },
   checkedOn: '2026-10-06',
+  source: 'https://example.com',
 };
 
 const departure = (over: Partial<LoungeDeparture> = {}): LoungeDeparture => ({

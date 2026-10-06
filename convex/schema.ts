@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
+import { loungeFields } from './loungeShared';
+
 /** Cloud mirror of the local SQLite `journeys` table. Local stays the source
  * of truth; rows merge by last-write-wins on `updatedAt`. Timestamps are the
  * same ISO strings the app stores, so LWW comparisons are byte-identical on
@@ -42,6 +44,10 @@ export default defineSchema({
   }).index('by_user', ['userId']),
   /** One Wikipedia photo per home base city, shared by everyone living there
    * (convex/cityPhoto.ts). `pending` while a lookup runs; `none` = nothing usable. */
+  /** The lounge directory (docs/lounges.md): hand-checked entries, written
+   * only by loungesInternal.replaceAirport from scripts/lounges. Public data;
+   * an airport with no rows shows no lounge surfaces in the app. */
+  lounges: defineTable(loungeFields).index('by_airport', ['airport']),
   cityPhotos: defineTable({
     key: v.string(),
     status: v.union(v.literal('ok'), v.literal('none'), v.literal('pending')),

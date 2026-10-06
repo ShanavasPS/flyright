@@ -8,53 +8,22 @@
  * whose member number the boarding pass carries. A status the traveller
  * typed is "likely" until then, with the fix to make it certain. */
 
+import { type LoungeRecord } from '../../convex/loungeShared';
 import { type CabinClass } from '@/services/cabin';
-import {
-  allianceLevelOf,
-  allianceOf,
-  type Alliance,
-  type AllianceLevel,
-  type MembershipLike,
-} from '@/services/loyalty-programmes';
+import { allianceLevelOf, allianceOf, type AllianceLevel, type MembershipLike } from '@/services/loyalty-programmes';
+
+/** One lounge as the directory describes it (convex/loungeShared). Hours
+ * are the airport's local clock; a close earlier than the open runs past
+ * midnight. */
+export type Lounge = LoungeRecord;
 
 /** Lounge networks a pass can belong to. */
-export type LoungeNetwork = 'priority-pass' | 'dragonpass' | 'loungekey' | 'mastercard-travel-pass';
+export type LoungeNetwork = NonNullable<Lounge['access']['networks']>[number];
 
 export interface Money {
   /** Minor units: 3500 for €35. */
   amount: number;
   currency: string;
-}
-
-/** One lounge as the directory describes it. Hours are the airport's local
- * clock; a close earlier than the open runs past midnight. */
-export interface Lounge {
-  id: string;
-  airport: string;
-  name: string;
-  /** Terminal as the airport names it; null when the airport has one or
-   *  the lounge serves every terminal airside. */
-  terminal: string | null;
-  /** True when the lounge is past passport control, so only travellers who
-   *  cross a border reach it; false when before it; null when unknown. */
-  afterPassportControl: boolean | null;
-  /** 'HH:MM'–'HH:MM' local; null when unknown (never treated as closed). */
-  hours: { open: string; close: string } | null;
-  access: {
-    /** Cabins that get in when flying one of `carriers`, or any member of
-     *  `alliance`. */
-    cabin?: { cabins: CabinClass[]; carriers?: string[]; alliance?: Alliance };
-    /** Alliance status levels that get in on a flight operated by that
-     *  alliance. Star Alliance Gold and SkyTeam Elite Plus count on
-     *  international flights only. */
-    status?: { alliance: Alliance; levels: AllianceLevel[]; internationalOnly?: boolean };
-    /** Pass networks the desk accepts. */
-    networks?: LoungeNetwork[];
-    /** What the desk charges a walk-in, when it takes one. */
-    door?: Money;
-  };
-  /** The day a person last checked these facts against the source. */
-  checkedOn: string;
 }
 
 /** The departure the lounges are for. */

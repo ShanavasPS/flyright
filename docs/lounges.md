@@ -7,14 +7,16 @@ and "How it works" (Technical plan, Feasibility).
 
 ## Status
 
-Step 0 of the rollout (groundwork) is built; nothing shows in the app yet.
+Steps 0 (groundwork) and 1 (directory) are built; nothing shows in the app yet.
 
 | Piece | File | State |
 | --- | --- | --- |
 | Alliance level per tier | `src/services/loyalty-programmes.ts` (`Tier.level`, `allianceLevelOf`) | Built |
 | Eligibility engine | `src/services/lounge-access.ts` (`loungeOptions`) + test | Built |
 | Frequent flyer number and fast track from the boarding pass | `src/services/bcbp.ts` (`frequentFlyer`, `fastTrack` per leg) + test | Built, unused |
-| Lounge directory (Convex `lounges`, `lounges.atAirport`) | — | Step 1 |
+| Lounge directory | `convex/lounges.ts` (`atAirports`, public), `convex/loungesInternal.ts` (`replaceAirport`), `convex/loungeShared.ts` (shape, `loungeProblem`) | Built, seeded on dev only |
+| Directory data and scripts | `scripts/lounges/directory.json` (+ test), `seed.mjs`, `check.mjs` | HEL, DOH |
+| App side, offline copy | `src/services/lounges.ts` (`useLounges`) | Built, unused |
 | Trip-page line, travel-day card, sheet | — | Steps 2–3 |
 | Passes and visits (device-only tables) | — | Step 4, a later release |
 | Booking evidence (`booking_loyalty`) | — | Step 5 |
@@ -48,6 +50,26 @@ Every lounge has `checkedOn`; a script flags entries older than 90 days
 before each release. An empty answer from the server hides every lounge
 surface, which is also the kill switch. A paid feed is considered only after
 the coverage is measured, with a licence read like docs/flight-paths.md.
+
+## Updating the directory
+
+1. Edit `scripts/lounges/directory.json`: one list per airport, each entry
+   with the operator's own page as `source` and today as `checkedOn`.
+   `npx jest scripts/lounges` checks the shape.
+2. `node scripts/lounges/seed.mjs HEL` writes that airport to the dev
+   deployment; `--prod` writes production. Production only after the owner
+   has checked the entries, and only once the backend with `lounges` is
+   deployed there.
+3. Before each release: `node scripts/lounges/check.mjs` lists entries older
+   than 90 days.
+4. To pull an airport, set its list to `[]` and seed it: the app hides it.
+
+The starter list (2026-10-06) was checked against Finnair's lounge page,
+Qatar Airways' press release and Priority Pass's lounge pages. Qatar
+Airways' own lounge page refused automated reads, so the Al Safwa and Al
+Mourjan entries carry no hours (unknown, never shown as closed); confirm
+them by hand before seeding production. Al Mourjan is for Business and
+First tickets only; status holders use the Platinum and Gold lounges.
 
 ## Decisions (2026-10-06)
 

@@ -1,0 +1,251 @@
+{
+  "HEL": [
+    {
+      "loungeId": "hel-finnair-business-schengen",
+      "airport": "HEL",
+      "name": "Finnair Business Lounge",
+      "terminal": null,
+      "location": "Schengen, near gate 21, 3rd floor",
+      "afterPassportControl": false,
+      "hours": {
+        "open": "05:00",
+        "close": "23:30"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.finnair.com/us-en/smooth-travelling-at-helsinki-airport/finnair-lounges-at-helsinki-airport"
+    },
+    {
+      "loungeId": "hel-finnair-business-non-schengen",
+      "airport": "HEL",
+      "name": "Finnair Business Lounge",
+      "terminal": null,
+      "location": "Non-Schengen, near gate 52",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "05:30",
+        "close": "24:00"
+      },
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        },
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.finnair.com/us-en/smooth-travelling-at-helsinki-airport/finnair-lounges-at-helsinki-airport"
+    },
+    {
+      "loungeId": "hel-finnair-platinum-wing",
+      "airport": "HEL",
+      "name": "Finnair Platinum Wing",
+      "terminal": null,
+      "location": "Non-Schengen, near gate 52",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "10:30",
+        "close": "24:00"
+      },
+      "access": {
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.finnair.com/us-en/smooth-travelling-at-helsinki-airport/finnair-lounges-at-helsinki-airport"
+    }
+  ],
+  "DOH": [
+    {
+      "loungeId": "doh-al-safwa",
+      "airport": "DOH",
+      "name": "Al Safwa First Lounge",
+      "terminal": null,
+      "location": "Departures, after security",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "first"
+          ],
+          "carriers": [
+            "QR"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.qatarairways.com/en/lounges.html"
+    },
+    {
+      "loungeId": "doh-al-mourjan-garden",
+      "airport": "DOH",
+      "name": "Al Mourjan Business Lounge, The Garden",
+      "terminal": null,
+      "location": "North, level 2, Duty Free Plaza North by concourse C",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.qatarairways.com/en/lounges.html"
+    },
+    {
+      "loungeId": "doh-al-mourjan-south",
+      "airport": "DOH",
+      "name": "Al Mourjan Business Lounge, South",
+      "terminal": null,
+      "location": "South, level 3, Duty Free South Plaza",
+      "afterPassportControl": true,
+      "hours": null,
+      "access": {
+        "cabin": {
+          "cabins": [
+            "business",
+            "first"
+          ],
+          "alliance": "oneworld"
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.qatarairways.com/en/lounges.html"
+    },
+    {
+      "loungeId": "doh-platinum-south",
+      "airport": "DOH",
+      "name": "Qatar Airways Platinum Lounge, South",
+      "terminal": null,
+      "location": "Concourse A, level 1, by gate A1",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.qatarairways.com/press-releases/en-WW/218271-qatar-airways-unveils-platinum-gold-and-silver-lounges-for-privilege-club-members-and-oneworld-partners/"
+    },
+    {
+      "loungeId": "doh-gold-south",
+      "airport": "DOH",
+      "name": "Qatar Airways Gold Lounge, South",
+      "terminal": null,
+      "location": "Concourse A, level 1, by gate A1",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "status": {
+          "alliance": "oneworld",
+          "levels": [
+            "sapphire",
+            "emerald"
+          ]
+        }
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.qatarairways.com/press-releases/en-WW/218271-qatar-airways-unveils-platinum-gold-and-silver-lounges-for-privilege-club-members-and-oneworld-partners/"
+    },
+    {
+      "loungeId": "doh-al-maha-north",
+      "airport": "DOH",
+      "name": "Al Maha Lounge, North",
+      "terminal": null,
+      "location": "Level 1, near gate C14",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/de-DE/lounges/qatar/hamad-international/doh6-al-maha-lounge-north-node"
+    },
+    {
+      "loungeId": "doh-al-maha-south",
+      "airport": "DOH",
+      "name": "Al Maha Lounge, South",
+      "terminal": null,
+      "location": "Level 2, Duty Free South, by gates A, B and C",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/en-GB/lounges/qatar/hamad-international/doh2-al-maha-lounge-south-node"
+    },
+    {
+      "loungeId": "doh-al-maha-southeast",
+      "airport": "DOH",
+      "name": "Al Maha Lounge, Southeast",
+      "terminal": null,
+      "location": "1st floor, near gates C1 to C4",
+      "afterPassportControl": true,
+      "hours": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "access": {
+        "networks": [
+          "priority-pass"
+        ]
+      },
+      "checkedOn": "2026-10-06",
+      "source": "https://www.prioritypass.com/de-DE/lounges/qatar/hamad-international/doh7-al-maha-lounge-southeast"
+    }
+  ]
+}
