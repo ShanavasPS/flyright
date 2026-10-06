@@ -25,6 +25,7 @@ import { cacheExpiry, flightPhase, maySpend } from '../../../convex/providerShar
 import { carrierFor } from '@/constants/carriers';
 import { lookupDay } from '../../../convex/lookupShared';
 import { beginLookup, identifyCaller, providerCall, recordLookup } from '@/server/lookup-gate';
+import { PROVIDER_HISTORY_DAYS, providerHasDay } from '@/services/lookup-reach';
 
 /** Offline/dev stand-in: HEL→FRA on the requested date. Past flights with an
  * odd flight number arrive 195 min late (EU261-eligible); even ones are on
@@ -35,10 +36,6 @@ function mockLeg(flight: string, date: string) {
   const today = new Date().toISOString().slice(0, 10);
   const isPast = date < today;
 
-  // Mimic the provider's history horizon so the lookup-failed → add-manually
-  // path is exercisable offline: anything older than a year 404s like prod.
-  const yearAgo = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`;
-  if (date < yearAgo) return null;
   const delayMinutes = isPast ? (digits % 2 === 1 ? 195 : 0) : null;
 
   // Upcoming odd-numbered flights get a late inbound so the prediction UI
@@ -175,8 +172,15 @@ export async function GET(request: Request) {
   const wantInbound = url.searchParams.get('inbound') === '1';
   const purpose = url.searchParams.get('purpose') === 'monitor' ? 'monitor' : 'schedule';
 
-  if (!flight || !date) {
-    return Response.json({ error: 'flight and date are required' }, { status: 400 });
+  if (!flight || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return Response.json({ error: 'flight and date (YYYY-MM-DD) are required' }, { status: 400 });
+  }
+
+  // Older than the provider plan keeps (services/lookup-reach): the provider
+  // would answer 400, and "try again" would be a lie. Refused before metering,
+  // so it costs neither the caller's allowance nor our units, mock or not.
+  if (!providerHasDay(date)) {
+    return Response.json({ error: 'too_old', days: PROVIDER_HISTORY_DAYS }, { status: 422 });
   }
 
   if (!providerConfigured()) {

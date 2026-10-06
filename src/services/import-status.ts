@@ -60,7 +60,8 @@ export function importStatus({ pass, ticket, attachable, already, plan, edited, 
     if (edited) return { text: 'Year changed by you · saved as printed', tone: 'dim' };
     // 404: the provider has no such flight. Any other failure (502, offline)
     // is the lookup's problem, not the flight's. No error at all means the
-    // date was outside the provider's reach and the lookup never ran.
+    // date was outside the provider's reach and the lookup never ran; the
+    // server's too_old refusal says the same.
     const why =
       lookupError instanceof FlightLookupError && lookupError.signInRequired
         ? 'Live tracking needs a sign-in'
@@ -68,7 +69,7 @@ export function importStatus({ pass, ticket, attachable, already, plan, edited, 
           ? "Today's live lookups are used up"
           : lookupError instanceof FlightLookupError && lookupError.status === 404
             ? 'No live record for this flight'
-            : lookupError
+            : lookupError && !(lookupError instanceof FlightLookupError && lookupError.tooOld)
               ? 'Live lookup unavailable right now'
               : 'Outside live lookup';
     return { text: `${why} · saved as a journal entry, times as printed`, tone: 'dim' };

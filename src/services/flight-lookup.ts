@@ -10,6 +10,7 @@
 import { getClerkInstance } from '@clerk/expo';
 import { Platform } from 'react-native';
 import { LOOKUP_GAP_MS, createSerialQueue } from '@/services/lookup-queue';
+import { LOOKUP_REACH_LABEL } from '@/services/lookup-reach';
 
 /** Mirrors convex/flightNormalize's FlightPosition. */
 export interface FlightPosition {
@@ -93,6 +94,12 @@ export class FlightLookupError extends Error {
     return this.status === 429;
   }
 
+  /** The day is older than the provider keeps (services/lookup-reach):
+   * no retry will find it, only the journal takes it. */
+  get tooOld(): boolean {
+    return this.code === 'too_old';
+  }
+
   /** Our own monthly provider budget is spent, not the caller's — nothing
    * they do makes live data come back today, so screens offer the manual
    * path rather than a retry. */
@@ -162,6 +169,8 @@ export async function lookupFlight(
         ? 'Live updates need FlyRight Pro.'
         : code === 'guest_quota_exceeded'
         ? "You've used today's 5 guest lookups. Sign in to look up more flights."
+        : code === 'too_old'
+        ? `Flight records only reach back ${LOOKUP_REACH_LABEL}. Add this trip to your journal instead.`
         : response.status === 404
           ? 'No flight found for that number and day.'
           : response.status === 401

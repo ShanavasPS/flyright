@@ -54,8 +54,13 @@ const rotationLegs = [
 
 const upstream = jest.fn();
 
+// The fixtures' dates must stay inside the provider's history window
+// (services/lookup-reach), so the clock is pinned rather than left to age.
+const NOW = Date.parse('2026-10-06T12:00:00Z');
+
 beforeEach(() => {
   process.env.AERODATABOX_API_KEY = 'test-key';
+  jest.spyOn(Date, 'now').mockReturnValue(NOW);
   upstream.mockReset();
   global.fetch = upstream as unknown as typeof fetch;
 });
@@ -165,7 +170,24 @@ describe('GET /api/flight-status', () => {
     });
   });
 
-    it('still reports a genuine provider outage as an upstream error', async () => {
+  it('refuses a day older than the provider keeps, before any call', async () => {
+    // Starter keeps 180 days and answers older days with a 400, which used to
+    // reach the app as "try again" (a November 2025 lookup in October 2026).
+    const response = await GET(request('flight=BA269&date=2025-11-05'));
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ error: 'too_old', days: 180 });
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it('rejects a date that is not a calendar day', async () => {
+    const response = await GET(request('flight=BA269&date=yesterday'));
+
+    expect(response.status).toBe(400);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it('still reports a genuine provider outage as an upstream error', async () => {
     upstream.mockResolvedValueOnce({ ok: false, status: 500 } as Response);
 
     const response = await GET(request('flight=AY1331&date=2026-08-30'));

@@ -64,6 +64,7 @@ import {
   type AddFlightStep,
 } from '@/services/add-flight-draft';
 import { withYear } from '@/services/year-choice';
+import { LOOKUP_REACH_LABEL, newestLookupDay, oldestLookupDay } from '@/services/lookup-reach';
 import {
   dayOffset,
   flightDay,
@@ -1017,8 +1018,8 @@ export function AddFlight({ step }: { step: Step }) {
                     type="small"
                     themeColor="textSecondary"
                     style={styles.coverageText}>
-                    Flight lookup covers about a year back and 11 months ahead — the
-                    journal takes older trips.
+                    Flight lookup covers {LOOKUP_REACH_LABEL} back and 11 months ahead —
+                    the journal takes older trips.
                     {authLoaded && !isSignedIn ? ' Try 5 live lookups a day without an account.' : ''}
                   </ThemedText>
                 </View>
@@ -1049,16 +1050,16 @@ export function AddFlight({ step }: { step: Step }) {
                 </Pressable>
               ))}
             </View>
-            {/* The journal reaches decades back; the lookup provider only
-                remembers ~a year, and schedules run ~11 months forward. */}
+            {/* The journal reaches decades back; lookup only as far as the
+                provider plan keeps history (services/lookup-reach). */}
             <CalendarMonth
               value={pendingDate}
               minDate={
                 manualMode
                   ? new Date(today.getFullYear() - 30, today.getMonth(), today.getDate())
-                  : new Date(today.getFullYear() - 1, today.getMonth(), today.getDate())
+                  : oldestLookupDay(today)
               }
-              maxDate={new Date(today.getFullYear(), today.getMonth() + 11, today.getDate())}
+              maxDate={newestLookupDay(today)}
               onSelect={setPendingDate}
             />
             <PrimaryButton
@@ -1073,7 +1074,7 @@ export function AddFlight({ step }: { step: Step }) {
             {!manualMode && !editId && (
               <Pressable onPress={startManual} hitSlop={Spacing.two}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.dateHint}>
-                  We can look up flights from about the last 12 months.{' '}
+                  We can look up flights from the last {LOOKUP_REACH_LABEL}.{' '}
                   <ThemedText type="small" themeColor="tint">
                     Older trip? Journal it instead →
                   </ThemedText>
@@ -1128,7 +1129,9 @@ export function AddFlight({ step }: { step: Step }) {
             <ThemedText type="small" themeColor="textSecondary">
               {lookup.error instanceof FlightLookupError && lookup.error.quotaExceeded
                 ? 'Your daily live lookups reset at midnight UTC — the trip can still go in your journal now.'
-                : 'Flight records only reach back about a year — you can still add this trip to your journal.'}
+                : lookup.error instanceof FlightLookupError && lookup.error.tooOld
+                  ? 'The journal takes trips of any age, with the times you enter.'
+                  : `Flight records only reach back ${LOOKUP_REACH_LABEL} — you can still add this trip to your journal.`}
             </ThemedText>
             <Pressable onPress={startManual} hitSlop={Spacing.two}>
               <ThemedText type="link">Add it manually instead →</ThemedText>

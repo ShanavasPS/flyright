@@ -48,6 +48,7 @@ import { legSchedule, plausibleArrivalDate } from '@/services/leg-schedule';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { documentLabel } from '@/services/document-name';
 import { keepDocument } from '@/services/trip-documents';
+import { withinLookupReach } from '@/services/lookup-reach';
 import { requestPushPermission } from '@/services/notifications';
 import {
   type DocumentKind,
@@ -75,15 +76,6 @@ type Phase =
   | { kind: 'review'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
   | { kind: 'saving'; segments: ImportedSegment[]; barcodes: number; tickets: string[] }
   | { kind: 'added'; count: number; attached: number; tracked: number; kept?: number };
-
-/** The provider remembers about a year back and schedules run ~11 months
- * ahead; outside that a lookup is a guaranteed 404, so skip the round trip. */
-function withinLookupReach(date: string, today: Date): boolean {
-  const day = new Date(`${date}T12:00:00`);
-  const past = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-  const future = new Date(today.getFullYear(), today.getMonth() + 11, today.getDate());
-  return day >= past && day <= future;
-}
 
 /** Gate-to-gate estimate when the document printed no arrival time — the
  * same rule of thumb the manual add-flight form uses. */
