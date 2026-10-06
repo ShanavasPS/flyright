@@ -23,7 +23,7 @@ appId: com.shanavasshaji.flyright
           text: "Allow"
           optional: true
 - extendedWaitUntil:
-    visible: "Every flight, remembered"
+    visible: 'Your travel buddy'
     timeout: 30000
 - tapOn: "Skip"
 - extendedWaitUntil:

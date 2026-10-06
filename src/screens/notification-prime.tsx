@@ -51,8 +51,8 @@ export function NotificationPrime() {
           Stay connected to your people
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.body}>
-          You asked to be reminded. Get shared flight updates from your people for free.
-          Pro adds alerts for your own flights and claim follow-ups.
+          You asked to be reminded. Your people’s take-offs, landings and postcards reach
+          you free. Pro adds gate, boarding and delay alerts for your own flights.
         </ThemedText>
       </View>
       <View style={styles.footer}>

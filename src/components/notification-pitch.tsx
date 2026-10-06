@@ -1,27 +1,55 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
+import { useStageCard } from '@/components/onboarding-art';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /**
- * Notification examples distinguish free family delivery from own Pro alerts.
+ * What the notifications are for, as they'd land on the lock screen: the
+ * traveller's own travel day (boarding, a delay) and their people's
+ * postcards. Decorative — the page's copy says which ones are Pro.
+ *
+ * `surface` is what the banners sit on: the page (the reminder sheet) or the
+ * onboarding's navy stage. `compact` (short screens) holds each banner to one
+ * line and drops the oldest.
  */
-export function NotificationPitchArt() {
+export function NotificationPitchArt({
+  compact = false,
+  surface = 'page',
+}: {
+  compact?: boolean;
+  surface?: 'page' | 'stage';
+}) {
   return (
-    <View style={styles.stack}>
+    <View style={styles.stack} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <MockBanner
+        surface={surface}
+        compact={compact}
         when="now"
-        title="Alex is flying today"
-        body="Helsinki → London. Follow the shared flight in FlyRight."
+        title="Boarding at gate B32"
+        body="AY1331 to London. Boarding closes at 9:35."
       />
       <MockBanner
-        muted
-        when="1h ago"
-        title="With Pro: your flight update"
-        body="Gate, terminal and delay alerts when the airline makes them available."
+        surface={surface}
+        compact={compact}
+        when="4m ago"
+        title="Maja sent a postcard"
+        body="Lisbon: “Sunset over the river. Worth the wait.”"
       />
+      {/* The oldest banner gives way on a short screen; the copy below
+          still names delay alerts. */}
+      {!compact && (
+        <MockBanner
+          surface={surface}
+          muted
+          when="1h ago"
+          title="AY1331 is 45 min late"
+          body="Now departs 10:35. We’ll keep watching it."
+        />
+      )}
     </View>
   );
 }
@@ -31,18 +59,29 @@ function MockBanner({
   body,
   when,
   muted,
+  compact,
+  surface,
 }: {
   title: string;
   body: string;
   when: string;
   muted?: boolean;
+  compact?: boolean;
+  surface: 'page' | 'stage';
 }) {
+  const dark = useColorScheme() === 'dark';
+  const stageCard = useStageCard();
+  // The real app icon, as the lock screen shows it: the dark rendition in
+  // dark mode, like the home screen.
+  const icon = dark
+    ? require('@/assets/images/ios-icon-dark.png')
+    : require('@/assets/images/icon.png');
   return (
-    <ThemedView type="backgroundElement" style={[styles.card, muted && styles.cardMuted]}>
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.card, surface === 'stage' ? stageCard : styles.cardLifted, muted && styles.cardMuted]}>
       <View style={styles.header}>
-        <View style={styles.appIcon}>
-          <Image style={styles.appImage} source={require('@/assets/images/splash-icon.png')} />
-        </View>
+        <Image style={styles.appIcon} source={icon} />
         <ThemedText type="small" themeColor="textSecondary" style={styles.appName}>
           FlyRight
         </ThemedText>
@@ -51,7 +90,7 @@ function MockBanner({
         </ThemedText>
       </View>
       <ThemedText type="smallBold">{title}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={compact ? 1 : undefined}>
         {body}
       </ThemedText>
     </ThemedView>
@@ -65,9 +104,13 @@ const styles = StyleSheet.create({
   },
   card: {
     alignSelf: 'stretch',
-    gap: Spacing.one,
-    padding: Spacing.three,
+    gap: Spacing.half,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three - Spacing.one,
     borderRadius: Spacing.three,
+  },
+  // On the page the banners float, like a notification over a wallpaper.
+  cardLifted: {
     shadowColor: '#0B1520',
     shadowOpacity: 0.12,
     shadowRadius: 14,
@@ -87,16 +130,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   appIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0C1B36',
-  },
-  appImage: {
-    width: 14,
-    height: 14,
+    width: 20,
+    height: 20,
+    // The iOS icon mask's corner, about 22.4% of the side.
+    borderRadius: 4.5,
   },
   appName: {
     flex: 1,

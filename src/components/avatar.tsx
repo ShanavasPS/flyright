@@ -55,7 +55,8 @@ export function Avatar({
   badgeBorder,
 }: {
   name: string;
-  imageUrl: string | null;
+  /** A photo URL, or a bundled image (`require`) for the intro's demo people. */
+  imageUrl: string | number | null;
   size?: number;
   ring?: string;
   pro?: boolean;

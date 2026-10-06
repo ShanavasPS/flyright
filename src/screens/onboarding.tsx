@@ -1,11 +1,10 @@
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
-import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { FlatList, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NotificationPitchArt } from '@/components/notification-pitch';
+import { BrandArt, ClaimArt, Stage, UpdatesArt } from '@/components/onboarding-art';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -18,17 +17,21 @@ import { markOnboardingSeen, markPushRemindLater } from '@/services/onboarding';
 
 type Page = {
   key: string;
-  eyebrow?: string;
+  /** What the page is about, in two or three words above the title. */
+  eyebrow: string;
+  /** One line on an iPhone SE: about 18 characters at this size. */
   title: string;
+  /** One sentence; the plan lines below carry the details. */
   body: string;
-  /** Omitted on the welcome page — it shows the animated brand icon instead. */
-  icon?: ComponentProps<typeof SymbolView>['name'];
-  /** The push-priming page: mock notification art, and the primary button
-   * fires the one-shot OS permission prompt instead of paging forward. */
-  kind?: 'push';
+  /** What the page's promise costs, line by line — free first. Each must
+   * match what the app actually locks (services/purchases proLocked), and
+   * fit one line on an iPhone SE (about 38 characters). */
+  points: { plan: 'Free' | 'Pro'; text: string }[];
+  /** The page's picture: the brand icon on the welcome page, else the app's
+   * own surfaces in miniature (components/onboarding-art). */
+  art: 'brand' | 'updates' | 'claim' | 'push';
 };
 
-// Free journaling and family viewing first; Pro is optional when travelling.
 /** Readable column for the intro copy and CTA on tablet-width screens —
  * tighter than MaxContentWidth because these are single short paragraphs. */
 const PageMaxWidth = 480;
@@ -37,41 +40,72 @@ const PageMaxWidth = 480;
  * is requested — a system alert asked for mid-transition can be dropped. */
 const TRACKING_PROMPT_DELAY_MS = 600;
 
+/** Below this window height (an iPhone SE is 667) the art goes compact so
+ * each page still fits without scrolling. */
+const COMPACT_HEIGHT = 740;
+
+/** Every page's stage is the same height, so the copy under it starts at the
+ * same line on every page and nothing jumps as the pages turn. */
+const stageHeight = (windowHeight: number, compact: boolean) =>
+  compact ? 224 : Math.min(380, Math.max(232, Math.round(windowHeight * 0.4)));
+
+// Travel buddy first: the journal, then the people, then the safety net.
 const PAGES: Page[] = [
   {
     key: 'journal',
     eyebrow: 'Welcome to FlyRight',
-    title: 'Every flight, remembered',
-    body:
-      'Save past and upcoming flights for free. Follow your people, read their ' +
-      'postcards and watch your travel story grow.',
+    title: 'Your travel buddy',
+    body: 'Every flight in one place, and a companion from your front door to arrivals.',
+    points: [
+      { plan: 'Free', text: 'Save every flight, past and upcoming' },
+      { plan: 'Free', text: 'Your trips, photos and world map' },
+    ],
+    art: 'brand',
   },
   {
-    key: 'rights',
-    title: 'Pro when you travel',
-    body:
-      'Add live flight updates, share postcards and prepare delay claims with Pro. ' +
-      'Choose it when you need it. Your family follows free.',
-    icon: { ios: 'clock.badge.exclamationmark', android: 'schedule', web: 'schedule' },
+    key: 'updates',
+    eyebrow: 'Updates',
+    title: 'Follow your friends',
+    body: 'Watch them take off and land as it happens, with the postcards they share on the way.',
+    points: [
+      { plan: 'Free', text: 'See their take-offs and landings' },
+      { plan: 'Pro', text: 'Share postcards from your own trips' },
+    ],
+    art: 'updates',
+  },
+  {
+    key: 'claims',
+    eyebrow: 'Delay compensation',
+    title: 'Delayed? Get paid',
+    body: 'FlyRight is already watching your flight, so a long delay never goes unnoticed.',
+    points: [
+      { plan: 'Free', text: 'See what you’re owed, up to €600' },
+      { plan: 'Pro', text: 'We prepare the claim for you' },
+    ],
+    art: 'claim',
   },
   {
     key: 'push',
-    kind: 'push',
-    title: 'Stay close, even miles apart',
-    body:
-      'Get shared flight updates from your people for free. ' +
-      'Pro adds alerts for your own flights and claim follow-ups. Notifications are optional.',
+    eyebrow: 'Notifications',
+    title: 'Stay in the loop',
+    body: 'Every step of travel day, the moment it happens: yours and your friends’.',
+    points: [
+      { plan: 'Free', text: 'Your friends’ flights and postcards' },
+      { plan: 'Pro', text: 'Gate, boarding and delay alerts' },
+    ],
+    art: 'push',
   },
 ];
 
 export function Onboarding() {
   const router = useRouter();
   const theme = useTheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const compact = height < COMPACT_HEIGHT;
   const listRef = useRef<FlatList<Page>>(null);
   const [page, setPage] = useState(0);
   const [busy, setBusy] = useState(false);
-  const isPush = PAGES[page].kind === 'push';
+  const isPush = PAGES[page].art === 'push';
 
   // Seen the moment it appears: every exit path (Skip, Android back, the CTAs)
   // counts, so the intro can never show twice.
@@ -92,7 +126,7 @@ export function Onboarding() {
   function advance() {
     const next = page + 1;
     // Optimistic: Android's scrollToIndex doesn't always fire
-    // onMomentumScrollEnd, so the dots would lag a swipe behind.
+    // onMomentumScrollEnd, so the progress bar would lag a swipe behind.
     setPage(next);
     listRef.current?.scrollToIndex({ index: next, animated: true });
   }
@@ -146,13 +180,32 @@ export function Onboarding() {
             paddingRight: insets.right,
           },
         ]}>
-        <View style={styles.skipRow}>
+        {/* Progress on the left, Skip on the right: where the page is, and
+            the way out, in one quiet row. */}
+        <View style={styles.topBar}>
+          <View
+            style={styles.progress}
+            accessible
+            accessibilityLabel={`Page ${page + 1} of ${PAGES.length}`}>
+            {PAGES.map((p, i) => (
+              <View
+                key={p.key}
+                style={[
+                  styles.segment,
+                  { backgroundColor: i <= page ? theme.heading : theme.hairline },
+                ]}
+              />
+            ))}
+          </View>
           <Pressable
             accessibilityRole="button"
             onPress={() => finish('skip')}
             disabled={isPush}
             style={isPush && styles.hidden}>
-            <ThemedText type="link">Skip</ThemedText>
+            {/* Quiet on purpose: the page's one loud element is its button. */}
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.skip}>
+              Skip
+            </ThemedText>
           </Pressable>
         </View>
 
@@ -169,58 +222,65 @@ export function Onboarding() {
             setPage(Math.round(e.nativeEvent.contentOffset.x / width))
           }
           renderItem={({ item }) => (
-            <View style={[styles.page, { width }]}>
-              {/* Inner clamp: pages span the whole window, but the art and
+            // Each page scrolls on its own when it can't fit (large text);
+            // otherwise it sits still.
+            <ScrollView
+              style={{ width }}
+              contentContainerStyle={styles.page}
+              bounces={false}
+              showsVerticalScrollIndicator={false}>
+              {/* Inner clamp: pages span the whole window, but the stage and
                   copy hold a readable column on iPad-width screens. */}
               <View style={styles.pageContent}>
-              <View style={styles.art}>
-                {item.kind === 'push' ? (
-                  <NotificationPitchArt />
-                ) : item.icon ? (
-                  <View
-                    style={[styles.iconCircle, { backgroundColor: theme.backgroundSelected }]}>
-                    <SymbolView name={item.icon} size={56} tintColor={theme.tint} />
+                <Stage height={stageHeight(height, compact)} compact={compact} top={item.art === 'push'}>
+                  {item.art === 'push' ? (
+                    <NotificationPitchArt compact={compact} surface="stage" />
+                  ) : item.art === 'updates' ? (
+                    <UpdatesArt compact={compact} />
+                  ) : item.art === 'claim' ? (
+                    <ClaimArt />
+                  ) : (
+                    <BrandArt />
+                  )}
+                </Stage>
+                <View style={styles.copy}>
+                  <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
+                    {item.eyebrow}
+                  </ThemedText>
+                  {/* One line, always: the titles are written short, and one
+                      that still runs long (large text) shrinks a little
+                      rather than wrap. */}
+                  <ThemedText
+                    type="subtitle"
+                    themeColor="heading"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                    style={styles.title}>
+                    {item.title}
+                  </ThemedText>
+                  <ThemedText themeColor="textSecondary">{item.body}</ThemedText>
+                  <View style={styles.points}>
+                    {item.points.map((point) => (
+                      <View key={point.text} style={styles.point}>
+                        <View style={[styles.plan, { backgroundColor: theme.backgroundSelected }]}>
+                          <ThemedText type="smallBold" themeColor="heading" style={styles.planLabel}>
+                            {point.plan}
+                          </ThemedText>
+                        </View>
+                        <ThemedText type="small" style={styles.pointText}>
+                          {point.text}
+                        </ThemedText>
+                      </View>
+                    ))}
                   </View>
-                ) : (
-                  // The app-icon tile keeps its splash navy in both themes —
-                  // it's the brand mark, not a themed surface.
-                  <View style={styles.brandTile}>
-                    <Image
-                      style={styles.brandImage}
-                      source={require('@/assets/images/splash-icon.png')}
-                    />
-                  </View>
-                )}
+                </View>
               </View>
-              {item.eyebrow && (
-                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-                  {item.eyebrow}
-                </ThemedText>
-              )}
-              <ThemedText type="subtitle" themeColor="heading" style={styles.title}>
-                {item.title}
-              </ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.body}>
-                {item.body}
-              </ThemedText>
-              </View>
-            </View>
+            </ScrollView>
           )}
         />
 
         <View style={styles.footer}>
-          <View style={styles.dots}>
-            {PAGES.map((p, i) => (
-              <View
-                key={p.key}
-                style={[
-                  styles.dot,
-                  i === page && styles.dotActive,
-                  { backgroundColor: i === page ? theme.tint : theme.backgroundSelected },
-                ]}
-              />
-            ))}
-          </View>
           <PrimaryButton
             label={isPush ? 'Allow notifications' : 'Continue'}
             disabled={busy}
@@ -251,52 +311,45 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  skipRow: {
-    alignItems: 'flex-end',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.four,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+  },
+  progress: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: Spacing.one + Spacing.half,
+  },
+  segment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  skip: {
+    // A full-height tap target for a small word.
+    lineHeight: 30,
   },
   hidden: {
     opacity: 0,
   },
   page: {
+    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.three,
   },
   pageContent: {
     width: '100%',
     maxWidth: PageMaxWidth,
-    alignItems: 'center',
+  },
+  copy: {
+    // Inset from the stage's edge to the button's, so copy and button share
+    // one left edge.
+    paddingHorizontal: Spacing.two,
+    paddingTop: Spacing.four,
     gap: Spacing.two,
-  },
-  art: {
-    // A floor, not a fixed height: the push page's two-banner stack runs
-    // taller than the 128pt icon circles.
-    minHeight: 160,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.four,
-  },
-  iconCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandTile: {
-    width: 128,
-    height: 128,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0C1B36',
-  },
-  brandImage: {
-    width: 76,
-    height: 76,
   },
   eyebrow: {
     fontSize: 12,
@@ -305,30 +358,41 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   title: {
-    textAlign: 'center',
+    lineHeight: 38,
   },
-  body: {
-    textAlign: 'center',
+  points: {
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  point: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three - Spacing.one,
+  },
+  // A neutral tag, not a status: Free and Pro read alike, and the tint
+  // stays the button's.
+  plan: {
+    width: 44,
+    alignItems: 'center',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  planLabel: {
+    fontSize: 11,
+    lineHeight: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  pointText: {
+    flex: 1,
   },
   footer: {
     width: '100%',
     maxWidth: PageMaxWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
     gap: Spacing.three,
-  },
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: Spacing.two,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  dotActive: {
-    width: 20,
   },
   footerLink: {
     textAlign: 'center',
