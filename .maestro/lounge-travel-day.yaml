@@ -1,0 +1,43 @@
+# The travel-day lounge card and sheet (docs/lounges.md, step 3). Seed a
+# stopped test app first and pass the printed id as JOURNEY:
+#   python3 scripts/seed-lounge-trips.py <SQLite-directory> travel
+# The deployment needs HEL in the lounge directory. Which HEL lounges are
+# open depends on the clock, so the flow opens the first row it finds.
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Flights"
+    timeout: 90000
+- openLink: "flyright://journey/${JOURNEY}"
+- extendedWaitUntil:
+    visible: "AY5 · Finnair"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "Lounges at HEL"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: "Leave a lounge by.*"
+- tapOn:
+    id: "lounge-row-.*"
+    index: 0
+- extendedWaitUntil:
+    visible: "Have ready at the desk"
+    timeout: 10000
+- assertVisible: "Why you get in"
+- assertVisible: ".*Carries your Finnair Plus number.*"
+- takeScreenshot: ${SHOTS}/lounge-sheet
+- tapOn: "Show boarding pass"
+- extendedWaitUntil:
+    visible: ".*Ready to show without an internet connection.*"
+    timeout: 10000
+- tapOn: "Close"
+- extendedWaitUntil:
+    visible: "Not today"
+    timeout: 10000
+- tapOn: "Not today"
+- extendedWaitUntil:
+    notVisible: "Have ready at the desk"
+    timeout: 10000
+- assertNotVisible: "Lounges at HEL"

@@ -30,6 +30,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ProgressExpandButton, TravelProgressStrip } from '@/components/travel-progress-strip';
 import { TravelDayTimeline } from '@/components/travel-day-timeline';
+import { LoungeCard } from '@/components/lounge-card';
 import { LoungeLine } from '@/components/lounge-line';
 import { TripClockStrip, TripFactsCard, TripStatusRow } from '@/components/trip-card';
 import { TripDocuments } from '@/components/trip-documents';
@@ -578,7 +579,7 @@ export function JourneyDetail({
                   model={card}
                   part="airport"
                   afterFirst={
-                    row.mode === 'flight' && (moment === 'saved' || moment === 'travel') ? <LoungeLine trip={row} /> : null
+                    row.mode === 'flight' && moment === 'saved' ? <LoungeLine trip={row} /> : null
                   }
                   onEdit={(field) => router.push({ pathname: '/trip-details', params: { journeyId: row.id, field } })}
                 />
@@ -593,6 +594,10 @@ export function JourneyDetail({
                   onEdit={(field) => router.push({ pathname: '/trip-details', params: { journeyId: row.id, field } })}>
                   <EarningLine number={row.mode === 'flight' ? row.number : ''} />
                 </TripFactsCard>
+              ) : null;
+            case 'lounge':
+              return row && !isDemo && row.mode === 'flight' ? (
+                <LoungeCard key={slot} trip={row} facts={facts} now={now} />
               ) : null;
             case 'progress':
               // A flown trip keeps its progress as a record: which steps were
@@ -757,12 +762,13 @@ function shareTrip(journey: Journey) {
 }
 
 type TripMoment = 'saved' | 'travel' | 'landed' | 'past';
-type Slot = 'pass' | 'airport' | 'ticket' | 'progress' | 'updates' | 'pro' | 'claims' | 'journal' | 'about';
+type Slot = 'pass' | 'airport' | 'ticket' | 'progress' | 'lounge' | 'updates' | 'pro' | 'claims' | 'journal' | 'about';
 
 /** The trip page's cards by what the moment needs (the A2 study, design
  * canvas "Trip details & Memberships alternatives"):
  *  - saved: close the ticket's gaps first; the airport card is still empty.
- *  - travel: the next hour, in the order it is needed — pass, gate, steps.
+ *  - travel: the next hour, in the order it is needed — pass, gate, steps,
+ *    then the lounges at the airport (docs/lounges.md).
  *  - landed: belt and bags, a claim if one is owed, then the journal while
  *    it is fresh.
  *  - past: any claim, then the memory; the airport record last. */
@@ -771,7 +777,7 @@ function orderedSlots(moment: TripMoment): Slot[] {
     case 'saved':
       return ['ticket', 'pass', 'airport', 'pro', 'claims', 'journal', 'about'];
     case 'travel':
-      return ['pass', 'airport', 'claims', 'progress', 'updates', 'ticket', 'journal', 'about'];
+      return ['pass', 'airport', 'claims', 'progress', 'lounge', 'updates', 'ticket', 'journal', 'about'];
     case 'landed':
       return ['airport', 'claims', 'progress', 'journal', 'updates', 'about', 'ticket', 'pass'];
     case 'past':

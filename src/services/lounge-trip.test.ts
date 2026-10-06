@@ -1,5 +1,16 @@
 import { loungeOptions, type Lounge } from './lounge-access';
-import { loungeDeparture, loungeLine, onBooking, statusEvidence, type LoungeTrip } from './lounge-trip';
+import {
+  fixLine,
+  leaveBy,
+  leaveByLabel,
+  loungeDeparture,
+  loungeLine,
+  onBooking,
+  statusEvidence,
+  verdictLabel,
+  wayLine,
+  type LoungeTrip,
+} from './lounge-trip';
 import { type MembershipLike } from './loyalty-programmes';
 
 // IATA Resolution 792's example pass, moved to AY5 HEL→JFK on day 282
@@ -113,5 +124,50 @@ describe('loungeLine', () => {
     const options = loungeOptions([emerald], loungeDeparture(trip(), null)!, statusEvidence(trip(), [finnair({ tier: 'Gold' })]), [], '2026-10');
     expect(loungeLine(options, true)).toBeNull();
     expect(loungeLine([], false)).toBeNull();
+  });
+});
+
+describe('travel-day wording', () => {
+  const t = trip();
+  const emerald = lounge({ name: 'Finnair Platinum Wing' });
+
+  it('leaves 15 minutes before boarding, else 45 before departure, delays included', () => {
+    const boarding = { terminal: null, boardingTime: '2026-10-09T12:05:00Z', estimatedDeparture: null };
+    expect(new Date(leaveBy(t, 'Europe/Helsinki', boarding)!).toISOString()).toBe('2026-10-09T11:50:00.000Z');
+    expect(new Date(leaveBy(t, 'Europe/Helsinki')!).toISOString()).toBe('2026-10-09T11:55:00.000Z');
+    const delayed = { terminal: null, boardingTime: null, estimatedDeparture: '2026-10-09T13:40:00Z' };
+    expect(new Date(leaveBy(t, 'Europe/Helsinki', delayed)!).toISOString()).toBe('2026-10-09T12:55:00.000Z');
+    expect(leaveByLabel(Date.parse('2026-10-09T11:55:00Z'), 'Europe/Helsinki')).toMatch(/14:55|2:55/);
+  });
+
+  it('a delay moves the departure the verdicts use', () => {
+    const delayed = { terminal: '2', boardingTime: null, estimatedDeparture: '2026-10-09T23:10:00+03:00' };
+    expect(loungeDeparture(t, 'Europe/Helsinki', delayed)).toMatchObject({ departsLocal: '23:10', terminal: '2' });
+  });
+
+  it('says how the traveller gets in and what to fix', () => {
+    const [option] = loungeOptions([emerald], loungeDeparture(t, null)!, statusEvidence(t, [finnair()]), [], '2026-10');
+    expect(verdictLabel(option)).toEqual({ text: 'Likely', tone: 'warning' });
+    expect(wayLine(option, [finnair()], 'AY5')).toBe('Finnair Plus Platinum · oneworld Emerald');
+    expect(fixLine(option, [finnair()], false)).toMatch(/Save your boarding pass/);
+    expect(fixLine(option, [finnair()], true)).toMatch(/doesn't show it/);
+  });
+
+  it('names a cabin entry and an ended status', () => {
+    const business = lounge({ access: { cabin: { cabins: ['business'], alliance: 'oneworld' } } });
+    const [cabin] = loungeOptions([business], loungeDeparture(trip({ cabin: 'business' }), null)!, [], [], '2026-10');
+    expect(verdictLabel(cabin)).toEqual({ text: 'Included', tone: 'success' });
+    expect(wayLine(cabin, [], 'AY5')).toBe('Business on AY5');
+    const old = finnair({ tierUntil: '2026-03' });
+    const [ended] = loungeOptions([emerald], loungeDeparture(t, null)!, statusEvidence(t, [old]), [], '2026-10');
+    expect(verdictLabel(ended).text).toBe('Check status');
+    expect(fixLine(ended, [old], false)).toMatch(/Platinum until Mar 2026/);
+  });
+
+  it('prices a pay-at-the-desk lounge', () => {
+    const paid = lounge({ access: { door: { amount: 4500, currency: 'EUR' } } });
+    const [option] = loungeOptions([paid], loungeDeparture(t, null)!, [], [], '2026-10');
+    expect(verdictLabel(option)).toEqual({ text: '€45', tone: 'neutral' });
+    expect(wayLine(option, [], 'AY5')).toBe('Pay at the desk');
   });
 });

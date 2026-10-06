@@ -37,6 +37,8 @@ export const PRIVATE_ROUTE_PARAMS = [
   'depTime',
   'arrTime',
   'delay',
+  // A lounge names the airport the traveller leaves from (lounge sheet).
+  'lounge',
   // Names, files and copy written about the traveller.
   'name',
   // Where a home base is: where the traveller lives.

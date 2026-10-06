@@ -7,7 +7,7 @@ and "How it works" (Technical plan, Feasibility).
 
 ## Status
 
-Steps 0–2 are built: the trip page shows a lounge line under the departure airport before the day.
+Steps 0–3 are built (the first release): a lounge line on the trip page before the day, and on the travel day a lounge card and sheet.
 
 | Piece | File | State |
 | --- | --- | --- |
@@ -18,12 +18,21 @@ Steps 0–2 are built: the trip page shows a lounge line under the departure air
 | Directory data and scripts | `scripts/lounges/directory.json` (+ test), `seed.mjs`, `check.mjs` | HEL, DOH |
 | App side, offline copy | `src/services/lounges.ts` (`useLounges`) | Built, unused |
 | Trip facts for the engine, boarding-pass match, the line's wording | `src/services/lounge-trip.ts` (+ test) | Built |
-| Trip-page line (design A1) | `src/components/lounge-line.tsx`, `TripFactsCard` `afterFirst` | Built, saved and travel moments |
-| Travel-day card, sheet | — | Step 3 |
+| Trip-page line (design A1) | `src/components/lounge-line.tsx`, `TripFactsCard` `afterFirst` | Built, 'saved' moment |
+| Travel-day card (A3) | `src/components/lounge-card.tsx`, slot `'lounge'` after progress in the 'travel' moment | Built |
+| Lounge sheet (A4) | `src/screens/lounge-sheet.tsx`, route `/lounge?journeyId=&lounge=` (form sheet) | Built: Show boarding pass, Member number, Not today |
+| Shared verdicts, "Not today" | `src/hooks/use-lounge-options.ts`, `src/services/lounge-dismissals.ts` | Built |
 | Passes and visits (device-only tables) | — | Step 4, a later release |
 | Booking evidence (`booking_loyalty`) | — | Step 5 |
 
 ## Rules
+
+- **Leave by** = the posted boarding time − 15 min, else departure − 45 min;
+  a delay (FlightFacts `estimatedDeparture`) moves it and the verdicts. The
+  card is gone once that time passes. Walk times to gates are not in the
+  directory yet.
+- **Not in the first release:** pass visits, "I'm in the lounge", visit
+  counting (step 4, device tables), the connection card, U1/U3/U4.
 
 - **FlyRight is never what the desk scans.** The desk reads the boarding
   pass, a pass company's own app, or a payment card. Copy says "Have ready",
@@ -58,7 +67,8 @@ the coverage is measured, with a licence read like docs/flight-paths.md.
 `python3 scripts/seed-lounge-trips.py <SQLite-dir> likely|included|none|travel|clear`
 writes an anonymous AY5 HEL→JFK (and a Finnair Plus Platinum membership)
 into a stopped app; `.maestro/lounge-trip-line.yaml` with `CASE=` checks the
-line. iOS reads the line as one accessibility label, so the flow matches
+line; `.maestro/lounge-travel-day.yaml` with `JOURNEY=` (the id the
+`travel` seed prints) walks card → sheet → boarding pass → Not today. iOS reads the line as one accessibility label, so the flow matches
 with `.*…*`. The days-before cases depart 15:40 Helsinki time so every HEL
 lounge is open.
 

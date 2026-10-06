@@ -1,19 +1,12 @@
-import { useAuth } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useLoungeOptions } from '@/hooks/use-lounge-options';
 import { useTheme } from '@/hooks/use-theme';
-import { airportZone } from '@/services/airports';
-import { loungeOptions } from '@/services/lounge-access';
-import { loungeDeparture, loungeLine, statusEvidence, type LoungeTrip } from '@/services/lounge-trip';
-import { useLounges } from '@/services/lounges';
-import { useMemberships } from '@/services/memberships';
-
-const thisMonth = () => new Date().toISOString().slice(0, 7);
+import { loungeLine, type LoungeTrip } from '@/services/lounge-trip';
 
 /** "2 lounges you can use · Finnair Platinum Wing included" under the
  * airport card before the day (docs/lounges.md, design A1). Nothing at all
@@ -21,17 +14,9 @@ const thisMonth = () => new Date().toISOString().slice(0, 7);
 export function LoungeLine({ trip }: { trip: LoungeTrip }) {
   const theme = useTheme();
   const router = useRouter();
-  const { userId } = useAuth();
-  const memberships = useMemberships(userId);
-  const lounges = useLounges([trip.fromCode]);
-
-  const line = useMemo(() => {
-    if (!lounges?.length || !memberships) return null;
-    const departure = loungeDeparture(trip, airportZone(trip.fromCode));
-    if (!departure) return null;
-    const options = loungeOptions(lounges, departure, statusEvidence(trip, memberships), [], thisMonth());
-    return loungeLine(options, memberships.length > 0);
-  }, [lounges, memberships, trip]);
+  const result = useLoungeOptions(trip);
+  const memberships = result?.memberships;
+  const line = result ? loungeLine(result.options, result.memberships.length > 0) : null;
 
   if (!line) return null;
   const label = line.detail ? `${line.title}. ${line.detail}` : line.title;

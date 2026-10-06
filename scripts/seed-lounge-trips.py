@@ -5,7 +5,8 @@ Scenarios:
   likely    AY5 HEL→JFK in 10 days, Finnair Plus Platinum saved, no boarding pass
   included  the same with a boarding pass carrying the Finnair Plus number
   none      the trip without any seeded membership
-  travel    AY5 leaving in 2 h 30 min with the pass (the travel-day card, step 3)
+  travel    AY5 leaving in 2 h 30 min with the pass (the travel-day card, step 3);
+            a new trip id each run, printed, since "Not today" is kept per trip
   clear     removes the fixtures
 Only rows whose ids start with "lounge-test-" are written or removed; they are
 anonymous and private. Memberships an account already has on the device
@@ -23,6 +24,7 @@ directory, scenario = Path(sys.argv[1]), sys.argv[2]
 assert scenario in {"likely", "included", "none", "travel", "clear"}
 now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
 prefix = "lounge-test-"
+journey = prefix + (f"travel-{now:%H%M}" if scenario == "travel" else "out")
 number = "600123454821"
 
 # Days before: 15:40 Helsinki time in ten days, when every HEL lounge is
@@ -58,7 +60,7 @@ with sqlite3.connect(directory / "flyright.db") as db:
              distance_km,scheduled_departure,scheduled_arrival,created_at,updated_at,source,private_trip,
              pass_code,pass_format,pass_captured_at)
             VALUES (?,NULL,'flight','Finnair','FI','AY5','HEL','FI','JFK','US',6610,?,?,?,?,'manual',1,?,?,?)""",
-            (prefix + "out", departure.isoformat(), arrival.isoformat(), now.isoformat(), now.isoformat(),
+            (journey, departure.isoformat(), arrival.isoformat(), now.isoformat(), now.isoformat(),
              boarding_pass() if with_pass else None, "aztec" if with_pass else None,
              now.isoformat() if with_pass else None))
         if scenario != "none":
@@ -68,4 +70,4 @@ with sqlite3.connect(directory / "flyright.db") as db:
                 (prefix + "ay", number, now.isoformat(), now.isoformat()))
     db.commit()
     db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-print(f"Seeded {scenario}: journey {prefix}out departing {departure.isoformat()}")
+print(f"Seeded {scenario}: journey {journey} departing {departure.isoformat()}")

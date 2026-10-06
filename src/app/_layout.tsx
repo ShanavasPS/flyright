@@ -275,6 +275,17 @@ function RootLayout() {
                   sheetAllowedDetents: [0.75],
                 }}
               />
+              {/* One lounge on the travel day: why you get in, what to have
+                ready at the desk, when to leave (docs/lounges.md). */}
+              <Stack.Screen
+                name="lounge"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.9],
+                }}
+              />
               {/* A home base city's picture: Wikipedia's, your own, or the flag. */}
               <Stack.Screen
                 name="home-photo"
