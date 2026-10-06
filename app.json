@@ -236,7 +236,7 @@
         "expo-widgets",
         {
           "bundleIdentifier": "com.shanavasshaji.flyright.widgets",
-          "groupIdentifier": "group.com.shanavasshaji.flyright.wallet",
+          "groupIdentifier": "group.com.shanavasshaji.flyright.widgets",
           "widgets": [
             {
               "name": "NextFlight",

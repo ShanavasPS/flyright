@@ -114,10 +114,10 @@ no hooks, nothing declared outside the function. The timeline is built by
 entry is a moment the card changes by itself: midnight, T−4h, take-off,
 landing, window close. The live travel-day card is Pro, like the Live
 Activity, and everyone else gets the plain next-flight card. The extension
-(`com.shanavasshaji.flyright.widgets`) shares the existing
-`group.com.shanavasshaji.flyright.wallet` app group, so linking that group to
-the new bundle id needs the one-time cookie login described under Release
-flow → builds. Android widgets exist in expo-widgets only as an opt-in
+(`com.shanavasshaji.flyright.widgets`) and the app share the dedicated
+`group.com.shanavasshaji.flyright.widgets` app group, created and assigned to
+both App IDs in the developer portal on 2026-10-06 (the wallet group stays the
+share extension's). Android widgets exist in expo-widgets only as an opt-in
 (`enableAndroid`) and are not used.
 
 # The design system (Claude artifact)
