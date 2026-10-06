@@ -5,7 +5,7 @@
 import { readFileSync } from 'fs';
 
 import { tripDestination } from '@/services/destination';
-import { currentHome, doorToDoor, EMPTY_HOME_BASE } from '@/services/home-base';
+import { currentHome, doorToDoor, EMPTY_HOME_BASE, groupingHome } from '@/services/home-base';
 import type { JourneyRow } from '@/services/journeys';
 import { buildTripGroups } from '@/services/trip-groups';
 
@@ -31,7 +31,11 @@ run('production journal', () => {
     const headers = buildTripGroups(rows).flatMap((t) => t.groups.map((g) => ({ title: g.title, place: tripDestination(g).place.city })));
     const home = currentHome(EMPTY_HOME_BASE, rows, new Date().toISOString().slice(0, 10));
     const starts = new Set(doorToDoor(rows).map((r) => r.fromCode));
-    console.log([...headers.map((h) => `${h.title} -> ${h.place}`), `home: ${home?.city} (${home?.departures} of ${home?.total})`].join('\n'));
+    // Stays as the app names them: grouped around the automatic home, as on
+    // a phone with no periods set.
+    const stays = buildTripGroups(rows, groupingHome(EMPTY_HOME_BASE, rows)).flatMap((t) =>
+      t.groups.flatMap((g) => g.entries.flatMap((e) => (e.kind === 'stay' ? [`stay: ${e.stay.days} days in ${e.stay.place}`] : []))));
+    console.log([...headers.map((h) => `${h.title} -> ${h.place}`), ...stays, `home: ${home?.city} (${home?.departures} of ${home?.total})`].join('\n'));
     expect(headers.filter((h) => !h.title.startsWith('Moved to') && h.title !== h.place)).toEqual([]);
     if (home) expect([...starts].some((code) => rows.some((r) => r.fromCode === code && r.fromCountry === home.country))).toBe(true);
   });

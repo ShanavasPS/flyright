@@ -123,12 +123,12 @@ function calendarDay(m: Moment): string | null {
   return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === day ? day : null;
 }
 
-/** A stay is named after its country when that country is abroad from the
- * home the traveller had when they landed ("13 days in the US" for a London
- * home), and after its city at home ("3 days in Manchester"). With no home
- * known, a stay that lands in a city and leaves from it again is that city,
- * and only a stay that leaves from another city (in at JFK, out at BOS) is
- * named after the country. */
+/** A stay that lands in a city and leaves from it again is named after that
+ * city, at home or abroad ("13 days in Dallas-Fort Worth" for a London home —
+ * travellers asked for the city over "the US"). Only a stay that leaves from
+ * another city (in at JFK, out at BOS) is named after its country, and only
+ * when that country is abroad from the home the traveller had when they
+ * landed; at home it keeps the arrival city ("3 days in Manchester"). */
 function stayBetween(a: Direction, b: Direction, international: boolean, homeThen?: HomePlace | null): TripStay | null {
   if (placeKey(a.to, international) !== placeKey(b.from, international)) return null;
   const from = arrival(last(a));
@@ -139,9 +139,9 @@ function stayBetween(a: Direction, b: Direction, international: boolean, homeThe
   const days = Math.round((Date.parse(end) - Date.parse(start)) / DAY_MS);
   if (days < 0) return null;
   const oneCity = placeKey(a.to, false) === placeKey(b.from, false);
-  const abroad = homeThen
+  const abroad = !oneCity && (homeThen
     ? !!a.to.country && !!homeThen.country && a.to.country !== homeThen.country
-    : international && !oneCity;
+    : international);
   return { id: `${last(a).id}:${first(b).id}`, days, place: stayPlace(a.to, abroad), fromId: last(a).id, toId: first(b).id };
 }
 

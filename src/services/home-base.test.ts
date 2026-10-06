@@ -319,28 +319,31 @@ describe('trips count from the home you had then', () => {
     ];
     const london = buildTripGroups(rows, homeLookup(state(period('a', LON, null, null))));
     expect(london.map(t => t.groups.map(g => g.title))).toEqual([['Dallas-Fort Worth']]);
-    expect(london[0]!.groups[0]!.entries.map(e => (e.kind === 'flight' ? e.journey.id : e.stay.place))).toEqual(['sna', 'the US', 'lhr']);
+    expect(london[0]!.groups[0]!.entries.map(e => (e.kind === 'flight' ? e.journey.id : e.stay.place))).toEqual(['sna', 'Dallas-Fort Worth', 'lhr']);
     // Without a home there is nothing to end at: today's headings stay.
     expect(buildTripGroups(rows).flatMap(t => t.groups.map(g => g.title))).toEqual(['Dallas-Fort Worth', 'London']);
   });
 
-  it('names a stay abroad by its country and one at home by its city, from the home at the time', () => {
+  it('names a one-city stay by its city at home and abroad, an open jaw abroad by its country', () => {
     const DALLAS = { city: 'Dallas-Fort Worth', country: 'US' };
     const rows = [
-      // 2022, living in Dallas: a US city is home ground, the UK is abroad.
+      // 2022, living in Dallas: Los Angeles at home, London abroad.
       flight('a1', 'DFW', 'LAX', '2022-03-01T08:00', '2022-03-01T09:30'),
       flight('a2', 'LAX', 'DFW', '2022-03-05T10:00', '2022-03-05T15:00'),
       flight('b1', 'DFW', 'LHR', '2022-06-01T17:00', '2022-06-02T08:00'),
       flight('b2', 'LHR', 'DFW', '2022-06-10T10:00', '2022-06-10T14:00'),
-      // 2025, living in London: the US is abroad, Manchester is home ground.
+      // 2025, living in London: Dallas abroad, Manchester at home.
       flight('c1', 'LHR', 'DFW', '2025-10-04T14:45', '2025-10-04T19:10'),
       flight('c2', 'DFW', 'LHR', '2025-10-17T20:35', '2025-10-18T11:50'),
       flight('d1', 'LHR', 'MAN', '2025-11-01T08:00', '2025-11-01T09:00'),
       flight('d2', 'MAN', 'LHR', '2025-11-04T18:00', '2025-11-04T19:00'),
+      // In at JFK, out of BOS: no one city fits, so the country.
+      flight('e1', 'LHR', 'JFK', '2025-12-01T10:00', '2025-12-01T13:00'),
+      flight('e2', 'BOS', 'LHR', '2025-12-08T19:00', '2025-12-09T07:00'),
     ];
     const moved = state(period('us', DALLAS, null, '2024-12-31'), period('uk', LON, '2025-01-01', null));
     const places = buildTripGroups(rows, homeLookup(moved)).flatMap(t => t.groups.flatMap(g => g.entries.flatMap(e => (e.kind === 'stay' ? [e.stay.place] : []))));
-    expect(places).toEqual(['Los Angeles', 'the UK', 'the US', 'Manchester, Greater Manchester']);
+    expect(places).toEqual(['Los Angeles', 'London', 'Dallas-Fort Worth', 'Manchester, Greater Manchester', 'the US']);
   });
 
   it('stats count from the home you had then', () => {

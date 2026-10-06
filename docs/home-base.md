@@ -84,13 +84,14 @@ that has none.
      its stay.
    Without a home (an empty journal, or a day no set period covers) grouping
    is exactly as before.
-   - **Stay names follow the home at the time:** a stay abroad from the home
-     the traveller had when they landed is named after its country ("13 days
-     in the US" for a London home), a stay in the home country after its city
-     ("3 days in Manchester"). Someone who lived in Dallas in 2022 sees "4
-     days in Los Angeles" for that year. With no home known, a stay that lands
-     in a city and leaves from it again is that city, and one that leaves from
-     another city (in at JFK, out at BOS) is its country.
+   - **Stays are named by city:** a stay that lands in a city and leaves
+     from it again is that city, at home or abroad ("13 days in Dallas-Fort
+     Worth" for a London home; travellers asked for the city over "the US",
+     2026-10-06). Only a stay that leaves from another city (in at JFK, out
+     at BOS) is named after its country, when that country is abroad from
+     the home the traveller had when they landed, or, with no home known,
+     on an international trip; in the home country it keeps the arrival city
+     ("3 days in Manchester").
 6. **Stats.** Travel stats shows today's home and its take-offs, or the
    automatic city. Top destination skips arrivals into the home the traveller
    had then. Places reads take-offs for today's home country and marks every
