@@ -8,7 +8,7 @@ import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { TravelGlobe } from '@/components/travel-globe';
 import { TripCoverHeader } from '@/components/trip-cover';
-import { TripGroupFrame, TripStayMark } from '@/components/trip-group-mark';
+import { TripConnectionMark, TripGroupFrame, TripStayMark } from '@/components/trip-group-mark';
 import { TripRow } from '@/components/trip-row';
 import { UpdatesCard } from '@/components/trip-updates';
 import { Spacing } from '@/constants/theme';
@@ -20,13 +20,12 @@ import { haversineKm, type RouteSource } from '@/services/geo';
 import type { JourneyRow } from '@/services/journeys';
 import type { HomePlace } from '@/services/home-base';
 import { personHomeAt } from '@/services/person-home';
-import { buildTripGroups, tripGroupDates } from '@/services/trip-groups';
+import { buildTripGroups, tripGroupDates, tripGroupRows } from '@/services/trip-groups';
 import type { TripUpdate } from '@/services/trip-updates';
 import { cityOf } from '@/services/timeline';
 import { layoverLabel } from '../../convex/itineraryShared';
 
 import {
-  connectionBetween,
   connectionLabel,
   connectionsInto,
   legInstant,
@@ -223,13 +222,9 @@ export function PersonTravel({
     const gap = legInstant(leg.scheduledDeparture, leg.fromCode) - from;
     return Number.isFinite(gap) && gap > 0 ? `${layoverLabel(gap)} in ${cityOf(leg.fromCode)}` : null;
   };
-  const trip = (t: PersonTrip, prevId?: string) => (
-    <Fragment key={t.journeyId}>
-      {(() => {
-        const joint = connectionBetween(connections, prevId ? { id: prevId } : undefined, { id: t.journeyId });
-        return joint ? <LayoverMark label={connectionLabel(joint)} /> : null;
-      })()}
+  const trip = (t: PersonTrip) => (
     <Pressable
+      key={t.journeyId}
       accessibilityRole="button"
       accessibilityLabel={`${t.number || t.carrier}, ${t.fromCode} to ${t.toCode}`}
       disabled={!onOpenTrip}
@@ -237,35 +232,45 @@ export function PersonTravel({
       style={({ pressed }) => [dimFor?.(t.journeyId) && styles.dimmed, pressed && styles.pressed]}>
       <TripRow trip={t} now={now} badge={badgeFor?.(t.journeyId)} />
     </Pressable>
-    </Fragment>
   );
 
-  /** Their flights under the Flights tab's own destination groups: the
-   * destination's photo with the city, dates and flag, with the stays between them. A flown list
-   * reads newest destination first, the way the viewer's own does. */
+  /** Their flights exactly as the Flights tab draws them: the destination's
+   * photo with the city, dates and flag, then the legs with the stays and the
+   * connections between them (tripGroupRows + TripConnectionMark, the
+   * Flights tab's own). A flown list reads newest first, trips and legs
+   * alike, the way the viewer's own does on its default sort.
+   *
+   * Each trip is one View: the host page spaces its children with `gap`, and
+   * handed the pieces loose it put that gap between every leg, splitting one
+   * trip's panel into a stack of boxes. */
   const grouped = (list: PersonTrip[], flown: boolean) => {
     const byId = new Map(list.map((t) => [t.journeyId, t]));
     const trips = buildTripGroups(list.map(asJourneyRow), personHomeAt(list));
     return (flown ? [...trips].reverse() : trips).flatMap((t) => {
       const groups = flown ? [...t.groups].reverse() : t.groups;
-      return groups.map((g) => (
-        <Fragment key={`group:${g.id}`}>
-          <TripCoverHeader friend group={g} dates={tripGroupDates(g, now.getFullYear())} />
-          {g.entries.map((entry, i) => {
-            const previous = g.entries[i - 1];
-            const row = entry.kind === 'flight' ? byId.get(entry.journey.id) : undefined;
-            return (
-              <TripGroupFrame key={entry.key} first={i === 0} last={i === g.entries.length - 1}>
-                {entry.kind === 'stay' ? (
-                  <TripStayMark stay={entry.stay} />
-                ) : row ? (
-                  trip(row, previous?.kind === 'flight' ? previous.journey.id : undefined)
-                ) : null}
-              </TripGroupFrame>
-            );
-          })}
-        </Fragment>
-      ));
+      return groups.map((g) => {
+        const rows = tripGroupRows(g, connections, flown);
+        return (
+          <View key={`group:${g.id}`}>
+            <TripCoverHeader friend group={g} dates={tripGroupDates(g, now.getFullYear())} />
+            {rows.map((entry, i) => {
+              const row = entry.kind === 'flight' ? byId.get(entry.journey.id) : undefined;
+              return (
+                <TripGroupFrame key={entry.key} first={i === 0} last={i === rows.length - 1}>
+                  {entry.kind === 'stay' ? (
+                    <TripStayMark stay={entry.stay} />
+                  ) : row ? (
+                    <>
+                      {entry.connection && <TripConnectionMark connection={entry.connection} />}
+                      {trip(row)}
+                    </>
+                  ) : null}
+                </TripGroupFrame>
+              );
+            })}
+          </View>
+        );
+      });
     });
   };
 
