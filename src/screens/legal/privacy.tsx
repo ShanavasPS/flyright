@@ -12,7 +12,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Accounts and cloud sync',
-    body: 'If you sign in (email code, Apple or Google, handled by Clerk), we keep your email address and name for the account, and sync to our cloud storage (Convex) so they follow you across devices: your journeys (flights, dates, routes, seat and booking reference), the photos you add to a trip, and — when you leave “Keep the document with the trip” on while importing — the booking PDF or picture itself. Trip photos and documents are private to you; a photo reaches the people who follow you only when you post it as a trip update, and booking documents are never shared. Claim letters stay on your device. Sharing a live trip publishes that flight’s progress to anyone with the link while the trip lasts. Removing a document, photo or trip deletes it from our storage; deleting your account removes all of it, in Settings or at getflyright.com/delete-account.',
+    body: 'If you sign in (email code, Apple or Google, handled by Clerk), we keep your email address and name for the account, and sync to our cloud storage (Convex) so they follow you across devices: your journeys (flights, dates, routes, seat and booking reference, and a saved boarding pass exactly as the airline issued it, which can include the frequent flyer number printed in its barcode), the photos you add to a trip, and — when you leave “Keep the document with the trip” on while importing — the booking PDF or picture itself. Trip photos and documents are private to you; a photo reaches the people who follow you only when you post it as a trip update, and booking documents are never shared. Claim letters stay on your device, and so do the frequent flyer memberships you add under Memberships: those numbers are never synced. Sharing a live trip publishes that flight’s progress to anyone with the link while the trip lasts. Removing a document, photo or trip deletes it from our storage; deleting your account removes all of it, in Settings or at getflyright.com/delete-account.',
   },
   {
     title: 'Flight lookups',
@@ -52,7 +52,7 @@ export function Privacy() {
           Privacy Policy
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          FlyRight — effective 28 September 2026
+          FlyRight — effective 6 October 2026
         </ThemedText>
         {SECTIONS.map(({ title, body }) => (
           <ThemedView key={title} type="backgroundElement" style={styles.card}>

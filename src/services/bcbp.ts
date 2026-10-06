@@ -10,8 +10,9 @@
  *   ─┬┬────────┬─────────┬┬──────┬───┬───┬──┬────┬──┬┬───┬────┬┬┬
  *    M│  name (20)       E│pnr(7)│from│to │car│fl(5)│doy│seat│…
  *
- * The mandatory items are read, and from each leg's variable-size field
- * only the free baggage allowance (item 118); the rest of it, and the
+ * The mandatory items are read, and from each leg's variable-size field the
+ * frequent flyer airline and number (items 236, 237), the free baggage
+ * allowance (118) and fast track (254); the rest of it, and the
  * airline-specific and security data after the last leg, is skipped.
  */
 
@@ -32,6 +33,14 @@ export interface BoardingPassLeg {
   /** Free baggage allowance as encoded ("2PC", "20K"), null when the pass
    * doesn't carry the conditional section or leaves it blank. */
   baggage: string | null;
+  /** The frequent flyer membership on this booking (items 236 and 237):
+   * what the lounge desk and the gate see. Null when the pass leaves the
+   * fields blank — that means unknown, not "no membership". Never stored;
+   * only the match against a saved membership is (docs/lounges.md). */
+  frequentFlyer: { airline: string; number: string } | null;
+  /** Fast track at security (item 254, BCBP version 6+): true, false, or
+   * null when the pass doesn't say. */
+  fastTrack: boolean | null;
 }
 
 export interface BoardingPass {
@@ -68,27 +77,42 @@ function parseLeg(block: string): BoardingPassLeg | null {
     cabin: /^[A-Z]$/.test(cabin) ? cabin : null,
     sequence: /^\d+$/.test(sequence) ? sequence : null,
     baggage: null,
+    frequentFlyer: null,
+    fastTrack: null,
   };
 }
 
-/** Item 118 from a leg's variable-size field. The first leg's field opens
- * with the unique conditional items ('>', the version, their hex size, the
- * items); every leg then has its repeated conditional items: a hex size,
- * then airline code (3), document number (10), selectee (1), document
- * verification (1), marketing carrier (3), frequent-flyer airline (3) and
- * number (16), ID/AD (1) — and the allowance (3). */
-function freeBaggage(field: string, first: boolean): string | null {
+/** A leg's repeated conditional items, from its variable-size field. The
+ * first leg's field opens with the unique conditional items ('>', the
+ * version, their hex size, the items); every leg then has its repeated
+ * items: a hex size, then airline code (3), document number (10), selectee
+ * (1), document verification (1), marketing carrier (3), frequent flyer
+ * airline (3) and number (16), ID/AD (1), free baggage allowance (3) and
+ * fast track (1). An item past the declared size is absent. */
+function conditionalItems(field: string, first: boolean): Pick<BoardingPassLeg, 'baggage' | 'frequentFlyer' | 'fastTrack'> {
+  const none = { baggage: null, frequentFlyer: null, fastTrack: null };
   let at = 0;
   if (first) {
-    if (field[0] !== '>') return null;
+    if (field[0] !== '>') return none;
     const unique = parseInt(field.slice(2, 4), 16);
-    if (Number.isNaN(unique)) return null;
+    if (Number.isNaN(unique)) return none;
     at = 4 + unique;
   }
   const size = parseInt(field.slice(at, at + 2), 16);
-  if (Number.isNaN(size) || size < 41) return null;
-  const allowance = field.slice(at + 2 + 38, at + 2 + 41).trim();
-  return /^\d{1,3}(PC|K|L)$/.test(allowance) ? allowance : null;
+  if (Number.isNaN(size)) return none;
+  const items = field.slice(at + 2, at + 2 + size);
+  const item = (start: number, length: number) => (size >= start + length ? items.slice(start, start + length).trim() : '');
+
+  const allowance = item(38, 3);
+  const airline = item(18, 3);
+  const number = item(21, 16);
+  const fastTrack = item(41, 1);
+  return {
+    baggage: /^\d{1,3}(PC|K|L)$/.test(allowance) ? allowance : null,
+    frequentFlyer:
+      /^[A-Z0-9]{2,3}$/.test(airline) && /^[A-Z0-9]{4,16}$/.test(number) ? { airline, number } : null,
+    fastTrack: fastTrack === 'Y' ? true : fastTrack === 'N' ? false : null,
+  };
 }
 
 /** Null whenever the payload isn't a plausible boarding pass — loyalty cards,
@@ -115,7 +139,7 @@ export function parseBcbp(data: string): BoardingPass | null {
     // The 2-hex-digit variable-field size closes each block; hop over it.
     const varSize = parseInt(data.slice(offset + LEG_LEN - 2, offset + LEG_LEN), 16);
     if (!Number.isNaN(varSize) && varSize > 0) {
-      leg.baggage = freeBaggage(data.slice(offset + LEG_LEN, offset + LEG_LEN + varSize), i === 0);
+      Object.assign(leg, conditionalItems(data.slice(offset + LEG_LEN, offset + LEG_LEN + varSize), i === 0));
     }
     legs.push(leg);
     offset += LEG_LEN + (Number.isNaN(varSize) ? 0 : varSize);

@@ -18,6 +18,8 @@ describe('parseBcbp', () => {
       cabin: 'J',
       sequence: '25',
       baggage: null,
+      frequentFlyer: null,
+      fastTrack: null,
     });
   });
 
@@ -96,5 +98,44 @@ describe('free baggage allowance', () => {
 
   it('is null on a pass without the conditional items', () => {
     expect(parseBcbp(CANONICAL)!.legs[0]!.baggage).toBeNull();
+  });
+});
+
+describe('frequent flyer and fast track', () => {
+  // The same IATA example: both legs carry "AC 1234567890123", leg 1 has
+  // fast track and leg 2 doesn't.
+  const TWO_LEGS =
+    'M2DESMARAIS/LUC       EABC123 YULFRAAC 0834 326J001A0025 14D>6180WW6225BAC 00141234560032A0141234567890 1AC AC 1234567890123    20KYLX58ZDEF456 FRAGVALH 3664 327C012C0002 12E2A0141234567891 1AC AC 1234567890123    2PCNWQ^164GIWVC5EH7JNT684FVNJ91W2QA4DVN5J8K4F0L0GEQ3DF5TGBN8709HKT5D3DW3GBHFCVHMY7J5T6HFR41W2QA4DVN5J8K4F0L0GE';
+
+  it('reads the membership on each leg', () => {
+    const pass = parseBcbp(TWO_LEGS)!;
+    expect(pass.legs.map((l) => l.frequentFlyer)).toEqual([
+      { airline: 'AC', number: '1234567890123' },
+      { airline: 'AC', number: '1234567890123' },
+    ]);
+    expect(pass.legs.map((l) => l.fastTrack)).toEqual([true, false]);
+  });
+
+  it('keeps the baggage allowance exactly as before', () => {
+    expect(parseBcbp(TWO_LEGS)!.legs.map((l) => l.baggage)).toEqual(['20K', '2PC']);
+  });
+
+  it('is null when the fields are blank', () => {
+    const blank = TWO_LEGS.replace('AC 1234567890123    20KY', `${' '.repeat(20)}20K `);
+    const leg = parseBcbp(blank)!.legs[0]!;
+    expect(leg.frequentFlyer).toBeNull();
+    expect(leg.fastTrack).toBeNull();
+    expect(leg.baggage).toBe('20K');
+  });
+
+  it('is null when the repeated section stops before the fields', () => {
+    // Leg 1 declares 0x12 = 18 characters: up to the marketing carrier.
+    const short = 'M1DESMARAIS/LUC       EABC123 YULFRAAC 0834 326J001A0025 18>6180WW6225BAC 00141234560012014123456789 1AC ';
+    const leg = parseBcbp(short)!.legs[0]!;
+    expect(leg).toMatchObject({ flight: 'AC834', frequentFlyer: null, fastTrack: null, baggage: null });
+  });
+
+  it('is null on a pass without the conditional items', () => {
+    expect(parseBcbp(CANONICAL)!.legs[0]).toMatchObject({ frequentFlyer: null, fastTrack: null });
   });
 });

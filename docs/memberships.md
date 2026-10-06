@@ -21,7 +21,12 @@ number, balance, status progress and expiring miles.
 ## Rules
 
 - **Device only.** Rows are never synced to Convex; a membership number
-  never leaves the phone. Rows carry the Clerk id that added them (null when
+  the traveller types never leaves the phone. A saved boarding pass is
+  different: `journeys.passCode` syncs as the airline issued it, and its
+  barcode can carry the frequent flyer number (BCBP items 236/237). That
+  is deliberate (decided 2026-10-06): the lounge desk and the gate read the
+  number from that barcode, so a stripped copy would stop working. The
+  privacy policy says so. Rows carry the Clerk id that added them (null when
   anonymous) and are listed for that account plus anonymous rows, like
   journeys. Deleting is a tombstone (`deleted_at`).
 - **Numbers are masked** ("•••• 4821") until the phone's own lock passes
@@ -34,6 +39,11 @@ number, balance, status progress and expiring miles.
   airline programmes have no third-party member APIs; AwardWallet's business
   APIs and Where to Credit's data are the only aggregators, both by
   partnership.
+- **Alliance levels** (`Tier.level`, `allianceLevelOf`): what each tier
+  carries across its alliance (oneworld Ruby/Sapphire/Emerald, Star
+  Alliance Silver/Gold, SkyTeam Elite/Elite Plus), as of 2026. Lounge
+  verdicts use it (docs/lounges.md); the entry tier and programmes outside
+  an alliance have none.
 - **Tier thresholds** are in the catalogue only where the programme publishes
   one simple number per tier; elsewhere `threshold: null` and the progress bar
   needs the traveller's own target. A typed target always wins.
@@ -48,5 +58,6 @@ number, balance, status progress and expiring miles.
 
 Apple/Google Wallet passes (they need a signed pass from a server with an
 Apple Pass Type ID), sync across devices, boarding-pass/e-ticket frequent
-flyer numbers feeding the stack (the BCBP conditional fields are not parsed
-yet), and earning amounts.
+flyer numbers feeding the stack (`parseBcbp` now reads them per leg as
+`frequentFlyer`, but nothing uses them yet — see docs/lounges.md), and
+earning amounts.

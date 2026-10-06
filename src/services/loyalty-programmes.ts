@@ -10,6 +10,22 @@
 
 export type Alliance = 'oneworld' | 'Star Alliance' | 'SkyTeam';
 
+/** The alliance-wide status a programme tier carries, which is what an
+ * alliance lounge desk honours: oneworld Ruby, Sapphire and Emerald, Star
+ * Alliance Silver and Gold, SkyTeam Elite and Elite Plus. */
+export type AllianceLevel = 'ruby' | 'sapphire' | 'emerald' | 'star-silver' | 'star-gold' | 'elite' | 'elite-plus';
+
+/** One rung of a programme's ladder. */
+export interface Tier {
+  name: string;
+  /** Status credit to reach it, in statusUnit; null where there is no
+   *  single published number. */
+  threshold: number | null;
+  /** The alliance status it carries, as of 2026; absent for the entry tier
+   *  and for programmes outside an alliance. */
+  level?: AllianceLevel;
+}
+
 export interface LoyaltyProgramme {
   id: string;
   /** The airline as printed on the card, e.g. "Qatar Airways". */
@@ -27,9 +43,8 @@ export interface LoyaltyProgramme {
   /** What status is counted in ("Qpoints", "tier miles"); null when the
    *  programme has no single status credit. */
   statusUnit: string | null;
-  /** Tier ladder from the entry tier up; thresholds in statusUnit, null
-   *  where there is no single published number. */
-  tiers: { name: string; threshold: number | null }[];
+  /** Tier ladder from the entry tier up. */
+  tiers: Tier[];
   /** Card colours: the two gradient stops and the stripe. */
   card: { from: string; to: string; accent: string };
 }
@@ -59,9 +74,9 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'Qpoints',
     tiers: [
       { name: 'Burgundy', threshold: null },
-      { name: 'Silver', threshold: 150 },
-      { name: 'Gold', threshold: 300 },
-      { name: 'Platinum', threshold: 600 },
+      { name: 'Silver', threshold: 150, level: 'ruby' },
+      { name: 'Gold', threshold: 300, level: 'sapphire' },
+      { name: 'Platinum', threshold: 600, level: 'emerald' },
     ],
     card: GOLD,
   },
@@ -93,10 +108,10 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'tier points',
     tiers: [
       { name: 'Basic', threshold: null },
-      { name: 'Silver', threshold: null },
-      { name: 'Gold', threshold: null },
-      { name: 'Platinum', threshold: null },
-      { name: 'Platinum Lumo', threshold: null },
+      { name: 'Silver', threshold: null, level: 'ruby' },
+      { name: 'Gold', threshold: null, level: 'sapphire' },
+      { name: 'Platinum', threshold: null, level: 'emerald' },
+      { name: 'Platinum Lumo', threshold: null, level: 'emerald' },
     ],
     card: { from: '#14284A', to: '#1C3A66', accent: '#7FA8F0' },
   },
@@ -111,9 +126,9 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'Tier Points',
     tiers: [
       { name: 'Blue', threshold: null },
-      { name: 'Bronze', threshold: 3500 },
-      { name: 'Silver', threshold: 7500 },
-      { name: 'Gold', threshold: 20000 },
+      { name: 'Bronze', threshold: 3500, level: 'ruby' },
+      { name: 'Silver', threshold: 7500, level: 'sapphire' },
+      { name: 'Gold', threshold: 20000, level: 'emerald' },
     ],
     card: { from: '#1A2440', to: '#26304F', accent: '#C9A0A6' },
   },
@@ -128,10 +143,10 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'Loyalty Points',
     tiers: [
       { name: 'Member', threshold: null },
-      { name: 'Gold', threshold: 40000 },
-      { name: 'Platinum', threshold: 75000 },
-      { name: 'Platinum Pro', threshold: 125000 },
-      { name: 'Executive Platinum', threshold: 200000 },
+      { name: 'Gold', threshold: 40000, level: 'ruby' },
+      { name: 'Platinum', threshold: 75000, level: 'sapphire' },
+      { name: 'Platinum Pro', threshold: 125000, level: 'emerald' },
+      { name: 'Executive Platinum', threshold: 200000, level: 'emerald' },
     ],
     card: { from: '#1E2A40', to: '#2C3A52', accent: '#9FB3C8' },
   },
@@ -146,9 +161,9 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'Points',
     tiers: [
       { name: 'Member', threshold: null },
-      { name: 'Frequent Traveller', threshold: 650 },
-      { name: 'Senator', threshold: 2000 },
-      { name: 'HON Circle', threshold: 6000 },
+      { name: 'Frequent Traveller', threshold: 650, level: 'star-silver' },
+      { name: 'Senator', threshold: 2000, level: 'star-gold' },
+      { name: 'HON Circle', threshold: 6000, level: 'star-gold' },
     ],
     card: { from: '#1A2238', to: '#28324E', accent: '#E9CF9A' },
   },
@@ -163,10 +178,10 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'PQP',
     tiers: [
       { name: 'Member', threshold: null },
-      { name: 'Premier Silver', threshold: null },
-      { name: 'Premier Gold', threshold: null },
-      { name: 'Premier Platinum', threshold: null },
-      { name: 'Premier 1K', threshold: null },
+      { name: 'Premier Silver', threshold: null, level: 'star-silver' },
+      { name: 'Premier Gold', threshold: null, level: 'star-gold' },
+      { name: 'Premier Platinum', threshold: null, level: 'star-gold' },
+      { name: 'Premier 1K', threshold: null, level: 'star-gold' },
     ],
     card: { from: '#1A2A4A', to: '#22385E', accent: '#6F9DF0' },
   },
@@ -181,8 +196,8 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'Elite miles',
     tiers: [
       { name: 'KrisFlyer', threshold: null },
-      { name: 'Elite Silver', threshold: 25000 },
-      { name: 'Elite Gold', threshold: 50000 },
+      { name: 'Elite Silver', threshold: 25000, level: 'star-silver' },
+      { name: 'Elite Gold', threshold: 50000, level: 'star-gold' },
     ],
     card: { from: '#2A2A1E', to: '#3A3424', accent: '#D9B866' },
   },
@@ -197,9 +212,9 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'status miles',
     tiers: [
       { name: 'Classic', threshold: null },
-      { name: 'Classic Plus', threshold: null },
-      { name: 'Elite', threshold: null },
-      { name: 'Elite Plus', threshold: null },
+      { name: 'Classic Plus', threshold: null, level: 'star-silver' },
+      { name: 'Elite', threshold: null, level: 'star-gold' },
+      { name: 'Elite Plus', threshold: null, level: 'star-gold' },
     ],
     card: { from: '#33202A', to: '#432630', accent: '#E07A7A' },
   },
@@ -214,9 +229,9 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'XP',
     tiers: [
       { name: 'Explorer', threshold: null },
-      { name: 'Silver', threshold: 100 },
-      { name: 'Gold', threshold: 180 },
-      { name: 'Platinum', threshold: 300 },
+      { name: 'Silver', threshold: 100, level: 'elite' },
+      { name: 'Gold', threshold: 180, level: 'elite-plus' },
+      { name: 'Platinum', threshold: 300, level: 'elite-plus' },
     ],
     card: { from: '#142A4A', to: '#1A3A62', accent: '#5FA8E8' },
   },
@@ -231,10 +246,10 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'MQDs',
     tiers: [
       { name: 'Member', threshold: null },
-      { name: 'Silver Medallion', threshold: 5000 },
-      { name: 'Gold Medallion', threshold: 10000 },
-      { name: 'Platinum Medallion', threshold: 15000 },
-      { name: 'Diamond Medallion', threshold: 28000 },
+      { name: 'Silver Medallion', threshold: 5000, level: 'elite' },
+      { name: 'Gold Medallion', threshold: 10000, level: 'elite-plus' },
+      { name: 'Platinum Medallion', threshold: 15000, level: 'elite-plus' },
+      { name: 'Diamond Medallion', threshold: 28000, level: 'elite-plus' },
     ],
     card: { from: '#2A1E2E', to: '#3A2236', accent: '#D0627A' },
   },
@@ -249,9 +264,9 @@ export const PROGRAMMES: LoyaltyProgramme[] = [
     statusUnit: 'level points',
     tiers: [
       { name: 'Member', threshold: null },
-      { name: 'Silver', threshold: null },
-      { name: 'Gold', threshold: null },
-      { name: 'Diamond', threshold: null },
+      { name: 'Silver', threshold: null, level: 'elite' },
+      { name: 'Gold', threshold: null, level: 'elite-plus' },
+      { name: 'Diamond', threshold: null, level: 'elite-plus' },
     ],
     card: { from: '#16243E', to: '#203252', accent: '#8FB4E6' },
   },
@@ -314,8 +329,16 @@ export function describeMembership(m: MembershipLike) {
   };
 }
 
+/** The alliance status a membership's tier carries, or null: no tier, a
+ * programme outside an alliance, or a tier the catalogue doesn't know. */
+export function allianceLevelOf(m: Pick<MembershipLike, 'programme' | 'tier'>): AllianceLevel | null {
+  if (!m.tier) return null;
+  const tier = programmeById(m.programme)?.tiers.find((t) => t.name.toLowerCase() === m.tier!.trim().toLowerCase());
+  return tier?.level ?? null;
+}
+
 /** The tier above the one held, where the ladder knows it. */
-export function nextTier(m: MembershipLike): { name: string; threshold: number | null } | null {
+export function nextTier(m: MembershipLike): Tier | null {
   const p = programmeById(m.programme);
   if (!p) return null;
   const at = m.tier ? p.tiers.findIndex((t) => t.name.toLowerCase() === m.tier!.toLowerCase()) : 0;

@@ -1,4 +1,5 @@
 import {
+  allianceLevelOf,
   carrierCode,
   creditTip,
   earningLine,
@@ -6,6 +7,7 @@ import {
   maskNumber,
   tierLine,
   tierProgress,
+  PROGRAMMES,
   type MembershipLike,
 } from './loyalty-programmes';
 
@@ -77,5 +79,29 @@ describe('loyalty programmes', () => {
       membershipId: 'm1',
     });
     expect(creditTip(['QR301'], [membership({})], (c) => c)).toBeNull();
+  });
+});
+
+describe('allianceLevelOf', () => {
+  it('maps a tier to the alliance status desks honour', () => {
+    expect(allianceLevelOf({ programme: 'qr', tier: 'Gold' })).toBe('sapphire');
+    expect(allianceLevelOf({ programme: 'ay', tier: 'platinum lumo' })).toBe('emerald');
+    expect(allianceLevelOf({ programme: 'lh', tier: 'Senator' })).toBe('star-gold');
+    expect(allianceLevelOf({ programme: 'fb', tier: 'Silver' })).toBe('elite');
+  });
+
+  it('is null for the entry tier, no tier, unknown tiers and programmes outside an alliance', () => {
+    expect(allianceLevelOf({ programme: 'qr', tier: 'Burgundy' })).toBeNull();
+    expect(allianceLevelOf({ programme: 'qr', tier: null })).toBeNull();
+    expect(allianceLevelOf({ programme: 'qr', tier: 'Diamond' })).toBeNull();
+    expect(allianceLevelOf({ programme: 'ek', tier: 'Gold' })).toBeNull();
+    expect(allianceLevelOf({ programme: 'other', tier: 'Gold' })).toBeNull();
+  });
+
+  it('gives every tier above the entry tier a level in alliance programmes', () => {
+    for (const p of PROGRAMMES.filter((p) => p.alliance)) {
+      expect(p.tiers[0].level).toBeUndefined();
+      for (const tier of p.tiers.slice(1)) expect([p.id, tier.name, tier.level]).toEqual([p.id, tier.name, expect.any(String)]);
+    }
   });
 });
