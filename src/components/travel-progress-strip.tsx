@@ -91,6 +91,9 @@ export function TravelProgressStrip({
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow} numberOfLines={1}>
           {`PROGRESS · ${reachedCount}/${plan.length}`}
         </ThemedText>
+        {/* The shortcut for the step that is usually next, in the action
+            colour with a plus: success green with a tick looked like a step
+            already done — a 0/10 trip wore a green "✓ Left home". */}
         {advanceNext && (
           <Pressable
             testID="trip-progress-next"
@@ -100,9 +103,14 @@ export function TravelProgressStrip({
               tapMedium();
               onAdvance(advanceNext);
             }}
-            style={({ pressed }) => [styles.nextPill, { backgroundColor: `${theme.success}29` }, pressed && styles.pressed]}>
-            <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={12} weight="bold" tintColor={theme.success} />
-            <ThemedText type="smallBold" style={{ color: theme.success, flexShrink: 1 }} numberOfLines={1}>
+            style={({ pressed }) => [styles.nextPill, { backgroundColor: `${theme.tint}29` }, pressed && styles.pressed]}>
+            <SymbolView
+              name={{ ios: 'plus.circle', android: 'add_circle_outline', web: 'add_circle_outline' }}
+              size={13}
+              weight="semibold"
+              tintColor={theme.tint}
+            />
+            <ThemedText type="smallBold" style={{ color: theme.tint, flexShrink: 1 }} numberOfLines={1}>
               {STAGE_LABELS[advanceNext]}
             </ThemedText>
           </Pressable>
@@ -165,14 +173,14 @@ export function TravelProgressStrip({
                     reached
                       ? { backgroundColor: theme.success, borderColor: theme.success }
                       : {
-                          borderColor: isNext ? theme.success : theme.backgroundSelected,
+                          borderColor: isNext ? theme.tint : theme.backgroundSelected,
                           borderStyle: skipped ? 'dashed' : 'solid',
                         },
                   ]}>
                   <SymbolView
                     name={STAGE_ICONS[stage]}
                     size={13}
-                    tintColor={reached ? '#FFFFFF' : isNext ? theme.success : theme.textSecondary}
+                    tintColor={reached ? '#FFFFFF' : isNext ? theme.tint : theme.textSecondary}
                   />
                   {reached && (
                     <View style={[styles.tick, { backgroundColor: theme.success, borderColor: theme.backgroundElement }]}>
