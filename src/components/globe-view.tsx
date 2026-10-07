@@ -487,6 +487,8 @@ export function GlobeView({
     lightDir: LIGHT,
     sunDir,
     daylight: daylightMix.value,
+    // Until the lights have decoded the land mask stands in — never lit.
+    cityLights: textures.lights ? 1 : 0,
   }));
 
   // Route paths, built together so the projection runs once per frame.
@@ -714,6 +716,7 @@ export function GlobeView({
           <Fill>
             <Shader source={SHADER} uniforms={uniforms}>
               <ImageShader image={textures.base} tx="repeat" ty="clamp" sampling={SAMPLING} />
+              <ImageShader image={textures.lights ?? textures.base} tx="repeat" ty="clamp" sampling={SAMPLING} />
               {(detail ?? PLACEHOLDERS.detail).map((image, i) => (
                 <ImageShader key={`d${i}`} image={image ?? textures.base} tx="clamp" ty="clamp" sampling={SAMPLING} />
               ))}
@@ -1115,6 +1118,7 @@ const PLACEHOLDERS = { detail: Array.from({ length: 8 }, () => null), borders: [
 const SHADER = (() => {
   const effect = Skia.RuntimeEffect.Make(`
 uniform shader base;
+uniform shader lights;
 uniform shader d0; uniform shader d1; uniform shader d2; uniform shader d3;
 uniform shader d4; uniform shader d5; uniform shader d6; uniform shader d7;
 uniform shader b0; uniform shader b1;
@@ -1135,6 +1139,7 @@ uniform float dayLift;
 uniform float3 lightDir;
 uniform float3 sunDir;
 uniform float daylight;
+uniform float cityLights;
 
 const float PI = 3.14159265;
 const float GLOW = 0.11;
@@ -1144,6 +1149,8 @@ const float GLOW = 0.11;
 const float NIGHT_EDGE = -0.10;
 const float DAY_EDGE = 0.06;
 const float3 DUSK = float3(0.95, 0.55, 0.25);
+// City lights: sodium-lamp gold, the way cities look from a window seat.
+const float3 CITY = float3(1.0, 0.80, 0.50);
 
 // Land at (u, v) in 0–1: the 4×2 detail tiles when zoomed in, else the base.
 float landAt(float2 uv) {
@@ -1216,6 +1223,11 @@ half4 main(float2 p) {
   float dusk = sun / 0.09;
   float band = exp(-dusk * dusk);
   float3 sunlit = mix(nightCol, dayCol, day) + DUSK * band * 0.07 * (0.4 + 0.6 * m);
+  // City lights come up as it gets properly dark — from civil twilight on,
+  // fully once the sun is 12° down — where the Black Marble shows them.
+  float dark = 1.0 - smoothstep(-0.21, NIGHT_EDGE, sun);
+  float lit = lights.eval(uv * baseSize).a * cityLights;
+  sunlit += CITY * lit * dark * 0.9;
   col = mix(studio, sunlit, daylight);
   // A rim of atmosphere on the limb.
   float rim = pow(1.0 - vz, 3.0);

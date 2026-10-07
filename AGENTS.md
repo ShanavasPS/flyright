@@ -105,6 +105,15 @@ place it from the provider's last reported position (AeroDataBox
 over oceans and on the ground) carried forward along its track, else from the
 timetable (`flightProgress`).
 
+With the sun on, the night side shows city lights — NASA's Black Marble
+(2016, public domain; credit "NASA Earth Observatory (Joshua Stevens),
+Suomi NPP VIIRS data (Miguel Román, NASA GSFC)") high-passed into the
+alpha mask `assets/images/globe-lights.png` by
+`scripts/generate-globe-lights.mjs`, sampled by the shader as `lights`
+and coloured sodium gold (`CITY`), coming up from civil twilight. They
+never show with the sun off. In the dark scheme the lit side is lifted
+(`dayLift`): the navy sea and slate land are night colours already.
+
 Airport codes are placed once a frame by `placeLabels` (services/globe):
 busiest airports first, each at the first of right / left / above / below
 its dot that is inside the sky and clear of every placed code, near-side
