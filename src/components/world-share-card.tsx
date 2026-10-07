@@ -202,13 +202,15 @@ const BACKDROP_FRAME = (() => {
 })();
 
 /** A band taller than the world (the whole-world story poster) runs past
- * both poles. What continues there is each backdrop's own edge colour —
- * the Arctic sea at the top, Antarctica's ice at the bottom (the mean of
- * the image's outermost rows) — fading into the card, so the imagery ends
- * in a fade, not in a hard line against the card. */
-const POLE: Record<PosterTheme, { top: string; bottom: string }> = {
+ * both poles. Below, Antarctica's ice (the mean of the image's bottom rows)
+ * fades into the card so the Earth does not end in a hard line above the
+ * stat tiles. Above, the Earth sits well under the title (shareMapModel
+ * lowers it): on the Day poster its Arctic edge is a clean horizon against
+ * the paper, while the Night poster's near-black Arctic is eased into the
+ * near-black card so no seam shows. */
+const POLE: Record<PosterTheme, { top: string | null; bottom: string }> = {
   dark: { top: '#0F1D3A', bottom: '#4A5569' },
-  light: { top: '#09193B', bottom: '#EFEFEF' },
+  light: { top: null, bottom: '#EFEFEF' },
 };
 
 /** The atlas fitted to the model's box: the Earth imagery first, the heat
@@ -227,14 +229,14 @@ function ShareAtlas({ model, theme, heatUri }: { model: ShareMapModel; theme: Po
         <Defs>
           <LinearGradient id="pole-top" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={palette.bg} />
-            <Stop offset="1" stopColor={POLE[theme].top} />
+            <Stop offset="1" stopColor={POLE[theme].top ?? palette.bg} />
           </LinearGradient>
           <LinearGradient id="pole-bottom" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={POLE[theme].bottom} />
             <Stop offset="1" stopColor={palette.bg} />
           </LinearGradient>
         </Defs>
-        {BACKDROP_FRAME.y > box.y && (
+        {POLE[theme].top && BACKDROP_FRAME.y > box.y && (
           <Rect x={box.x} y={box.y} width={box.width} height={BACKDROP_FRAME.y - box.y} fill="url(#pole-top)" />
         )}
         {box.y + box.height > BACKDROP_FRAME.y + BACKDROP_FRAME.height && (

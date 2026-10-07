@@ -135,7 +135,23 @@ export function shareMapModel(
   const map = buildWorldMap(rows, now);
   const { routes } = buildWorldRoutes(rows, now);
   const box = fitViewBox(map.fitPoints, width / height, shareMapPad(format, single), WORLD.width / 9);
+  if (format === 'story') lowerEarth(box, height);
   return { map, routes, box, width, height };
+}
+
+/** The story band is taller than the Earth once the map is all the way
+ * out, and fitViewBox centres the overflow — which leaves the Earth's
+ * bottom edge a long way above the stat tiles, under a title that covers
+ * the band's top anyway. Slide it down so its bottom sits at a fixed
+ * distance above the tiles, and the room goes under the title instead. */
+export const EARTH_FLOOR = 48; // points from the Earth's bottom edge to the band's bottom
+function lowerEarth(box: ViewBox, bandHeight: number): void {
+  const earthHeight = (180 * WORLD.height) / (WORLD.latTop - WORLD.latBottom);
+  const earthTop = -((90 - WORLD.latTop) * WORLD.height) / (WORLD.latTop - WORLD.latBottom);
+  if (box.height <= earthHeight) return;
+  const floor = (EARTH_FLOOR / bandHeight) * box.height;
+  const bottomGap = box.y + box.height - (earthTop + earthHeight);
+  if (bottomGap > floor) box.y -= bottomGap - floor;
 }
 
 export interface ShareDetail {
