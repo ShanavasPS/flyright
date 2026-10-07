@@ -1,0 +1,6 @@
+• A new first look: a short tour of what FlyRight does when you first open it.
+• The World globe is lit by the real sun: NASA imagery by day, city lights by night, and it sways with your phone.
+• The share poster shows the Earth by night or by day behind your routes.
+• Flights and World count hours in the air instead of kilometres.
+• Trip progress marks animate; dates in lounge passes and memberships format as you type.
+• FlyRight asks for a rating only after a flight it came along on.

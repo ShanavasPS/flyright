@@ -1,0 +1,15 @@
+What's new to review in 1.2.2:
+
+Nothing about purchases, prices or the existing Free and Pro features changes.
+
+1. Onboarding. A fresh install opens with a six-page tour (welcome, travel day, updates, world, poster, notifications). Skip is at the top right; the last page asks for notification permission with "Allow notifications" and "Remind me later". Every page's pictures are drawn by the app from sample data; no account is needed.
+2. Home Screen widget. A "Next flight" widget (small, medium and Lock Screen sizes) shows the traveller's next saved flight; on the travel day it shows the live card (a Pro feature, like the Live Activity). It reads the app's own saved trips through an app group; no network use of its own.
+3. World globe. The globe is lit by the real sun (the sun button in the World header draws the sun in the sky), shows NASA Blue Marble imagery by day and city lights by night, and sways a little with the phone's tilt using the motion sensor. No motion permission is requested (the app uses device motion only for this sway, never for tracking). Airport codes are placed where they fit.
+4. Share poster. The poster (World > Share) shows NASA imagery behind the routes in a Night or Day style; a Heat switch draws a route-density glow on the device's GPU. Nothing is uploaded.
+5. Hours, not kilometres, on the Flights summary and the World tab.
+6. Trip progress and forms. Marking a step on the trip page animates before the row scrolls; date fields in lounge passes and memberships format as you type.
+7. Rating prompt. The system rating sheet (SKStoreReviewController) may be requested from the Flights screen after a flight the app accompanied; it is never triggered by a button and never asks a question of its own first.
+
+To see them: sign in with the review account, open any trip for the trip page, and World for the globe and poster. The review account already has trips.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method.

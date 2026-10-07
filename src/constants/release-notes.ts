@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.2.2',
+    date: '2026-10-07',
+    notes: [
+      'A new first look: FlyRight now opens with a short tour of what it does, from your flight on the Lock Screen to the globe, the poster and the heads-up when a friend takes off or lands.',
+      'Next flight on your Home Screen: a widget shows your next flight and, on the day, the live travel-day card (iPhone).',
+      'The World globe is lit by the real sun, with the sun out in space when you switch it on, NASA imagery by day, city lights after dark, and a gentle sway as you tilt the phone. Airport codes are placed where they fit.',
+      'The share poster shows the Earth by night or by day behind your routes, and the route-density glow stays off until you switch it on.',
+      'Flights and World count your hours in the air instead of kilometres.',
+      'Trip progress: marking a step plays out before the row moves on, and the next step no longer looks done. Dates in lounge passes and memberships shape themselves as you type, and FlyRight asks for a rating only after a flight it came along on.',
+    ],
+  },
+  {
     version: '1.2.1',
     date: '2026-10-06',
     notes: [
