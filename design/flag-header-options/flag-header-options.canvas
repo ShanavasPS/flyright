@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "comparison",
+      "type": "file",
+      "file": "design/flag-header-options/overview-interactive.png",
+      "x": 0,
+      "y": 0,
+      "width": 1600,
+      "height": 1813
+    },
+    {
+      "id": "recommendation",
+      "type": "text",
+      "text": "# Open the interactive canvas\n\n[Open canvas.html](design/flag-header-options/canvas.html)\n\n01 · Atmosphere — recommended: a quiet faded flag at the right.\n\n02 · Postcard: a taller flag header with a vertical fade.\n\n03 · Split ticket: a faded diagonal edge with a perforated join.\n\n04 · Chapters: slim flag banners and a flight timeline.\n\nCompare, focus, change appearance, adjust the fade, open trips and preview flight details in the browser.",
+      "x": 1990,
+      "y": 0,
+      "width": 420,
+      "height": 460
+    },
+    {
+      "id": "grouping",
+      "type": "text",
+      "text": "# Grouping shown\n\n• Return: outward flight, stay, return flight within one destination group.\n• Connections: all legs belong to the final destination. Transit countries do not become separate destination groups.\n• Multiple destinations: US trip → Canada trip → US trip continued, in travel order. Each flight appears once. The continued US stay precedes its flight home.\n\nCountry artwork identifies the destination, never the airline or traveller.",
+      "x": 1990,
+      "y": 500,
+      "width": 420,
+      "height": 420
+    },
+    {
+      "id": "scope",
+      "type": "text",
+      "text": "Interactive browser prototype · 23 September 2026\n\nFaded flags, no leading flag badge. Fictional flights. Four scenarios and both appearances. 41 browser checks passed.\n\nRead the cached FlyRight design-system brand book and tokens (20 September 2026, main@02c3dbd) and current trip-group component source. Component READMEs were absent from the export.\n\nNo app implementation changes.",
+      "x": 1990,
+      "y": 960,
+      "width": 420,
+      "height": 330
+    }
+  ],
+  "edges": []
+}

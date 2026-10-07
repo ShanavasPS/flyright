@@ -1,0 +1,182 @@
+{
+  "checkedAt": "2026-09-23T15:10:19.693Z",
+  "errors": [],
+  "checks": [
+    {
+      "label": "Four compact header treatments rendered",
+      "pass": true
+    },
+    {
+      "label": "Normal headers are 48 pixels in every direction",
+      "pass": true
+    },
+    {
+      "label": "No collapsed groups or collapse controls exist",
+      "pass": true
+    },
+    {
+      "label": "Return and one-way flights are all displayed",
+      "pass": true
+    },
+    {
+      "label": "Card dimensions are identical across the four treatments",
+      "pass": true
+    },
+    {
+      "label": "Default single-flight card fits completely above the tabs",
+      "pass": true
+    },
+    {
+      "label": "Tapping a header cannot hide its flights",
+      "pass": true
+    },
+    {
+      "label": "Flight preview shows the tapped flight",
+      "pass": true
+    },
+    {
+      "label": "Every flight appears once per design in travel order",
+      "pass": true
+    },
+    {
+      "label": "Canada return remains in Canada; resumed US stay precedes final flight",
+      "pass": true
+    },
+    {
+      "label": "A single flight remains a full visible card below its header",
+      "pass": true
+    },
+    {
+      "label": "Focus a has a phone and design rationale",
+      "pass": true
+    },
+    {
+      "label": "Focus a keeps its sample header compact",
+      "pass": true
+    },
+    {
+      "label": "Focus b has a phone and design rationale",
+      "pass": true
+    },
+    {
+      "label": "Focus b keeps its sample header compact",
+      "pass": true
+    },
+    {
+      "label": "Focus c has a phone and design rationale",
+      "pass": true
+    },
+    {
+      "label": "Focus c keeps its sample header compact",
+      "pass": true
+    },
+    {
+      "label": "Focus d has a phone and design rationale",
+      "pass": true
+    },
+    {
+      "label": "Focus d keeps its sample header compact",
+      "pass": true
+    },
+    {
+      "label": "Flag strength actually changes artwork opacity",
+      "pass": true
+    },
+    {
+      "label": "Connections remain one destination with all three flights and two pauses",
+      "pass": true
+    },
+    {
+      "label": "Unknown country has no invented flag",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 1600px / light / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 1600px / light",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 1600px / dark / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 1600px / dark",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 1000px / light / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 1000px / light",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 1000px / dark / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 1000px / dark",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 750px / light / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 750px / light",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 750px / dark / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 750px / dark",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 390px / light / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 390px / light",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 390px / dark / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 390px / dark",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 320px / light / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 320px / light",
+      "pass": true
+    },
+    {
+      "label": "No page overflow at 320px / dark / large text",
+      "pass": true
+    },
+    {
+      "label": "Long names and dates fit at 320px / dark",
+      "pass": true
+    },
+    {
+      "label": "Focused design and notes fit a mobile viewport",
+      "pass": true
+    },
+    {
+      "label": "No third-party network dependencies in the canvas",
+      "pass": true
+    }
+  ]
+}

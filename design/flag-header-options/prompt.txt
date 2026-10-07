@@ -1,0 +1,40 @@
+Use case: ui-mockup.
+Create ONE polished, high-resolution 3840 x 2160 landscape design-review CANVAS for FlyRight, containing four equally sized numbered design options side by side, plus a bottom grouping-examples strip. This is a single comparison board, not four alternative output images. Crisp flat UI, legible typesetting, premium professional design review quality, no perspective, no physical phone mockups.
+
+The attached image is a REFERENCE ONLY for the existing dark navy trip-group cards and country-flag gradient idea. Do not reproduce its status bar, navigation, device frame or duplicate leading flag badge. Our crucial user requirement: show country flags ONLY as the HEADER BACKGROUND; NO country flag icons, badges, circles, squares or emoji to the left of any trip title. Titles start at the normal left text inset.
+
+Brand source: FlyRight design-system export synced 20 September 2026 main@02c3dbd, plus current TripGroupHeading and Card source. Exact dark colors: page #070f20, card/body #101d34, selected header/border #1b2c4a, primary text #f2f6fb, metadata #8fa2bb, action blue #4e9bf5. Light: #ffffff, header #e8eef6, border #e3e8ef, text #0b1424, heading #13294b, secondary #5a6a7e, blue #1e6be0. Brand navy #0c1b36. Use Inter/SF-style sans. Medium body type, bold destination, sentence case. 16pt outer group radius, 24pt flight-card radius, 16pt inset. No neon, glassmorphism, glossy effects, purple decorative accents, giant shadows or fake 3D. Flags use their actual national colors but are subdued beneath navy or white gradients.
+
+Board background pure white/porcelain; heading dark navy. Top margin: small label "FlyRight / Design exploration"; large title "One destination. Four ways to frame it."; subtitle "Country flags in the header background · No leading flag icon". A small "Design concepts" label.
+
+MAIN FOUR COLUMNS (same width, same top/bottom alignment, generous gutters):
+Each has option number, title, one-line description OUTSIDE the app mockup. Under this, a dark-screen rectangular excerpt containing a full London return trip group, then one compact Las Vegas header. Flight content and body styling identical in all four options; only the country header treatment changes. At bottom of each column add a small LIGHT-MODE rendering of the London header in the same option style so appearance can be compared.
+
+01 "Soft fade" with a small plain "Recommended" label.
+Caption: "A familiar flag, quietly revealed."
+London header: oversized geometrically recognizable Union Jack on RIGHT 55% of the entire header, strongest near far right edge at about 30% opacity, smoothly fading left to opaque #1b2c4a behind all title copy. Fade also subtly down into card body. Restrained, very readable, closest to supplied reference but without left icon.
+02 "Full-width wash"
+Caption: "A broader sense of place."
+London header: recognizable Union Jack stretches across full header width, more spacious two-line header. Muted flag appears as a continuous full-width underlay, with a dark translucent layer across it and stronger navy behind left title. Different clearly from option 01: pattern visible across the width, including behind title at low opacity.
+03 "Diagonal reveal"
+Caption: "A sharper edge to the destination."
+London header: mostly solid navy text field. An oversized cropped Union Jack revealed in right third by a slanted diagonal mask. Gradient feather along diagonal to navy, not a separate flag tile or icon. Distinct angled composition. Header compact like 01.
+04 "Flag banner"
+Caption: "A small panorama above the title."
+London header: narrow panoramic band of recognizable Union Jack along the very top of group, edge to edge, about 40pt tall fading downward into solid navy title band below it. The destination and metadata are below banner on solid surface. This is visibly taller than 01/03 and the flag never sits next to title. Rounded upper corners clip banner.
+
+SAME LONDON CONTENT in each:
+Header title "London" with small right metadata "8–10 Oct", second line "Round trip · 2 flights". Keep full dates readable; if over flag use adequate navy gradient, no separate status badge.
+Flight body: small metadata "Thu 8 Oct · AY1337"; bold airport codes "HEL" and "LHR" with a fine dotted route and small airplane between. Below: "Helsinki" and "London", and local times "16.00" and "17.05". Optional small mono airline text AY at left of flight body is okay, but no country badge there.
+Between flights a centered short rule / tiny bed symbol / "Stay · 2 days in London" / short rule.
+Return: metadata "Sat 10 Oct · AY1338"; "LHR" to "HEL"; "London" to "Helsinki"; "18.10" and "23.00".
+Under this complete London group, with clear space, show just the next compact group header "Las Vegas", "28 Nov", "3 flights · via Stockholm, London", with corresponding USA flag background in SAME option style. This demonstrates different flag patterns. Do not show an incomplete clipped flight.
+Small light header beneath app excerpt: label "Light appearance" and London header using the same option's gradient pattern, flag softly under a WHITE fade, dark navy legible text.
+
+BOTTOM FULL-WIDTH GROUPING STRIP, separated by hairline and ample whitespace:
+Title "How the flights stay grouped".
+Three horizontally arranged mini-examples, typography clearly readable. Use compact DARK trip containers with background flags in option 01 style. These are conceptual summaries, no flight times needed:
+A "Return trip" — single "London" group with route row "HEL → LHR", centered "Stay · 2 days in London", return row "LHR → HEL". Below note "Outward and return flights stay together."
+B "Connecting trip" — single "Las Vegas" group with rows "HEL → ARN", small indented "4h 20m connection in Stockholm", "ARN → LHR", "2h 40m connection in London", "LHR → LAS". USA flag only; connection countries do not get groups. Below note "Connections belong to the final destination."
+C "Multiple destinations" — three smaller adjacent same-level group cards under a thin travel-order connector: "US trip" with "HEL → JFK"; "Canada trip" with "LGA → YYZ", "Stay · 4 days in Canada", "YYZ → BOS"; "US trip continued" with "Stay · 9 days in the US" FIRST, then "BOS → HEL". USA/Canada/USA faded background flags respectively. Below note "Keep travel order. A return visit gets its own continued group." No duplicated flights, no nesting.
+Bottom discreet footer: "Illustrative flights · Header concepts only". All text exact wherever quoted. Focus on actual visual treatments and readable UI rather than dense explanatory text. NO flag glyph or icon at the left of ANY title.

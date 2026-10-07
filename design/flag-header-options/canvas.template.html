@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlyRight — Compact flag headers</title>
+<style>/* STYLES */</style>
+<!-- ICONS -->
+</head>
+<body class="compact">
+<header class="mast"><a class="brand" href="#compare"><img src="BRAND_IMAGE" alt=""><strong>FlyRight</strong><span class="slash">/</span><span>Design studio</span></a><div class="mast-end"><span class="review-label">Compact headers · Revision 03</span><span class="prototype-label">Interactive prototype</span></div></header>
+<main>
+<section class="intro"><div><div class="eyebrow"><span class="small-line"></span> Four subtle treatments for the existing trip header.</div><h1>Small header. Full trip.</h1><p>Country name and dates in one compact row.<br class="desktop-br"> A faded flag behind them. Every flight card below.</p></div><div class="intro-aside"><span class="edition">01 — 04</span><p>Same cards. Same grouping.<br>Compare just the faded flag treatment.</p></div></section>
+<section class="toolbar" aria-label="Design controls">
+<div class="view-switch" aria-label="Choose a direction"><button data-view="all" aria-pressed="true" title="Compare all directions">Compare all</button><button data-view="a" aria-pressed="false" title="Atmosphere (1)">01</button><button data-view="b" aria-pressed="false" title="Postcard (2)">02</button><button data-view="c" aria-pressed="false" title="Split ticket (3)">03</button><button data-view="d" aria-pressed="false" title="Chapters (4)">04</button></div>
+<div class="toolbar-right"><label class="example-label" for="scenario">Itinerary</label><select id="scenario"><option value="upcoming">Return + single flight</option><option value="oneway">Single flight only</option><option value="connections">With connections</option><option value="multi">US → Canada → US</option><option value="edge">Long names & missing flags</option></select><div class="appearance" aria-label="Phone appearance"><button id="light" aria-pressed="false" title="Light appearance"><span aria-hidden="true">☼</span> Light</button><button id="dark" aria-pressed="true" title="Dark appearance"><span aria-hidden="true">◐</span> Dark</button></div></div>
+</section>
+<div class="subtoolbar"><p id="scenario-description">A return trip and a single flight. Every flight card stays visible below its compact header.</p><div class="fine-controls"><label for="strength">Flag presence <input id="strength" type="range" min="15" max="60" value="30"><output id="strength-value" for="strength">30%</output></label><button id="large" aria-pressed="false" title="Preview larger header text">Aa</button><button id="reset" title="Reset the design canvas">Reset</button></div></div>
+<section id="board" class="board" aria-label="Interactive design comparison"></section>
+<section class="grouping-section"><div class="grouping-intro"><div class="eyebrow">The grouping beneath the design</div><h2>A trip can have more<br>than one chapter.</h2><p>Keep each destination in travel order.<br>A connection is a pause, a stay is a visit.</p><button class="text-button" id="try-multi">Try the multi-country itinerary <span aria-hidden="true">↗</span></button></div><div class="grouping-flow"><div class="flow-label">One journey · Four flights · Three destination groups</div><div class="flow-cards" id="grouping-flow"></div><p class="flow-note"><i class="icon connection-icon" aria-hidden="true"></i> Toronto → Boston stays in the Canada group. The next US group begins with the resumed stay.</p></div></section>
+<footer><p>Design exploration only · Fictional flights · No app changes</p><p>FlyRight brand system · 23 September 2026 <span class="footer-dot">·</span> <a href="README.md">Design notes</a></p></footer>
+</main>
+<dialog id="flight-dialog" aria-labelledby="flight-dialog-title"><button class="dialog-close" aria-label="Close flight preview">×</button><div id="flight-detail"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>/* SCRIPT */</script>
+</body>
+</html>
