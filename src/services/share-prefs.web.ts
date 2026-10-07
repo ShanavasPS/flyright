@@ -7,7 +7,7 @@ export interface SharePrefs {
 
 /** Web has no share screen; the defaults keep the types honest. */
 export function getSharePrefs(): SharePrefs {
-  return { theme: 'dark', heat: true };
+  return { theme: 'dark', heat: false };
 }
 
 export function setSharePrefs(_prefs: SharePrefs) {}

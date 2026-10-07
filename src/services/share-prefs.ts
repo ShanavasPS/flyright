@@ -3,7 +3,9 @@ import Storage from 'expo-sqlite/kv-store';
 import type { PosterTheme } from '@/services/world-share';
 
 /** What the traveller last chose on the share screen — the poster's theme
- * and whether the heat layer is on. Remembered so a second share is one tap. */
+ * and whether the heat layer is on. Remembered so a second share is one tap.
+ * Heat starts off: the Earth imagery carries the poster on its own, and the
+ * glow is there for whoever wants it. */
 export interface SharePrefs {
   theme: PosterTheme;
   heat: boolean;
@@ -16,7 +18,7 @@ export function getSharePrefs(): SharePrefs {
   const theme = Storage.getItemSync(THEME_KEY);
   return {
     theme: theme === 'light' ? 'light' : 'dark',
-    heat: Storage.getItemSync(HEAT_KEY) !== 'off',
+    heat: Storage.getItemSync(HEAT_KEY) === 'on',
   };
 }
 
