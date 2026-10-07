@@ -2,12 +2,20 @@
 
 | Time | Scene | What the viewer sees |
 | --- | --- | --- |
-| 0:00–0:09 | YOUR TRAVEL BUDDY | Before you fly; Through travel day; When plans go wrong |
-| 0:09–0:22 | 01 / ADD YOUR FLIGHT | Look up a flight number; Scan a boarding pass; Share the airline's confirmation |
-| 0:22–0:32 | 02 / TRIPS, NOT LEGS | The outbound and the return together; The city, its flag, the dates; Days spent at each destination |
-| 0:32–0:48 | 03 / TRAVEL DAY | Countdown to the second; Check-in, gate, seat, belt; On the Lock Screen, app closed |
-| 0:48–1:01 | 04 / YOUR PEOPLE — FREE | Follow friends and family; Postcards from the air; No cap, no charge to watch |
-| 1:01–1:16 | 05 / YOUR WORLD | A globe drawn in Skia; Lit by the actual sun; Share it as a poster |
-| 1:16–1:30 | 06 / WHEN PLANS GO WRONG | A plain compensation figure; The reason behind it; A letter for the airline |
-| 1:30–1:51 | 07 / POWERED BY REVENUECAT | Live gate, delay and belt updates; Postcards and claim preparation; Or a reminder, two days before |
-| 1:51–1:59 | SHIPATON 2026 | FlyRight; getflyright.com |
+| 0:00–0:08 | BEFORE THE FLIGHT | On the Lock Screen; Counting down all day; She knows the terminal already |
+| 0:08–0:14 | AT THE AIRPORT | The live card, right there; Gate already on it |
+| 0:14–0:21 | THE TRIP | Check-in area and gate; Boarding time; Seat and booking |
+| 0:21–0:29 | STEP BY STEP | Through immigration; On board; Friends and family notified |
+| 0:29–0:35 | AT THE GATE | Straight from the live card; Saved on the phone; Works in duty free too |
+| 0:35–0:42 | IN THE AIR | On the Home Screen; On the Lock Screen; Down to the second |
+| 0:42–0:53 | ON THE MAP | A globe FlyRight drew itself; Lit by the real sun; Every route, on one globe |
+| 0:53–0:58 | SHARE IT | One trip, or all of them; A glow where she flies most |
+| 0:58–1:06 | ADDING A FLIGHT | Look it up by number; Upload a ticket; Scan a boarding pass |
+| 1:06–1:11 | HER PEOPLE | Friends in the air, and just home; Every card carries the flight |
+| 1:11–1:16 | THEIR DAY | Their itinerary; Their steps, as they go |
+| 1:16–1:24 | HER OWN UPDATE | A line or a photo; To Clara, Noah and Tomas |
+| 1:24–1:30 | TOKYO | Landed, on the card; The belt, already on it |
+| 1:30–1:35 | IF IT RUNS LATE | The figure and the reason; Raise the claim from the app |
+| 1:35–1:43 | FREE AND PRO | Flights and following: free; Pro: gate, delay, belt, postcards |
+| 1:43–1:52 | THE PLANS | Monthly, yearly, lifetime; 14-day free trial, cancel anytime |
+| 1:52–1:58 | FLYRIGHT | getflyright.com |

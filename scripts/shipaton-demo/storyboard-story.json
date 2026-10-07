@@ -1,6 +1,6 @@
 {
-  "title": "FlyRight \u2014 Maja's day",
-  "duration": 119,
+  "title": "FlyRight — Maja's day",
+  "duration": 118,
   "voice": "en-US-AndrewNeural",
   "voiceRate": 165,
   "scenes": [
@@ -17,7 +17,7 @@
         "Counting down all day",
         "She knows the terminal already"
       ],
-      "narration": "Meet Maja. She's flying to Tokyo this evening. FlyRight's been counting down all day \u2014 she already knows her terminal.",
+      "narration": "Meet Maja. She's flying to Tokyo this evening. FlyRight's been counting down all day — she already knows her terminal.",
       "images": [
         {
           "src": "brand/maja-avatar.png",
@@ -31,7 +31,7 @@
         {
           "x": 178,
           "y": 829,
-          "text": "Maja Lindqvist \u00b7 Helsinki \u2192 Tokyo",
+          "text": "Maja Lindqvist · Helsinki → Tokyo",
           "size": 30,
           "weight": 650
         }
@@ -113,7 +113,7 @@
     },
     {
       "id": "07-globe",
-      "duration": 7,
+      "duration": 11,
       "chapter": "ON THE MAP",
       "headline": [
         "Her plane,",
@@ -121,26 +121,14 @@
       ],
       "bullets": [
         "A globe FlyRight drew itself",
-        "Lit by the real sun"
-      ],
-      "narration": "On the World tab, her plane rides its own line across a globe FlyRight drew itself."
-    },
-    {
-      "id": "07b-world",
-      "duration": 4,
-      "chapter": "THE WORLD",
-      "headline": [
-        "Every trip",
-        "she has flown."
-      ],
-      "bullets": [
+        "Lit by the real sun",
         "Every route, on one globe"
       ],
-      "narration": "And every trip she's flown, on one globe."
+      "narration": "On the World tab, her plane rides its own line across a globe FlyRight drew itself. And every trip she's flown, on one globe."
     },
     {
       "id": "16-poster",
-      "duration": 6,
+      "duration": 5,
       "chapter": "SHARE IT",
       "headline": [
         "Her trips,",
@@ -169,7 +157,7 @@
     },
     {
       "id": "09-updates",
-      "duration": 6,
+      "duration": 5,
       "chapter": "HER PEOPLE",
       "headline": [
         "Updates",
@@ -207,7 +195,7 @@
         "A line or a photo",
         "To Clara, Noah and Tomas"
       ],
-      "narration": "And she can share her own updates too \u2014 a line or a photo, straight to her people."
+      "narration": "And she can share her own updates too — a line or a photo, straight to her people."
     },
     {
       "id": "12-belt",
@@ -235,7 +223,7 @@
         "The figure and the reason",
         "Raise the claim from the app"
       ],
-      "note": "Sample delay \u00b7 eligibility depends on the circumstances",
+      "note": "Sample delay · eligibility depends on the circumstances",
       "narration": "If it runs late, it works out what she's owed."
     },
     {
@@ -272,7 +260,7 @@
     },
     {
       "id": "14-plans",
-      "duration": 10,
+      "duration": 9,
       "chapter": "THE PLANS",
       "headline": [
         "Her followers",
@@ -283,7 +271,7 @@
         "14-day free trial, cancel anytime"
       ],
       "note": "Finnish App Store pricing",
-      "narration": "Her followers see all of it free. Monthly, yearly or lifetime, through RevenueCat \u2014 fourteen days free, cancel anytime.",
+      "narration": "Her followers see all of it free. Monthly, yearly or lifetime, through RevenueCat — fourteen days free, cancel anytime.",
       "images": [
         {
           "src": "brand/revenuecat-mark.png",
@@ -305,16 +293,16 @@
     },
     {
       "id": "17-close",
-      "duration": 4,
+      "duration": 6,
       "chapter": "FLYRIGHT",
       "headline": [
-        "One place",
-        "for the whole journey."
+        "It goes with you,",
+        "the whole way."
       ],
       "bullets": [
         "getflyright.com"
       ],
-      "narration": "FlyRight. One place for the whole journey.",
+      "narration": "FlyRight. It goes with you. The whole way.",
       "images": [
         {
           "src": "../../assets/images/icon.png",
@@ -337,7 +325,13 @@
           "width": 242,
           "height": 72
         }
-      ]
+      ],
+      "voiceSpeed": 0.9,
+      "voiceSettings": {
+        "stability": 0.45,
+        "style": 0.3
+      },
+      "speech": "Flyright. <break time=\"0.6s\" /> It goes with you. <break time=\"0.4s\" /> The whole way."
     }
   ]
 }

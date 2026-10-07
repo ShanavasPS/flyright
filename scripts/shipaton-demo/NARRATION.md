@@ -2,39 +2,71 @@
 
 English narration. The cut leads with the free-versus-Pro boundary and the craft behind it; the closing scene names no single category, so it suits every entry.
 
-## 0:00–0:09 — YOUR TRAVEL BUDDY
+## 0:00–0:08 — BEFORE THE FLIGHT
 
-Fly Right is your travel buddy on the day you fly, and your advocate when the flight goes wrong. Keeping your flights costs nothing.
+Meet Maja. She's flying to Tokyo this evening. FlyRight's been counting down all day — she already knows her terminal.
 
-## 0:09–0:22 — 01 / ADD YOUR FLIGHT
+## 0:08–0:14 — AT THE AIRPORT
 
-Start with a flight number, scan the boarding pass, or share the airline's confirmation and every leg imports itself. Add the same flight twice and it updates the trip instead of duplicating it.
+At the airport, she opens the app, and the live card is right there with her trip.
 
-## 0:22–0:32 — 02 / TRIPS, NOT LEGS
+## 0:14–0:21 — THE TRIP
 
-Your flights group themselves into trips. The outbound and the return sit under one heading, with the city, its flag, the dates, and the days you spent there.
+Check-in area, gate, boarding time. Everything is already there for her on FlyRight.
 
-## 0:32–0:48 — 03 / TRAVEL DAY
+## 0:21–0:29 — STEP BY STEP
 
-On travel day, one card holds everything: the countdown to the second, check-in, gate, seat, and the belt your bags will arrive on. The same countdown runs on your Lock Screen with the app closed.
+She taps each step as she goes, and her friends and family get notified about every one.
 
-## 0:48–1:01 — 04 / YOUR PEOPLE — FREE
+## 0:29–0:35 — AT THE GATE
 
-Following is free on both sides. Your family sees where you are, reads the postcards you send from the air, and never pays a cent to watch you land.
+At the gate, or in duty free, she taps the pass right on the live card.
 
-## 1:01–1:16 — 05 / YOUR WORLD
+## 0:35–0:42 — IN THE AIR
 
-Every route you have flown lives on a globe we drew ourselves, lit by the real sun. Map kits will not zoom out far enough to show a life of flying, so this one is a shader.
+And the live card keeps her updated the whole way, on the Home Screen and the Lock Screen.
 
-## 1:16–1:30 — 06 / WHEN PLANS GO WRONG
+## 0:42–0:53 — ON THE MAP
 
-When a flight goes wrong, the rules engine says what you are owed, and why. Four hundred euros, the reason behind it, and a letter for the airline's own claim channel. Fly Right takes no cut.
+On the World tab, her plane rides its own line across a globe FlyRight drew itself. And every trip she's flown, on one globe.
 
-## 1:30–1:51 — 07 / POWERED BY REVENUECAT
+## 0:53–0:58 — SHARE IT
 
-So what do you pay for? The day itself: live gate and delay updates, postcards, and claim preparation. Revenue Cat runs the plans. And if you are not flying yet, Fly Right offers a reminder two days before take-off instead of a paywall.
+And she can share a trip, or all of her trips, as a poster.
 
-## 1:51–1:59 — SHIPATON 2026
+## 0:58–1:06 — ADDING A FLIGHT
 
-Free to remember. Pro when you travel. Fly Right, on the App Store and Google Play.
+Adding a flight is easy: look it up by number, upload a ticket, or scan a boarding pass.
+
+## 1:06–1:11 — HER PEOPLE
+
+On the Updates tab she catches up on her friends' trips.
+
+## 1:11–1:16 — THEIR DAY
+
+Tap one of the followers, and you follow their whole day.
+
+## 1:16–1:24 — HER OWN UPDATE
+
+And she can share her own updates too — a line or a photo, straight to her people.
+
+## 1:24–1:30 — TOKYO
+
+Wheels down in Tokyo. FlyRight already tells her which belt her bags are on.
+
+## 1:30–1:35 — IF IT RUNS LATE
+
+If it runs late, it works out what she's owed.
+
+## 1:35–1:43 — FREE AND PRO
+
+Flights and following people are free. Pro is the live day: gate, delay, belt, postcards.
+
+## 1:43–1:52 — THE PLANS
+
+Her followers see all of it free. Monthly, yearly or lifetime, through RevenueCat — fourteen days free, cancel anytime.
+
+## 1:52–1:58 — FLYRIGHT
+
+FlyRight. It goes with you. The whole way.
 

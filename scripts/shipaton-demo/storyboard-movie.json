@@ -1,0 +1,52 @@
+{
+  "title": "FlyRight — Maja's day, with the film",
+  "base": "storyboard-story.json",
+  "style": "Cinematic live-action film still in motion, warm natural light, shallow depth of field, 35mm lens, muted Scandinavian colour palette, quiet and unhurried, no on-screen text, no readable phone screen, no logos, no captions, no subtitles.",
+  "character": "Maja: a woman in her late twenties of South Asian heritage, warm brown skin, long dark wavy hair worn loose past her shoulders, a small gold pendant necklace, a smartwatch on her left wrist, calm friendly expression. She wears a cream cropped jacket over a cream top with a black pencil skirt, black tights and white sneakers, and a small black crossbody bag, and travels with a navy cabin suitcase. Same woman in every shot.",
+  "friends": "Her people at home: Clara, a woman in her thirties with dark curly hair, and Tomas, a man in his thirties with a short beard.",
+  "shots": {
+    "01-morning": "Early morning in a bright Helsinki apartment. Maja sits on the edge of a sofa by a tall window, coffee beside her, and glances down at her phone with a small satisfied nod; a packed navy suitcase waits by the door. Slow push-in.",
+    "02-home": "Outside the departures entrance of Helsinki Airport, exactly the building in the reference photo: the low white terminal with its wide curving wooden-slat canopy, glass facade and the FINAVIA HELSINKI AIRPORT lettering on the glass, late golden afternoon light, dry pavement. A white taxi has already stopped at the kerb, engine idling, driver seated and still. One rear door is already open. Maja steps out through that single open door already holding the handle of her navy cabin suitcase, sets it on the pavement, closes the door, looks up at the terminal with a small, happy, relaxed smile, glances once at her phone, and walks toward the entrance. Camera fixed on the pavement facing the terminal, medium-wide.",
+    "02-terminal": "Inside the departures hall, Maja walks past the large departure boards with her suitcase rolling behind her, glances once at her phone and heads confidently toward check-in without stopping to read the boards. Wide shot, then medium.",
+    "03-steps": "Maja moves through the airport in a few beats: dropping her bag at a counter, walking through the security lane, then passport control, and at each step she taps her phone once with a small smile. Gentle handheld, warm light.",
+    "04-pass": "At the boarding gate, Maja holds her phone out to the gate agent's scanner, gets a nod, and walks down the jet bridge. Medium shot, soft backlight from the windows.",
+    "06-inair": "Maja settles into a window seat as the aircraft climbs above the clouds; she rests her head back and glances at her phone in her hand, relaxed. Warm light through the window.",
+    "07-globe": "Exterior only, no people: a single airliner crosses a vast sky at golden hour, seen from a distance below and behind, its contrail drawing a thin bright line over a blue-grey ocean and scattered cloud. Slow, calm aerial shot.",
+    "07b-world": "Inside an airliner cabin at cruising altitude: close on Maja in her window seat, the oval aircraft window beside her showing bright cloud tops, phone in hand, smiling to herself as she scrolls; the cabin is dim and quiet, seat backs and overhead bins visible. Shallow focus.",
+    "16-poster": "Maja holds her phone up beside the aircraft window and takes a photo of the wing over the clouds, then looks at the result, pleased. Medium close-up.",
+    "05-add": "Earlier that week, at a kitchen table: Maja sits with a printed flight ticket, holds her phone above it as if scanning it, then sets the phone down, done. Overhead-ish medium shot, morning light.",
+    "09-updates": "Maja is not in this shot. In a Helsinki living room at dusk, Clara, a woman in her thirties with dark curly hair, curls up alone on a sofa and reads something on her phone, smiling; the room is warm and lamp-lit. Medium shot.",
+    "10-theirday": "Maja is not in this shot. Tomas, a man in his thirties with a short beard, stands at his kitchen counter, glances at his phone, pauses, and smiles at what he sees, then goes back to cooking. Medium shot, natural light.",
+    "08-postcard": "Maja in her window seat writes a short message on her phone, looks out at the sunset over the clouds, then back at the phone and taps send. Close-up on her face and hands, warm light.",
+    "12-belt": "Arrival hall at Tokyo Haneda before dawn: Maja walks toward the baggage carousels, glances at her phone, and heads straight to the right belt as suitcases begin to arrive. Wide tracking shot, cool early light.",
+    "15-claims": "A departures board at an airport gate showing a flight delayed, out of focus in the background; in the foreground Maja sits calmly with her suitcase, checks her phone and shrugs, unbothered. Medium shot.",
+    "13-pro": "Maja walks through a quiet Tokyo street at dawn with her suitcase, neon signs off, first light on the buildings, phone in her hand; she looks around and smiles. Wide cinematic shot.",
+    "14-plans": "Night in a small Tokyo ramen shop, a wooden counter, warm lantern light, steam rising from bowls, the cook at work softly out of focus behind. Maja sits at the counter with a steaming bowl of ramen and chopsticks, holds her phone up and takes a photo of the bowl, then looks at the phone and breaks into a delighted smile as a few small heart reactions float up off the screen one after another; she glances back at the food, happy. Her face is clearly visible; the phone screen itself is turned away and never readable, no words or text anywhere. Medium close-up from across the counter, shallow focus, slow gentle push-in.",
+    "17-close": "Maja stands at her Tokyo hotel window as the city wakes up, suitcase beside her, phone in hand, and looks out at the view with a quiet smile. Slow push-in, golden morning light."
+  },
+  "window": {
+    "x": 96,
+    "y": 200,
+    "width": 1154,
+    "height": 500,
+    "radius": 24
+  },
+  "noCharacter": [
+    "07-globe",
+    "09-updates",
+    "10-theirday"
+  ],
+  "references": {
+    "02-home": [
+      "refs/hel-exterior.jpg"
+    ],
+    "02-terminal": [
+      "refs/hel-departures-hall.jpg"
+    ],
+    "03-steps": [
+      "refs/hel-departures-hall.jpg"
+    ]
+  },
+  "negative": "sad, frowning, worried, tired, two doors opening, duplicate suitcase, suitcase changing sides, suitcase appearing or disappearing, extra people near the car, driver getting out, payment, luggage cart, snow, night, misspelled signage, extra text, front passenger door open, driver's door open, door changing shape, door moving along the car, car changing shape, second person in the room, readable text, comment bubbles with words",
+  "characterPhoto": "refs/maja-photo.jpg"
+}
