@@ -103,6 +103,15 @@ place it from the provider's last reported position (AeroDataBox
 over oceans and on the ground) carried forward along its track, else from the
 timetable (`flightProgress`).
 
+Airport codes are placed once a frame by `placeLabels` (services/globe):
+busiest airports first, each at the first of right / left / above / below
+its dot that is inside the sky and clear of every placed code, near-side
+dot and plane glyph (a plane waiting on its dot pushes the code out past
+it); a code with no room is hidden until a zoom makes some. So the overview
+labels what fits (the London cluster shows one code) and never the lot. They
+hide below `LABEL_SCALE` (the sun view); the trip inset passes
+`labels="always"`, which only drops that zoom gate.
+
 The World tab's globe sways with the phone's tilt (`tilt` prop,
 `hooks/use-device-tilt` + `services/tilt`, expo-sensors DeviceMotion): a
 glimpse of up to ~17° that eases back while the phone is still, added on top

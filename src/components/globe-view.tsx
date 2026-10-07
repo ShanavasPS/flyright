@@ -46,8 +46,10 @@ import {
   SKY_SCALE,
   SUN_FOCAL,
   faceSun,
+  placeLabels,
   smoothstep,
   sunPlacement,
+  type LabelPlacement,
   type SkyBounds,
   cometAlpha,
   cometRange,
@@ -70,8 +72,11 @@ import { sunVector } from '@/services/sun';
 
 /** How close, in canvas points, a tap must land to a route to select it. */
 const ROUTE_TAP_TOLERANCE = 22;
-/** Airport labels appear from this zoom on ('auto' mode). */
-const LABEL_SCALE = 3;
+/** Airport codes hide below this zoom ('auto' mode): a globe pinched down
+ * to the sun is too small for them. */
+const LABEL_SCALE = 0.95;
+/** A plane glyph's reach from its anchor, points, as a label obstacle. */
+const PLANE_OBSTACLE_R = 9;
 /** The detail tiles take over from the base mask from this zoom on. */
 const DETAIL_SCALE = 1.8;
 /** Country borders fade in across this zoom range. */
@@ -326,6 +331,7 @@ export function GlobeView({
         iata: airport.iata,
         v: toVector(airport.lat, airport.lon),
         r: 2.5 + Math.min(airport.count, 5) * 0.4,
+        count: airport.count,
       })),
     [airports],
   );
@@ -507,6 +513,10 @@ export function GlobeView({
   const dotsPath = useDerivedValue(() => paths.value.dots);
 
   const font = useMemo(() => labelFont(), []);
+  const labelWidths = useMemo(
+    () => airportVectors.map((airport) => (font ? font.measureText(airport.iata).width : 0)),
+    [font, airportVectors],
+  );
   const darkSky = useMemo(() => {
     const [r, g, b] = rgb(colors.background);
     return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
@@ -640,6 +650,29 @@ export function GlobeView({
     };
   }, [packed, livePlane]);
   const upcomingRoutes = packed.filter((route) => route.plane.upcoming && route.key !== liveKey);
+  const planeAnchors = useMemo(
+    () => [...upcomingRoutes, ...(liveRoute ? [liveRoute] : [])].map((route) => route.plane.anchor),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- upcomingRoutes is derived from packed and liveKey
+    [packed, liveKey, liveRoute],
+  );
+  // The codes are placed together, once a frame: the busiest airports
+  // first, each where it has room, the rest hidden until a zoom makes some
+  // (services/globe placeLabels).
+  const labelPlaces = useDerivedValue<LabelPlacement[]>(() => {
+    if (labels === 'auto' && scale.value < LABEL_SCALE) return [];
+    const rot = rotation({ lambda: viewLambda.value, phi: viewPhi.value });
+    const r = fitR * scale.value;
+    const dots = airportVectors.map((airport, i) => {
+      const [vx, vy, vz] = toView(airport.v[0], airport.v[1], airport.v[2], rot);
+      return { x: cx + r * vx, y: cy - r * vy, r: airport.r, w: labelWidths[i], vz, priority: airport.count };
+    });
+    // A plane waiting on its origin, or in the air, covers the dot's side.
+    const planes = planeAnchors.map((anchor) => {
+      const [vx, vy, vz] = toView(anchor[0], anchor[1], anchor[2], rot);
+      return { x: cx + r * vx, y: cy - r * vy, r: PLANE_OBSTACLE_R, vz };
+    });
+    return placeLabels(dots, sky, planes);
+  });
   // Aircraft on routes that are not waiting to leave: the one in the air,
   // and — only when asked — a plane mid-arc on a flown route.
   const stillRoutes = packed.filter(
@@ -692,8 +725,8 @@ export function GlobeView({
         {upcomingRoutes.length > 0 && (
           <PulsingPlanes routes={upcomingRoutes} camera={camera} colors={colors} animate={animate} />
         )}
-        {airportVectors.map((airport) => (
-          <AirportLabel key={airport.iata} airport={airport} camera={camera} font={font} color={colors.label} mode={labels} />
+        {airportVectors.map((airport, i) => (
+          <AirportLabel key={airport.iata} index={i} text={airport.iata} places={labelPlaces} font={font} color={colors.label} />
         ))}
       </Canvas>
       {/* The radar rings get a canvas of their own, over the globe: their
@@ -962,36 +995,27 @@ function CometStep({ steps, step, color }: { steps: SharedValue<ReturnType<typeo
   );
 }
 
-/** An airport's code beside its dot, once the globe is close enough for
- * the codes not to crowd (or always, on the inset). */
+/** An airport's code where placeLabels put it this frame, if anywhere. */
 function AirportLabel({
-  airport,
-  camera,
+  index,
+  text,
+  places,
   font,
   color,
-  mode,
 }: {
-  airport: { iata: string; v: [number, number, number]; r: number };
-  camera: Camera;
+  index: number;
+  text: string;
+  places: DerivedValue<LabelPlacement[]>;
   font: SkFont | null;
   color: string;
-  mode: 'auto' | 'always';
 }) {
-  const { lambda, phi, scale, cx, cy, fitR } = camera;
-  const place = useDerivedValue(() => {
-    const rot = rotation({ lambda: lambda.value, phi: phi.value });
-    const r = fitR * scale.value;
-    const [vx, vy, vz] = toView(airport.v[0], airport.v[1], airport.v[2], rot);
-    const shown = vz > 0.05 && (mode === 'always' || scale.value >= LABEL_SCALE);
-    return { x: cx + r * vx + airport.r + 5, y: cy - r * vy + 4, opacity: shown ? 1 : 0 };
-  });
-  const x = useDerivedValue(() => place.value.x);
-  const y = useDerivedValue(() => place.value.y);
-  const opacity = useDerivedValue(() => place.value.opacity);
+  const x = useDerivedValue(() => places.value[index]?.x ?? 0);
+  const y = useDerivedValue(() => places.value[index]?.y ?? 0);
+  const opacity = useDerivedValue(() => places.value[index]?.opacity ?? 0);
   if (!font) return null;
   return (
     <Group opacity={opacity}>
-      <Text x={x} y={y} text={airport.iata} font={font} color={color} />
+      <Text x={x} y={y} text={text} font={font} color={color} />
     </Group>
   );
 }

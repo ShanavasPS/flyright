@@ -6,6 +6,7 @@ import {
   cometRange,
   faceSun,
   fitCamera,
+  placeLabels,
   mergeSegments,
   nearestLambda,
   offsetAlong,
@@ -276,5 +277,57 @@ describe('faceSun', () => {
   it('keeps the tilt within the globe’s limits', () => {
     const next = faceSun(facing(80, 0), toVector(-80, 180), -0.7);
     expect(Math.abs(next.phi)).toBeLessThanOrEqual(85 * RAD + 1e-9);
+  });
+});
+
+describe('placeLabels', () => {
+  const sky = { left: 0, top: 0, right: 400, bottom: 600 };
+  const dot = (x: number, y: number, priority = 1, vz = 0.9) => ({ x, y, r: 3, w: 24, vz, priority });
+
+  it('puts a code to the right of a dot with room', () => {
+    const [a] = placeLabels([dot(100, 100)], sky);
+    expect(a.opacity).toBe(1);
+    expect(a.x).toBe(108);
+    expect(a.y).toBe(104);
+  });
+
+  it('moves a code to another side rather than over a neighbour', () => {
+    const [a, b] = placeLabels([dot(100, 100, 2), dot(145, 100, 1)], sky);
+    expect(a.x).toBe(108); // the busier one keeps the right-hand spot
+    expect(b.opacity).toBe(1);
+    expect(b.x).toBe(153); // b's left would cover a's code, so b goes right too
+    // A code never sits over another airport's dot either.
+    const [over] = placeLabels([dot(100, 100, 2), dot(130, 100, 1)], sky);
+    expect(over.x).toBe(68);
+  });
+
+  it('drops the least busy code when a cluster has no room', () => {
+    const cluster = [dot(100, 100, 5), dot(104, 103, 4), dot(97, 106, 3), dot(103, 96, 2), dot(99, 101, 1)];
+    const placed = placeLabels(cluster, sky);
+    expect(placed[0].opacity).toBe(1);
+    expect(placed.filter((p) => p.opacity > 0).length).toBeLessThan(cluster.length);
+    expect(placed[4].opacity).toBe(0);
+  });
+
+  it('labels nothing on the far side and fades near the limb', () => {
+    const [far, limb] = placeLabels([dot(100, 100, 1, -0.5), dot(200, 200, 1, 0.2)], sky);
+    expect(far.opacity).toBe(0);
+    expect(limb.opacity).toBeGreaterThan(0);
+    expect(limb.opacity).toBeLessThan(1);
+  });
+
+  it('keeps clear of a plane glyph waiting on the dot', () => {
+    const [a] = placeLabels([dot(100, 100)], sky, [{ x: 104, y: 100, r: 9, vz: 0.9 }]);
+    expect(a.opacity).toBe(1);
+    expect(a.x).toBe(118); // out past the glyph, not under it
+    // A plane elsewhere is simply kept clear of.
+    const [b] = placeLabels([dot(100, 100)], sky, [{ x: 125, y: 100, r: 9, vz: 0.9 }]);
+    expect(b.x).toBe(68);
+  });
+
+  it('keeps a code inside the sky', () => {
+    const [edge] = placeLabels([dot(395, 300)], sky);
+    expect(edge.opacity).toBe(1);
+    expect(edge.x + 24).toBeLessThanOrEqual(400);
   });
 });

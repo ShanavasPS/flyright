@@ -462,3 +462,116 @@ export function faceSun(
   const phi = Math.max(-MAX_TILT, Math.min(MAX_TILT, Math.asin(Math.max(-1, Math.min(1, y)))));
   return { lambda: Math.atan2(x, z), phi };
 }
+
+/** An airport dot as projected this frame, for label placement. */
+export interface LabelDot {
+  x: number;
+  y: number;
+  /** Dot radius, points. */
+  r: number;
+  /** The code's text width, points. */
+  w: number;
+  /** View-space depth: positive faces the viewer. */
+  vz: number;
+  /** Busier airports are labelled first. */
+  priority: number;
+}
+
+/** Something else a code must keep clear of — a plane glyph. */
+export interface LabelObstacle {
+  x: number;
+  y: number;
+  r: number;
+  vz: number;
+}
+
+/** Where a code is drawn (text origin: baseline left), or hidden. */
+export interface LabelPlacement {
+  x: number;
+  y: number;
+  opacity: number;
+}
+
+/** The label font's cap height and descent at 11 pt bold — the codes are
+ * capitals, so the box is the caps' box. */
+const LABEL_ASCENT = 8;
+const LABEL_DESCENT = 2;
+/** Air between a dot and its code, and between codes. */
+const LABEL_GAP = 5;
+const LABEL_PAD = 2;
+/** Codes hide this close to the limb, where the dot is about to go round. */
+const LABEL_LIMB = [0.12, 0.3] as const;
+/** More codes than this would not be read anyway; the rest wait for a zoom. */
+const MAX_LABELS = 40;
+
+/** Place as many codes as fit without crowding: the busiest airports first,
+ * each at the first of right / left / above / below its dot that lies
+ * inside the sky and clear of every code already placed, every dot on the
+ * near side and every obstacle (plane glyphs). A code that fits nowhere is hidden — zooming in makes
+ * room. One result per dot, in input order. Pure, per frame. */
+export function placeLabels(
+  dots: readonly LabelDot[],
+  sky: SkyBounds,
+  obstacles: readonly LabelObstacle[] = [],
+): LabelPlacement[] {
+  'worklet';
+  const out: LabelPlacement[] = [];
+  for (let i = 0; i < dots.length; i += 1) out.push({ x: 0, y: 0, opacity: 0 });
+  const order: number[] = [];
+  for (let i = 0; i < dots.length; i += 1) if (dots[i].vz > LABEL_LIMB[0]) order.push(i);
+  order.sort((a, b) => dots[b].priority - dots[a].priority || dots[b].vz - dots[a].vz);
+  // Placed boxes as [left, top, right, bottom], padded.
+  const boxes: number[][] = [];
+  let placed = 0;
+  for (let k = 0; k < order.length && placed < MAX_LABELS; k += 1) {
+    const i = order[k];
+    const d = dots[i];
+    // An obstacle sitting on the dot (a plane waiting to leave) widens it:
+    // the code moves out past the glyph instead of being refused by it.
+    let ar = d.r;
+    for (let j = 0; j < obstacles.length; j += 1) {
+      const e = obstacles[j];
+      if (e.vz <= 0.02) continue;
+      const dist = Math.hypot(e.x - d.x, e.y - d.y);
+      if (dist < d.r + e.r) ar = Math.max(ar, dist + e.r);
+    }
+    // Text origins for right, left, above, below.
+    const sides = [
+      [d.x + ar + LABEL_GAP, d.y + LABEL_ASCENT / 2],
+      [d.x - ar - LABEL_GAP - d.w, d.y + LABEL_ASCENT / 2],
+      [d.x - d.w / 2, d.y - ar - LABEL_GAP - LABEL_DESCENT],
+      [d.x - d.w / 2, d.y + ar + LABEL_GAP + LABEL_ASCENT],
+    ];
+    for (let s = 0; s < sides.length; s += 1) {
+      const bx = sides[s][0];
+      const by = sides[s][1];
+      const left = bx - LABEL_PAD;
+      const top = by - LABEL_ASCENT - LABEL_PAD;
+      const right = bx + d.w + LABEL_PAD;
+      const bottom = by + LABEL_DESCENT + LABEL_PAD;
+      if (left < sky.left || top < sky.top || right > sky.right || bottom > sky.bottom) continue;
+      let clear = true;
+      for (let b = 0; b < boxes.length && clear; b += 1) {
+        const o = boxes[b];
+        if (left < o[2] && right > o[0] && top < o[3] && bottom > o[1]) clear = false;
+      }
+      for (let j = 0; j < dots.length && clear; j += 1) {
+        if (j === i) continue;
+        const e = dots[j];
+        if (e.vz <= 0.02) continue;
+        if (e.x > left - e.r && e.x < right + e.r && e.y > top - e.r && e.y < bottom + e.r) clear = false;
+      }
+      for (let j = 0; j < obstacles.length && clear; j += 1) {
+        const e = obstacles[j];
+        if (e.vz <= 0.02 || Math.hypot(e.x - d.x, e.y - d.y) < d.r + e.r) continue;
+        if (e.x > left - e.r && e.x < right + e.r && e.y > top - e.r && e.y < bottom + e.r) clear = false;
+      }
+      if (!clear) continue;
+      boxes.push([left, top, right, bottom]);
+      out[i] = { x: bx, y: by, opacity: smoothstep(LABEL_LIMB[0], LABEL_LIMB[1], d.vz) };
+      placed += 1;
+      break;
+    }
+  }
+  return out;
+}
