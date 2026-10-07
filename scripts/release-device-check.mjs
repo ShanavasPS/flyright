@@ -21,8 +21,11 @@ async function main() {
   const { values } = parseArgs({ options: {
     ios: { type: 'string' }, android: { type: 'string' }, mode: { type: 'string' },
     'account-email': { type: 'string' }, 'journey-id': { type: 'string' },
+    // Another project's Metro may already hold 8081; the dev builds must then
+    // be built for the same port (`npx expo run:<platform> --port <n>`).
+    'metro-port': { type: 'string', default: '8081' },
   } });
-  if (!values.ios || !values.android || !['native', 'candidate'].includes(values.mode)) throw new Error('Usage: npm run release:devices -- --ios <sim-udid> --android <serial> --mode native|candidate [--account-email <test-email> --journey-id <retained-trip-id>]');
+  if (!values.ios || !values.android || !['native', 'candidate'].includes(values.mode)) throw new Error('Usage: npm run release:devices -- --ios <sim-udid> --android <serial> --mode native|candidate [--metro-port <port>] [--account-email <test-email> --journey-id <retained-trip-id>]');
   if (values.mode === 'candidate' && (!values['account-email'] || !values['journey-id'])) throw new Error('Candidate checks require the dedicated test account email and a retained trip ID. They never sign in or clear data automatically.');
   const app = JSON.parse(await readFile(resolve(root, 'app.json'), 'utf8')).expo;
   const packageId = app.android.package;
@@ -65,8 +68,9 @@ async function main() {
 
     let requests = [];
     if (values.mode === 'native') {
-      const metro = await fetch('http://127.0.0.1:8081/status', { signal: AbortSignal.timeout(3000) }).catch(() => null);
-      if (!metro?.ok || !(await metro.text()).includes('packager-status:running')) throw new Error('Start FlyRight Metro with IPv4 access on port 8081 before native checks: npx expo start --clear --port 8081');
+      const port = values['metro-port'];
+      const metro = await fetch(`http://127.0.0.1:${port}/status`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
+      if (!metro?.ok || !(await metro.text()).includes('packager-status:running')) throw new Error(`Start FlyRight Metro with IPv4 access on port ${port} before native checks: npx expo start --clear --port ${port}`);
       server = createServer(async (request, response) => {
         const chunks = [];
         for await (const chunk of request) chunks.push(chunk);

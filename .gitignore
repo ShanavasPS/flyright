@@ -51,6 +51,12 @@ asc-api-key.p8
 
 .maestro/out/
 
+
+# Demo video renders and simulator captures (scripts/demo-video.mjs)
+demo/out/
+# Shipaton demo renders (scripts/shipaton-demo/render.mjs)
+scripts/shipaton-demo/output/
+
 .projects/cache
 .projects/vault
 .projects/state.test.json
@@ -59,7 +65,5 @@ asc-api-key.p8
 .env.*
 !.env.example
 
-# Demo video renders and simulator captures (scripts/demo-video.mjs)
-demo/out/
-# Shipaton demo renders (scripts/shipaton-demo/render.mjs)
-scripts/shipaton-demo/output/
+# Reference photos for the AI-generated movie cut (a family photo and airport shots): kept local
+scripts/shipaton-demo/refs/
