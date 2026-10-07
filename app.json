@@ -72,6 +72,9 @@
       "permissions": [
         "android.permission.CAMERA"
       ],
+      "blockedPermissions": [
+        "android.permission.ACTIVITY_RECOGNITION"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
