@@ -40,13 +40,16 @@ appId: com.shanavasshaji.flyright
 # clearState also wipes the dev client's cached bundle — the first Metro
 # download can sit on a black screen well past 30s, hence the long wait.
 - extendedWaitUntil:
-    visible: "Continue"
+    visible: "Show me"
     timeout: 90000
 # Walk onboarding to the push page: the travel-day surface is gated on
 # getPushEnabled() on Android, and only "Allow notifications" records the
 # in-app opt-in intent — "Skip" would leave the Live Update suppressed.
-- tapOn: "Continue"
-- tapOn: "Continue"
+- tapOn: "Show me"
+- tapOn: "Next"
+- tapOn: "Next"
+- tapOn: "Next"
+- tapOn: "Next"
 - extendedWaitUntil:
     visible: "Allow notifications"
     timeout: 10000

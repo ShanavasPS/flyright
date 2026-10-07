@@ -5,6 +5,9 @@ import { useTheme } from '@/hooks/use-theme';
 
 type PrimaryButtonProps = Pick<PressableProps, 'onPress' | 'disabled'> & {
   label: string;
+  /** The fill, when the button sits on a ground the theme's tint was not
+   * picked for (the onboarding's navy takes the dark scheme's tint). */
+  color?: string;
 };
 
 /** On the web the button answers a hover with a lift; a CSS transition
@@ -20,7 +23,7 @@ const WEB_HOVER =
     : null;
 
 /** Filled brand-blue call-to-action — the one loud element on a screen. */
-export function PrimaryButton({ label, onPress, disabled }: PrimaryButtonProps) {
+export function PrimaryButton({ label, onPress, disabled, color }: PrimaryButtonProps) {
   const theme = useTheme();
 
   return (
@@ -31,7 +34,7 @@ export function PrimaryButton({ label, onPress, disabled }: PrimaryButtonProps) 
       style={({ pressed, hovered }) => [
         styles.button,
         WEB_HOVER,
-        { backgroundColor: theme.tint, opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
+        { backgroundColor: color ?? theme.tint, opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
         hovered && !disabled && { transform: [{ translateY: -1 }, { scale: 1.01 }] },
       ]}>
       <Text style={styles.label}>{label}</Text>

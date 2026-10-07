@@ -549,7 +549,10 @@ export function GlobeView({
     () => airportVectors.map((airport) => (font ? font.measureText(airport.iata).width : 0)),
     [font, airportVectors],
   );
+  // A transparent sky (the onboarding's globe on its navy page) counts as
+  // dark: it is only ever asked for on the brand's night ground.
   const darkSky = useMemo(() => {
+    if (colors.background === 'transparent') return true;
     const [r, g, b] = rgb(colors.background);
     return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
   }, [colors.background]);
@@ -717,7 +720,7 @@ export function GlobeView({
 
   const canvas = (
     <Animated.View
-      style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }, fade]}
+      style={[StyleSheet.absoluteFill, colors.background !== 'transparent' && { backgroundColor: colors.background }, fade]}
       accessibilityLabel={
         interactive ? 'Globe of your travels. Drag to turn it, pinch to zoom, double tap to zoom in.' : undefined
       }

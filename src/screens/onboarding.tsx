@@ -1,15 +1,20 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { NotificationPitchArt } from '@/components/notification-pitch';
-import { BrandArt, ClaimArt, Stage, UpdatesArt } from '@/components/onboarding-art';
+import {
+  BrandArt,
+  Contrail,
+  HeadsUpArt,
+  ON_STAGE,
+  PosterArt,
+  TravelDayArt,
+  UpdatesArt,
+  WorldArt,
+} from '@/components/onboarding-art';
 import { PrimaryButton } from '@/components/primary-button';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { requestTrackingConsent, trackEvent } from '@/services/analytics';
 import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { requestPushPermission } from '@/services/notifications';
@@ -17,22 +22,18 @@ import { markOnboardingSeen, markPushRemindLater } from '@/services/onboarding';
 
 type Page = {
   key: string;
-  /** What the page is about, in two or three words above the title. */
+  /** What the page is about, in a word or two above the title. */
   eyebrow: string;
-  /** One line on an iPhone SE: about 18 characters at this size. */
+  /** Two lines at most on an iPhone SE. */
   title: string;
-  /** One sentence; the plan lines below carry the details. */
+  /** One sentence; the picture carries the rest. */
   body: string;
-  /** What the page's promise costs, line by line — free first. Each must
-   * match what the app actually locks (services/purchases proLocked), and
-   * fit one line on an iPhone SE (about 38 characters). */
-  points: { plan: 'Free' | 'Pro'; text: string }[];
-  /** The page's picture: the brand icon on the welcome page, else the app's
-   * own surfaces in miniature (components/onboarding-art). */
-  art: 'brand' | 'updates' | 'claim' | 'push';
+  /** The page's picture: the app's own surfaces in miniature
+   * (components/onboarding-art). */
+  art: 'brand' | 'travelDay' | 'updates' | 'world' | 'poster' | 'push';
 };
 
-/** Readable column for the intro copy and CTA on tablet-width screens —
+/** Readable column for the copy, pictures and CTA on tablet-width screens —
  * tighter than MaxContentWidth because these are single short paragraphs. */
 const PageMaxWidth = 480;
 
@@ -40,72 +41,66 @@ const PageMaxWidth = 480;
  * is requested — a system alert asked for mid-transition can be dropped. */
 const TRACKING_PROMPT_DELAY_MS = 600;
 
-/** Below this window height (an iPhone SE is 667) the art goes compact so
+/** Below this window height (an iPhone SE is 667) the pictures go compact so
  * each page still fits without scrolling. */
 const COMPACT_HEIGHT = 740;
 
-/** Every page's stage is the same height, so the copy under it starts at the
- * same line on every page and nothing jumps as the pages turn. */
-const stageHeight = (windowHeight: number, compact: boolean) =>
-  compact ? 224 : Math.min(380, Math.max(232, Math.round(windowHeight * 0.4)));
-
-// Travel buddy first: the journal, then the people, then the safety net.
+// Travel buddy first: the welcome, then the day you fly, the people, the
+// globe, the poster, and last the one thing we ask for.
 const PAGES: Page[] = [
   {
-    key: 'journal',
-    eyebrow: 'Welcome to FlyRight',
-    title: 'Your travel buddy',
-    body: 'Every flight in one place, and a companion from your front door to arrivals.',
-    points: [
-      { plan: 'Free', text: 'Save every flight, past and upcoming' },
-      { plan: 'Free', text: 'Your trips, photos and world map' },
-    ],
+    key: 'welcome',
+    eyebrow: 'Welcome to',
+    title: 'Your travel journal, and your buddy on the day you fly.',
+    body: 'Every flight, past and to come, with photos, notes and a map. On the day you fly, it stays with you from your front door to arrivals.',
     art: 'brand',
+  },
+  {
+    key: 'travelDay',
+    eyebrow: 'Travel day',
+    title: 'Your flight, before you unlock.',
+    body: 'Countdown, gate, seat and belt, updating by themselves.',
+    art: 'travelDay',
   },
   {
     key: 'updates',
     eyebrow: 'Updates',
-    title: 'Follow your friends',
-    body: 'Watch them take off and land as it happens, with the postcards they share on the way.',
-    points: [
-      { plan: 'Free', text: 'See their take-offs and landings' },
-      { plan: 'Pro', text: 'Share postcards from your own trips' },
-    ],
+    title: 'Friends in the air, and their postcards.',
+    body: 'They follow your flight live. You send a photo from the trip.',
     art: 'updates',
   },
   {
-    key: 'claims',
-    eyebrow: 'Delay compensation',
-    title: 'Delayed? Get paid',
-    body: 'FlyRight is already watching your flight, so a long delay never goes unnoticed.',
-    points: [
-      { plan: 'Free', text: 'See what you’re owed, up to €600' },
-      { plan: 'Pro', text: 'We prepare the claim for you' },
-    ],
-    art: 'claim',
+    key: 'world',
+    eyebrow: 'World',
+    title: 'Everywhere you’ve been.',
+    body: 'Lit by the real sun, city lights after dark, and a plane where you are right now.',
+    art: 'world',
+  },
+  {
+    key: 'poster',
+    eyebrow: 'Poster',
+    title: 'Made to share.',
+    body: 'A poster of everywhere you’ve flown, or of one trip. Story or square, night or day.',
+    art: 'poster',
   },
   {
     key: 'push',
-    eyebrow: 'Notifications',
-    title: 'Stay in the loop',
-    body: 'Every step of travel day, the moment it happens: yours and your friends’.',
-    points: [
-      { plan: 'Free', text: 'Your friends’ flights and postcards' },
-      { plan: 'Pro', text: 'Gate, boarding and delay alerts' },
-    ],
+    eyebrow: 'Heads-up',
+    title: 'It tells you before the airline does.',
+    body: 'A friend taking off, a friend landing. Nothing else.',
     art: 'push',
   },
 ];
 
 export function Onboarding() {
   const router = useRouter();
-  const theme = useTheme();
   const { width, height } = useWindowDimensions();
   const compact = height < COMPACT_HEIGHT;
   const listRef = useRef<FlatList<Page>>(null);
   const [page, setPage] = useState(0);
   const [busy, setBusy] = useState(false);
   const isPush = PAGES[page].art === 'push';
+  const isWelcome = page === 0;
 
   // Seen the moment it appears: every exit path (Skip, Android back, the CTAs)
   // counts, so the intro can never show twice.
@@ -169,7 +164,11 @@ export function Onboarding() {
   }, [width]);
 
   return (
-    <ThemedView style={styles.container}>
+    // The intro's ground is the brand's navy in both themes — identity, like
+    // the splash it follows — so every picture sits on the same night sky.
+    <View style={styles.container}>
+      <View style={styles.glow} pointerEvents="none" />
+      <Contrail />
       <View
         style={[
           styles.safeArea,
@@ -188,13 +187,7 @@ export function Onboarding() {
             accessible
             accessibilityLabel={`Page ${page + 1} of ${PAGES.length}`}>
             {PAGES.map((p, i) => (
-              <View
-                key={p.key}
-                style={[
-                  styles.segment,
-                  { backgroundColor: i <= page ? theme.heading : theme.hairline },
-                ]}
-              />
+              <View key={p.key} style={[styles.segment, i <= page ? styles.segmentOn : styles.segmentOff]} />
             ))}
           </View>
           <Pressable
@@ -203,9 +196,7 @@ export function Onboarding() {
             disabled={isPush}
             style={isPush && styles.hidden}>
             {/* Quiet on purpose: the page's one loud element is its button. */}
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.skip}>
-              Skip
-            </ThemedText>
+            <Text style={styles.skip}>Skip</Text>
           </Pressable>
         </View>
 
@@ -229,84 +220,98 @@ export function Onboarding() {
               contentContainerStyle={styles.page}
               bounces={false}
               showsVerticalScrollIndicator={false}>
-              {/* Inner clamp: pages span the whole window, but the stage and
-                  copy hold a readable column on iPad-width screens. */}
+              {/* Inner clamp: pages span the whole window, but the copy and
+                  pictures hold a readable column on iPad-width screens. */}
               <View style={styles.pageContent}>
-                <Stage height={stageHeight(height, compact)} compact={compact} top={item.art === 'push'}>
-                  {item.art === 'push' ? (
-                    <NotificationPitchArt compact={compact} surface="stage" />
-                  ) : item.art === 'updates' ? (
-                    <UpdatesArt compact={compact} />
-                  ) : item.art === 'claim' ? (
-                    <ClaimArt />
-                  ) : (
-                    <BrandArt />
-                  )}
-                </Stage>
-                <View style={styles.copy}>
-                  <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow}>
-                    {item.eyebrow}
-                  </ThemedText>
-                  {/* One line, always: the titles are written short, and one
-                      that still runs long (large text) shrinks a little
-                      rather than wrap. */}
-                  <ThemedText
-                    type="subtitle"
-                    themeColor="heading"
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}
-                    style={styles.title}>
-                    {item.title}
-                  </ThemedText>
-                  <ThemedText themeColor="textSecondary">{item.body}</ThemedText>
-                  <View style={styles.points}>
-                    {item.points.map((point) => (
-                      <View key={point.text} style={styles.point}>
-                        <View style={[styles.plan, { backgroundColor: theme.backgroundSelected }]}>
-                          <ThemedText type="smallBold" themeColor="heading" style={styles.planLabel}>
-                            {point.plan}
-                          </ThemedText>
-                        </View>
-                        <ThemedText type="small" style={styles.pointText}>
-                          {point.text}
-                        </ThemedText>
-                      </View>
-                    ))}
-                  </View>
-                </View>
+                {item.art === 'brand' ? (
+                  <WelcomePage page={item} compact={compact} />
+                ) : (
+                  <>
+                    <View style={styles.copy}>
+                      <Text style={styles.eyebrow}>{item.eyebrow}</Text>
+                      {/* Two lines, always: the titles are written short, and
+                          one that still runs long (large text) shrinks a
+                          little rather than wrap a third time. */}
+                      <Text style={styles.title} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.body}>{item.body}</Text>
+                    </View>
+                    <View style={[styles.picture, item.art === 'push' && styles.pictureHigh]}>
+                      {item.art === 'travelDay' ? (
+                        <TravelDayArt compact={compact} />
+                      ) : item.art === 'updates' ? (
+                        <UpdatesArt compact={compact} />
+                      ) : item.art === 'world' ? (
+                        <WorldArt compact={compact} />
+                      ) : item.art === 'poster' ? (
+                        <PosterArt compact={compact} />
+                      ) : (
+                        <HeadsUpArt />
+                      )}
+                    </View>
+                  </>
+                )}
               </View>
             </ScrollView>
           )}
         />
 
         <View style={styles.footer}>
+          {isWelcome && <Text style={styles.invite}>Let us show you around</Text>}
+          {/* The way past the ask without answering it: a promise, not a
+              dodge (see remindLater), above the button so the button itself
+              stays where Next was on every other page. */}
+          {isPush && (
+            <Pressable accessibilityRole="button" onPress={remindLater} disabled={busy}>
+              <Text style={styles.footerLink}>Remind me later</Text>
+            </Pressable>
+          )}
           <PrimaryButton
-            label={isPush ? 'Allow notifications' : 'Continue'}
+            label={isPush ? 'Allow notifications' : isWelcome ? 'Show me' : 'Next'}
+            color={ON_STAGE.tint}
             disabled={busy}
             onPress={() => (isPush ? void enablePush() : advance())}
           />
-          {/* One reserved slot on every page so the button row never jumps:
-              the priming page's "Remind me later", an invisible placeholder
-              elsewhere. */}
-          <Pressable
-            accessibilityRole="button"
-            onPress={remindLater}
-            disabled={!isPush || busy}
-            style={!isPush && styles.hidden}>
-            <ThemedText type="link" style={styles.footerLink}>
-              Remind me later
-            </ThemedText>
-          </Pressable>
         </View>
       </View>
-    </ThemedView>
+    </View>
+  );
+}
+
+/** The first page: the icon, the name, and what FlyRight is — centred, the
+ * one page whose copy sits under its picture. */
+function WelcomePage({ page, compact }: { page: Page; compact: boolean }) {
+  return (
+    <View style={[styles.welcome, compact && styles.welcomeCompact]}>
+      <BrandArt compact={compact} />
+      <View style={styles.welcomeName}>
+        <Text style={[styles.eyebrow, styles.centred]}>{page.eyebrow}</Text>
+        <Text style={styles.wordmark}>FlyRight</Text>
+      </View>
+      <View style={styles.welcomeCopy}>
+        <Text style={[styles.welcomeTitle, styles.centred]}>{page.title}</Text>
+        <Text style={[styles.body, styles.centred]}>{page.body}</Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0C1B36',
+    experimental_backgroundImage: 'linear-gradient(180deg, #0C1B36 0%, #070F20 100%)',
+  },
+  // The soft light behind the title, the same on every page.
+  glow: {
+    position: 'absolute',
+    left: -120,
+    top: -160,
+    width: 520,
+    height: 520,
+    borderRadius: 260,
+    experimental_backgroundImage: 'radial-gradient(circle, rgba(78,155,245,0.22) 0%, rgba(78,155,245,0) 65%)',
   },
   safeArea: {
     flex: 1,
@@ -314,77 +319,123 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: Spacing.four,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
   },
   progress: {
-    flex: 1,
+    width: 160,
     flexDirection: 'row',
-    gap: Spacing.one + Spacing.half,
+    gap: Spacing.one,
   },
   segment: {
     flex: 1,
-    height: 4,
+    height: 3,
     borderRadius: 2,
   },
+  segmentOn: {
+    backgroundColor: ON_STAGE.text,
+  },
+  segmentOff: {
+    backgroundColor: 'rgba(242,246,251,0.3)',
+  },
   skip: {
+    color: ON_STAGE.muted,
+    fontSize: 14,
+    fontWeight: 500,
     // A full-height tap target for a small word.
     lineHeight: 30,
-  },
-  hidden: {
-    opacity: 0,
   },
   page: {
     flexGrow: 1,
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.four,
   },
   pageContent: {
+    flex: 1,
     width: '100%',
     maxWidth: PageMaxWidth,
   },
   copy: {
-    // Inset from the stage's edge to the button's, so copy and button share
-    // one left edge.
-    paddingHorizontal: Spacing.two,
-    paddingTop: Spacing.four,
+    paddingTop: Spacing.two,
     gap: Spacing.two,
   },
   eyebrow: {
+    color: ON_STAGE.tint,
     fontSize: 12,
     lineHeight: 16,
+    fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
   title: {
+    color: ON_STAGE.text,
+    fontSize: 32,
     lineHeight: 38,
+    fontWeight: 700,
   },
-  points: {
-    gap: Spacing.two,
-    marginTop: Spacing.two,
+  body: {
+    color: ON_STAGE.muted,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: 500,
   },
-  point: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three - Spacing.one,
-  },
-  // A neutral tag, not a status: Free and Pro read alike, and the tint
-  // stays the button's.
-  plan: {
-    width: 44,
-    alignItems: 'center',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.half,
-  },
-  planLabel: {
-    fontSize: 11,
-    lineHeight: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  pointText: {
+  picture: {
     flex: 1,
+    justifyContent: 'center',
+    paddingTop: Spacing.three,
+  },
+  // The notification stack sits a little above centre, like a stack at the
+  // top of a Lock Screen, rather than down by the button.
+  pictureHigh: {
+    justifyContent: 'flex-start',
+    paddingTop: Spacing.six + Spacing.two,
+  },
+  hidden: {
+    opacity: 0,
+  },
+  footerLink: {
+    textAlign: 'center',
+    color: ON_STAGE.muted,
+    fontSize: 14,
+    lineHeight: 30,
+    fontWeight: 500,
+    marginBottom: Spacing.two,
+  },
+  welcome: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.four,
+    paddingBottom: Spacing.four,
+  },
+  welcomeCompact: {
+    gap: Spacing.three,
+  },
+  welcomeName: {
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+  },
+  wordmark: {
+    color: ON_STAGE.text,
+    fontSize: 40,
+    lineHeight: 44,
+    fontWeight: 800,
+    letterSpacing: -0.5,
+  },
+  welcomeCopy: {
+    gap: Spacing.two + Spacing.half,
+    maxWidth: 320,
+  },
+  welcomeTitle: {
+    color: ON_STAGE.text,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 700,
+  },
+  centred: {
+    textAlign: 'center',
   },
   footer: {
     width: '100%',
@@ -392,9 +443,17 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
-    gap: Spacing.three,
+    // Air under the button, the height a second line would take: the one
+    // loud element sits up where the thumb rests, not on the home indicator.
+    paddingBottom: Spacing.five + Spacing.one + Spacing.half,
+    gap: Spacing.two,
   },
-  footerLink: {
+  invite: {
     textAlign: 'center',
+    color: '#5A6A7E',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: 600,
+    marginBottom: Spacing.half,
   },
 });

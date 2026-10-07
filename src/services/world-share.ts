@@ -8,6 +8,7 @@ import {
   type GeoRoute,
   type ViewBox,
   type WorldMapData,
+  type RouteSource,
 } from '@/services/geo';
 import type { JourneyRow } from '@/services/journeys';
 import { cityOf, travelRecap, type TravelRecap } from '@/services/timeline';
@@ -125,7 +126,7 @@ export interface ShareMapModel {
 }
 
 export function shareMapModel(
-  rows: JourneyRow[],
+  rows: RouteSource[],
   now: Date,
   format: ShareFormat,
   single: boolean,

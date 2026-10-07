@@ -47,11 +47,16 @@ env:
       - tapOn:
           text: "Allow"
           optional: true
+# The intro: the welcome, then one page per feature (travel day, updates,
+# world, poster), then the notifications ask.
 - extendedWaitUntil:
-    visible: "Continue"
+    visible: "Show me"
     timeout: 90000
-- tapOn: "Continue"
-- tapOn: "Continue"
+- tapOn: "Show me"
+- tapOn: "Next"
+- tapOn: "Next"
+- tapOn: "Next"
+- tapOn: "Next"
 - extendedWaitUntil:
     visible: "Allow notifications"
     timeout: 10000
