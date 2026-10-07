@@ -195,7 +195,8 @@ and the verification/deploy steps.
 
 # Share poster heat layer (TypeGPU)
 
-The World share poster draws a GPU route-density glow under its atlas via
+The World share poster (Night / Day, NASA imagery backdrops from
+`scripts/generate-poster-textures.mjs`) draws a GPU route-density glow over its backdrop via
 `react-native-webgpu` + `typegpu` (`src/services/route-heat.ts`; shader
 functions are `'use gpu'` TypeScript compiled by `unplugin-typegpu/babel`).
 Read [docs/share-poster-heat.md](docs/share-poster-heat.md) before touching

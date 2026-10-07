@@ -17,7 +17,7 @@
  */
 
 import { Buffer } from 'node:buffer';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -49,7 +49,7 @@ const CEILING = 120;
 /** Mid-tone lift (a gamma below 1 brightens). */
 const GAMMA = 0.75;
 
-async function fetchSource() {
+export async function fetchBlackMarble() {
   const cached = path.join(os.tmpdir(), 'BlackMarble_2016_3km.jpg');
   if (fs.existsSync(cached) && fs.statSync(cached).size > 1_000_000) return cached;
   console.log('fetching Black Marble (8 MB)…');
@@ -59,19 +59,23 @@ async function fetchSource() {
   return cached;
 }
 
-async function main() {
-  const source = await fetchSource();
+/** The lights mask at the given size: an RGBA buffer, white with the lights
+ * in the alpha. Shared with generate-poster-textures.mjs. */
+export async function buildLightsMask(width, height) {
+  const source = await fetchBlackMarble();
   // Downsample so every town contributes to its pixel rather than being
   // skipped, then take the luminance.
   const { data, info } = await sharp(source, { limitInputPixels: false })
-    .resize(WIDTH, HEIGHT, { kernel: 'lanczos3', fit: 'fill' })
+    .resize(width, height, { kernel: 'lanczos3', fit: 'fill' })
     .greyscale()
     .raw()
     .toBuffer({ resolveWithObject: true });
   // sharp hands the blur back with its own channel count (three, for a
   // one-channel input), so index it by that.
+  // The blur sigma scales with the output so the high-pass removes the same
+  // ground features at every size.
   const blur = await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } })
-    .blur(BLUR)
+    .blur(BLUR * (width / WIDTH))
     .raw()
     .toBuffer({ resolveWithObject: true });
   const rgba = Buffer.alloc(info.width * info.height * 4);
@@ -88,14 +92,21 @@ async function main() {
     rgba[i * 4 + 2] = 255;
     rgba[i * 4 + 3] = a;
   }
-  await sharp(rgba, { raw: { width: info.width, height: info.height, channels: 4 } })
+  return { rgba, width: info.width, height: info.height, lit: lit / (info.width * info.height) };
+}
+
+async function main() {
+  const mask = await buildLightsMask(WIDTH, HEIGHT);
+  await sharp(mask.rgba, { raw: { width: mask.width, height: mask.height, channels: 4 } })
     .png({ compressionLevel: 9 })
     .toFile(out);
   const size = fs.statSync(out).size;
-  console.log(`wrote ${path.relative(process.cwd(), out)}: ${info.width}×${info.height}, ${(lit / (info.width * info.height) * 100).toFixed(1)}% lit, ${(size / 1024).toFixed(0)} KB`);
+  console.log(`wrote ${path.relative(process.cwd(), out)}: ${mask.width}×${mask.height}, ${(mask.lit * 100).toFixed(1)}% lit, ${(size / 1024).toFixed(0)} KB`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

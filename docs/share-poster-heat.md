@@ -32,8 +32,13 @@ left out — the glow is where somebody has been.
 5. Compute pass 2 (`colour`): ramp → `pack4x8unorm` into `array<u32>`.
 6. `copyBufferToBuffer` → `mapAsync` → `Skia.Image.MakeImage(RGBA_8888, Unpremul)` →
    `encodeToBytes(PNG)` → `Paths.cache/route-heat/<key>.png`.
-7. The card draws the PNG with `expo-image` between the land path and the route lines;
-   react-native-view-shot captures ordinary views as before.
+7. The card draws the PNG with `expo-image` between the Earth backdrop and the route
+   lines (`assets/images/poster-day.jpg` / `poster-night.jpg`, NASA Blue Marble by day,
+   dimmed with the Black Marble's city lights by night, built by
+   `scripts/generate-poster-textures.mjs` from the globe's sources at twice its
+   resolution; the SVG crops the full equirectangular image to the atlas viewBox and
+   fades past the poles into the card); react-native-view-shot captures ordinary
+   views as before.
 
 Results are memoised per `routeHeatKey(model, theme)` for the session. No adapter
 (`tgpu.init()` throws or `navigator.gpu` is missing) → `renderRouteHeat` resolves null,

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { forwardRef } from 'react';
 import { StyleSheet, Text, View, type TextProps } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, Image as SvgImage, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { WORLD } from '@/services/geo';
 import {
@@ -185,9 +185,37 @@ function scrim(bg: string, story: boolean): string {
     : `linear-gradient(180deg, ${stop(1)} 0%, ${stop(0.88)} 20%, ${stop(0)} 48%, ${stop(0)} 62%, ${stop(1)} 82%)`;
 }
 
-/** The offline SVG atlas in the poster's colours, fitted to the model's
- * box: land first, the heat over it (so the coast shows through the glow),
- * the lines and dots on top. */
+/** The poster's backdrops (scripts/generate-poster-textures.mjs): the Earth
+ * by day for the light poster, at night with its city lights for the dark
+ * one — the same NASA imagery the World globe shows. */
+const BACKDROP: Record<PosterTheme, number> = {
+  dark: require('../../assets/images/poster-night.jpg'),
+  light: require('../../assets/images/poster-day.jpg'),
+};
+
+/** Where a full equirectangular image (latitude 90 → −90) sits in the
+ * atlas's viewBox, which is the same projection cropped to WORLD.latTop …
+ * latBottom: above the top edge and below the bottom one, in map units. */
+const BACKDROP_FRAME = (() => {
+  const perDegree = WORLD.height / (WORLD.latTop - WORLD.latBottom);
+  return { y: -(90 - WORLD.latTop) * perDegree, height: 180 * perDegree };
+})();
+
+/** A band taller than the world (the whole-world story poster) runs past
+ * both poles. What continues there is each backdrop's own edge colour —
+ * the Arctic sea at the top, Antarctica's ice at the bottom (the mean of
+ * the image's outermost rows) — fading into the card, so the imagery ends
+ * in a fade, not in a hard line against the card. */
+const POLE: Record<PosterTheme, { top: string; bottom: string }> = {
+  dark: { top: '#0F1D3A', bottom: '#4A5569' },
+  light: { top: '#09193B', bottom: '#EFEFEF' },
+};
+
+/** The atlas fitted to the model's box: the Earth imagery first, the heat
+ * over it (so the coast shows through the glow), the lines and dots on top.
+ * The SVG crops the imagery to the viewBox; `preserveAspectRatio="none"`
+ * stretches the whole image onto the frame so longitude and latitude land
+ * where the routes are projected. */
 function ShareAtlas({ model, theme, heatUri }: { model: ShareMapModel; theme: PosterTheme; heatUri: string | null }) {
   const palette = POSTER[theme];
   const { map, box, width, height } = model;
@@ -196,7 +224,36 @@ function ShareAtlas({ model, theme, heatUri }: { model: ShareMapModel; theme: Po
   return (
     <>
       <Svg width={width} height={height} viewBox={viewBox} style={StyleSheet.absoluteFill}>
-        <Path d={WORLD.land} fill={palette.land} fillRule="evenodd" />
+        <Defs>
+          <LinearGradient id="pole-top" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={palette.bg} />
+            <Stop offset="1" stopColor={POLE[theme].top} />
+          </LinearGradient>
+          <LinearGradient id="pole-bottom" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={POLE[theme].bottom} />
+            <Stop offset="1" stopColor={palette.bg} />
+          </LinearGradient>
+        </Defs>
+        {BACKDROP_FRAME.y > box.y && (
+          <Rect x={box.x} y={box.y} width={box.width} height={BACKDROP_FRAME.y - box.y} fill="url(#pole-top)" />
+        )}
+        {box.y + box.height > BACKDROP_FRAME.y + BACKDROP_FRAME.height && (
+          <Rect
+            x={box.x}
+            y={BACKDROP_FRAME.y + BACKDROP_FRAME.height}
+            width={box.width}
+            height={box.y + box.height - BACKDROP_FRAME.y - BACKDROP_FRAME.height}
+            fill="url(#pole-bottom)"
+          />
+        )}
+        <SvgImage
+          href={BACKDROP[theme]}
+          x={0}
+          y={BACKDROP_FRAME.y}
+          width={WORLD.width}
+          height={BACKDROP_FRAME.height}
+          preserveAspectRatio="none"
+        />
       </Svg>
       {heatUri && (
         <Image

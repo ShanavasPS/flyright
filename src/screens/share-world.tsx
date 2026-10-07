@@ -175,13 +175,13 @@ export function ShareWorld() {
         <View style={styles.options}>
           <View style={styles.segment} accessibilityRole="radiogroup" accessibilityLabel="Poster theme">
             <SegmentButton
-              label="Dark"
+              label="Night"
               symbol={{ ios: 'moon.fill', android: 'dark_mode', web: 'dark_mode' }}
               selected={prefs.theme === 'dark'}
               onPress={() => choose({ theme: 'dark' })}
             />
             <SegmentButton
-              label="Light"
+              label="Day"
               symbol={{ ios: 'sun.max.fill', android: 'light_mode', web: 'light_mode' }}
               selected={prefs.theme === 'light'}
               onPress={() => choose({ theme: 'light' })}

@@ -16,7 +16,7 @@
  */
 
 import { Buffer } from 'node:buffer';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,7 +30,7 @@ const HEIGHT = 1024;
 const QUALITY = 84;
 const out = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'images', 'globe-day.jpg');
 
-async function fetchSource() {
+export async function fetchBlueMarble() {
   const cached = path.join(os.tmpdir(), 'BlueMarble_200407_topo_bathy_5400.jpg');
   if (fs.existsSync(cached) && fs.statSync(cached).size > 1_000_000) return cached;
   console.log('fetching Blue Marble (2.3 MB)…');
@@ -41,7 +41,7 @@ async function fetchSource() {
 }
 
 async function main() {
-  const source = await fetchSource();
+  const source = await fetchBlueMarble();
   await sharp(source, { limitInputPixels: false })
     .resize(WIDTH, HEIGHT, { kernel: 'lanczos3', fit: 'fill' })
     .jpeg({ quality: QUALITY, mozjpeg: true, chromaSubsampling: '4:4:4' })
@@ -50,7 +50,9 @@ async function main() {
   console.log(`wrote ${path.relative(process.cwd(), out)}: ${WIDTH}×${HEIGHT}, ${(size / 1024).toFixed(0)} KB`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
