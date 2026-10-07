@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { maskDay, maskMonth } from '@/services/date-input';
 import { noteSuccess, tapLight } from '@/services/haptics';
 import {
   OTHER_PROGRAMME,
@@ -499,8 +500,10 @@ function MembershipForm({
       <FormTextField
         label="Tier valid until"
         placeholder="MM/YYYY"
-        keyboardType="numbers-and-punctuation"
+        keyboardType="number-pad"
+        maxLength={7}
         {...field('tierUntil')}
+        onChangeText={(text) => set('tierUntil')(maskMonth(text))}
       />
 
       <View style={styles.pair}>
@@ -516,8 +519,10 @@ function MembershipForm({
           containerStyle={styles.half}
           label="On"
           placeholder="DD/MM/YYYY"
-          keyboardType="numbers-and-punctuation"
+          keyboardType="number-pad"
+          maxLength={10}
           {...field('expiringOn')}
+          onChangeText={(text) => set('expiringOn')(maskDay(text))}
         />
       </View>
       <ThemedText type="small" themeColor="textSecondary" style={styles.groupLabel}>

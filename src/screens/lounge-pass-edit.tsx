@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { maskDay } from '@/services/date-input';
 import { noteSuccess, tapLight } from '@/services/haptics';
 import { NETWORKS, networkInfo } from '@/services/lounge-pass-logic';
 import {
@@ -92,7 +93,7 @@ export function LoungePassEdit() {
     }
     const renewsOn = parseDay(values.renewsOn);
     if (renewsOn === undefined) {
-      Alert.alert('Renews on', 'Enter the date, like 31/03/2027.');
+      Alert.alert('Membership year renews', 'Enter the date, like 31/03/2027.');
       return;
     }
     const extraVisitCents = parsePrice(values.extraVisit);
@@ -228,7 +229,15 @@ export function LoungePassEdit() {
             />
             <FormTextField containerStyle={styles.half} label="Used so far" placeholder="0" keyboardType="number-pad" {...field('usedBefore')} />
           </View>
-          <FormTextField label="Renews on" placeholder="DD/MM/YYYY" keyboardType="numbers-and-punctuation" {...field('renewsOn')} />
+          <FormTextField
+            label="Membership year renews"
+            hint="The date your free visits reset each year, from the pass company’s app. Optional."
+            placeholder="DD/MM/YYYY"
+            keyboardType="number-pad"
+            maxLength={10}
+            {...field('renewsOn')}
+            onChangeText={(text) => set('renewsOn')(maskDay(text))}
+          />
           <View style={styles.pair}>
             <FormTextField
               containerStyle={styles.half}
