@@ -41,11 +41,12 @@ const DOT = 30;
 
 /** A tap on a step plays out before the row moves on: the line sweeps up
  * to the step, the dot fills, then the strip scrolls to the one after.
- * Each half of the line takes LINE_MS, the dot DOT_MS after both. */
-const LINE_MS = 220;
-const DOT_MS = 260;
+ * The line is two halves owned by neighbouring steps; each takes LINE_MS
+ * so the whole segment sweeps in twice that, then the dot takes DOT_MS. */
+const LINE_MS = 120;
+const DOT_MS = 240;
 const REACH_MS = LINE_MS * 2 + DOT_MS;
-const SCROLL_AFTER_MS = REACH_MS + 240;
+const SCROLL_AFTER_MS = REACH_MS + 320;
 
 const isFlightStage = (stage: TravelStage): boolean => (FLIGHT_STAGES as readonly string[]).includes(stage);
 
@@ -94,9 +95,12 @@ export function TravelProgressStrip({
 
   // After a step is marked, the row waits for the step to fill before it
   // scrolls on — the traveller sees what they just did. Everything else
-  // (opening, an undo, a resize) snaps.
+  // (opening, an undo, a resize) snaps. While it plays out, the step after
+  // is not yet "next": its ring and bold label arrive with the scroll, not
+  // on the tap.
   const reducedMotion = useReducedMotion();
   const reachedBefore = useRef(reachedCount);
+  const [settling, setSettling] = useState(false);
   useEffect(() => {
     if (!width) return;
     const stamped = reachedCount > reachedBefore.current;
@@ -106,9 +110,17 @@ export function TravelProgressStrip({
       go();
       return;
     }
-    const timer = setTimeout(go, SCROLL_AFTER_MS);
-    return () => clearTimeout(timer);
+    setSettling(true);
+    const timer = setTimeout(() => {
+      setSettling(false);
+      go();
+    }, SCROLL_AFTER_MS);
+    return () => {
+      clearTimeout(timer);
+      setSettling(false);
+    };
   }, [focusAt, width, reachedCount, reducedMotion]);
+  const shownNext = settling ? null : next;
 
   const undoable =
     !!state.stage &&
@@ -135,7 +147,7 @@ export function TravelProgressStrip({
         {plan.map((stage, i) => {
           const reached = state.stamps[stage] !== undefined;
           const isCurrent = stage === state.stage;
-          const isNext = stage === next;
+          const isNext = stage === shownNext;
           const skipped = !reached && stageIndex(stage) < currentIndex;
           const advanceable = canAdvanceTo(state, stage, rules);
           const rewindable = canRewindTo(state, stage, rules);
