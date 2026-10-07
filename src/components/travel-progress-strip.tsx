@@ -1,6 +1,15 @@
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  interpolateColor,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Card } from '@/components/card';
 import { STAGE_ICONS } from '@/components/travel-day-timeline';
@@ -29,6 +38,14 @@ import {
 /** Width of one step: room for "Through security" on two lines. */
 const STEP = 84;
 const DOT = 30;
+
+/** A tap on a step plays out before the row moves on: the line sweeps up
+ * to the step, the dot fills, then the strip scrolls to the one after.
+ * Each half of the line takes LINE_MS, the dot DOT_MS after both. */
+const LINE_MS = 220;
+const DOT_MS = 260;
+const REACH_MS = LINE_MS * 2 + DOT_MS;
+const SCROLL_AFTER_MS = REACH_MS + 240;
 
 const isFlightStage = (stage: TravelStage): boolean => (FLIGHT_STAGES as readonly string[]).includes(stage);
 
@@ -75,10 +92,23 @@ export function TravelProgressStrip({
   const focus = next ?? state.stage;
   const focusAt = Math.max(0, plan.findIndex((s) => s === focus));
 
+  // After a step is marked, the row waits for the step to fill before it
+  // scrolls on — the traveller sees what they just did. Everything else
+  // (opening, an undo, a resize) snaps.
+  const reducedMotion = useReducedMotion();
+  const reachedBefore = useRef(reachedCount);
   useEffect(() => {
     if (!width) return;
-    scroll.current?.scrollTo({ x: Math.max(0, (focusAt - 1) * STEP), animated: false });
-  }, [focusAt, width]);
+    const stamped = reachedCount > reachedBefore.current;
+    reachedBefore.current = reachedCount;
+    const go = () => scroll.current?.scrollTo({ x: Math.max(0, (focusAt - 1) * STEP), animated: stamped });
+    if (!stamped || reducedMotion) {
+      go();
+      return;
+    }
+    const timer = setTimeout(go, SCROLL_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [focusAt, width, reachedCount, reducedMotion]);
 
   const undoable =
     !!state.stage &&
@@ -110,9 +140,6 @@ export function TravelProgressStrip({
           const advanceable = canAdvanceTo(state, stage, rules);
           const rewindable = canRewindTo(state, stage, rules);
           const auto = !manualTrip && isFlightStage(stage) && !reached && !advanceable;
-          const lineIn = i > 0 && (reached || isCurrent) ? theme.success : theme.backgroundSelected;
-          const lineOut =
-            i < plan.length - 1 && reached && stageIndex(plan[i + 1]) <= currentIndex ? theme.success : theme.backgroundSelected;
           const press = () => {
             if (isCurrent && undoable) {
               tapLight();
@@ -140,40 +167,18 @@ export function TravelProgressStrip({
               disabled={!tappable}
               onPress={press}
               style={styles.step}>
-              <View style={styles.track}>
-                <View style={[styles.line, { backgroundColor: i === 0 ? 'transparent' : lineIn }]} />
-                <View
-                  style={[
-                    styles.dot,
-                    reached
-                      ? { backgroundColor: theme.success, borderColor: theme.success }
-                      : {
-                          borderColor: isNext ? theme.tint : theme.backgroundSelected,
-                          borderStyle: skipped ? 'dashed' : 'solid',
-                        },
-                  ]}>
-                  <SymbolView
-                    name={STAGE_ICONS[stage]}
-                    size={13}
-                    tintColor={reached ? '#FFFFFF' : isNext ? theme.tint : theme.textSecondary}
-                  />
-                  {reached && (
-                    <View style={[styles.tick, { backgroundColor: theme.success, borderColor: theme.backgroundElement }]}>
-                      <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={7} weight="heavy" tintColor="#FFFFFF" />
-                    </View>
-                  )}
-                  {auto && (
-                    <View style={[styles.tick, { backgroundColor: theme.backgroundSelected, borderColor: theme.backgroundElement }]}>
-                      <SymbolView
-                        name={{ ios: 'antenna.radiowaves.left.and.right', android: 'sensors', web: 'sensors' }}
-                        size={7}
-                        tintColor={theme.textSecondary}
-                      />
-                    </View>
-                  )}
-                </View>
-                <View style={[styles.line, { backgroundColor: i === plan.length - 1 ? 'transparent' : lineOut }]} />
-              </View>
+              <Track
+                stage={stage}
+                reached={reached}
+                lineIn={i > 0 && (reached || isCurrent)}
+                lineOut={i < plan.length - 1 && reached && stageIndex(plan[i + 1]) <= currentIndex}
+                first={i === 0}
+                last={i === plan.length - 1}
+                ring={isNext ? theme.tint : theme.backgroundSelected}
+                dashed={skipped}
+                iconTint={isNext ? theme.tint : theme.textSecondary}
+                auto={auto}
+              />
               <ThemedText
                 type={isNext || isCurrent ? 'smallBold' : 'small'}
                 themeColor={reached || isNext || isCurrent ? 'heading' : 'textSecondary'}
@@ -186,6 +191,105 @@ export function TravelProgressStrip({
         })}
       </ScrollView>
     </Card>
+  );
+}
+
+/** A step's line and dot. Reaching a step is animated in order — the half
+ * line out of the step before, the half line into this one, then the dot
+ * fills and its tick lands — so a tap reads as travel along the row.
+ * Losing a step (undo, a rewind) snaps back; so does the first paint. */
+function Track({
+  stage,
+  reached,
+  lineIn,
+  lineOut,
+  first,
+  last,
+  ring,
+  dashed,
+  iconTint,
+  auto,
+}: {
+  stage: TravelStage;
+  reached: boolean;
+  lineIn: boolean;
+  lineOut: boolean;
+  first: boolean;
+  last: boolean;
+  ring: string;
+  dashed: boolean;
+  iconTint: string;
+  auto: boolean;
+}) {
+  const theme = useTheme();
+  const reducedMotion = useReducedMotion();
+  const inFill = useSharedValue(lineIn ? 1 : 0);
+  const outFill = useSharedValue(lineOut ? 1 : 0);
+  const dotFill = useSharedValue(reached ? 1 : 0);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    const easing = Easing.out(Easing.cubic);
+    const to = (value: typeof inFill, on: boolean, delay: number, ms: number) => {
+      const target = on ? 1 : 0;
+      if (value.value === target) return;
+      if (!on || reducedMotion) {
+        value.value = target;
+        return;
+      }
+      value.value = withDelay(delay, withTiming(1, { duration: ms, easing }));
+    };
+    // The line out of the previous step fills first (its own Track animates
+    // it, on the same clock), then the line in, then the dot.
+    to(outFill, lineOut, 0, LINE_MS);
+    to(inFill, lineIn, LINE_MS, LINE_MS);
+    to(dotFill, reached, LINE_MS * 2, DOT_MS);
+  }, [lineIn, lineOut, reached, inFill, outFill, dotFill, reducedMotion]);
+
+  const inStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: inFill.value }] }));
+  const outStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: outFill.value }] }));
+  const dotStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(dotFill.value, [0, 1], ['transparent', theme.success]),
+    borderColor: interpolateColor(dotFill.value, [0, 1], [ring, theme.success]),
+  }));
+  const doneIconStyle = useAnimatedStyle(() => ({ opacity: dotFill.value }));
+  const tickStyle = useAnimatedStyle(() => ({
+    opacity: dotFill.value,
+    transform: [{ scale: 0.4 + 0.6 * dotFill.value }],
+  }));
+
+  return (
+    <View style={styles.track}>
+      <View style={[styles.line, { backgroundColor: first ? 'transparent' : theme.backgroundSelected }]}>
+        {!first && <Animated.View style={[styles.lineFill, { backgroundColor: theme.success }, inStyle]} />}
+      </View>
+      <Animated.View style={[styles.dot, { borderStyle: dashed ? 'dashed' : 'solid' }, dotStyle]}>
+        <SymbolView name={STAGE_ICONS[stage]} size={13} tintColor={iconTint} />
+        <Animated.View style={[StyleSheet.absoluteFill, styles.center, doneIconStyle]}>
+          <SymbolView name={STAGE_ICONS[stage]} size={13} tintColor="#FFFFFF" />
+        </Animated.View>
+        {reached && (
+          <Animated.View style={[styles.tick, { backgroundColor: theme.success, borderColor: theme.backgroundElement }, tickStyle]}>
+            <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={7} weight="heavy" tintColor="#FFFFFF" />
+          </Animated.View>
+        )}
+        {auto && (
+          <View style={[styles.tick, { backgroundColor: theme.backgroundSelected, borderColor: theme.backgroundElement }]}>
+            <SymbolView
+              name={{ ios: 'antenna.radiowaves.left.and.right', android: 'sensors', web: 'sensors' }}
+              size={7}
+              tintColor={theme.textSecondary}
+            />
+          </View>
+        )}
+      </Animated.View>
+      <View style={[styles.line, { backgroundColor: last ? 'transparent' : theme.backgroundSelected }]}>
+        {!last && <Animated.View style={[styles.lineFill, { backgroundColor: theme.success }, outStyle]} />}
+      </View>
+    </View>
   );
 }
 
@@ -271,6 +375,18 @@ const styles = StyleSheet.create({
   line: {
     flex: 1,
     height: 2,
+  },
+  lineFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    right: 0,
+    transformOrigin: 'left',
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dot: {
     width: DOT,
