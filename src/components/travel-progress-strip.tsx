@@ -47,6 +47,8 @@ const LINE_MS = 120;
 const DOT_MS = 240;
 const REACH_MS = LINE_MS * 2 + DOT_MS;
 const SCROLL_AFTER_MS = REACH_MS + 320;
+/** A fill coming off again (undo, rewind) fades in one motion. */
+const UNDO_MS = 200;
 
 const isFlightStage = (stage: TravelStage): boolean => (FLIGHT_STAGES as readonly string[]).includes(stage);
 
@@ -100,12 +102,17 @@ export function TravelProgressStrip({
   // on the tap.
   const reducedMotion = useReducedMotion();
   const reachedBefore = useRef(reachedCount);
+  const scrolledOnce = useRef(false);
   const [settling, setSettling] = useState(false);
   useEffect(() => {
     if (!width) return;
     const stamped = reachedCount > reachedBefore.current;
     reachedBefore.current = reachedCount;
-    const go = () => scroll.current?.scrollTo({ x: Math.max(0, (focusAt - 1) * STEP), animated: stamped });
+    // The first scroll (the row opening) lands without motion; a step
+    // taken back slides the row back the way it came.
+    const animated = scrolledOnce.current && !reducedMotion;
+    scrolledOnce.current = true;
+    const go = () => scroll.current?.scrollTo({ x: Math.max(0, (focusAt - 1) * STEP), animated });
     if (!stamped || reducedMotion) {
       go();
       return;
@@ -209,7 +216,8 @@ export function TravelProgressStrip({
 /** A step's line and dot. Reaching a step is animated in order — the half
  * line out of the step before, the half line into this one, then the dot
  * fills and its tick lands — so a tap reads as travel along the row.
- * Losing a step (undo, a rewind) snaps back; so does the first paint. */
+ * Losing a step (undo, a rewind) fades the fill out in one short motion;
+ * the first paint is still. */
 function Track({
   stage,
   reached,
@@ -248,8 +256,12 @@ function Track({
     const to = (value: typeof inFill, on: boolean, delay: number, ms: number) => {
       const target = on ? 1 : 0;
       if (value.value === target) return;
-      if (!on || reducedMotion) {
+      if (reducedMotion) {
         value.value = target;
+        return;
+      }
+      if (!on) {
+        value.value = withTiming(0, { duration: UNDO_MS, easing });
         return;
       }
       value.value = withDelay(delay, withTiming(1, { duration: ms, easing }));
