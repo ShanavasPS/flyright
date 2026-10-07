@@ -110,8 +110,8 @@ with topography and bathymetry, public domain; credit "NASA Earth
 Observatory (Reto Stöckli), Blue Marble Next Generation"), downsampled to
 `assets/images/globe-day.jpg` by `scripts/generate-globe-day.mjs` and
 mixed over the flat sea/land colours by the palette's `imagery` (1 in the
-dark scheme — the real Earth; 0.35 in the light one — a tint and shading
-of the pale map, so the routes stay the main thing). It shows under both
+dark scheme — the real Earth; 0.8 in the light one — the Earth lightened
+a little by the pale map colours, after 0.35 read as washed-out pastel). It shows under both
 the sun and the studio lamp; the dark-scheme `dayLift` stands down as
 imagery comes in. With the sun on, the night side shows city lights — NASA's Black Marble
 (2016, public domain; credit "NASA Earth Observatory (Joshua Stevens),

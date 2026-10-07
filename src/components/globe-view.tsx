@@ -138,8 +138,9 @@ export interface GlobeColors {
    * needs no lift, so it is scaled down by `imagery`. */
   dayLift: number;
   /** How much of the Blue Marble shows through the flat sea and land
-   * colours, 0–1: the real Earth in the dark scheme, a tint and shading of
-   * the pale map in the light one, where the routes stay the main thing. */
+   * colours, 0–1: the real Earth in the dark scheme, lightened a little by
+   * the pale map colours in the light one (0.35 read as washed-out pastel;
+   * the greens and blues are what the Earth is recognised by). */
   imagery: number;
 }
 
@@ -155,7 +156,7 @@ export function globePalette(
     ? { sea: '#0B1A38', land: '#33486E', border: '#5A72A0', label: '#F2F6FB', labelNight, night: '#040A1A', dayLift: 1, imagery: 1 }
     : // A dusk blue rather than black: the pale land has to stay legible
       // where it is night.
-      { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B', labelNight, night: '#22355E', dayLift: 0, imagery: 0.35 };
+      { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B', labelNight, night: '#22355E', dayLift: 0, imagery: 0.8 };
 }
 
 interface PackedRoute {
