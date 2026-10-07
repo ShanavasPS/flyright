@@ -128,24 +128,34 @@ export interface GlobeColors {
   tint: string;
   background: string;
   label: string;
+  /** The code colour over the night side, where `label` would sink. */
+  labelNight: string;
   /** What the night side sinks towards when the globe is lit by the sun. */
   night: string;
   /** How far the sunlit side is lifted above the base colours, 0–1: the
    * dark scheme's navy sea and slate land are night colours already, so
-   * day has to be brighter than them, not merely not darker. */
+   * day has to be brighter than them, not merely not darker. Imagery
+   * needs no lift, so it is scaled down by `imagery`. */
   dayLift: number;
+  /** How much of the Blue Marble shows through the flat sea and land
+   * colours, 0–1: the real Earth in the dark scheme, a tint and shading of
+   * the pale map in the light one, where the routes stay the main thing. */
+  imagery: number;
 }
 
 /** The globe's own sea, land, border and label colours. The map's near-
  * white land on a pale sea blurs together once shaded on a sphere: the
  * globe wants blue oceans and pale continents, the way the earth reads
  * from orbit — deep navy water in the dark scheme. */
-export function globePalette(dark: boolean): Pick<GlobeColors, 'sea' | 'land' | 'border' | 'label' | 'night' | 'dayLift'> {
+export function globePalette(
+  dark: boolean,
+): Pick<GlobeColors, 'sea' | 'land' | 'border' | 'label' | 'labelNight' | 'night' | 'dayLift' | 'imagery'> {
+  const labelNight = '#F2F6FB';
   return dark
-    ? { sea: '#0B1A38', land: '#33486E', border: '#5A72A0', label: '#F2F6FB', night: '#040A1A', dayLift: 1 }
+    ? { sea: '#0B1A38', land: '#33486E', border: '#5A72A0', label: '#F2F6FB', labelNight, night: '#040A1A', dayLift: 1, imagery: 1 }
     : // A dusk blue rather than black: the pale land has to stay legible
       // where it is night.
-      { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B', night: '#22355E', dayLift: 0 };
+      { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B', labelNight, night: '#22355E', dayLift: 0, imagery: 0.35 };
 }
 
 interface PackedRoute {
@@ -489,6 +499,8 @@ export function GlobeView({
     daylight: daylightMix.value,
     // Until the lights have decoded the land mask stands in — never lit.
     cityLights: textures.lights ? 1 : 0,
+    // Likewise the imagery: flat colours until it has decoded.
+    imagery: textures.day ? colors.imagery : 0,
   }));
 
   // Route paths, built together so the projection runs once per frame.
@@ -717,6 +729,7 @@ export function GlobeView({
             <Shader source={SHADER} uniforms={uniforms}>
               <ImageShader image={textures.base} tx="repeat" ty="clamp" sampling={SAMPLING} />
               <ImageShader image={textures.lights ?? textures.base} tx="repeat" ty="clamp" sampling={SAMPLING} />
+              <ImageShader image={textures.day ?? textures.base} tx="repeat" ty="clamp" sampling={SAMPLING} />
               {(detail ?? PLACEHOLDERS.detail).map((image, i) => (
                 <ImageShader key={`d${i}`} image={image ?? textures.base} tx="clamp" ty="clamp" sampling={SAMPLING} />
               ))}
@@ -746,7 +759,18 @@ export function GlobeView({
           <PulsingPlanes routes={upcomingRoutes} camera={camera} colors={colors} animate={animate} />
         )}
         {airportVectors.map((airport, i) => (
-          <AirportLabel key={airport.iata} index={i} text={airport.iata} places={labelPlaces} font={font} color={colors.label} />
+          <AirportLabel
+            key={airport.iata}
+            index={i}
+            text={airport.iata}
+            v={airport.v}
+            places={labelPlaces}
+            font={font}
+            color={colors.label}
+            nightColor={colors.labelNight}
+            sunDir={sunDir}
+            daylight={daylightMix}
+          />
         ))}
       </Canvas>
       {/* The radar rings get a canvas of their own, over the globe: their
@@ -1019,23 +1043,38 @@ function CometStep({ steps, step, color }: { steps: SharedValue<ReturnType<typeo
 function AirportLabel({
   index,
   text,
+  v,
   places,
   font,
   color,
+  nightColor,
+  sunDir,
+  daylight,
 }: {
   index: number;
   text: string;
+  v: readonly [number, number, number];
   places: DerivedValue<LabelPlacement[]>;
   font: SkFont | null;
   color: string;
+  nightColor: string;
+  sunDir: readonly [number, number, number];
+  daylight: SharedValue<number>;
 }) {
   const x = useDerivedValue(() => places.value[index]?.x ?? 0);
   const y = useDerivedValue(() => places.value[index]?.y ?? 0);
   const opacity = useDerivedValue(() => places.value[index]?.opacity ?? 0);
+  // Over the night side (the sun below the airport's horizon, lit by the
+  // sun) the code takes the night colour: the light scheme's navy would
+  // sink into it.
+  const fill = useDerivedValue(() => {
+    const sun = v[0] * sunDir[0] + v[1] * sunDir[1] + v[2] * sunDir[2];
+    return daylight.value > 0.5 && sun < -0.02 ? nightColor : color;
+  });
   if (!font) return null;
   return (
     <Group opacity={opacity}>
-      <Text x={x} y={y} text={text} font={font} color={color} />
+      <Text x={x} y={y} text={text} font={font} color={fill} />
     </Group>
   );
 }
@@ -1119,6 +1158,7 @@ const SHADER = (() => {
   const effect = Skia.RuntimeEffect.Make(`
 uniform shader base;
 uniform shader lights;
+uniform shader day;
 uniform shader d0; uniform shader d1; uniform shader d2; uniform shader d3;
 uniform shader d4; uniform shader d5; uniform shader d6; uniform shader d7;
 uniform shader b0; uniform shader b1;
@@ -1140,6 +1180,7 @@ uniform float3 lightDir;
 uniform float3 sunDir;
 uniform float daylight;
 uniform float cityLights;
+uniform float imagery;
 
 const float PI = 3.14159265;
 const float GLOW = 0.11;
@@ -1205,20 +1246,25 @@ half4 main(float2 p) {
   float2 uv = float2(fract(lon / (2.0 * PI) + 0.5), clamp(0.5 - lat / PI, 0.0, 0.9999));
   float m = landAt(uv);
   float3 col = mix(seaColor, landColor, m);
+  // The Blue Marble through the flat colours: the real Earth in the dark
+  // scheme, a tint and shading of the pale map in the light one.
+  col = mix(col, day.eval(uv * baseSize).rgb, imagery);
   if (borderAlpha > 0.0) col = mix(col, borderColor, borderAt(uv) * borderAlpha * m);
   // The dark scheme's lit colours: the base colours lifted into daylight,
   // most where the light is highest, so lit reads as lit (dayLift is 0 in
   // the light scheme, whose colours are daylight already).
+  // Imagery is daylight already: the lift stands down as it comes in.
+  float lift = dayLift * (1.0 - imagery);
   float3 lifted = col * 1.6 + float3(0.10, 0.11, 0.12);
   // Studio light: gentle shading from a fixed lamp, the lit side lifted.
   float diff = max(dot(float3(vx, vy, vz), normalize(lightDir)), 0.0);
-  float3 studio = mix(col, lifted, dayLift * (0.6 + 0.4 * diff)) * (0.68 + 0.32 * diff);
+  float3 studio = mix(col, lifted, lift * (0.6 + 0.4 * diff)) * (0.68 + 0.32 * diff);
   // Sunlight: the surface normal against the sun. Day keeps the colours,
   // night sinks toward nightColor but stays readable, and the terminator
   // carries a faint warm dusk, stronger over land.
   float sun = dot(float3(gx, gy, gz), sunDir);
   float day = smoothstep(NIGHT_EDGE, DAY_EDGE, sun);
-  float3 dayCol = mix(col, lifted, dayLift * (0.6 + 0.4 * max(sun, 0.0))) * (0.80 + 0.20 * max(sun, 0.0));
+  float3 dayCol = mix(col, lifted, lift * (0.6 + 0.4 * max(sun, 0.0))) * (0.80 + 0.20 * max(sun, 0.0));
   float3 nightCol = mix(col, nightColor, 0.62) * 0.55;
   float dusk = sun / 0.09;
   float band = exp(-dusk * dusk);

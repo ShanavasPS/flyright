@@ -6,8 +6,8 @@ import { Image } from 'react-native';
  * The globe's textures (see scripts/generate-globe-texture.mjs): every one
  * an RGBA PNG whose alpha is the mask.
  *
- * The base land mask (2048×1024) and the city lights (the same size) are
- * decoded by Skia as-is and are always there. The detail set — eight 2048×2048 land tiles at four times the
+ * The base land mask (2048×1024), the city lights and the daytime imagery
+ * (the same size) are decoded by Skia as-is and are always there. The detail set — eight 2048×2048 land tiles at four times the
  * resolution, and two tiles of country borders — is decoded and then read
  * back as 8-bit alpha images, a quarter of the memory (32 MB for the land,
  * 8 MB for the borders, instead of 160 MB), one tile at a time with a
@@ -19,6 +19,8 @@ import { Image } from 'react-native';
 export const BASE_TEXTURE = require('../../assets/images/globe-land.png');
 /** City lights (scripts/generate-globe-lights.mjs), the base mask's size. */
 export const LIGHTS_TEXTURE = require('../../assets/images/globe-lights.png');
+/** Daytime imagery (scripts/generate-globe-day.mjs), the base mask's size. */
+export const DAY_TEXTURE = require('../../assets/images/globe-day.jpg');
 export const TILE = 2048;
 export const BASE_SIZE = { width: 2048, height: 1024 };
 /** Detail tiles: four across, two down. */
@@ -46,6 +48,8 @@ export interface GlobeTextures {
   base: SkImage | null;
   /** City lights for the night side, loaded with the base. */
   lights: SkImage | null;
+  /** Blue Marble daytime imagery, loaded with the base. */
+  day: SkImage | null;
   /** Eight land tiles, or null until loaded / when unavailable. */
   detail: SkImage[] | null;
   /** Two border tiles, likewise. */
@@ -115,6 +119,7 @@ function loadDetail(): Promise<Pick<GlobeTextures, 'detail' | 'borders'>> {
 export function useGlobeTextures(wanted = true): GlobeTextures {
   const base = useImage(BASE_TEXTURE);
   const lights = useImage(LIGHTS_TEXTURE);
+  const day = useImage(DAY_TEXTURE);
   const [detail, setDetail] = useState<Pick<GlobeTextures, 'detail' | 'borders'>>({ detail: null, borders: null });
   useEffect(() => {
     if (!wanted) return;
@@ -133,5 +138,5 @@ export function useGlobeTextures(wanted = true): GlobeTextures {
       cancelIdleCallback(task);
     };
   }, [wanted]);
-  return { base, lights, detail: detail.detail, borders: detail.borders };
+  return { base, lights, day, detail: detail.detail, borders: detail.borders };
 }
