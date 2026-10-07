@@ -1,0 +1,410 @@
+{
+  "label": "marks2",
+  "runs": 3,
+  "medians": {
+    "totalTime": 367,
+    "warmLaunchTime": 9,
+    "bundleLoadTime": 28,
+    "timeToFirstRender": 231,
+    "cold_ttr@/(tabs)/(journeys)": 114,
+    "tti@/(tabs)/(journeys)": 122,
+    "timeToInteractive@/(tabs)/(journeys)": 349
+  },
+  "results": [
+    {
+      "totalTime": 0,
+      "warmLaunchTime": 16,
+      "bundleLoadTime": 33,
+      "timeToFirstRender": 315,
+      "cold_ttr@/(tabs)/(journeys)": 114,
+      "tti@/(tabs)/(journeys)": 122,
+      "timeToInteractive@/(tabs)/(journeys)": 427,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 16,
+          "bundleLoadTime": 33,
+          "timeToFirstRender": 315,
+          "cold_ttr@/(tabs)/(journeys)": 114,
+          "tti@/(tabs)/(journeys)": 122,
+          "timeToInteractive@/(tabs)/(journeys)": 427
+        },
+        "marks": [
+          [
+            "layout-module",
+            95014837
+          ],
+          [
+            "root-render db=false font=false",
+            95014880
+          ],
+          [
+            "symbol-font-start",
+            95014883
+          ],
+          [
+            "init-effects-start",
+            95014885
+          ],
+          [
+            "init-effects-end",
+            95014890
+          ],
+          [
+            "root-render db=false font=false",
+            95014892
+          ],
+          [
+            "root-render db=false font=false",
+            95014893
+          ],
+          [
+            "root-render db=true font=false",
+            95014894
+          ],
+          [
+            "symbol-font-loaded",
+            95014897
+          ],
+          [
+            "root-render db=true font=true",
+            95014897
+          ],
+          [
+            "root-return-tree",
+            95014897
+          ],
+          [
+            "tabs-render",
+            95014906
+          ],
+          [
+            "journeys-render",
+            95014910
+          ],
+          [
+            "journeys-body-end",
+            95014936
+          ],
+          [
+            "journeys-layout-effect",
+            95014988
+          ],
+          [
+            "journeys-mounted",
+            95014996
+          ],
+          [
+            "tabs-render",
+            95015013
+          ],
+          [
+            "root-render db=true font=true",
+            95015016
+          ],
+          [
+            "root-return-tree",
+            95015016
+          ],
+          [
+            "journeys-render",
+            95015021
+          ],
+          [
+            "journeys-body-end",
+            95015021
+          ],
+          [
+            "journeys-render",
+            95015101
+          ],
+          [
+            "journeys-body-end",
+            95015102
+          ],
+          [
+            "journeys-render",
+            95016141
+          ],
+          [
+            "journeys-body-end",
+            95016142
+          ],
+          [
+            "tabs-render",
+            95016175
+          ],
+          [
+            "journeys-render",
+            95016175
+          ],
+          [
+            "journeys-body-end",
+            95016175
+          ]
+        ],
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 367,
+      "warmLaunchTime": 8,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 218,
+      "cold_ttr@/(tabs)/(journeys)": 106,
+      "tti@/(tabs)/(journeys)": 113,
+      "timeToInteractive@/(tabs)/(journeys)": 320,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 8,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 218,
+          "cold_ttr@/(tabs)/(journeys)": 106,
+          "tti@/(tabs)/(journeys)": 113,
+          "timeToInteractive@/(tabs)/(journeys)": 320
+        },
+        "marks": [
+          [
+            "layout-module",
+            95026234
+          ],
+          [
+            "root-render db=false font=false",
+            95026266
+          ],
+          [
+            "symbol-font-start",
+            95026269
+          ],
+          [
+            "init-effects-start",
+            95026271
+          ],
+          [
+            "init-effects-end",
+            95026276
+          ],
+          [
+            "root-render db=false font=false",
+            95026278
+          ],
+          [
+            "root-render db=false font=false",
+            95026278
+          ],
+          [
+            "root-render db=true font=false",
+            95026280
+          ],
+          [
+            "symbol-font-loaded",
+            95026282
+          ],
+          [
+            "root-render db=true font=true",
+            95026282
+          ],
+          [
+            "root-return-tree",
+            95026282
+          ],
+          [
+            "tabs-render",
+            95026291
+          ],
+          [
+            "journeys-render",
+            95026294
+          ],
+          [
+            "journeys-body-end",
+            95026319
+          ],
+          [
+            "journeys-layout-effect",
+            95026366
+          ],
+          [
+            "journeys-mounted",
+            95026373
+          ],
+          [
+            "tabs-render",
+            95026395
+          ],
+          [
+            "root-render db=true font=true",
+            95026399
+          ],
+          [
+            "root-return-tree",
+            95026399
+          ],
+          [
+            "journeys-render",
+            95026406
+          ],
+          [
+            "journeys-body-end",
+            95026406
+          ],
+          [
+            "journeys-render",
+            95026470
+          ],
+          [
+            "journeys-body-end",
+            95026470
+          ],
+          [
+            "journeys-render",
+            95027216
+          ],
+          [
+            "journeys-body-end",
+            95027218
+          ],
+          [
+            "tabs-render",
+            95027250
+          ]
+        ],
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 577,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 231,
+      "cold_ttr@/(tabs)/(journeys)": 117,
+      "tti@/(tabs)/(journeys)": 130,
+      "timeToInteractive@/(tabs)/(journeys)": 349,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 231,
+          "cold_ttr@/(tabs)/(journeys)": 117,
+          "tti@/(tabs)/(journeys)": 130,
+          "timeToInteractive@/(tabs)/(journeys)": 349
+        },
+        "marks": [
+          [
+            "layout-module",
+            95036820
+          ],
+          [
+            "root-render db=false font=false",
+            95036858
+          ],
+          [
+            "symbol-font-start",
+            95036861
+          ],
+          [
+            "init-effects-start",
+            95036862
+          ],
+          [
+            "init-effects-end",
+            95036868
+          ],
+          [
+            "root-render db=false font=false",
+            95036870
+          ],
+          [
+            "root-render db=false font=false",
+            95036871
+          ],
+          [
+            "root-render db=true font=false",
+            95036873
+          ],
+          [
+            "symbol-font-loaded",
+            95036875
+          ],
+          [
+            "root-render db=true font=true",
+            95036875
+          ],
+          [
+            "root-return-tree",
+            95036875
+          ],
+          [
+            "tabs-render",
+            95036884
+          ],
+          [
+            "journeys-render",
+            95036888
+          ],
+          [
+            "journeys-body-end",
+            95036912
+          ],
+          [
+            "journeys-layout-effect",
+            95036969
+          ],
+          [
+            "journeys-mounted",
+            95036980
+          ],
+          [
+            "tabs-render",
+            95036996
+          ],
+          [
+            "root-render db=true font=true",
+            95036999
+          ],
+          [
+            "root-return-tree",
+            95036999
+          ],
+          [
+            "journeys-render",
+            95037002
+          ],
+          [
+            "journeys-body-end",
+            95037003
+          ],
+          [
+            "journeys-render",
+            95037095
+          ],
+          [
+            "journeys-body-end",
+            95037096
+          ],
+          [
+            "journeys-render",
+            95037833
+          ],
+          [
+            "journeys-body-end",
+            95037834
+          ],
+          [
+            "tabs-render",
+            95037868
+          ]
+        ],
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    }
+  ]
+}

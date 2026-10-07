@@ -1,0 +1,290 @@
+{
+  "label": "marks",
+  "runs": 3,
+  "medians": {
+    "totalTime": 575,
+    "warmLaunchTime": 10,
+    "bundleLoadTime": 28,
+    "timeToFirstRender": 237,
+    "cold_ttr@/(tabs)/(journeys)": 122,
+    "tti@/(tabs)/(journeys)": 129,
+    "timeToInteractive@/(tabs)/(journeys)": 358
+  },
+  "results": [
+    {
+      "totalTime": 0,
+      "warmLaunchTime": 12,
+      "bundleLoadTime": 34,
+      "timeToFirstRender": 299,
+      "cold_ttr@/(tabs)/(journeys)": 122,
+      "tti@/(tabs)/(journeys)": 129,
+      "timeToInteractive@/(tabs)/(journeys)": 415,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 12,
+          "bundleLoadTime": 34,
+          "timeToFirstRender": 299,
+          "cold_ttr@/(tabs)/(journeys)": 122,
+          "tti@/(tabs)/(journeys)": 129,
+          "timeToInteractive@/(tabs)/(journeys)": 415
+        },
+        "marks": [
+          [
+            "layout-module",
+            94865071
+          ],
+          [
+            "root-render db=false font=false",
+            94865116
+          ],
+          [
+            "symbol-font-start",
+            94865120
+          ],
+          [
+            "init-effects-start",
+            94865122
+          ],
+          [
+            "init-effects-end",
+            94865128
+          ],
+          [
+            "root-render db=false font=false",
+            94865130
+          ],
+          [
+            "root-render db=false font=false",
+            94865131
+          ],
+          [
+            "root-render db=true font=false",
+            94865132
+          ],
+          [
+            "symbol-font-loaded",
+            94865136
+          ],
+          [
+            "root-render db=true font=true",
+            94865138
+          ],
+          [
+            "journeys-render",
+            94865152
+          ],
+          [
+            "journeys-mounted",
+            94865239
+          ],
+          [
+            "root-render db=true font=true",
+            94865258
+          ],
+          [
+            "journeys-render",
+            94865264
+          ],
+          [
+            "journeys-render",
+            94865325
+          ],
+          [
+            "journeys-render",
+            94865339
+          ],
+          [
+            "journeys-render",
+            94866443
+          ]
+        ],
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 583,
+      "warmLaunchTime": 10,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 237,
+      "cold_ttr@/(tabs)/(journeys)": 127,
+      "tti@/(tabs)/(journeys)": 133,
+      "timeToInteractive@/(tabs)/(journeys)": 358,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 10,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 237,
+          "cold_ttr@/(tabs)/(journeys)": 127,
+          "tti@/(tabs)/(journeys)": 133,
+          "timeToInteractive@/(tabs)/(journeys)": 358
+        },
+        "marks": [
+          [
+            "layout-module",
+            94875523
+          ],
+          [
+            "root-render db=false font=false",
+            94875571
+          ],
+          [
+            "symbol-font-start",
+            94875574
+          ],
+          [
+            "init-effects-start",
+            94875576
+          ],
+          [
+            "init-effects-end",
+            94875581
+          ],
+          [
+            "root-render db=false font=false",
+            94875584
+          ],
+          [
+            "root-render db=false font=false",
+            94875585
+          ],
+          [
+            "root-render db=true font=false",
+            94875587
+          ],
+          [
+            "symbol-font-loaded",
+            94875589
+          ],
+          [
+            "root-render db=true font=true",
+            94875589
+          ],
+          [
+            "journeys-render",
+            94875602
+          ],
+          [
+            "journeys-mounted",
+            94875698
+          ],
+          [
+            "root-render db=true font=true",
+            94875715
+          ],
+          [
+            "journeys-render",
+            94875718
+          ],
+          [
+            "journeys-render",
+            94875786
+          ],
+          [
+            "journeys-render",
+            94875798
+          ],
+          [
+            "journeys-render",
+            94876508
+          ]
+        ],
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 575,
+      "warmLaunchTime": 8,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 232,
+      "cold_ttr@/(tabs)/(journeys)": 119,
+      "tti@/(tabs)/(journeys)": 126,
+      "timeToInteractive@/(tabs)/(journeys)": 347,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 8,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 232,
+          "cold_ttr@/(tabs)/(journeys)": 119,
+          "tti@/(tabs)/(journeys)": 126,
+          "timeToInteractive@/(tabs)/(journeys)": 347
+        },
+        "marks": [
+          [
+            "layout-module",
+            94886248
+          ],
+          [
+            "root-render db=false font=false",
+            94886290
+          ],
+          [
+            "symbol-font-start",
+            94886293
+          ],
+          [
+            "init-effects-start",
+            94886294
+          ],
+          [
+            "init-effects-end",
+            94886300
+          ],
+          [
+            "root-render db=false font=false",
+            94886301
+          ],
+          [
+            "root-render db=false font=false",
+            94886302
+          ],
+          [
+            "root-render db=true font=false",
+            94886305
+          ],
+          [
+            "symbol-font-loaded",
+            94886308
+          ],
+          [
+            "root-render db=true font=true",
+            94886308
+          ],
+          [
+            "journeys-render",
+            94886320
+          ],
+          [
+            "journeys-mounted",
+            94886410
+          ],
+          [
+            "root-render db=true font=true",
+            94886427
+          ],
+          [
+            "journeys-render",
+            94886430
+          ],
+          [
+            "journeys-render",
+            94886506
+          ],
+          [
+            "journeys-render",
+            94887275
+          ]
+        ],
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    }
+  ]
+}

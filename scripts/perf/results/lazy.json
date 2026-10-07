@@ -1,0 +1,2765 @@
+{
+  "label": "lazy",
+  "runs": 10,
+  "medians": {
+    "totalTime": 414,
+    "warmLaunchTime": 9,
+    "bundleLoadTime": 28,
+    "timeToFirstRender": 158,
+    "cold_ttr@/(tabs)/(journeys)": 75,
+    "tti@/(tabs)/(journeys)": 82,
+    "timeToInteractive@/(tabs)/(journeys)": 231
+  },
+  "results": [
+    {
+      "totalTime": 305,
+      "warmLaunchTime": 8,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 156,
+      "cold_ttr@/(tabs)/(journeys)": 74,
+      "tti@/(tabs)/(journeys)": 80,
+      "timeToInteractive@/(tabs)/(journeys)": 237,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 8,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 156,
+          "cold_ttr@/(tabs)/(journeys)": 74,
+          "tti@/(tabs)/(journeys)": 80,
+          "timeToInteractive@/(tabs)/(journeys)": 237
+        },
+        "marks": [
+          [
+            "layout-module",
+            97039415
+          ],
+          [
+            "root-render db=false font=false",
+            97039470
+          ],
+          [
+            "symbol-font-start",
+            97039473
+          ],
+          [
+            "init-effects-start",
+            97039475
+          ],
+          [
+            "init-effects-end",
+            97039480
+          ],
+          [
+            "root-render db=false font=false",
+            97039482
+          ],
+          [
+            "root-render db=false font=false",
+            97039482
+          ],
+          [
+            "root-render db=true font=false",
+            97039484
+          ],
+          [
+            "symbol-font-loaded",
+            97039486
+          ],
+          [
+            "root-render db=true font=true",
+            97039486
+          ],
+          [
+            "root-return-tree",
+            97039486
+          ],
+          [
+            "tabs-render",
+            97039494
+          ],
+          [
+            "journeys-render",
+            97039499
+          ],
+          [
+            "j:auth+user",
+            97039499
+          ],
+          [
+            "j:journeys",
+            97039499
+          ],
+          [
+            "j:claims+disruptions",
+            97039499
+          ],
+          [
+            "j:authSettled",
+            97039499
+          ],
+          [
+            "j:hero",
+            97039503
+          ],
+          [
+            "j:pro",
+            97039503
+          ],
+          [
+            "j:memos",
+            97039503
+          ],
+          [
+            "j:fold",
+            97039524
+          ],
+          [
+            "j:split",
+            97039525
+          ],
+          [
+            "journeys-body-end",
+            97039525
+          ],
+          [
+            "journeys-layout-effect",
+            97039539
+          ],
+          [
+            "journeys-mounted",
+            97039545
+          ],
+          [
+            "tabs-render",
+            97039576
+          ],
+          [
+            "root-render db=true font=true",
+            97039579
+          ],
+          [
+            "root-return-tree",
+            97039579
+          ],
+          [
+            "journeys-render",
+            97039582
+          ],
+          [
+            "j:auth+user",
+            97039582
+          ],
+          [
+            "j:journeys",
+            97039582
+          ],
+          [
+            "j:claims+disruptions",
+            97039583
+          ],
+          [
+            "j:authSettled",
+            97039583
+          ],
+          [
+            "j:hero",
+            97039583
+          ],
+          [
+            "j:pro",
+            97039583
+          ],
+          [
+            "j:memos",
+            97039583
+          ],
+          [
+            "j:fold",
+            97039583
+          ],
+          [
+            "j:split",
+            97039584
+          ],
+          [
+            "journeys-body-end",
+            97039584
+          ],
+          [
+            "journeys-render",
+            97039617
+          ],
+          [
+            "j:auth+user",
+            97039618
+          ],
+          [
+            "j:journeys",
+            97039618
+          ],
+          [
+            "j:claims+disruptions",
+            97039618
+          ],
+          [
+            "j:authSettled",
+            97039618
+          ],
+          [
+            "j:hero",
+            97039618
+          ],
+          [
+            "j:pro",
+            97039618
+          ],
+          [
+            "j:memos",
+            97039618
+          ],
+          [
+            "j:fold",
+            97039618
+          ],
+          [
+            "j:split",
+            97039618
+          ],
+          [
+            "journeys-body-end",
+            97039618
+          ],
+          [
+            "journeys-render",
+            97040749
+          ],
+          [
+            "j:auth+user",
+            97040749
+          ],
+          [
+            "j:journeys",
+            97040749
+          ],
+          [
+            "j:claims+disruptions",
+            97040749
+          ],
+          [
+            "j:authSettled",
+            97040749
+          ],
+          [
+            "j:hero",
+            97040750
+          ],
+          [
+            "j:pro",
+            97040750
+          ],
+          [
+            "j:memos",
+            97040750
+          ],
+          [
+            "j:fold",
+            97040750
+          ],
+          [
+            "j:split",
+            97040750
+          ],
+          [
+            "journeys-body-end",
+            97040750
+          ],
+          [
+            "tabs-render",
+            97040773
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 466,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 157,
+      "cold_ttr@/(tabs)/(journeys)": 78,
+      "tti@/(tabs)/(journeys)": 84,
+      "timeToInteractive@/(tabs)/(journeys)": 231,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 157,
+          "cold_ttr@/(tabs)/(journeys)": 78,
+          "tti@/(tabs)/(journeys)": 84,
+          "timeToInteractive@/(tabs)/(journeys)": 231
+        },
+        "marks": [
+          [
+            "layout-module",
+            97050803
+          ],
+          [
+            "root-render db=false font=false",
+            97050858
+          ],
+          [
+            "symbol-font-start",
+            97050861
+          ],
+          [
+            "init-effects-start",
+            97050862
+          ],
+          [
+            "init-effects-end",
+            97050867
+          ],
+          [
+            "root-render db=false font=false",
+            97050869
+          ],
+          [
+            "root-render db=false font=false",
+            97050870
+          ],
+          [
+            "root-render db=true font=false",
+            97050871
+          ],
+          [
+            "symbol-font-loaded",
+            97050874
+          ],
+          [
+            "root-render db=true font=true",
+            97050874
+          ],
+          [
+            "root-return-tree",
+            97050874
+          ],
+          [
+            "tabs-render",
+            97050883
+          ],
+          [
+            "journeys-render",
+            97050888
+          ],
+          [
+            "j:auth+user",
+            97050888
+          ],
+          [
+            "j:journeys",
+            97050888
+          ],
+          [
+            "j:claims+disruptions",
+            97050888
+          ],
+          [
+            "j:authSettled",
+            97050888
+          ],
+          [
+            "j:hero",
+            97050891
+          ],
+          [
+            "j:pro",
+            97050891
+          ],
+          [
+            "j:memos",
+            97050891
+          ],
+          [
+            "j:fold",
+            97050911
+          ],
+          [
+            "j:split",
+            97050911
+          ],
+          [
+            "journeys-body-end",
+            97050911
+          ],
+          [
+            "journeys-layout-effect",
+            97050931
+          ],
+          [
+            "journeys-mounted",
+            97050937
+          ],
+          [
+            "tabs-render",
+            97050946
+          ],
+          [
+            "root-render db=true font=true",
+            97050949
+          ],
+          [
+            "root-return-tree",
+            97050949
+          ],
+          [
+            "journeys-render",
+            97050953
+          ],
+          [
+            "j:auth+user",
+            97050953
+          ],
+          [
+            "j:journeys",
+            97050953
+          ],
+          [
+            "j:claims+disruptions",
+            97050953
+          ],
+          [
+            "j:authSettled",
+            97050953
+          ],
+          [
+            "j:hero",
+            97050953
+          ],
+          [
+            "j:pro",
+            97050953
+          ],
+          [
+            "j:memos",
+            97050953
+          ],
+          [
+            "j:fold",
+            97050953
+          ],
+          [
+            "j:split",
+            97050953
+          ],
+          [
+            "journeys-body-end",
+            97050954
+          ],
+          [
+            "journeys-render",
+            97050982
+          ],
+          [
+            "j:auth+user",
+            97050982
+          ],
+          [
+            "j:journeys",
+            97050982
+          ],
+          [
+            "j:claims+disruptions",
+            97050982
+          ],
+          [
+            "j:authSettled",
+            97050982
+          ],
+          [
+            "j:hero",
+            97050982
+          ],
+          [
+            "j:pro",
+            97050983
+          ],
+          [
+            "j:memos",
+            97050983
+          ],
+          [
+            "j:fold",
+            97050983
+          ],
+          [
+            "j:split",
+            97050983
+          ],
+          [
+            "journeys-body-end",
+            97050983
+          ],
+          [
+            "journeys-render",
+            97051761
+          ],
+          [
+            "j:auth+user",
+            97051761
+          ],
+          [
+            "j:journeys",
+            97051761
+          ],
+          [
+            "j:claims+disruptions",
+            97051762
+          ],
+          [
+            "j:authSettled",
+            97051762
+          ],
+          [
+            "j:hero",
+            97051762
+          ],
+          [
+            "j:pro",
+            97051762
+          ],
+          [
+            "j:memos",
+            97051762
+          ],
+          [
+            "j:fold",
+            97051762
+          ],
+          [
+            "j:split",
+            97051762
+          ],
+          [
+            "journeys-body-end",
+            97051762
+          ],
+          [
+            "tabs-render",
+            97051783
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 317,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 159,
+      "cold_ttr@/(tabs)/(journeys)": 72,
+      "tti@/(tabs)/(journeys)": 79,
+      "timeToInteractive@/(tabs)/(journeys)": 228,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 159,
+          "cold_ttr@/(tabs)/(journeys)": 72,
+          "tti@/(tabs)/(journeys)": 79,
+          "timeToInteractive@/(tabs)/(journeys)": 228
+        },
+        "marks": [
+          [
+            "layout-module",
+            97061065
+          ],
+          [
+            "root-render db=false font=false",
+            97061126
+          ],
+          [
+            "symbol-font-start",
+            97061129
+          ],
+          [
+            "init-effects-start",
+            97061131
+          ],
+          [
+            "init-effects-end",
+            97061136
+          ],
+          [
+            "root-render db=false font=false",
+            97061137
+          ],
+          [
+            "root-render db=false font=false",
+            97061138
+          ],
+          [
+            "root-render db=true font=false",
+            97061140
+          ],
+          [
+            "symbol-font-loaded",
+            97061142
+          ],
+          [
+            "root-render db=true font=true",
+            97061142
+          ],
+          [
+            "root-return-tree",
+            97061142
+          ],
+          [
+            "tabs-render",
+            97061150
+          ],
+          [
+            "journeys-render",
+            97061155
+          ],
+          [
+            "j:auth+user",
+            97061155
+          ],
+          [
+            "j:journeys",
+            97061155
+          ],
+          [
+            "j:claims+disruptions",
+            97061155
+          ],
+          [
+            "j:authSettled",
+            97061155
+          ],
+          [
+            "j:hero",
+            97061159
+          ],
+          [
+            "j:pro",
+            97061159
+          ],
+          [
+            "j:memos",
+            97061159
+          ],
+          [
+            "j:fold",
+            97061179
+          ],
+          [
+            "j:split",
+            97061179
+          ],
+          [
+            "journeys-body-end",
+            97061180
+          ],
+          [
+            "journeys-layout-effect",
+            97061193
+          ],
+          [
+            "journeys-mounted",
+            97061200
+          ],
+          [
+            "tabs-render",
+            97061210
+          ],
+          [
+            "root-render db=true font=true",
+            97061212
+          ],
+          [
+            "root-return-tree",
+            97061212
+          ],
+          [
+            "journeys-render",
+            97061215
+          ],
+          [
+            "j:auth+user",
+            97061215
+          ],
+          [
+            "j:journeys",
+            97061215
+          ],
+          [
+            "j:claims+disruptions",
+            97061215
+          ],
+          [
+            "j:authSettled",
+            97061215
+          ],
+          [
+            "j:hero",
+            97061215
+          ],
+          [
+            "j:pro",
+            97061215
+          ],
+          [
+            "j:memos",
+            97061215
+          ],
+          [
+            "j:fold",
+            97061215
+          ],
+          [
+            "j:split",
+            97061215
+          ],
+          [
+            "journeys-body-end",
+            97061216
+          ],
+          [
+            "journeys-render",
+            97061258
+          ],
+          [
+            "j:auth+user",
+            97061258
+          ],
+          [
+            "j:journeys",
+            97061258
+          ],
+          [
+            "j:claims+disruptions",
+            97061258
+          ],
+          [
+            "j:authSettled",
+            97061258
+          ],
+          [
+            "j:hero",
+            97061258
+          ],
+          [
+            "j:pro",
+            97061258
+          ],
+          [
+            "j:memos",
+            97061258
+          ],
+          [
+            "j:fold",
+            97061258
+          ],
+          [
+            "j:split",
+            97061258
+          ],
+          [
+            "journeys-body-end",
+            97061258
+          ],
+          [
+            "journeys-render",
+            97061970
+          ],
+          [
+            "j:auth+user",
+            97061971
+          ],
+          [
+            "j:journeys",
+            97061971
+          ],
+          [
+            "j:claims+disruptions",
+            97061971
+          ],
+          [
+            "j:authSettled",
+            97061971
+          ],
+          [
+            "j:hero",
+            97061971
+          ],
+          [
+            "j:pro",
+            97061971
+          ],
+          [
+            "j:memos",
+            97061971
+          ],
+          [
+            "j:fold",
+            97061971
+          ],
+          [
+            "j:split",
+            97061971
+          ],
+          [
+            "journeys-body-end",
+            97061971
+          ],
+          [
+            "tabs-render",
+            97061997
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 438,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 158,
+      "cold_ttr@/(tabs)/(journeys)": 75,
+      "tti@/(tabs)/(journeys)": 82,
+      "timeToInteractive@/(tabs)/(journeys)": 232,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 158,
+          "cold_ttr@/(tabs)/(journeys)": 75,
+          "tti@/(tabs)/(journeys)": 82,
+          "timeToInteractive@/(tabs)/(journeys)": 232
+        },
+        "marks": [
+          [
+            "layout-module",
+            97072454
+          ],
+          [
+            "root-render db=false font=false",
+            97072515
+          ],
+          [
+            "symbol-font-start",
+            97072518
+          ],
+          [
+            "init-effects-start",
+            97072520
+          ],
+          [
+            "init-effects-end",
+            97072525
+          ],
+          [
+            "root-render db=false font=false",
+            97072527
+          ],
+          [
+            "root-render db=false font=false",
+            97072527
+          ],
+          [
+            "root-render db=true font=false",
+            97072529
+          ],
+          [
+            "symbol-font-loaded",
+            97072531
+          ],
+          [
+            "root-render db=true font=true",
+            97072531
+          ],
+          [
+            "root-return-tree",
+            97072531
+          ],
+          [
+            "tabs-render",
+            97072539
+          ],
+          [
+            "journeys-render",
+            97072544
+          ],
+          [
+            "j:auth+user",
+            97072544
+          ],
+          [
+            "j:journeys",
+            97072545
+          ],
+          [
+            "j:claims+disruptions",
+            97072545
+          ],
+          [
+            "j:authSettled",
+            97072545
+          ],
+          [
+            "j:hero",
+            97072547
+          ],
+          [
+            "j:pro",
+            97072547
+          ],
+          [
+            "j:memos",
+            97072548
+          ],
+          [
+            "j:fold",
+            97072562
+          ],
+          [
+            "j:split",
+            97072562
+          ],
+          [
+            "journeys-body-end",
+            97072563
+          ],
+          [
+            "journeys-layout-effect",
+            97072577
+          ],
+          [
+            "journeys-mounted",
+            97072591
+          ],
+          [
+            "tabs-render",
+            97072603
+          ],
+          [
+            "root-render db=true font=true",
+            97072606
+          ],
+          [
+            "root-return-tree",
+            97072606
+          ],
+          [
+            "journeys-render",
+            97072609
+          ],
+          [
+            "j:auth+user",
+            97072609
+          ],
+          [
+            "j:journeys",
+            97072609
+          ],
+          [
+            "j:claims+disruptions",
+            97072609
+          ],
+          [
+            "j:authSettled",
+            97072609
+          ],
+          [
+            "j:hero",
+            97072609
+          ],
+          [
+            "j:pro",
+            97072609
+          ],
+          [
+            "j:memos",
+            97072609
+          ],
+          [
+            "j:fold",
+            97072609
+          ],
+          [
+            "j:split",
+            97072609
+          ],
+          [
+            "journeys-body-end",
+            97072609
+          ],
+          [
+            "journeys-render",
+            97072636
+          ],
+          [
+            "j:auth+user",
+            97072636
+          ],
+          [
+            "j:journeys",
+            97072636
+          ],
+          [
+            "j:claims+disruptions",
+            97072636
+          ],
+          [
+            "j:authSettled",
+            97072636
+          ],
+          [
+            "j:hero",
+            97072636
+          ],
+          [
+            "j:pro",
+            97072636
+          ],
+          [
+            "j:memos",
+            97072636
+          ],
+          [
+            "j:fold",
+            97072636
+          ],
+          [
+            "j:split",
+            97072636
+          ],
+          [
+            "journeys-body-end",
+            97072636
+          ],
+          [
+            "journeys-render",
+            97073371
+          ],
+          [
+            "j:auth+user",
+            97073371
+          ],
+          [
+            "j:journeys",
+            97073372
+          ],
+          [
+            "j:claims+disruptions",
+            97073372
+          ],
+          [
+            "j:authSettled",
+            97073372
+          ],
+          [
+            "j:hero",
+            97073372
+          ],
+          [
+            "j:pro",
+            97073372
+          ],
+          [
+            "j:memos",
+            97073372
+          ],
+          [
+            "j:fold",
+            97073372
+          ],
+          [
+            "j:split",
+            97073373
+          ],
+          [
+            "journeys-body-end",
+            97073373
+          ],
+          [
+            "tabs-render",
+            97073398
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 306,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 149,
+      "cold_ttr@/(tabs)/(journeys)": 79,
+      "tti@/(tabs)/(journeys)": 86,
+      "timeToInteractive@/(tabs)/(journeys)": 226,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 149,
+          "cold_ttr@/(tabs)/(journeys)": 79,
+          "tti@/(tabs)/(journeys)": 86,
+          "timeToInteractive@/(tabs)/(journeys)": 226
+        },
+        "marks": [
+          [
+            "layout-module",
+            97082770
+          ],
+          [
+            "root-render db=false font=false",
+            97082819
+          ],
+          [
+            "symbol-font-start",
+            97082822
+          ],
+          [
+            "init-effects-start",
+            97082824
+          ],
+          [
+            "init-effects-end",
+            97082829
+          ],
+          [
+            "root-render db=false font=false",
+            97082831
+          ],
+          [
+            "root-render db=false font=false",
+            97082831
+          ],
+          [
+            "root-render db=true font=false",
+            97082833
+          ],
+          [
+            "symbol-font-loaded",
+            97082835
+          ],
+          [
+            "root-render db=true font=true",
+            97082835
+          ],
+          [
+            "root-return-tree",
+            97082835
+          ],
+          [
+            "tabs-render",
+            97082844
+          ],
+          [
+            "journeys-render",
+            97082848
+          ],
+          [
+            "j:auth+user",
+            97082848
+          ],
+          [
+            "j:journeys",
+            97082849
+          ],
+          [
+            "j:claims+disruptions",
+            97082849
+          ],
+          [
+            "j:authSettled",
+            97082849
+          ],
+          [
+            "j:hero",
+            97082853
+          ],
+          [
+            "j:pro",
+            97082853
+          ],
+          [
+            "j:memos",
+            97082853
+          ],
+          [
+            "j:fold",
+            97082872
+          ],
+          [
+            "j:split",
+            97082872
+          ],
+          [
+            "journeys-body-end",
+            97082873
+          ],
+          [
+            "journeys-layout-effect",
+            97082893
+          ],
+          [
+            "journeys-mounted",
+            97082900
+          ],
+          [
+            "tabs-render",
+            97082911
+          ],
+          [
+            "root-render db=true font=true",
+            97082913
+          ],
+          [
+            "root-return-tree",
+            97082913
+          ],
+          [
+            "journeys-render",
+            97082920
+          ],
+          [
+            "j:auth+user",
+            97082921
+          ],
+          [
+            "j:journeys",
+            97082921
+          ],
+          [
+            "j:claims+disruptions",
+            97082921
+          ],
+          [
+            "j:authSettled",
+            97082921
+          ],
+          [
+            "j:hero",
+            97082921
+          ],
+          [
+            "j:pro",
+            97082921
+          ],
+          [
+            "j:memos",
+            97082921
+          ],
+          [
+            "j:fold",
+            97082921
+          ],
+          [
+            "j:split",
+            97082921
+          ],
+          [
+            "journeys-body-end",
+            97082921
+          ],
+          [
+            "journeys-render",
+            97082951
+          ],
+          [
+            "j:auth+user",
+            97082951
+          ],
+          [
+            "j:journeys",
+            97082951
+          ],
+          [
+            "j:claims+disruptions",
+            97082951
+          ],
+          [
+            "j:authSettled",
+            97082951
+          ],
+          [
+            "j:hero",
+            97082951
+          ],
+          [
+            "j:pro",
+            97082951
+          ],
+          [
+            "j:memos",
+            97082951
+          ],
+          [
+            "j:fold",
+            97082951
+          ],
+          [
+            "j:split",
+            97082951
+          ],
+          [
+            "journeys-body-end",
+            97082951
+          ],
+          [
+            "journeys-render",
+            97083757
+          ],
+          [
+            "j:auth+user",
+            97083757
+          ],
+          [
+            "j:journeys",
+            97083757
+          ],
+          [
+            "j:claims+disruptions",
+            97083757
+          ],
+          [
+            "j:authSettled",
+            97083757
+          ],
+          [
+            "j:hero",
+            97083758
+          ],
+          [
+            "j:pro",
+            97083758
+          ],
+          [
+            "j:memos",
+            97083758
+          ],
+          [
+            "j:fold",
+            97083758
+          ],
+          [
+            "j:split",
+            97083758
+          ],
+          [
+            "journeys-body-end",
+            97083758
+          ],
+          [
+            "tabs-render",
+            97083780
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 414,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 149,
+      "cold_ttr@/(tabs)/(journeys)": 70,
+      "tti@/(tabs)/(journeys)": 76,
+      "timeToInteractive@/(tabs)/(journeys)": 214,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 149,
+          "cold_ttr@/(tabs)/(journeys)": 70,
+          "tti@/(tabs)/(journeys)": 76,
+          "timeToInteractive@/(tabs)/(journeys)": 214
+        },
+        "marks": [
+          [
+            "layout-module",
+            97094091
+          ],
+          [
+            "root-render db=false font=false",
+            97094142
+          ],
+          [
+            "symbol-font-start",
+            97094145
+          ],
+          [
+            "init-effects-start",
+            97094147
+          ],
+          [
+            "init-effects-end",
+            97094152
+          ],
+          [
+            "root-render db=false font=false",
+            97094154
+          ],
+          [
+            "root-render db=false font=false",
+            97094154
+          ],
+          [
+            "root-render db=true font=false",
+            97094156
+          ],
+          [
+            "symbol-font-loaded",
+            97094158
+          ],
+          [
+            "root-render db=true font=true",
+            97094158
+          ],
+          [
+            "root-return-tree",
+            97094158
+          ],
+          [
+            "tabs-render",
+            97094166
+          ],
+          [
+            "journeys-render",
+            97094171
+          ],
+          [
+            "j:auth+user",
+            97094171
+          ],
+          [
+            "j:journeys",
+            97094171
+          ],
+          [
+            "j:claims+disruptions",
+            97094171
+          ],
+          [
+            "j:authSettled",
+            97094171
+          ],
+          [
+            "j:hero",
+            97094174
+          ],
+          [
+            "j:pro",
+            97094174
+          ],
+          [
+            "j:memos",
+            97094174
+          ],
+          [
+            "j:fold",
+            97094193
+          ],
+          [
+            "j:split",
+            97094193
+          ],
+          [
+            "journeys-body-end",
+            97094194
+          ],
+          [
+            "journeys-layout-effect",
+            97094207
+          ],
+          [
+            "journeys-mounted",
+            97094213
+          ],
+          [
+            "tabs-render",
+            97094222
+          ],
+          [
+            "root-render db=true font=true",
+            97094226
+          ],
+          [
+            "root-return-tree",
+            97094226
+          ],
+          [
+            "journeys-render",
+            97094232
+          ],
+          [
+            "j:auth+user",
+            97094232
+          ],
+          [
+            "j:journeys",
+            97094232
+          ],
+          [
+            "j:claims+disruptions",
+            97094232
+          ],
+          [
+            "j:authSettled",
+            97094232
+          ],
+          [
+            "j:hero",
+            97094232
+          ],
+          [
+            "j:pro",
+            97094232
+          ],
+          [
+            "j:memos",
+            97094232
+          ],
+          [
+            "j:fold",
+            97094232
+          ],
+          [
+            "j:split",
+            97094232
+          ],
+          [
+            "journeys-body-end",
+            97094233
+          ],
+          [
+            "journeys-render",
+            97094267
+          ],
+          [
+            "j:auth+user",
+            97094267
+          ],
+          [
+            "j:journeys",
+            97094267
+          ],
+          [
+            "j:claims+disruptions",
+            97094267
+          ],
+          [
+            "j:authSettled",
+            97094267
+          ],
+          [
+            "j:hero",
+            97094267
+          ],
+          [
+            "j:pro",
+            97094267
+          ],
+          [
+            "j:memos",
+            97094267
+          ],
+          [
+            "j:fold",
+            97094267
+          ],
+          [
+            "j:split",
+            97094267
+          ],
+          [
+            "journeys-body-end",
+            97094267
+          ],
+          [
+            "journeys-render",
+            97095922
+          ],
+          [
+            "j:auth+user",
+            97095922
+          ],
+          [
+            "j:journeys",
+            97095922
+          ],
+          [
+            "j:claims+disruptions",
+            97095923
+          ],
+          [
+            "j:authSettled",
+            97095923
+          ],
+          [
+            "j:hero",
+            97095923
+          ],
+          [
+            "j:pro",
+            97095923
+          ],
+          [
+            "j:memos",
+            97095923
+          ],
+          [
+            "j:fold",
+            97095923
+          ],
+          [
+            "j:split",
+            97095923
+          ],
+          [
+            "journeys-body-end",
+            97095923
+          ],
+          [
+            "tabs-render",
+            97095955
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 441,
+      "warmLaunchTime": 12,
+      "bundleLoadTime": 29,
+      "timeToFirstRender": 157,
+      "cold_ttr@/(tabs)/(journeys)": 71,
+      "tti@/(tabs)/(journeys)": 77,
+      "timeToInteractive@/(tabs)/(journeys)": 223,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 12,
+          "bundleLoadTime": 29,
+          "timeToFirstRender": 157,
+          "cold_ttr@/(tabs)/(journeys)": 71,
+          "tti@/(tabs)/(journeys)": 77,
+          "timeToInteractive@/(tabs)/(journeys)": 223
+        },
+        "marks": [
+          [
+            "layout-module",
+            97104519
+          ],
+          [
+            "root-render db=false font=false",
+            97104582
+          ],
+          [
+            "symbol-font-start",
+            97104585
+          ],
+          [
+            "init-effects-start",
+            97104586
+          ],
+          [
+            "init-effects-end",
+            97104591
+          ],
+          [
+            "root-render db=false font=false",
+            97104593
+          ],
+          [
+            "root-render db=false font=false",
+            97104594
+          ],
+          [
+            "root-render db=true font=false",
+            97104595
+          ],
+          [
+            "symbol-font-loaded",
+            97104597
+          ],
+          [
+            "root-render db=true font=true",
+            97104597
+          ],
+          [
+            "root-return-tree",
+            97104597
+          ],
+          [
+            "tabs-render",
+            97104605
+          ],
+          [
+            "journeys-render",
+            97104610
+          ],
+          [
+            "j:auth+user",
+            97104610
+          ],
+          [
+            "j:journeys",
+            97104610
+          ],
+          [
+            "j:claims+disruptions",
+            97104611
+          ],
+          [
+            "j:authSettled",
+            97104611
+          ],
+          [
+            "j:hero",
+            97104613
+          ],
+          [
+            "j:pro",
+            97104613
+          ],
+          [
+            "j:memos",
+            97104613
+          ],
+          [
+            "j:fold",
+            97104632
+          ],
+          [
+            "j:split",
+            97104632
+          ],
+          [
+            "journeys-body-end",
+            97104632
+          ],
+          [
+            "journeys-layout-effect",
+            97104648
+          ],
+          [
+            "journeys-mounted",
+            97104654
+          ],
+          [
+            "tabs-render",
+            97104665
+          ],
+          [
+            "root-render db=true font=true",
+            97104668
+          ],
+          [
+            "root-return-tree",
+            97104668
+          ],
+          [
+            "journeys-render",
+            97104672
+          ],
+          [
+            "j:auth+user",
+            97104672
+          ],
+          [
+            "j:journeys",
+            97104672
+          ],
+          [
+            "j:claims+disruptions",
+            97104672
+          ],
+          [
+            "j:authSettled",
+            97104672
+          ],
+          [
+            "j:hero",
+            97104672
+          ],
+          [
+            "j:pro",
+            97104672
+          ],
+          [
+            "j:memos",
+            97104672
+          ],
+          [
+            "j:fold",
+            97104672
+          ],
+          [
+            "j:split",
+            97104672
+          ],
+          [
+            "journeys-body-end",
+            97104672
+          ],
+          [
+            "journeys-render",
+            97104702
+          ],
+          [
+            "j:auth+user",
+            97104702
+          ],
+          [
+            "j:journeys",
+            97104702
+          ],
+          [
+            "j:claims+disruptions",
+            97104702
+          ],
+          [
+            "j:authSettled",
+            97104702
+          ],
+          [
+            "j:hero",
+            97104703
+          ],
+          [
+            "j:pro",
+            97104703
+          ],
+          [
+            "j:memos",
+            97104703
+          ],
+          [
+            "j:fold",
+            97104703
+          ],
+          [
+            "j:split",
+            97104703
+          ],
+          [
+            "journeys-body-end",
+            97104703
+          ],
+          [
+            "journeys-render",
+            97105420
+          ],
+          [
+            "j:auth+user",
+            97105420
+          ],
+          [
+            "j:journeys",
+            97105420
+          ],
+          [
+            "j:claims+disruptions",
+            97105420
+          ],
+          [
+            "j:authSettled",
+            97105420
+          ],
+          [
+            "j:hero",
+            97105420
+          ],
+          [
+            "j:pro",
+            97105420
+          ],
+          [
+            "j:memos",
+            97105420
+          ],
+          [
+            "j:fold",
+            97105420
+          ],
+          [
+            "j:split",
+            97105421
+          ],
+          [
+            "journeys-body-end",
+            97105421
+          ],
+          [
+            "tabs-render",
+            97105445
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 238,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 159,
+      "cold_ttr@/(tabs)/(journeys)": 81,
+      "tti@/(tabs)/(journeys)": 88,
+      "timeToInteractive@/(tabs)/(journeys)": 236,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 159,
+          "cold_ttr@/(tabs)/(journeys)": 81,
+          "tti@/(tabs)/(journeys)": 88,
+          "timeToInteractive@/(tabs)/(journeys)": 236
+        },
+        "marks": [
+          [
+            "layout-module",
+            97114956
+          ],
+          [
+            "root-render db=false font=false",
+            97115017
+          ],
+          [
+            "symbol-font-start",
+            97115020
+          ],
+          [
+            "init-effects-start",
+            97115022
+          ],
+          [
+            "init-effects-end",
+            97115027
+          ],
+          [
+            "root-render db=false font=false",
+            97115029
+          ],
+          [
+            "root-render db=false font=false",
+            97115029
+          ],
+          [
+            "root-render db=true font=false",
+            97115031
+          ],
+          [
+            "symbol-font-loaded",
+            97115033
+          ],
+          [
+            "root-render db=true font=true",
+            97115033
+          ],
+          [
+            "root-return-tree",
+            97115033
+          ],
+          [
+            "tabs-render",
+            97115042
+          ],
+          [
+            "journeys-render",
+            97115046
+          ],
+          [
+            "j:auth+user",
+            97115046
+          ],
+          [
+            "j:journeys",
+            97115046
+          ],
+          [
+            "j:claims+disruptions",
+            97115046
+          ],
+          [
+            "j:authSettled",
+            97115046
+          ],
+          [
+            "j:hero",
+            97115050
+          ],
+          [
+            "j:pro",
+            97115050
+          ],
+          [
+            "j:memos",
+            97115050
+          ],
+          [
+            "j:fold",
+            97115069
+          ],
+          [
+            "j:split",
+            97115069
+          ],
+          [
+            "journeys-body-end",
+            97115070
+          ],
+          [
+            "journeys-layout-effect",
+            97115093
+          ],
+          [
+            "journeys-mounted",
+            97115100
+          ],
+          [
+            "tabs-render",
+            97115109
+          ],
+          [
+            "root-render db=true font=true",
+            97115111
+          ],
+          [
+            "root-return-tree",
+            97115111
+          ],
+          [
+            "journeys-render",
+            97115114
+          ],
+          [
+            "j:auth+user",
+            97115114
+          ],
+          [
+            "j:journeys",
+            97115114
+          ],
+          [
+            "j:claims+disruptions",
+            97115114
+          ],
+          [
+            "j:authSettled",
+            97115114
+          ],
+          [
+            "j:hero",
+            97115114
+          ],
+          [
+            "j:pro",
+            97115114
+          ],
+          [
+            "j:memos",
+            97115114
+          ],
+          [
+            "j:fold",
+            97115114
+          ],
+          [
+            "j:split",
+            97115114
+          ],
+          [
+            "journeys-body-end",
+            97115115
+          ],
+          [
+            "journeys-render",
+            97115154
+          ],
+          [
+            "j:auth+user",
+            97115154
+          ],
+          [
+            "j:journeys",
+            97115154
+          ],
+          [
+            "j:claims+disruptions",
+            97115154
+          ],
+          [
+            "j:authSettled",
+            97115154
+          ],
+          [
+            "j:hero",
+            97115154
+          ],
+          [
+            "j:pro",
+            97115154
+          ],
+          [
+            "j:memos",
+            97115154
+          ],
+          [
+            "j:fold",
+            97115154
+          ],
+          [
+            "j:split",
+            97115154
+          ],
+          [
+            "journeys-body-end",
+            97115154
+          ],
+          [
+            "journeys-render",
+            97115950
+          ],
+          [
+            "j:auth+user",
+            97115950
+          ],
+          [
+            "j:journeys",
+            97115950
+          ],
+          [
+            "j:claims+disruptions",
+            97115950
+          ],
+          [
+            "j:authSettled",
+            97115950
+          ],
+          [
+            "j:hero",
+            97115950
+          ],
+          [
+            "j:pro",
+            97115950
+          ],
+          [
+            "j:memos",
+            97115950
+          ],
+          [
+            "j:fold",
+            97115950
+          ],
+          [
+            "j:split",
+            97115951
+          ],
+          [
+            "journeys-body-end",
+            97115951
+          ],
+          [
+            "tabs-render",
+            97115974
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 308,
+      "warmLaunchTime": 8,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 161,
+      "cold_ttr@/(tabs)/(journeys)": 72,
+      "tti@/(tabs)/(journeys)": 79,
+      "timeToInteractive@/(tabs)/(journeys)": 231,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 8,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 161,
+          "cold_ttr@/(tabs)/(journeys)": 72,
+          "tti@/(tabs)/(journeys)": 79,
+          "timeToInteractive@/(tabs)/(journeys)": 231
+        },
+        "marks": [
+          [
+            "layout-module",
+            97126374
+          ],
+          [
+            "root-render db=false font=false",
+            97126437
+          ],
+          [
+            "symbol-font-start",
+            97126440
+          ],
+          [
+            "init-effects-start",
+            97126442
+          ],
+          [
+            "init-effects-end",
+            97126447
+          ],
+          [
+            "root-render db=false font=false",
+            97126449
+          ],
+          [
+            "root-render db=false font=false",
+            97126449
+          ],
+          [
+            "root-render db=true font=false",
+            97126451
+          ],
+          [
+            "symbol-font-loaded",
+            97126453
+          ],
+          [
+            "root-render db=true font=true",
+            97126453
+          ],
+          [
+            "root-return-tree",
+            97126453
+          ],
+          [
+            "tabs-render",
+            97126461
+          ],
+          [
+            "journeys-render",
+            97126465
+          ],
+          [
+            "j:auth+user",
+            97126465
+          ],
+          [
+            "j:journeys",
+            97126466
+          ],
+          [
+            "j:claims+disruptions",
+            97126466
+          ],
+          [
+            "j:authSettled",
+            97126466
+          ],
+          [
+            "j:hero",
+            97126469
+          ],
+          [
+            "j:pro",
+            97126469
+          ],
+          [
+            "j:memos",
+            97126469
+          ],
+          [
+            "j:fold",
+            97126489
+          ],
+          [
+            "j:split",
+            97126490
+          ],
+          [
+            "journeys-body-end",
+            97126490
+          ],
+          [
+            "journeys-layout-effect",
+            97126504
+          ],
+          [
+            "journeys-mounted",
+            97126511
+          ],
+          [
+            "tabs-render",
+            97126522
+          ],
+          [
+            "root-render db=true font=true",
+            97126524
+          ],
+          [
+            "root-return-tree",
+            97126524
+          ],
+          [
+            "journeys-render",
+            97126527
+          ],
+          [
+            "j:auth+user",
+            97126527
+          ],
+          [
+            "j:journeys",
+            97126527
+          ],
+          [
+            "j:claims+disruptions",
+            97126527
+          ],
+          [
+            "j:authSettled",
+            97126527
+          ],
+          [
+            "j:hero",
+            97126527
+          ],
+          [
+            "j:pro",
+            97126527
+          ],
+          [
+            "j:memos",
+            97126527
+          ],
+          [
+            "j:fold",
+            97126527
+          ],
+          [
+            "j:split",
+            97126527
+          ],
+          [
+            "journeys-body-end",
+            97126528
+          ],
+          [
+            "journeys-render",
+            97126565
+          ],
+          [
+            "j:auth+user",
+            97126565
+          ],
+          [
+            "j:journeys",
+            97126565
+          ],
+          [
+            "j:claims+disruptions",
+            97126565
+          ],
+          [
+            "j:authSettled",
+            97126565
+          ],
+          [
+            "j:hero",
+            97126565
+          ],
+          [
+            "j:pro",
+            97126565
+          ],
+          [
+            "j:memos",
+            97126565
+          ],
+          [
+            "j:fold",
+            97126565
+          ],
+          [
+            "j:split",
+            97126565
+          ],
+          [
+            "journeys-body-end",
+            97126565
+          ],
+          [
+            "journeys-render",
+            97127357
+          ],
+          [
+            "j:auth+user",
+            97127357
+          ],
+          [
+            "j:journeys",
+            97127357
+          ],
+          [
+            "j:claims+disruptions",
+            97127357
+          ],
+          [
+            "j:authSettled",
+            97127357
+          ],
+          [
+            "j:hero",
+            97127357
+          ],
+          [
+            "j:pro",
+            97127357
+          ],
+          [
+            "j:memos",
+            97127357
+          ],
+          [
+            "j:fold",
+            97127357
+          ],
+          [
+            "j:split",
+            97127358
+          ],
+          [
+            "journeys-body-end",
+            97127358
+          ],
+          [
+            "tabs-render",
+            97127381
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 436,
+      "warmLaunchTime": 8,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 173,
+      "cold_ttr@/(tabs)/(journeys)": 75,
+      "tti@/(tabs)/(journeys)": 84,
+      "timeToInteractive@/(tabs)/(journeys)": 244,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 8,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 173,
+          "cold_ttr@/(tabs)/(journeys)": 75,
+          "tti@/(tabs)/(journeys)": 84,
+          "timeToInteractive@/(tabs)/(journeys)": 244
+        },
+        "marks": [
+          [
+            "layout-module",
+            97136710
+          ],
+          [
+            "root-render db=false font=false",
+            97136777
+          ],
+          [
+            "symbol-font-start",
+            97136781
+          ],
+          [
+            "init-effects-start",
+            97136784
+          ],
+          [
+            "init-effects-end",
+            97136790
+          ],
+          [
+            "root-render db=false font=false",
+            97136792
+          ],
+          [
+            "root-render db=false font=false",
+            97136793
+          ],
+          [
+            "root-render db=true font=false",
+            97136794
+          ],
+          [
+            "symbol-font-loaded",
+            97136796
+          ],
+          [
+            "root-render db=true font=true",
+            97136796
+          ],
+          [
+            "root-return-tree",
+            97136796
+          ],
+          [
+            "tabs-render",
+            97136805
+          ],
+          [
+            "journeys-render",
+            97136809
+          ],
+          [
+            "j:auth+user",
+            97136809
+          ],
+          [
+            "j:journeys",
+            97136809
+          ],
+          [
+            "j:claims+disruptions",
+            97136809
+          ],
+          [
+            "j:authSettled",
+            97136809
+          ],
+          [
+            "j:hero",
+            97136812
+          ],
+          [
+            "j:pro",
+            97136812
+          ],
+          [
+            "j:memos",
+            97136812
+          ],
+          [
+            "j:fold",
+            97136826
+          ],
+          [
+            "j:split",
+            97136827
+          ],
+          [
+            "journeys-body-end",
+            97136827
+          ],
+          [
+            "journeys-layout-effect",
+            97136843
+          ],
+          [
+            "journeys-mounted",
+            97136853
+          ],
+          [
+            "tabs-render",
+            97136865
+          ],
+          [
+            "root-render db=true font=true",
+            97136868
+          ],
+          [
+            "root-return-tree",
+            97136868
+          ],
+          [
+            "journeys-render",
+            97136872
+          ],
+          [
+            "j:auth+user",
+            97136872
+          ],
+          [
+            "j:journeys",
+            97136872
+          ],
+          [
+            "j:claims+disruptions",
+            97136872
+          ],
+          [
+            "j:authSettled",
+            97136872
+          ],
+          [
+            "j:hero",
+            97136872
+          ],
+          [
+            "j:pro",
+            97136872
+          ],
+          [
+            "j:memos",
+            97136872
+          ],
+          [
+            "j:fold",
+            97136872
+          ],
+          [
+            "j:split",
+            97136872
+          ],
+          [
+            "journeys-body-end",
+            97136873
+          ],
+          [
+            "journeys-render",
+            97136892
+          ],
+          [
+            "j:auth+user",
+            97136892
+          ],
+          [
+            "j:journeys",
+            97136892
+          ],
+          [
+            "j:claims+disruptions",
+            97136892
+          ],
+          [
+            "j:authSettled",
+            97136892
+          ],
+          [
+            "j:hero",
+            97136892
+          ],
+          [
+            "j:pro",
+            97136892
+          ],
+          [
+            "j:memos",
+            97136892
+          ],
+          [
+            "j:fold",
+            97136892
+          ],
+          [
+            "j:split",
+            97136892
+          ],
+          [
+            "journeys-body-end",
+            97136892
+          ],
+          [
+            "journeys-render",
+            97137648
+          ],
+          [
+            "j:auth+user",
+            97137649
+          ],
+          [
+            "j:journeys",
+            97137649
+          ],
+          [
+            "j:claims+disruptions",
+            97137649
+          ],
+          [
+            "j:authSettled",
+            97137649
+          ],
+          [
+            "j:hero",
+            97137649
+          ],
+          [
+            "j:pro",
+            97137649
+          ],
+          [
+            "j:memos",
+            97137649
+          ],
+          [
+            "j:fold",
+            97137649
+          ],
+          [
+            "j:split",
+            97137650
+          ],
+          [
+            "journeys-body-end",
+            97137650
+          ],
+          [
+            "tabs-render",
+            97137678
+          ]
+        ],
+        "modules": {
+          "count": 0,
+          "selfMs": 0
+        },
+        "topPackages": [],
+        "topModules": []
+      }
+    }
+  ]
+}

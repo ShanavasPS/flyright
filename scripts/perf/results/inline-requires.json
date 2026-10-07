@@ -1,0 +1,245 @@
+{
+  "label": "inline-requires",
+  "runs": 10,
+  "medians": {
+    "totalTime": 560,
+    "warmLaunchTime": 10,
+    "bundleLoadTime": 28,
+    "timeToFirstRender": 221,
+    "cold_ttr@/(tabs)/(journeys)": 116,
+    "tti@/(tabs)/(journeys)": 123,
+    "timeToInteractive@/(tabs)/(journeys)": 334
+  },
+  "results": [
+    {
+      "totalTime": 560,
+      "warmLaunchTime": 13,
+      "bundleLoadTime": 31,
+      "timeToFirstRender": 278,
+      "cold_ttr@/(tabs)/(journeys)": 127,
+      "tti@/(tabs)/(journeys)": 134,
+      "timeToInteractive@/(tabs)/(journeys)": 396,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 13,
+          "bundleLoadTime": 31,
+          "timeToFirstRender": 278,
+          "cold_ttr@/(tabs)/(journeys)": 127,
+          "tti@/(tabs)/(journeys)": 134,
+          "timeToInteractive@/(tabs)/(journeys)": 396
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 571,
+      "warmLaunchTime": 11,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 223,
+      "cold_ttr@/(tabs)/(journeys)": 120,
+      "tti@/(tabs)/(journeys)": 126,
+      "timeToInteractive@/(tabs)/(journeys)": 338,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 11,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 223,
+          "cold_ttr@/(tabs)/(journeys)": 120,
+          "tti@/(tabs)/(journeys)": 126,
+          "timeToInteractive@/(tabs)/(journeys)": 338
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 382,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 221,
+      "cold_ttr@/(tabs)/(journeys)": 104,
+      "tti@/(tabs)/(journeys)": 111,
+      "timeToInteractive@/(tabs)/(journeys)": 322,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 221,
+          "cold_ttr@/(tabs)/(journeys)": 104,
+          "tti@/(tabs)/(journeys)": 111,
+          "timeToInteractive@/(tabs)/(journeys)": 322
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 464,
+      "warmLaunchTime": 12,
+      "bundleLoadTime": 25,
+      "timeToFirstRender": 212,
+      "cold_ttr@/(tabs)/(journeys)": 96,
+      "tti@/(tabs)/(journeys)": 106,
+      "timeToInteractive@/(tabs)/(journeys)": 307,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 12,
+          "bundleLoadTime": 25,
+          "timeToFirstRender": 212,
+          "cold_ttr@/(tabs)/(journeys)": 96,
+          "tti@/(tabs)/(journeys)": 106,
+          "timeToInteractive@/(tabs)/(journeys)": 307
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 578,
+      "warmLaunchTime": 12,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 227,
+      "cold_ttr@/(tabs)/(journeys)": 120,
+      "tti@/(tabs)/(journeys)": 126,
+      "timeToInteractive@/(tabs)/(journeys)": 343,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 12,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 227,
+          "cold_ttr@/(tabs)/(journeys)": 120,
+          "tti@/(tabs)/(journeys)": 126,
+          "timeToInteractive@/(tabs)/(journeys)": 343
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 365,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 220,
+      "cold_ttr@/(tabs)/(journeys)": 113,
+      "tti@/(tabs)/(journeys)": 120,
+      "timeToInteractive@/(tabs)/(journeys)": 330,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 220,
+          "cold_ttr@/(tabs)/(journeys)": 113,
+          "tti@/(tabs)/(journeys)": 120,
+          "timeToInteractive@/(tabs)/(journeys)": 330
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 476,
+      "warmLaunchTime": 10,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 218,
+      "cold_ttr@/(tabs)/(journeys)": 96,
+      "tti@/(tabs)/(journeys)": 107,
+      "timeToInteractive@/(tabs)/(journeys)": 314,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 10,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 218,
+          "cold_ttr@/(tabs)/(journeys)": 96,
+          "tti@/(tabs)/(journeys)": 107,
+          "timeToInteractive@/(tabs)/(journeys)": 314
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 580,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 28,
+      "timeToFirstRender": 228,
+      "cold_ttr@/(tabs)/(journeys)": 116,
+      "tti@/(tabs)/(journeys)": 122,
+      "timeToInteractive@/(tabs)/(journeys)": 339,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 28,
+          "timeToFirstRender": 228,
+          "cold_ttr@/(tabs)/(journeys)": 116,
+          "tti@/(tabs)/(journeys)": 122,
+          "timeToInteractive@/(tabs)/(journeys)": 339
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 563,
+      "warmLaunchTime": 8,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 220,
+      "cold_ttr@/(tabs)/(journeys)": 118,
+      "tti@/(tabs)/(journeys)": 124,
+      "timeToInteractive@/(tabs)/(journeys)": 334,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 8,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 220,
+          "cold_ttr@/(tabs)/(journeys)": 118,
+          "tti@/(tabs)/(journeys)": 124,
+          "timeToInteractive@/(tabs)/(journeys)": 334
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    },
+    {
+      "totalTime": 372,
+      "warmLaunchTime": 9,
+      "bundleLoadTime": 27,
+      "timeToFirstRender": 221,
+      "cold_ttr@/(tabs)/(journeys)": 115,
+      "tti@/(tabs)/(journeys)": 123,
+      "timeToInteractive@/(tabs)/(journeys)": 334,
+      "probe": {
+        "startup": {
+          "warmLaunchTime": 9,
+          "bundleLoadTime": 27,
+          "timeToFirstRender": 221,
+          "cold_ttr@/(tabs)/(journeys)": 115,
+          "tti@/(tabs)/(journeys)": 123,
+          "timeToInteractive@/(tabs)/(journeys)": 334
+        },
+        "modules": 0,
+        "moduleSelfMs": 0,
+        "topPackages": [],
+        "topModules": []
+      }
+    }
+  ]
+}
