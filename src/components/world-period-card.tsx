@@ -8,7 +8,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { JourneyRow } from '@/services/journeys';
-import { formatKm, type TravelRecap } from '@/services/timeline';
+import type { TravelRecap } from '@/services/timeline';
+import { compactHours } from '@/services/world-share';
 import {
   ALL_TIME,
   journalSpan,
@@ -77,13 +78,14 @@ export function PeriodCard({
   const year = period.kind === 'year' || period.kind === 'month' ? period.year : null;
   const months = useMemo(() => (year ? monthsWithFlights(rows, year) : null), [rows, year]);
 
+  const hours = compactHours(recap.hoursAloft, recap.hoursEstimated, true);
   const summary =
     recap.trips > 0
       ? [
           `${recap.trips} ${recap.trips === 1 ? 'trip' : 'trips'}`,
           `${recap.airports} ${recap.airports === 1 ? 'airport' : 'airports'}`,
           `${recap.countries} ${recap.countries === 1 ? 'country' : 'countries'}`,
-          `${formatKm(recap.totalKm)} km`,
+          `${hours.value} ${hours.label}`,
         ].join(' · ')
       : 'No flights in this period';
 

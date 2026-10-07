@@ -180,14 +180,21 @@ export interface ShareCopy {
  * minutes" under an hour, "≈" ahead of the unit when any leg's time is a
  * distance estimate. Whole hours: "69 hrs 6 min" clips at poster size. The
  * single-flight card keeps the exact HOURS_LABEL. */
-export function compactHours(hours: number, estimated: boolean): { value: string; label: string } {
+export function compactHours(
+  hours: number,
+  estimated: boolean,
+  /** "hrs" / "min" for a one-line summary that has to fit beside other figures. */
+  short = false,
+): { value: string; label: string } {
   const about = estimated ? '≈ ' : '';
   if (hours < 1) {
     const minutes = Math.round(hours * 60);
-    return { value: `${minutes}`, label: `${about}${minutes === 1 ? 'minute' : 'minutes'}` };
+    const unit = short ? 'min' : minutes === 1 ? 'minute' : 'minutes';
+    return { value: `${minutes}`, label: `${about}${unit}` };
   }
   const whole = Math.round(hours);
-  return { value: whole.toLocaleString(), label: `${about}${whole === 1 ? 'hour' : 'hours'}` };
+  const unit = short ? (whole === 1 ? 'hr' : 'hrs') : whole === 1 ? 'hour' : 'hours';
+  return { value: whole.toLocaleString(), label: `${about}${unit}` };
 }
 
 const HOURS_LABEL = (hours: number) => {

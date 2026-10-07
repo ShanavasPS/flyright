@@ -6,7 +6,8 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useLargeText } from '@/hooks/use-text-scale';
-import { formatKm, timeAloftComparison, type TravelStats } from '@/services/timeline';
+import { timeAloftComparison, type TravelStats } from '@/services/timeline';
+import { compactHours } from '@/services/world-share';
 
 // The card keeps the brand's night-flight navy in BOTH themes — on the light
 // porcelain page it reads as the one premium object on screen, in dark mode
@@ -68,10 +69,11 @@ export function TravelStatsStrip({ stats }: { stats: TravelStats }) {
   const large = useLargeText();
 
   if (!stats.trips) return null;
+  const hours = compactHours(stats.hoursAloft, stats.hoursEstimated);
   const line = [
     `${stats.trips.toLocaleString()} ${stats.trips === 1 ? 'trip' : 'trips'}`,
-    `${formatKm(stats.totalKm)} km`,
     `${stats.countries.toLocaleString()} ${stats.countries === 1 ? 'country' : 'countries'}`,
+    `${hours.value} ${hours.label}`,
   ].join(' · ');
 
   return (
@@ -105,6 +107,7 @@ export function TravelStatsBody({ stats }: { stats: TravelStats }) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const aloft = timeAloftComparison(stats.hoursAloft);
+  const hours = compactHours(stats.hoursAloft, stats.hoursEstimated);
   const large = useLargeText();
 
   return (
@@ -116,17 +119,19 @@ export function TravelStatsBody({ stats }: { stats: TravelStats }) {
           <MiniContrail />
         </View>
 
-        {/* Large text: three columns can't hold "COUNTRIES" (it broke as
-            "COUNTRIE/S" into "KM FLOWN"), so the stats stack. */}
+        {/* Trips, countries, then the hours in the air — the same tile the
+            World tab and the share poster end on. Large text: three columns
+            can't hold "COUNTRIES" (it broke as "COUNTRIE/S"), so the stats
+            stack. */}
         <View style={large ? styles.statsStack : styles.statsRow}>
           <Stat stacked={large} label={stats.trips === 1 ? 'trip' : 'trips'} value={stats.trips.toLocaleString()} />
-          <Stat stacked={large} align="center" label="km flown" value={formatKm(stats.totalKm)} />
           <Stat
             stacked={large}
-            align="right"
+            align="center"
             label={stats.countries === 1 ? 'country' : 'countries'}
             value={stats.countries.toLocaleString()}
           />
+          <Stat stacked={large} align="right" label={hours.label} value={hours.value} />
         </View>
         {aloft && (
           <ThemedText type="small" style={styles.aloft}>
