@@ -58,6 +58,9 @@ export function ShareWorld() {
   const { user } = useUser();
   const [format, setFormat] = useState<ShareFormat>('story');
   const [prefs, setPrefs] = useState(getSharePrefs);
+  // Off every time the screen opens, never remembered: the Earth carries the
+  // poster on its own, and the glow is a choice made per share.
+  const [heatOn, setHeatOn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [now] = useState(() => new Date());
   const cardRef = useRef<View>(null);
@@ -71,7 +74,7 @@ export function ShareWorld() {
     () => (share && copy ? shareMapModel(share.rows, now, format, copy.single) : null),
     [share, copy, now, format],
   );
-  const heat = useRouteHeat(model, prefs.theme, prefs.heat);
+  const heat = useRouteHeat(model, prefs.theme, heatOn);
 
   const choose = (next: Partial<typeof prefs>) => {
     const merged = { ...prefs, ...next };
@@ -193,8 +196,8 @@ export function ShareWorld() {
               <Switch
                 testID="share-heat"
                 accessibilityLabel="Heat layer"
-                value={prefs.heat}
-                onValueChange={(value) => choose({ heat: value })}
+                value={heatOn}
+                onValueChange={setHeatOn}
                 thumbColor="#FFFFFF"
                 trackColor={{ true: GREEN, false: '#22344F' }}
               />

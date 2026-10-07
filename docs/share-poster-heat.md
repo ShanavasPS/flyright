@@ -19,7 +19,7 @@ left out — the glow is where somebody has been.
 - GPU passes, readback, PNG: `src/services/route-heat.ts` (`.web.ts` stub returns null)
 - Geometry shared with the card so the glow sits on the lines: `shareMapModel()` in
   `src/services/world-share.ts`
-- Prefs (poster theme, heat on/off — off until the traveller switches it on): `src/services/share-prefs.ts`
+- Prefs (poster theme; the heat switch is per visit, off on every open, never stored): `src/services/share-prefs.ts`
 
 ## Pipeline
 
