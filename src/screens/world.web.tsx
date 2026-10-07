@@ -19,7 +19,8 @@ import { airportZone } from '@/services/airports';
 import { WORLD, buildWorldMap, fitViewBox, type ViewBox } from '@/services/geo';
 import { useJourneys } from '@/services/journeys';
 import { formatDayLabel } from '@/services/dates';
-import { formatKm, travelRecap } from '@/services/timeline';
+import { travelRecap } from '@/services/timeline';
+import { compactHours } from '@/services/world-share';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 import { ALL_TIME, filterByPeriod, periodKey, type WorldPeriod } from '@/services/world-period';
 
@@ -256,7 +257,7 @@ export function World() {
                 value={recap.countries}
                 label={recap.countries === 1 ? 'country' : 'countries'}
               />
-              <Stat value={formatKm(recap.totalKm)} label="km" />
+              <Stat {...compactHours(recap.hoursAloft, recap.hoursEstimated)} />
             </Card>
           ) : null}
         </SafeAreaView>

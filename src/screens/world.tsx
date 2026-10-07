@@ -33,11 +33,11 @@ import {
 } from '@/services/geo';
 import { useJourneys, type JourneyRow } from '@/services/journeys';
 import { useGlobeTextures } from '@/services/globe-textures';
-import { cityOf, formatKm, travelRecap } from '@/services/timeline';
+import { cityOf, travelRecap } from '@/services/timeline';
 import { EMPTY_TRAVEL_DAY } from '@/services/travel-day';
 import { focusWorldOn, useWorldFocus } from '@/services/world-focus';
 import { ALL_TIME, filterByPeriod, periodKey, type WorldPeriod } from '@/services/world-period';
-import { openWorldShare } from '@/services/world-share';
+import { compactHours, openWorldShare } from '@/services/world-share';
 
 /** Overlay heights below the safe areas, for `mapPadding`. Header: eyebrow
  * (16) + gap (2) + title (41) + vertical padding (8 + 16). Card: numerals
@@ -308,7 +308,7 @@ export function WorldCanvas({
       <Stat value={recap.trips} label={recap.trips === 1 ? 'trip' : 'trips'} />
       <Stat value={recap.airports} label={recap.airports === 1 ? 'airport' : 'airports'} />
       <Stat value={recap.countries} label={recap.countries === 1 ? 'country' : 'countries'} />
-      <Stat value={formatKm(recap.totalKm)} label="km" />
+      <Stat {...compactHours(recap.hoursAloft, recap.hoursEstimated)} />
     </Card>
   ) : null;
 

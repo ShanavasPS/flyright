@@ -175,14 +175,19 @@ export interface ShareCopy {
   single: boolean;
 }
 
-/** Time aloft for a quarter-width tile: the number alone, the unit as the
- * tile's label — "46 / hours", "45 / minutes" under an hour. Whole hours:
- * "69 hrs 6 min" clips at poster size. The single-flight card keeps the
- * exact HOURS_LABEL. */
-function compactHours(hours: number, estimated: boolean): { value: string; label: string } {
+/** Time aloft for a quarter-width tile (the poster's and the World tab's):
+ * the number alone, the unit as the tile's label — "46 / hours", "45 /
+ * minutes" under an hour, "≈" ahead of the unit when any leg's time is a
+ * distance estimate. Whole hours: "69 hrs 6 min" clips at poster size. The
+ * single-flight card keeps the exact HOURS_LABEL. */
+export function compactHours(hours: number, estimated: boolean): { value: string; label: string } {
   const about = estimated ? '≈ ' : '';
-  if (hours < 1) return { value: `${Math.round(hours * 60)}`, label: `${about}minutes` };
-  return { value: Math.round(hours).toLocaleString(), label: `${about}hours` };
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return { value: `${minutes}`, label: `${about}${minutes === 1 ? 'minute' : 'minutes'}` };
+  }
+  const whole = Math.round(hours);
+  return { value: whole.toLocaleString(), label: `${about}${whole === 1 ? 'hour' : 'hours'}` };
 }
 
 const HOURS_LABEL = (hours: number) => {
