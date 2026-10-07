@@ -89,8 +89,10 @@ sun is behind the viewer and out of frame, and facing the night side it
 rises past the limb and sweeps the sky (`SUN_FOCAL` perspective) —
 stylised, nowhere near to scale. Switching the sun on eases the globe out
 to `SKY_SCALE` and, if the sun is out of frame, orbits the least that
-brings it up past the limb (`faceSun`); off again returns a globe left
-below the fit. The trip inset places
+brings it up past the limb (`faceSun`, from where the camera is); with the
+sun on, Recenter, a new period and a return to the tab rest at that sky
+view of the fit (`rest`) instead of the fit; off again returns a globe
+left below the fit. The trip inset places
 the sun at take-off / landing / now. The inset's caption stays the one word
 it was ("Overview" / "Flown path") — the user does not want sun or plane
 notes added to it. Planes are

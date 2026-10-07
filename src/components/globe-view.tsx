@@ -66,6 +66,7 @@ import {
   toView,
   wrapLambda,
   type GlobeCamera,
+  type GlobeOrientation,
 } from '@/services/globe';
 import { BASE_SIZE, TILE, type GlobeTextures } from '@/services/globe-textures';
 import { sunVector } from '@/services/sun';
@@ -349,9 +350,34 @@ export function GlobeView({
     [packed, airports, width, stripHeight, fitR, fitPad, fitFocus],
   );
 
-  const lambda = useSharedValue(fit.lambda);
-  const phi = useSharedValue(fit.phi);
-  const scale = useSharedValue(fit.scale);
+  // The sun: at the given instant, or now — re-read every minute while the
+  // globe is lit by it, since that is the only time it shows.
+  const [sunNow, setSunNow] = useState(() => Date.now());
+  const ticking = daylight && sunAt == null;
+  useEffect(() => {
+    if (!ticking) return;
+    const update = () => setSunNow(Date.now());
+    // Catch up at once (the switch may be flipped hours after mount), then tick.
+    const first = setTimeout(update, 0);
+    const id = setInterval(update, SUN_TICK_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [ticking]);
+  const sunDir = useMemo(() => sunVector(sunAt ?? sunNow), [sunAt, sunNow]);
+
+  // Where the camera rests: the fit, or with the sun on, the sky view of
+  // it — zoomed out to SKY_SCALE and, if the fit has the sun out of frame,
+  // orbited the least that brings it up past the limb. Recenter, a new
+  // period and a return to the tab all come back here.
+  const rest = useMemo<GlobeCamera>(
+    () => (skyRoom ? { ...sunReveal(fit, sunDir, cx, cy, fitR, sky), scale: SKY_SCALE } : fit),
+    [fit, skyRoom, sunDir, cx, cy, fitR, sky],
+  );
+  const lambda = useSharedValue(rest.lambda);
+  const phi = useSharedValue(rest.phi);
+  const scale = useSharedValue(rest.scale);
   const opacity = useSharedValue(0);
 
   // What is drawn is the camera plus the phone's tilt. The tilt is a sway on
@@ -372,13 +398,13 @@ export function GlobeView({
     }
     if (holdFit) return;
     const easing = Easing.inOut(Easing.cubic);
-    lambda.value = withTiming(nearestLambda(lambda.value, fit.lambda), { duration: FIT_MS, easing }, () => {
+    lambda.value = withTiming(nearestLambda(lambda.value, rest.lambda), { duration: FIT_MS, easing }, () => {
       'worklet';
       lambda.value = wrapLambda(lambda.value);
     });
-    phi.value = withTiming(fit.phi, { duration: FIT_MS, easing });
-    scale.value = withTiming(fit.scale, { duration: FIT_MS, easing });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on a new fit or a released hold only
+    phi.value = withTiming(rest.phi, { duration: FIT_MS, easing });
+    scale.value = withTiming(rest.scale, { duration: FIT_MS, easing });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on a new fit or a released hold only (a sun switch moves from where the camera is, below)
   }, [fit, holdFit]);
 
   // Nothing is shown until the base mask can be: a runtime shader with no
@@ -389,30 +415,14 @@ export function GlobeView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once the texture is in
   }, [textures.base]);
 
-  // The sun: at the given instant, or now — re-read every minute while the
-  // globe is lit by it, since that is the only time it shows.
-  const [sunNow, setSunNow] = useState(() => Date.now());
-  const ticking = daylight && sunAt == null;
-  useEffect(() => {
-    if (!ticking) return;
-    const update = () => setSunNow(Date.now());
-    // Catch up at once (the switch may be flipped hours after mount), then tick.
-    const first = setTimeout(update, 0);
-    const id = setInterval(update, SUN_TICK_MS);
-    return () => {
-      clearTimeout(first);
-      clearInterval(id);
-    };
-  }, [ticking]);
-  const sunDir = useMemo(() => sunVector(sunAt ?? sunNow), [sunAt, sunNow]);
-
-  // Switching the sun on reveals it: the globe eases out to SKY_SCALE so
-  // there is sky around it, and if the sun is out of frame — behind the
-  // camera on the day side, or eclipsed behind the Earth — the camera orbits
-  // the least that brings it up past the limb (the traveller asked for a sun
-  // they see, not one to go looking for). Off again, a globe left below the
-  // fit comes back to it, as a pinch would. On the transition only — the fit
-  // itself stays the overview Recenter returns to.
+  // Switching the sun on reveals it from where the camera is: the globe
+  // eases out to SKY_SCALE so there is sky around it, and if the sun is out
+  // of frame — behind the camera on the day side, or eclipsed behind the
+  // Earth — the camera orbits the least that brings it up past the limb
+  // (the traveller asked for a sun they see, not one to go looking for).
+  // Off again, a camera resting at the sky view goes back to the fit, one
+  // moved by hand only regains the zoom. Recenter rests at the sky view of
+  // the fit while the sun is on (`rest`, above).
   const skyRoomWas = useRef(skyRoom);
   useEffect(() => {
     if (skyRoomWas.current === skyRoom) return;
@@ -424,27 +434,29 @@ export function GlobeView({
       cancelAnimation(phi);
       scale.value = withTiming(SKY_SCALE, { duration: FIT_MS, easing });
       const here = { lambda: lambda.value, phi: phi.value };
-      const r = fitR * SKY_SCALE;
-      const frame = { cx, cy, r };
-      const [vx, vy, vz] = toView(sunDir[0], sunDir[1], sunDir[2], rotation(here));
-      const shown = sunPlacement([vx, vy, vz], frame, sky);
-      // In frame and clear of the Earth already: leave the view alone.
-      const clear = Math.hypot(shown.x - cx, shown.y - cy) > r + shown.r;
-      if (shown.opacity < 0.5 || !clear) {
-        // The sunrise: just past the limb at the zoomed-out size.
-        const rise = Math.atan((r + shown.r * SUN_RISE_CLEARANCE) / (r * SUN_FOCAL));
-        const face = faceSun(here, sunDir, -Math.cos(rise));
+      const face = sunReveal(here, sunDir, cx, cy, fitR, sky);
+      if (face !== here) {
         lambda.value = withTiming(nearestLambda(lambda.value, face.lambda), { duration: FIT_MS, easing }, () => {
           'worklet';
           lambda.value = wrapLambda(lambda.value);
         });
         phi.value = withTiming(face.phi, { duration: FIT_MS, easing });
       }
-      onMoved?.();
-    } else if (scale.value < 1) {
-      scale.value = withTiming(1, { duration: FIT_MS, easing });
+      // Not a move of theirs: from the fit this lands on `rest`, and a
+      // camera they had moved already offers Recenter.
+    } else if (!holdFit) {
+      // Resting at the sky view: back to the whole fit, turn included.
+      lambda.value = withTiming(nearestLambda(lambda.value, fit.lambda), { duration: FIT_MS, easing }, () => {
+        'worklet';
+        lambda.value = wrapLambda(lambda.value);
+      });
+      phi.value = withTiming(fit.phi, { duration: FIT_MS, easing });
+      scale.value = withTiming(fit.scale, { duration: FIT_MS, easing });
+    } else if (scale.value < fit.scale) {
+      // Moved by hand: only the zoom comes back, the turn is theirs.
+      scale.value = withTiming(fit.scale, { duration: FIT_MS, easing });
     }
-  }, [skyRoom, sunDir, fitR, cx, cy, sky, lambda, phi, scale, onMoved]);
+  }, [skyRoom, sunDir, fitR, cx, cy, sky, lambda, phi, scale, fit, holdFit]);
   const daylightMix = useSharedValue(daylight ? 1 : 0);
   useEffect(() => {
     daylightMix.value = withTiming(daylight ? 1 : 0, { duration: DAYLIGHT_FADE_MS });
@@ -1030,6 +1042,27 @@ function reversed(packed: Float32Array): Float32Array {
     out[i * 3 + 2] = packed[j * 3 + 2];
   }
   return out;
+}
+
+/** Where the camera stands to show the sun, starting from `from`: there
+ * already, if the sun is in frame and clear of the Earth at SKY_SCALE (the
+ * same object comes back), else the least orbit that brings it up just past
+ * the limb — the sunrise. */
+function sunReveal(
+  from: GlobeOrientation,
+  sunDir: readonly [number, number, number],
+  cx: number,
+  cy: number,
+  fitR: number,
+  sky: SkyBounds,
+): GlobeOrientation {
+  const r = fitR * SKY_SCALE;
+  const [vx, vy, vz] = toView(sunDir[0], sunDir[1], sunDir[2], rotation(from));
+  const shown = sunPlacement([vx, vy, vz], { cx, cy, r }, sky);
+  const clear = Math.hypot(shown.x - cx, shown.y - cy) > r + shown.r;
+  if (shown.opacity >= 0.5 && clear) return from;
+  const rise = Math.atan((r + shown.r * SUN_RISE_CLEARANCE) / (r * SUN_FOCAL));
+  return faceSun(from, sunDir, -Math.cos(rise));
 }
 
 function labelFont(): SkFont | null {
