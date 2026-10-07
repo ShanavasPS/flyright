@@ -130,18 +130,22 @@ export interface GlobeColors {
   label: string;
   /** What the night side sinks towards when the globe is lit by the sun. */
   night: string;
+  /** How far the sunlit side is lifted above the base colours, 0–1: the
+   * dark scheme's navy sea and slate land are night colours already, so
+   * day has to be brighter than them, not merely not darker. */
+  dayLift: number;
 }
 
 /** The globe's own sea, land, border and label colours. The map's near-
  * white land on a pale sea blurs together once shaded on a sphere: the
  * globe wants blue oceans and pale continents, the way the earth reads
  * from orbit — deep navy water in the dark scheme. */
-export function globePalette(dark: boolean): Pick<GlobeColors, 'sea' | 'land' | 'border' | 'label' | 'night'> {
+export function globePalette(dark: boolean): Pick<GlobeColors, 'sea' | 'land' | 'border' | 'label' | 'night' | 'dayLift'> {
   return dark
-    ? { sea: '#0B1A38', land: '#33486E', border: '#5A72A0', label: '#F2F6FB', night: '#040A1A' }
+    ? { sea: '#0B1A38', land: '#33486E', border: '#5A72A0', label: '#F2F6FB', night: '#040A1A', dayLift: 1 }
     : // A dusk blue rather than black: the pale land has to stay legible
       // where it is night.
-      { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B', night: '#22355E' };
+      { sea: '#B9D0EF', land: '#F7F9FC', border: '#A9BBD6', label: '#13294B', night: '#22355E', dayLift: 0 };
 }
 
 interface PackedRoute {
@@ -479,6 +483,7 @@ export function GlobeView({
     borderColor: rgb(colors.border),
     glowColor: rgb(colors.tint),
     nightColor: rgb(colors.night),
+    dayLift: colors.dayLift,
     lightDir: LIGHT,
     sunDir,
     daylight: daylightMix.value,
@@ -1126,6 +1131,7 @@ uniform float3 landColor;
 uniform float3 borderColor;
 uniform float3 glowColor;
 uniform float3 nightColor;
+uniform float dayLift;
 uniform float3 lightDir;
 uniform float3 sunDir;
 uniform float daylight;
@@ -1193,15 +1199,19 @@ half4 main(float2 p) {
   float m = landAt(uv);
   float3 col = mix(seaColor, landColor, m);
   if (borderAlpha > 0.0) col = mix(col, borderColor, borderAt(uv) * borderAlpha * m);
-  // Studio light: gentle shading from a fixed lamp.
+  // The dark scheme's lit colours: the base colours lifted into daylight,
+  // most where the light is highest, so lit reads as lit (dayLift is 0 in
+  // the light scheme, whose colours are daylight already).
+  float3 lifted = col * 1.6 + float3(0.10, 0.11, 0.12);
+  // Studio light: gentle shading from a fixed lamp, the lit side lifted.
   float diff = max(dot(float3(vx, vy, vz), normalize(lightDir)), 0.0);
-  float3 studio = col * (0.68 + 0.32 * diff);
+  float3 studio = mix(col, lifted, dayLift * (0.6 + 0.4 * diff)) * (0.68 + 0.32 * diff);
   // Sunlight: the surface normal against the sun. Day keeps the colours,
   // night sinks toward nightColor but stays readable, and the terminator
   // carries a faint warm dusk, stronger over land.
   float sun = dot(float3(gx, gy, gz), sunDir);
   float day = smoothstep(NIGHT_EDGE, DAY_EDGE, sun);
-  float3 dayCol = col * (0.80 + 0.20 * max(sun, 0.0));
+  float3 dayCol = mix(col, lifted, dayLift * (0.6 + 0.4 * max(sun, 0.0))) * (0.80 + 0.20 * max(sun, 0.0));
   float3 nightCol = mix(col, nightColor, 0.62) * 0.55;
   float dusk = sun / 0.09;
   float band = exp(-dusk * dusk);
