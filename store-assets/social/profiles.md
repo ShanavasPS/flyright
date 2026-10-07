@@ -15,11 +15,12 @@ Avatar: `avatar-night.png`. LinkedIn banner: `linkedin-cover.png`.
 - Email (public, optional): hello@getflyright.com
 
 ## Instagram (Professional → Business · Category: App page)
-- Name: `FlyRight · Flight Compensation`
-- Bio (150):
+- Name: `FlyRight · Travel Buddy`
+- Bio (150; refreshed 2026-09-28, travel buddy first, 146 chars):
   ```
-  Trackers tell you it's late. We tell you what you're owed ✈️
-  Live flight tracking + EU261 claims, from your pocket.
+  Your travel buddy on the day you fly ✈️
+  Live gate & delays, family can follow along
+  Delayed? See if you're owed up to €600
   📲 Free on iOS & Android
   ```
 - Link: https://getflyright.com
@@ -30,20 +31,26 @@ Avatar: `avatar-night.png`. LinkedIn banner: `linkedin-cover.png`.
 - Website: https://getflyright.com
 - Industry: Software Development · Size: 1 employee (2–10 if the picker has no "1") · Type: Self-Employed
 - Founded: 2026 · HQ: Finland
-- Tagline (120): `Flight trackers tell you it's late. FlyRight tells you what the airline owes you — and helps you claim it.`
-- About:
+- Tagline (120): `Your travel buddy on the day you fly, and your advocate when the flight goes wrong.`
+- About (refreshed for 1.1.4, 2026-09-26):
   ```
-  FlyRight is a travel companion that stays with you on the day you fly — and becomes your advocate the moment the flight goes wrong.
+  FlyRight is your travel buddy on the day you fly. Add a flight by its number, by scanning your boarding pass or by sharing the airline's confirmation PDF, and FlyRight stays with you from check-in to the baggage belt.
 
-  Most travel apps stop at information: gate changes, delay predictions, where your plane is. FlyRight starts there, but its job isn't done until you're paid. When a disruption happens, FlyRight is already tracking your flight, so the moment you learn about a three-hour delay you also learn it's worth up to €600 under EU261 — and you can start the claim right from the notification.
+  On the day
+  • A live travel-day card and Lock Screen Live Activity (a live notification on Android) with the countdown, terminal, check-in, gate, boarding time, seat and belt, updated as the airport posts them
+  • Connecting flights followed leg by leg, with your plane moving on the map once you're in the air
 
-  What it does
-  • Travel Day Live — a boarding-pass style card and iOS Live Activity that follow your flight through check-in, gate, boarding and delays
-  • Know what you're owed — disruptions mapped to passenger-rights rules (EU261, UK261) with a clear payout estimate instead of legalese
-  • Claim, don't decode — a guided claim flow that produces a ready-to-send letter
-  • Anonymous-first — no account needed; sign in only to keep your travels across devices
+  The people waiting for you
+  • Family and friends follow your flight live instead of asking "have you landed yet?", and you choose who sees which trips
+  • Share a photo or a few words from the trip as a postcard, and see who hearts and replies
 
-  Available on the App Store and Google Play. Built in Finland.
+  Everywhere you've been
+  • Every flight kept in a journal with notes, photos and ratings, and every route drawn on a globe lit by the real sun, with a poster to share
+
+  When the flight goes wrong
+  • FlyRight is already tracking it, so it tells you when a delay or cancellation may be worth up to €600 under EU261 or UK261, and helps you prepare the claim
+
+  Free on the App Store and Google Play. FlyRight Pro, with a 14-day free trial, adds your own live travel updates, postcard publishing and claim preparation. Made by an independent developer in Helsinki, Finland.
   https://getflyright.com
   ```
-- Specialties: Air passenger rights, EU261, Flight compensation, Flight tracking, Travel technology, Mobile apps
+- Specialties: Flight tracking, Travel companion, Live Activities, Air passenger rights, EU261, Mobile apps

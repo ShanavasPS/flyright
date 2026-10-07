@@ -1,0 +1,40 @@
+# Recorded (under `simctl io recordVideo`): the Lock Screen with the travel
+# card, unlock to the Home Screen's compact Dynamic Island, then long-press
+# the island so it expands. EXPAND=0 skips the long-press.
+appId: com.shanavasshaji.flyright
+env:
+  EXPAND: "1"
+---
+- pressKey: Lock
+# A fresh activity can bring iOS's "continue to allow Live Activities?"
+# prompt to the Lock Screen: answer it for good (the cut skips the frames).
+- runFlow:
+    when:
+      visible: "(Allow|Always Allow)"
+    commands:
+      - tapOn:
+          text: "Always Allow"
+          optional: true
+      - tapOn:
+          text: "Allow"
+          optional: true
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 3200
+    optional: true
+- pressKey: Home
+- pressKey: Home
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 1600
+    optional: true
+- runFlow:
+    when:
+      true: ${EXPAND == "1"}
+    commands:
+      - longPressOn:
+          point: "50%,3%"
+      - extendedWaitUntil:
+          visible: "demo-pause-never-matches"
+          timeout: 2500
+          optional: true

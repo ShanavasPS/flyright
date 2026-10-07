@@ -1,0 +1,21 @@
+# NOT recorded: after a reseed, bring the app to the foreground so the
+# lifecycle reconciles (starts or updates the Live Activity), then leave it
+# in the background. Run .maestro/demo/travel-day-allow.yaml once after the
+# very first start (the Lock Screen's "Allow Live Activities" prompt).
+appId: com.shanavasshaji.flyright
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "travel-day-banner"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 3000
+    optional: true
+- pressKey: Home
+- extendedWaitUntil:
+    visible: "demo-pause-never-matches"
+    timeout: 1500
+    optional: true
