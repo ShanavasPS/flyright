@@ -80,7 +80,6 @@ export function TravelProgressStrip({
     scroll.current?.scrollTo({ x: Math.max(0, (focusAt - 1) * STEP), animated: false });
   }, [focusAt, width]);
 
-  const advanceNext = next && canAdvanceTo(state, next, rules) ? next : null;
   const undoable =
     !!state.stage &&
     (manualTrip || isTravelerStage(state.stage) || (state.stage === 'landed' && !!rules.mayStampLanding));
@@ -91,30 +90,6 @@ export function TravelProgressStrip({
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.eyebrow} numberOfLines={1}>
           {`PROGRESS · ${reachedCount}/${plan.length}`}
         </ThemedText>
-        {/* The shortcut for the step that is usually next, in the action
-            colour with a plus: success green with a tick looked like a step
-            already done — a 0/10 trip wore a green "✓ Left home". */}
-        {advanceNext && (
-          <Pressable
-            testID="trip-progress-next"
-            accessibilityRole="button"
-            accessibilityLabel={`Mark ${STAGE_LABELS[advanceNext]} done`}
-            onPress={() => {
-              tapMedium();
-              onAdvance(advanceNext);
-            }}
-            style={({ pressed }) => [styles.nextPill, { backgroundColor: `${theme.tint}29` }, pressed && styles.pressed]}>
-            <SymbolView
-              name={{ ios: 'plus.circle', android: 'add_circle_outline', web: 'add_circle_outline' }}
-              size={13}
-              weight="semibold"
-              tintColor={theme.tint}
-            />
-            <ThemedText type="smallBold" style={{ color: theme.tint, flexShrink: 1 }} numberOfLines={1}>
-              {STAGE_LABELS[advanceNext]}
-            </ThemedText>
-          </Pressable>
-        )}
         {onExpand && <ProgressExpandButton onPress={onExpand} />}
       </View>
 
@@ -253,15 +228,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     letterSpacing: 1,
     flexShrink: 0,
-  },
-  nextPill: {
-    minHeight: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.three,
-    borderRadius: 16,
-    flexShrink: 1,
   },
   pressed: {
     opacity: 0.7,
