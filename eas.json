@@ -15,11 +15,13 @@
     "preview": {
       "extends": "base",
       "distribution": "internal",
-      "environment": "production"
+      "environment": "production",
+      "channel": "staging"
     },
     "production": {
       "extends": "base",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
     },
     "galaxy": {
       "extends": "production",

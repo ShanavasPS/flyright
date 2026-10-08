@@ -17,14 +17,18 @@ import { useSignedOutNotice } from '@/hooks/use-signed-out-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { describeMembership } from '@/services/loyalty-programmes';
 import { useMemberships, type MembershipRow } from '@/services/memberships';
+import { describeRunningUpdate } from '@/services/ota-update';
 import { planLabel } from '@/services/plan-label';
 import { billingAvailable, useHasPro, useProEntitlement } from '@/services/purchases';
 
-/** "1.0.0 (6)" from the installed binary; the JS config version on web. */
+/** "1.0.0 (6)" from the installed binary; the JS config version on web.
+ * With an over-the-air update running, its id and channel follow, so a
+ * support screenshot shows which JavaScript the phone is on. */
 function versionLine(): string {
   const version = Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '';
   const build = Application.nativeBuildVersion;
-  return `FlyRight · version ${version}${build ? ` (${build})` : ''}`;
+  const update = describeRunningUpdate();
+  return `FlyRight · version ${version}${build ? ` (${build})` : ''}${update ? ` · ${update}` : ''}`;
 }
 
 /** The avatar's door: who you are, your memberships, and the way to

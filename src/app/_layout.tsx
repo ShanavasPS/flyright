@@ -43,6 +43,7 @@ import { useSymbolFont } from "@/hooks/use-symbol-font";
 
 import { ErrorScreen } from "@/components/error-screen";
 import { NotificationRouter } from "@/components/notification-router";
+import { OtaUpdateSync } from "@/components/ota-update-sync";
 import { UpdateRequired } from "@/components/update-required";
 import { Colors } from "@/constants/theme";
 import { useVersionGate } from "@/hooks/use-version-gate";
@@ -96,6 +97,7 @@ LogBox.ignoreLogs([
   "[notifications]",
   "[flight-watch]",
   "[purchases]",
+  "[ota-update]",
   "[RevenueCat]",
   "Clerk: Clerk has been loaded with development keys",
   // The dev client probes Metro ports remembered from earlier sessions; the
@@ -222,6 +224,7 @@ function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <IdentitySync />
+      <OtaUpdateSync />
       <NotificationRouter />
       <AssistantActionRouter />
       <DocumentShareRouter />

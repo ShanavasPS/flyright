@@ -68,6 +68,29 @@ Verify the served entry-JS hash at `https://flyright.expo.app` matches the local
 
 Run `npm run release:deploy-backend` before every release build: it deploys production and development, then checks the function references used by the app against both live deployments. Generating types alone does not deploy functions. Run `npm run release:preflight` afterwards. As last recorded on 2026-09-13, `APP_UPDATE_PUSH_ENABLED` was unset on production and enabling it was reserved for the user's decision. Do not treat a build request as enabling that switch: it announces the current live version to eligible older installs. See [app-icon-badges.md](app-icon-badges.md).
 
+## Over-the-air updates (EAS Update)
+
+Since 2026-10-08 the app carries `expo-updates`, so a JavaScript-only change can reach installed phones without a store release. The first binary with it is the one built after 1.2.2; older installs never see an update.
+
+**What an update may carry.** JavaScript and bundled assets only. Anything native — a new package, a config plugin, an `app.json` change, a Swift/Kotlin file, a patch — still ships as a build with a version bump. The runtime version policy is `appVersion`: a phone on 1.2.3 accepts only updates published while `expo.version` is 1.2.3, so **publish updates from the released version's commit** and never bump `expo.version` for an update. If native code changed since the last release, do not publish; build.
+
+**Channels.** `eas.json` binds the `preview` profile to the `staging` channel and `production` (and `galaxy`, which extends it) to `production`. Development builds have no channel and ignore updates. Both channels exist on EAS (created 2026-10-08).
+
+**Publishing.** Every command uses the EAS `production` environment, where the public client keys live; a bundle made without it points at the development Convex/Clerk.
+
+```sh
+npm run update:staging -- "What changed, in one line"   # eas update --channel staging --environment production
+# install/open a preview build (channel staging), verify, then promote the very same bundle:
+npm run update:promote -- "Same line"                    # eas update:republish --channel staging --destination-channel production
+npm run update:list                                       # recent update groups
+```
+
+A hotfix straight to production is `eas update --channel production --environment production --message "…"`; `eas update:rollback` returns a channel to the embedded bundle or an earlier group, and `--rollout-percentage` stages a risky change. Run `npm run typecheck` and `jest` before publishing — an update bypasses every build-time check.
+
+**On the phone.** The native side checks at every launch (`checkAutomatically: ON_LOAD`, no startup wait) and runs a downloaded update at the next launch. `src/components/ota-update-sync.tsx` also downloads on a return to the foreground (hourly at most) and restarts into a waiting update when the app comes back after 12+ hours in the background (`src/services/ota-update.ts`, tested). Profile's version line appends `update <id> (channel)` when an over-the-air update is running; the binary's own bundle shows no suffix, which is how support tells them apart.
+
+**Release notes.** `/api/app-version` and the Settings "What's new" card describe store versions; an update does not add an entry to `release-notes.ts`. If an update changes something travellers would notice, mention it in the next store release's notes.
+
 ## Store completion
 
 Poll `eas build:list` / `eas submit:list` until both builds and uploads finish, then wait for the iOS build to finish processing. A queued build, a TestFlight upload, or a Play internal release is only an intermediate result.

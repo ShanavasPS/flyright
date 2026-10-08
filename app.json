@@ -3,6 +3,14 @@
     "name": "FlyRight",
     "slug": "flyright",
     "version": "1.2.2",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/37d65a3e-bca7-4915-ab16-8ca73a85f7ac",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "flyright",

@@ -24,7 +24,7 @@ the hard date is 2026-09-30). The Duo ships on 2026-10-23.
 | A claim row has `sentAt`, `responseDeadline`, `status` and `sentSnapshot` only | `src/db/schema.ts:143` | The timeline shows dates only for "Sent" and "Reply due" |
 | `Verdict` = `{eligible, regulation, compensation, reason}`; delays are cached only when observed | `src/rules/types.ts`, `src/services/disruptions.ts` | This is why "Why €400" and "Recent flights" are out of scope |
 | Web stubs claims and journeys; Friends is live on web | `src/services/*.web.ts` | New splits are off on web (the Flights web split is untouched) |
-| No OTA updates | no `expo-updates` | Late switch-offs use server switches (§3.4) or a rebuild |
+| OTA updates since 2026-10-08: `expo-updates`, channels `staging`/`production`, runtime = app version (release guide → Over-the-air updates) | `src/services/ota-update.ts` | JS-only switch-offs can ship as an update to the current version; native changes still rebuild |
 | The `/api/app-version` answer is cached and readable synchronously at launch | `src/hooks/use-app-version.ts`, `src/services/app-version-cache` | It can carry the remote layout switches |
 | The EU261 engine pays €600 for any flight > 3,500 km, including intra-EU ones (the law caps intra-EU at €400) | `src/rules/eu261.ts:23-27` | An existing money-accuracy bug, **reported separately, not part of this work** — decide whether to fix it |
 
