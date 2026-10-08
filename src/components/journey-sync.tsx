@@ -7,12 +7,14 @@ import { api } from '../../convex/_generated/api';
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import { useLiveRows } from '@/services/live-rows';
+import { reconcileNotifications } from '@/services/notification-lifecycle';
 import { planSync, toRemoteJourney } from '@/services/sync-merge';
 import {
   applyRemoteJourney,
   claimAnonymousJourneys,
   markJourneysSynced,
 } from '@/services/sync';
+import { reconcileTravelDay } from '@/services/travel-day-lifecycle';
 
 const PUSH_CHUNK = 100;
 
@@ -60,6 +62,15 @@ export function JourneySync() {
         }
         for (const row of plan.applyLocally) {
           await applyRemoteJourney(row, userId);
+        }
+        // Flights that arrive from the cloud are journal changes like any
+        // addJourney: the reminders and the travel-day surfaces (the Home
+        // Screen widget's timeline among them) must see them. A fresh
+        // install's launch reconcile ran on an empty journal and left the
+        // widget on "No flights ahead" for a week otherwise.
+        if (plan.applyLocally.length) {
+          void reconcileNotifications();
+          void reconcileTravelDay();
         }
       } catch {
         // Rows stay dirty; the next remote/local change retries the plan.
