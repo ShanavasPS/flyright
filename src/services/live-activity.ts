@@ -101,6 +101,7 @@ function contentState(content: LiveContent) {
     // The traveller's button (MarkStepIntent) and the pass beside it.
     actionStage: content.action?.stage ?? '',
     actionLabel: content.action?.label ?? '',
+    actionQuestion: content.action?.question ?? '',
     hasPass: content.hasPass ? 1 : 0,
   };
 }
@@ -256,6 +257,7 @@ function endById(activityId: string, content?: LiveContent): void {
         delayChip: '',
         actionStage: '',
         actionLabel: '',
+        actionQuestion: '',
         hasPass: 0,
       };
   void lookupHeaders().then(headers => fetch('/api/live-activity', {

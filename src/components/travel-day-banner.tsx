@@ -286,10 +286,19 @@ function HeroContent({
               can't be taken for the flight's status. The same button is on
               the Lock Screen and in the Dynamic Island (MarkTravelStep). The
               chevron still says the card opens the trip. */}
+          {/* The flight's own moments are asked instead ("Taken off?"),
+              the question right against a compact Yes. */}
+          {content.action?.question && (
+            <ThemedText type="smallBold" themeColor="heading" style={styles.markQuestion} numberOfLines={1}>
+              {content.action.question}
+            </ThemedText>
+          )}
           {content.action ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={content.action.label}
+              accessibilityLabel={
+                content.action.question ? `${content.action.question} ${content.action.label}` : content.action.label
+              }
               accessibilityHint="Marks this step of your travel day done"
               testID="hero-mark-step"
               onPress={() => {
@@ -298,7 +307,11 @@ function HeroContent({
                 trackEvent('travel_step_marked', { from: 'home', stage });
                 void markTravelStep(active.id, stage);
               }}
-              style={({ pressed }) => [styles.markStep, { backgroundColor: theme.tint, opacity: pressed ? 0.8 : 1 }]}>
+              style={({ pressed }) => [
+                styles.markStep,
+                content.action?.question ? styles.markYes : null,
+                { backgroundColor: theme.tint, opacity: pressed ? 0.8 : 1 },
+              ]}>
               <ThemedText type="smallBold" style={styles.markStepText} numberOfLines={1}>
                 {content.action.label}
               </ThemedText>
@@ -695,6 +708,14 @@ const styles = StyleSheet.create({
   },
   markStepText: {
     color: '#ffffff',
+  },
+  markQuestion: {
+    flex: 1,
+    textAlign: 'right',
+  },
+  markYes: {
+    flex: 0,
+    minWidth: 64,
   },
   codeTime: {
     fontVariant: ['tabular-nums'],

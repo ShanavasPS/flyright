@@ -162,7 +162,7 @@ const toLiveUpdate = (content: LiveContent): LiveUpdateContent => {
     leadText: lines.text,
     leadStrike: lines.strike,
     actionStage: content.action?.stage ?? '',
-    actionLabel: content.action ? actionButtonLabel(content.action.label) : '',
+    actionLabel: content.action ? actionButtonLabel(content.action) : '',
     hasPass: content.hasPass,
     tone: content.tone,
   };

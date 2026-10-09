@@ -459,6 +459,15 @@ export const STEP_PROMPTS: Record<string, string> = {
   home_safe: "I'm home",
 };
 
+/** The flight's own moments are asked, not stated: "We've taken off" on a
+ * button read as the flight's status (2026-10-09, design canvas "Take-off
+ * and landing wording", option 3). The surfaces draw the question with a
+ * Yes beside it; Android, whose buttons stand alone, says "Yes, taken off". */
+export const STEP_QUESTIONS: Record<string, string> = {
+  departed: 'Taken off?',
+  landed: 'Landed?',
+};
+
 const NEXT_STEP_LABELS: Record<string, string> = {
   left_home: 'Leave for the airport',
   left_stay: 'Leave for the airport',
@@ -867,7 +876,8 @@ export function buildContentState(
     delayChip: lead.delayChip,
     // The traveller's button and the pass beside it (own card only).
     actionStage,
-    actionLabel: actionStage ? STEP_PROMPTS[actionStage] : '',
+    actionLabel: actionStage ? (STEP_QUESTIONS[actionStage] ? 'Yes' : STEP_PROMPTS[actionStage]) : '',
+    actionQuestion: actionStage ? (STEP_QUESTIONS[actionStage] ?? '') : '',
     hasPass: own.hasPass ? 1 : 0,
   };
 }

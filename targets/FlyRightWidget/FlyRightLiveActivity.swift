@@ -13,7 +13,8 @@
 //   state: clockLabel ("DEPARTS IN" | "BOARDING" | "LANDS IN" | "LANDED 17:08"),
 //          tone ("normal" | "boarding" | "delay" | "landed"),
 //          actionStage / actionLabel (the step the traveller's button marks,
-//          "I'm through security"; MarkTravelStep below), hasPass (1/0),
+//          "I'm through security"; MarkTravelStep below), actionQuestion
+//          ("Taken off?" — drawn right against a "Yes"), hasPass (1/0),
 //          leadLabel / leadValue / leadSub (+ leadSubStruck 1/0: a boarding
 //          time the delay overtook, drawn crossed out) and lead2Label / lead2Value (the
 //          two facts beside the clock —
@@ -94,7 +95,7 @@ private struct TravelDayModel {
     /// The step the traveller can mark done now and the button's words
     /// ("I'm through security") — MarkTravelStep below. Nil when no step is
     /// open, and always on a follower's card.
-    let action: (stage: String, label: String)?
+    let action: (stage: String, label: String, question: String?)?
     /// A boarding pass is saved: Pass sits beside the button.
     let hasPass: Bool
     /// The instant the live countdown runs to, and whether it is the
@@ -181,7 +182,7 @@ private struct TravelDayModel {
         if followerDeepLink == nil,
            let stage = text(state["actionStage"]?.asString()),
            let label = text(state["actionLabel"]?.asString()) {
-            action = (stage, label)
+            action = (stage, label, text(state["actionQuestion"]?.asString()))
         } else {
             action = nil
         }
@@ -456,13 +457,25 @@ private struct StepActions: View {
                 }
             }
             if #available(iOS 17.0, *), let action = model.action {
+                // The flight's own moments are asked ("Taken off?"): the
+                // question right against a compact Yes, so it can't read as
+                // the flight's status.
+                if let question = action.question {
+                    Text(question)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Brand.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
                 Button(intent: MarkTravelStep(journeyId: model.journeyId, stage: action.stage)) {
                     Text(action.label)
                         .font(.system(size: 14, weight: .heavy))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .foregroundStyle(Brand.navy)
-                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, action.question == nil ? 0 : 18)
+                        .frame(maxWidth: action.question == nil ? .infinity : nil)
                         .frame(height: height)
                         .background(Brand.cobalt, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }

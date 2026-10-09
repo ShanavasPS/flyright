@@ -8,7 +8,7 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
-import { heldOnGround, LATE_MINUTES, landedOrLater, liveLead, presumedFlightStage, STEP_PROMPTS } from '../../convex/liveShared';
+import { heldOnGround, LATE_MINUTES, landedOrLater, liveLead, presumedFlightStage, STEP_PROMPTS, STEP_QUESTIONS } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
@@ -800,8 +800,9 @@ export interface LiveContent {
   delayChip: string | null;
   /** The step the traveller can mark done right now, and the button's
    * words ("I'm through security") — on the live card, the Lock Screen and
-   * the Dynamic Island. Null when no step is open to a tap. */
-  action: { stage: TravelStage; label: string } | null;
+   * the Dynamic Island. The flight's own moments are a question instead
+   * ("Taken off?") with "Yes" as the button. Null when no step is open. */
+  action: { stage: TravelStage; label: string; question: string | null } | null;
   /** A boarding pass is saved: the surfaces show Pass beside the button. */
   hasPass: boolean;
 }
@@ -1104,9 +1105,16 @@ export function liveContent(
     lead: lead.lead,
     second: lead.second,
     delayChip: lead.delayChip || null,
-    action: next && canAdvanceTo(state, next, rules) ? { stage: next, label: STAGE_PROMPTS[next] } : null,
+    action: next && canAdvanceTo(state, next, rules) ? stepAction(next) : null,
     hasPass: !!j.passCode,
   };
+}
+
+/** The button for a step: the traveller's own words for a step of the walk,
+ * a question and "Yes" for the flight's own moments (STEP_QUESTIONS). */
+function stepAction(stage: TravelStage): { stage: TravelStage; label: string; question: string | null } {
+  const question = STEP_QUESTIONS[stage] ?? null;
+  return { stage, label: question ? 'Yes' : STAGE_PROMPTS[stage], question };
 }
 
 /** A minute past a countdown's end presumedFlightStage moves the flight on

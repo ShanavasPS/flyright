@@ -76,10 +76,16 @@ describe('liveUpdateLines — without a countdown the label names the moment', (
 });
 
 describe('actionButtonLabel', () => {
+  const step = (label: string) => ({ label, question: null });
   it('keeps the words that fit and trims the two that Android would cut', () => {
-    expect(actionButtonLabel("I'm at the airport")).toBe("I'm at the airport");
-    expect(actionButtonLabel("I'm on board")).toBe("I'm on board");
-    expect(actionButtonLabel("I'm through security")).toBe('Through security');
-    expect(actionButtonLabel("I'm through immigration")).toBe('Through immigration');
+    expect(actionButtonLabel(step("I'm at the airport"))).toBe("I'm at the airport");
+    expect(actionButtonLabel(step("I'm on board"))).toBe("I'm on board");
+    expect(actionButtonLabel(step("I'm through security"))).toBe('Through security');
+    expect(actionButtonLabel(step("I'm through immigration"))).toBe('Through immigration');
+  });
+
+  it("gives a question's Yes its subject, since the button stands alone", () => {
+    expect(actionButtonLabel({ label: 'Yes', question: 'Taken off?' })).toBe('Yes, taken off');
+    expect(actionButtonLabel({ label: 'Yes', question: 'Landed?' })).toBe('Yes, landed');
   });
 });

@@ -54,6 +54,7 @@ const STATE_KEYS = [
   'delayChip',
   'actionStage',
   'actionLabel',
+  'actionQuestion',
   'hasPass',
 ] as const;
 

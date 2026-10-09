@@ -48,7 +48,10 @@ function sentenceCase(text: string): string {
 /** The notification's step button in the traveller's words, shortened where
  * Android would cut it: a notification gives each of its two actions half
  * the card, which fits about eighteen characters ("I'm through immigra…"
- * on the Pixel 9a emulator, 2026-10-09). */
-export function actionButtonLabel(label: string): string {
+ * on the Pixel 9a emulator, 2026-10-09). A button there stands alone, so a
+ * question's "Yes" carries its subject: "Yes, taken off". */
+export function actionButtonLabel(action: { label: string; question: string | null }): string {
+  if (action.question) return `${action.label}, ${action.question.replace(/\?$/, '').toLowerCase()}`;
+  const { label } = action;
   return label.length > 18 ? label.replace(/^I'm through /, 'Through ') : label;
 }

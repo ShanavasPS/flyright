@@ -478,19 +478,32 @@ describe('liveContent', () => {
   it("offers the step that is open to a tap as the surfaces' button", () => {
     // T−3h: the airport walk is open, the gate opens two hours out.
     expect(liveContent(journey(), EMPTY_TRAVEL_DAY, EMPTY_FACTS, liveNow)).toMatchObject({
-      action: { stage: 'at_airport', label: "I'm at the airport" },
+      action: { stage: 'at_airport', label: "I'm at the airport", question: null },
       hasPass: false,
     });
     const atAirport = advance(EMPTY_TRAVEL_DAY, 'at_airport', liveNow);
     expect(liveContent(journey(), atAirport, EMPTY_FACTS, liveNow).action).toEqual({
       stage: 'checked_in',
       label: "I've checked in",
+      question: null,
     });
     const throughImmigration = advance(atAirport, 'immigration', liveNow);
     expect(liveContent(journey(), throughImmigration, EMPTY_FACTS, liveNow).action).toBeNull();
     const twoHoursOut = new Date('2026-08-25T06:30Z');
     expect(liveContent(journey(), throughImmigration, EMPTY_FACTS, twoHoursOut).action?.label).toBe("I'm on board");
     expect(liveContent(journey({ passCode: 'M1MAJA' }), atAirport, EMPTY_FACTS, liveNow).hasPass).toBe(true);
+  });
+
+  it('asks about the take-off on a manual trip instead of stating it', () => {
+    const manual = journey({ source: 'manual', number: '' });
+    const boarded = advance(EMPTY_TRAVEL_DAY, 'boarded', liveNow, MANUAL);
+    // Take-off opens two hours out, like the gate.
+    expect(liveContent(manual, boarded, EMPTY_FACTS, liveNow).action).toBeNull();
+    expect(liveContent(manual, boarded, EMPTY_FACTS, new Date('2026-08-25T06:30Z')).action).toEqual({
+      stage: 'departed',
+      label: 'Yes',
+      question: 'Taken off?',
+    });
   });
 
   it('manual trips walk the next step through take-off', () => {
