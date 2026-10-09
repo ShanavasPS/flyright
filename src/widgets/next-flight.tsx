@@ -325,11 +325,13 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           <Text modifiers={[font({ size: 15, weight: 'bold' }), lineLimit(1)]}>{route}</Text>
         </HStack>
         {live ? (
-          ticking ? (
-            <HStack spacing={4}>
-              <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>{props.clockLabel === 'LANDS IN' ? 'Lands in' : 'Departs in'}</Text>
-              <Text timerInterval={{ lower: now, upper: new Date(props.countdownEnd) }} countsDown modifiers={[font({ size: 13, weight: 'semibold' }), monospacedDigit()]} />
-            </HStack>
+          ticking && (inAir ? props.arrTime : props.depTime) ? (
+            // The clock time, not a ticking countdown: the Lock Screen dims
+            // and blurs a running timer's last digits ("1:2⁝:--"), and the
+            // Live Activity right above already counts down.
+            <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(1)]}>
+              {inAir ? `Lands ${props.arrTime}` : `Departs ${props.depTime}`}
+            </Text>
           ) : (
             <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(1)]}>{props.subtitle}</Text>
           )

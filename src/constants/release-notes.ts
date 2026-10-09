@@ -15,6 +15,18 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.2.3',
+    date: '2026-10-09',
+    notes: [
+      'Mark your next step without opening FlyRight: "I\'m through security" sits on the Flights card, the Lock Screen, the Dynamic Island and the Android notification, with your boarding pass one tap away. Take-off and landing are asked, never assumed.',
+      'A split-flap countdown on the Flights card, the Lock Screen and the Home Screen widget, with the two things that matter right now beside it: terminal and check-in area, then gate and seat, then seat and baggage belt.',
+      'When your flight runs late, the boarding time on your pass is crossed out, and FlyRight no longer says "Boarding now" before the gate opens.',
+      'Your trips show without an internet connection: FlyRight remembers that you are signed in when you are offline.',
+      'iPhone photos in HEIC now upload to your trip instead of waiting for a connection that was never the problem.',
+      'Trip pages put your progress above the airport details, and the Home Screen widgets fit every moment of the day, including when no flight is ahead.',
+    ],
+  },
+  {
     version: '1.2.2',
     date: '2026-10-07',
     notes: [

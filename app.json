@@ -2,7 +2,7 @@
   "expo": {
     "name": "FlyRight",
     "slug": "flyright",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -66,7 +66,7 @@
           }
         ]
       },
-      "buildNumber": "84"
+      "buildNumber": "85"
     },
     "android": {
       "package": "com.shanavasshaji.flyright",
@@ -195,7 +195,7 @@
           ]
         }
       ],
-      "versionCode": 85
+      "versionCode": 86
     },
     "web": {
       "output": "server",
