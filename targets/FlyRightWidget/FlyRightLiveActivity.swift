@@ -345,7 +345,11 @@ private struct LockScreenView: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     ClockLabelRow(model: model, size: 11)
-                    BigClock(model: model, size: 52, marks: true)
+                    if let end = model.countdown {
+                        FlapClock(end: end, height: 38, color: model.tone == .delay ? Brand.amber : FlapClock.digit)
+                    } else {
+                        BigClock(model: model, size: 52, marks: true)
+                    }
                 }
                 .layoutPriority(1)
                 Spacer(minLength: 8)
@@ -415,6 +419,188 @@ private struct ClockLabelRow: View {
             }
         }
         .foregroundStyle(model.tone.color)
+    }
+}
+
+/// The split-flap face of the Flights live card, around the system's timer:
+/// a dark board, a tile per digit, HOURS / MIN / SEC under the pairs
+/// (src/components/split-flap-clock.tsx draws the same face in the app and
+/// flips the digits; src/services/countdown-digits.ts holds the shared
+/// measure — keep the numbers here in step with it).
+///
+/// Nothing runs in an archived view, so the digits are the one thing that
+/// ticks here, `Text(timerInterval:)`, kerned so that each glyph advances by
+/// exactly a tile and a gap and lands on the tile drawn beneath it. The hour
+/// is the same shift-and-crop as ClockText: under ten hours the timer counts
+/// to ten hours past the end and its leading "1" is slid out of the clip, so
+/// the face reads H:MM:SS; ten hours or more it reads HH:MM:SS. The colons
+/// the timer draws are covered by the board's own, dim. Always-On drops the
+/// seconds (the system draws them as "--" while dimmed).
+private struct FlapClock: View {
+    let end: Date
+    /// Tile height; everything else follows from it.
+    let height: CGFloat
+    /// The digits' colour: cream, amber once the flight runs late.
+    let color: Color
+    @Environment(\.isLuminanceReduced) private var dimmed
+
+    static let digit = Color(red: 0.961, green: 0.945, blue: 0.902)     // #F5F1E6
+    private static let board = Color(red: 0.039, green: 0.055, blue: 0.090)     // #0A0E17
+    private static let tile = Color(red: 0.071, green: 0.094, blue: 0.149)      // #121826
+    private static let tileTop = Color(red: 0.086, green: 0.114, blue: 0.176)   // #161D2D
+    private static let split = Color(red: 0.020, green: 0.031, blue: 0.059)     // #05080F
+    private static let colon = Color(red: 0.306, green: 0.365, blue: 0.478)     // #4E5D7A
+    private static let label = Color(red: 0.655, green: 0.706, blue: 0.792)     // #A7B4CA
+    private static let shift: TimeInterval = 10 * 3600
+
+    private enum Cell { case digit, colon }
+
+    /// The face's measure from the tile height: the design's 32×50 tiles,
+    /// 4 apart, digits 34, on a board padded 12 with a 14 radius.
+    private struct Metrics {
+        let height: CGFloat
+        let fontSize: CGFloat
+        let pad: CGFloat
+        let gap: CGFloat
+        let tileWidth: CGFloat
+        let colonWidth: CGFloat
+        /// Added after every glyph: a digit then advances by a tile and a
+        /// gap, the colon by its cell and a gap.
+        let kern: CGFloat
+        let radius: CGFloat
+        let boardPad: CGFloat
+        let boardRadius: CGFloat
+
+        init(height: CGFloat) {
+            self.height = height
+            fontSize = (height * 0.68).rounded()
+            pad = (height * 0.8).rounded() / 10
+            gap = max(2, (height * 0.8).rounded() / 10)
+            let font = FlapClock.uiFont(size: fontSize)
+            let digit = ("0" as NSString).size(withAttributes: [.font: font]).width
+            let colon = (":" as NSString).size(withAttributes: [.font: font]).width
+            tileWidth = ((digit + 2 * pad) * 10).rounded() / 10
+            kern = tileWidth + gap - digit
+            colonWidth = colon + kern - gap
+            radius = max(3, (height * 0.12).rounded())
+            boardPad = (height * 0.2).rounded()
+            boardRadius = (height * 0.28).rounded()
+        }
+    }
+
+    /// The digits' font as UIKit sees it, for measuring: SF Rounded, heavy,
+    /// monospaced numbers — what `.font(.system(…design: .rounded))
+    /// .monospacedDigit()` resolves to.
+    private static func uiFont(size: CGFloat) -> UIFont {
+        var descriptor = UIFont.systemFont(ofSize: size, weight: .heavy).fontDescriptor
+        descriptor = descriptor.withDesign(.rounded) ?? descriptor
+        descriptor = descriptor.addingAttributes([
+            .featureSettings: [[
+                UIFontDescriptor.FeatureKey.type: kNumberSpacingType,
+                UIFontDescriptor.FeatureKey.selector: kMonospacedNumbersSelector,
+            ]],
+        ])
+        return UIFont(descriptor: descriptor, size: size)
+    }
+
+    var body: some View {
+        let m = Metrics(height: height)
+        let long = end.timeIntervalSinceNow >= Self.shift
+        let range = long ? Date()...end : Date()...end.addingTimeInterval(Self.shift)
+        let hourDigits = long ? 2 : 1
+        // A view builder takes only `let`s, so the cells come whole.
+        let cells: [Cell] = Array(repeating: .digit, count: hourDigits)
+            + [.colon, .digit, .digit]
+            + (dimmed ? [] : [.colon, .digit, .digit])
+        let width = cells.reduce(CGFloat(0)) { $0 + ($1 == .digit ? m.tileWidth : m.colonWidth) }
+            + CGFloat(cells.count - 1) * m.gap
+        let font = Font.system(size: m.fontSize, weight: .heavy, design: .rounded)
+
+        VStack(alignment: .leading, spacing: max(3, height * 0.1)) {
+            ZStack(alignment: .leading) {
+                HStack(spacing: m.gap) {
+                    ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                        if cell == .digit {
+                            tile(m)
+                        } else {
+                            Color.clear.frame(width: m.colonWidth, height: m.height)
+                        }
+                    }
+                }
+                Text(timerInterval: range, pauseTime: long ? nil : end, countsDown: true, showsHours: true)
+                    .font(font)
+                    .monospacedDigit()
+                    .kerning(m.kern)
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .multilineTextAlignment(.leading)
+                    // A wide, leading-aligned box, as ClockText: the digits
+                    // keep to the leading edge of whatever box a timer gets.
+                    .frame(width: width * 2 + height * 4, alignment: .leading)
+                    // Onto the first tile's pad; the shift's "1" out of the clip.
+                    .offset(x: m.pad - (long ? 0 : m.tileWidth + m.gap))
+                HStack(spacing: m.gap) {
+                    ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                        if cell == .digit {
+                            Color.clear.frame(width: m.tileWidth, height: m.height)
+                        } else {
+                            Text(":")
+                                .font(.system(size: m.fontSize * 0.76, weight: .bold, design: .rounded))
+                                .foregroundStyle(Self.colon)
+                                .frame(width: m.colonWidth, height: m.height)
+                                .background(Self.board)
+                        }
+                    }
+                }
+            }
+            .frame(width: width, height: m.height, alignment: .leading)
+            .clipped()
+            HStack(spacing: m.gap) {
+                unit(hourDigits > 1 ? "HOURS" : "HRS", width: CGFloat(hourDigits) * m.tileWidth + CGFloat(hourDigits - 1) * m.gap)
+                Color.clear.frame(width: m.colonWidth, height: 1)
+                unit("MIN", width: 2 * m.tileWidth + m.gap)
+                if !dimmed {
+                    Color.clear.frame(width: m.colonWidth, height: 1)
+                    unit("SEC", width: 2 * m.tileWidth + m.gap)
+                }
+            }
+        }
+        .padding(.horizontal, m.boardPad)
+        .padding(.top, m.boardPad)
+        .padding(.bottom, m.boardPad * 0.8)
+        .background(Self.board, in: RoundedRectangle(cornerRadius: m.boardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: m.boardRadius, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+
+    /// One tile: the lighter top half, the split with its hinges.
+    private func tile(_ m: Metrics) -> some View {
+        ZStack {
+            VStack(spacing: 0) {
+                Rectangle().fill(Self.tileTop)
+                Rectangle().fill(Self.tile)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: m.radius, style: .continuous))
+            Rectangle().fill(Self.split).frame(height: 1)
+            HStack {
+                RoundedRectangle(cornerRadius: 1).fill(Self.split).frame(width: 3, height: 6).offset(x: -1)
+                Spacer(minLength: 0)
+                RoundedRectangle(cornerRadius: 1).fill(Self.split).frame(width: 3, height: 6).offset(x: 1)
+            }
+        }
+        .frame(width: m.tileWidth, height: m.height)
+    }
+
+    private func unit(_ text: String, width: CGFloat) -> some View {
+        Text(text)
+            .font(.system(size: 8, weight: .bold))
+            .kerning(1)
+            .foregroundStyle(Self.label)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(width: width)
     }
 }
 

@@ -14,22 +14,28 @@ import {
   HStack,
   Image,
   ProgressView,
+  Rectangle,
+  RoundedRectangle,
   Spacer,
   Text,
   VStack,
+  ZStack,
 } from '@expo/ui/swift-ui';
 import {
+  clipped,
   containerBackground,
   fixedSize,
   font,
   foregroundStyle,
   frame,
+  kerning,
   labelsHidden,
   lineLimit,
   minimumScaleFactor,
   monospacedDigit,
   multilineTextAlignment,
   opacity,
+  padding,
   tint,
   widgetURL,
 } from '@expo/ui/swift-ui/modifiers';
@@ -94,6 +100,129 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         {props.clockLabel.startsWith('LANDED') ? 'Landed' : props.clockLabel}
       </Text>
     );
+
+  // The split-flap face the Flights live card and the Lock Screen card wear
+  // (src/components/split-flap-clock.tsx, targets/FlyRightWidget): a dark
+  // board, a tile per digit, HOURS / MIN / SEC under the pairs. The system's
+  // timer is kerned so each digit advances by a tile and a gap and lands on
+  // the tile drawn beneath it. The measure is services/countdown-digits.ts;
+  // this runtime can't import it, so the numbers are repeated here — change
+  // them together. Under ten hours the timer counts to ten hours past the
+  // end (pausing at the real one) and its leading "1" is slid out of the
+  // clip, so the hour never drops off the face: H:MM:SS, then HH:MM:SS.
+  const TEN_HOURS = 36_000_000;
+  const BOARD = '#0A0E17';
+  const TILE = '#121826';
+  const SPLIT = '#05080F';
+  const DIGIT = '#F5F1E6';
+  const UNIT = '#A7B4CA';
+  const flap = (height: number, withSeconds: boolean) => {
+    const fontSize = Math.round(height * 0.68);
+    const pad = Math.round(height * 0.8) / 10;
+    const gap = Math.max(2, Math.round(height * 0.8) / 10);
+    const digit = fontSize * 0.669;
+    const colon = fontSize * 0.29;
+    const tileW = Math.round((digit + 2 * pad) * 10) / 10;
+    const kern = tileW + gap - digit;
+    const colonW = colon + kern - gap;
+    const radius = Math.max(3, Math.round(height * 0.12));
+    const boardPad = Math.round(height * 0.2);
+    const boardRadius = Math.round(height * 0.28);
+    const left = props.countdownEnd - now.getTime();
+    const long = left >= TEN_HOURS;
+    const hourDigits = long ? 2 : 1;
+    const cells: ('d' | 'c')[] = [];
+    for (let i = 0; i < hourDigits; i++) cells.push('d');
+    cells.push('c', 'd', 'd');
+    if (withSeconds) cells.push('c', 'd', 'd');
+    let width = (cells.length - 1) * gap;
+    for (const c of cells) width += c === 'd' ? tileW : colonW;
+    // A shape takes every point it is offered, so the board gets its size
+    // spelled out: the face plus its padding, the unit row under it.
+    const rowGap = Math.max(3, height * 0.1);
+    // The face is trailing-aligned and the timer sits in one leading-aligned
+    // box that ends at the face's end: its glyphs then start a shift before
+    // the first tile, which is where the ten-hour "1" belongs — out of the
+    // clip. One frame only: this runtime applies a Text's view modifiers
+    // twice, which doubles an offset and compounds nested frames, while the
+    // same frame twice is the same frame. The kerned string runs a kerning
+    // past the last tile, and a box shorter than the string truncates it
+    // (fixedSize draws nothing in an archived view, like the Live Activity),
+    // so the face hangs on past the last tile by a colon cell — a cell
+    // that width is known to keep its size here, thinner blanks vanished —
+    // and the board pads both sides by the hang so it stays symmetric.
+    const shift = long ? 0 : tileW + gap;
+    const hang = colonW + gap;
+    const faceW = width + hang;
+    const textW = faceW - pad + shift;
+    const side = Math.max(boardPad, hang);
+    const boardW = width + 2 * side;
+    const boardH = boardPad + height + rowGap + 10 + boardPad * 0.8;
+    const digitColor = props.tone === 'delay' ? AMBER : DIGIT;
+    const unit = (text: string, w: number) => (
+      <Text modifiers={[font({ size: 8, weight: 'bold' }), kerning(1), foregroundStyle(UNIT), lineLimit(1), minimumScaleFactor(0.7), frame({ width: w })]}>
+        {text}
+      </Text>
+    );
+    // Empty cells are board-coloured rectangles: a clear shape, and a Spacer
+    // with a frame, both took (almost) no room in this runtime, and the
+    // cells drifted off the timer's glyphs. No cover over the timer's own
+    // colons for the same reason — they stay the digits' colour here.
+    const blank = (w: number, h: number) => <Rectangle modifiers={[frame({ width: w, height: h }), foregroundStyle(BOARD)]} />;
+    return (
+      <ZStack alignment="topLeading" modifiers={[frame({ width: boardW, height: boardH })]}>
+        <RoundedRectangle cornerRadius={boardRadius} modifiers={[frame({ width: boardW, height: boardH }), foregroundStyle(BOARD)]} />
+        <VStack alignment="leading" spacing={rowGap} modifiers={[padding({ leading: side, trailing: side - hang, top: boardPad, bottom: boardPad * 0.8 })]}>
+        <ZStack alignment="trailing" modifiers={[frame({ width: faceW, height }), clipped()]}>
+          <HStack spacing={gap}>
+            {cells.map((c, i) =>
+              c === 'd' ? (
+                <ZStack key={i} modifiers={[frame({ width: tileW, height })]}>
+                  <RoundedRectangle cornerRadius={radius} modifiers={[frame({ width: tileW, height }), foregroundStyle(TILE)]} />
+                  <Rectangle modifiers={[frame({ width: tileW, height: 1 }), foregroundStyle(SPLIT)]} />
+                </ZStack>
+              ) : (
+                <Rectangle key={i} modifiers={[frame({ width: colonW, height }), foregroundStyle(BOARD)]} />
+              ),
+            )}
+            {blank(colonW, height)}
+          </HStack>
+          <Text
+            timerInterval={{ lower: now, upper: new Date(long ? props.countdownEnd : props.countdownEnd + TEN_HOURS) }}
+            pauseTime={long ? undefined : new Date(props.countdownEnd)}
+            countsDown
+            modifiers={[
+              font({ size: fontSize, weight: 'heavy', design: 'rounded' }),
+              monospacedDigit(),
+              kerning(kern),
+              foregroundStyle(digitColor),
+              lineLimit(1),
+              multilineTextAlignment('leading'),
+              frame({ width: textW, alignment: 'leading' }),
+            ]}
+          />
+          {/* The clip here follows the stack's natural bounds, timer overhang
+              included, so the shifted "1" showed beside the first tile: a
+              board-coloured strip the width of its cell, on a row that
+              overhangs the face by that much, lies over it. */}
+          {shift > 0 ? (
+            <HStack spacing={0} modifiers={[frame({ width: faceW + shift, height })]}>
+              <Rectangle modifiers={[frame({ width: shift, height }), foregroundStyle(BOARD)]} />
+              <Spacer />
+            </HStack>
+          ) : null}
+        </ZStack>
+        <HStack spacing={gap}>
+          {unit(hourDigits > 1 ? 'HOURS' : 'HRS', hourDigits * tileW + (hourDigits - 1) * gap)}
+          {blank(colonW, 1)}
+          {unit('MIN', 2 * tileW + gap)}
+          {withSeconds ? blank(colonW, 1) : null}
+          {withSeconds ? unit('SEC', 2 * tileW + gap) : null}
+        </HStack>
+        </VStack>
+      </ZStack>
+    );
+  };
 
   const countdown = (size: number) =>
     soon ? (
@@ -192,7 +321,7 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           <Spacer />
           {props.delayChip ? label(props.delayChip, AMBER) : null}
         </HStack>
-        {live ? clock(26) : codes(22)}
+        {live ? (ticking ? flap(24, false) : clock(26)) : codes(22)}
         {/* The times, not the cities: a city name never fits the small card.
             No arrow — each time sits under its own airport. */}
         {live ? (
@@ -213,7 +342,7 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
                 {`${props.leadLabel} ${props.leadValue}`}
               </Text>
             ) : null}
-            <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.75), lineLimit(2)]}>
+            <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.75), lineLimit(ticking ? 1 : 2)]}>
               {props.subtitle}
             </Text>
           </VStack>
@@ -230,7 +359,7 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
   // systemMedium
   const timeColumn = (code: string, city: string, time: string, align: 'leading' | 'trailing') => (
     <VStack alignment={align} spacing={0}>
-      <Text modifiers={[font({ size: 30, weight: 'heavy', design: 'rounded' }), foregroundStyle(WHITE)]}>{code}</Text>
+      <Text modifiers={[font({ size: ticking ? 24 : 30, weight: 'heavy', design: 'rounded' }), foregroundStyle(WHITE)]}>{code}</Text>
       {dim(city, 11)}
       {time ? (
         <Text modifiers={[font({ size: 13, weight: 'bold' }), monospacedDigit(), foregroundStyle(WHITE)]}>{time}</Text>
@@ -245,8 +374,22 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         {label(props.flightLabel, WHITE)}
         <Spacer />
         {props.delayChip ? label(props.delayChip, AMBER) : null}
-        {live ? clock(20, 'trailing') : countdown(15)}
+        {live ? (ticking ? null : clock(20, 'trailing')) : countdown(15)}
       </HStack>
+      {ticking ? (
+        <HStack alignment="center" spacing={8}>
+          {flap(26, true)}
+          <Spacer />
+          {props.leadValue ? (
+            <VStack alignment="trailing" spacing={0}>
+              <Text modifiers={[font({ size: 10, weight: 'bold' }), kerning(1), foregroundStyle(WHITE), opacity(0.62), lineLimit(1)]}>{props.leadLabel}</Text>
+              <Text modifiers={[font({ size: 24, weight: 'heavy', design: 'rounded' }), monospacedDigit(), foregroundStyle(props.tone === 'boarding' ? GREEN : WHITE), lineLimit(1), minimumScaleFactor(0.5)]}>
+                {props.leadValue}
+              </Text>
+            </VStack>
+          ) : null}
+        </HStack>
+      ) : null}
       <HStack alignment="center" spacing={8}>
         {timeColumn(props.fromCode, props.fromCity, props.depTime, 'leading')}
         <VStack spacing={4} modifiers={[frame({ maxWidth: 9999 })]}>
@@ -256,19 +399,21 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         {timeColumn(props.toCode, props.toCity, props.arrTime, 'trailing')}
       </HStack>
       <Spacer />
-      <HStack spacing={6}>
-        {live ? (
-          <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.8), lineLimit(1)]}>
-            {props.leadValue ? `${props.leadLabel} ${props.leadValue} · ${props.subtitle}` : props.subtitle}
-          </Text>
-        ) : (
-          dim(props.dayLabel, 12)
-        )}
-        <Spacer />
-        {props.laterCount > 0
-          ? dim(props.laterCount === 1 ? '+1 more flight' : `+${props.laterCount} more flights`, 11)
-          : null}
-      </HStack>
+      {ticking ? null : (
+        <HStack spacing={6}>
+          {live ? (
+            <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.8), lineLimit(1)]}>
+              {props.leadValue ? `${props.leadLabel} ${props.leadValue} · ${props.subtitle}` : props.subtitle}
+            </Text>
+          ) : (
+            dim(props.dayLabel, 12)
+          )}
+          <Spacer />
+          {props.laterCount > 0
+            ? dim(props.laterCount === 1 ? '+1 more flight' : `+${props.laterCount} more flights`, 11)
+            : null}
+        </HStack>
+      )}
     </VStack>
   );
 };

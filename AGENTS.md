@@ -152,7 +152,14 @@ no hooks, nothing declared outside the function. The timeline is built by
 `src/services/home-widget.ts` at the end of every `reconcileTravelDay`. Each
 entry is a moment the card changes by itself: midnight, T−4h, take-off,
 landing, window close. The live travel-day card is Pro, like the Live
-Activity, and everyone else gets the plain next-flight card. The extension
+Activity, and everyone else gets the plain next-flight card. The live
+countdown on the Flights card, the Lock Screen card and the widget is one
+split-flap face (dark board, a tile per digit, HOURS / MIN / SEC): the app
+draws and flips its own digits (`src/components/split-flap-clock.tsx`), the
+two WidgetKit surfaces lay the system's ticking timer, kerned to the tile
+pitch, over tiles drawn to the same measure. The measure lives in
+`src/services/countdown-digits.ts` and is repeated in the Swift file and the
+widget function (neither can import it) — change all three together. The extension
 (`com.shanavasshaji.flyright.widgets`) and the app share the dedicated
 `group.com.shanavasshaji.flyright.widgets` app group, created and assigned to
 both App IDs in the developer portal on 2026-10-06 (the wallet group stays the

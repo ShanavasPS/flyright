@@ -16,6 +16,7 @@ import { AirlineLogo } from '@/components/airline-logo';
 import { LiveDot } from '@/components/live-dot';
 import { BORDER_WIDTH, RunningBorder } from '@/components/running-border';
 import { SheenCard } from '@/components/sheen-card';
+import { SplitFlapClock } from '@/components/split-flap-clock';
 import { ThemedText } from '@/components/themed-text';
 import { TravelStatsHeader, TravelStatsStrip } from '@/components/travel-stats-header';
 import { Spacing } from '@/constants/theme';
@@ -187,7 +188,9 @@ function HeroContent({
             </View>
             <HeroClock
               end={content.countdownEnd}
-              color={content.tone === 'delay' ? theme.warning : theme.heading}
+              now={now}
+              delayed={content.tone === 'delay'}
+              wordsColor={theme.heading}
               fallback={content.tone === 'landed' ? cityOf(active.toCode) : content.headline}
             />
           </View>
@@ -206,7 +209,7 @@ function HeroContent({
                 {content.lead.value}
               </ThemedText>
               {!!content.lead.sub && (
-                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.leadSub}>
                   {content.lead.sub}
                 </ThemedText>
               )}
@@ -317,45 +320,27 @@ function clockIcon(label: string): SymbolViewProps['name'] {
   return { ios: 'airplane.departure', android: 'flight_takeoff', web: 'flight_takeoff' };
 }
 
-/** The big countdown, hours and minutes ("2:14", "0:42") with the units
- * marked under the digits so "0:42" never reads as seconds, and the seconds
- * ticking small beside them — as the trip page and the Lock Screen show it.
- * Once the moment has passed (or there is none) it shows the fallback words
- * instead of a frozen 0:00. */
-function HeroClock({ end, color, fallback }: { end: number | null; color: string; fallback: string }) {
-  const now = useNow(1_000);
-  const left = end === null ? NaN : end - now.getTime();
+/** The big countdown: the split-flap board — hours, minutes and seconds on
+ * tiles that flip as they change, the units marked under them — as the Lock
+ * Screen card and the Home Screen widget draw it. Once the moment has passed
+ * (or there is none) it shows the fallback words instead of a frozen 00:00.
+ * `now` is the hero's clock; the board ticks on its own second. */
+function HeroClock({
+  end, now, delayed, wordsColor, fallback,
+}: { end: number | null; now: Date; delayed: boolean; wordsColor: string; fallback: string }) {
+  const theme = useTheme();
+  const tick = useNow(1_000);
+  const left = end === null ? NaN : end - tick.getTime();
   if (!(left > 0)) {
     return (
-      <ThemedText numberOfLines={1} style={[styles.clockWords, clockWordsSize(fallback), { color }]}>
+      <ThemedText numberOfLines={1} style={[styles.clockWords, clockWordsSize(fallback), { color: delayed ? theme.warning : wordsColor }]}>
         {fallback}
       </ThemedText>
     );
   }
-  const minutes = Math.floor(left / 60_000);
-  const seconds = Math.floor(left / 1000) % 60;
-  const clock = `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
-  return (
-    <View
-      accessible
-      accessibilityLabel={`${Math.floor(minutes / 60)} hours ${minutes % 60} minutes`}
-      style={styles.clockRow}>
-      <View>
-        <ThemedText style={[styles.clock, { color }]}>{clock}</ThemedText>
-        <View style={styles.clockUnits}>
-          <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
-            HRS
-          </ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.clockUnit}>
-            MIN
-          </ThemedText>
-        </View>
-      </View>
-      <ThemedText themeColor="textSecondary" style={styles.clockSeconds}>
-        :{String(seconds).padStart(2, '0')}
-      </ThemedText>
-    </View>
-  );
+  // The hero re-renders on its own minute clock too; the face takes the
+  // later of the two so a fresh mount never shows a stale second.
+  return <SplitFlapClock end={end!} now={Math.max(now.getTime(), tick.getTime())} height={34} digitColor={delayed ? theme.warning : undefined} />;
 }
 
 /** The ticketed clock, formatted in its airport's zone, when the airline's
@@ -604,43 +589,17 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     letterSpacing: 1.4,
   },
-  clock: {
-    fontSize: 38,
-    lineHeight: 44,
-    fontWeight: 800,
-    letterSpacing: -1,
-    fontVariant: ['tabular-nums'],
-  },
-  clockRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  clockSeconds: {
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: 700,
-    fontVariant: ['tabular-nums'],
-  },
   clockWords: {
     fontSize: 28,
     lineHeight: 34,
     fontWeight: 800,
     letterSpacing: -0.5,
   },
-  clockUnits: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    marginTop: -6,
-  },
-  clockUnit: {
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: 700,
-    letterSpacing: 1,
-  },
   leadFact: {
     flex: 1,
+    // Never crushed to a column of letters beside the board: the value
+    // shrinks by its length instead (leadValueSize).
+    minWidth: 64,
     alignItems: 'flex-end',
     gap: Spacing.half,
   },
@@ -653,6 +612,11 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 30,
     fontWeight: 800,
+  },
+  // "Boards 2:30 PM" in the room the board leaves it.
+  leadSub: {
+    fontSize: 11,
+    lineHeight: 14,
   },
   footerRow: {
     flexDirection: 'row',
