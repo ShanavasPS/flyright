@@ -212,7 +212,11 @@ function HeroContent({
                 )}
               </View>
               {!!content.lead.sub && (
-                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.leadSub}>
+                <ThemedText
+                  type="small"
+                  themeColor="textSecondary"
+                  numberOfLines={1}
+                  style={[styles.leadSub, content.lead.subStruck && styles.struck]}>
                   {content.lead.sub}
                 </ThemedText>
               )}
@@ -639,6 +643,8 @@ const styles = StyleSheet.create({
     fontWeight: 800,
   },
   // "Boards 2:30 PM" in the room the board leaves it.
+  // A boarding time the delay has overtaken.
+  struck: { textDecorationLine: 'line-through' },
   leadSub: {
     fontSize: 11,
     lineHeight: 14,

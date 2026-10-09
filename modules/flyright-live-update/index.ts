@@ -36,6 +36,9 @@ export interface LiveUpdateContent {
    * leaves them out and the card reads as before. */
   leadTitle?: string;
   leadText?: string;
+  /** The part of leadText drawn crossed out (a boarding time a delay has
+   * overtaken); '' or absent for none. */
+  leadStrike?: string;
   /** Colours the card: 'delay' amber, 'boarding' green, else the brand. */
   tone?: 'normal' | 'boarding' | 'delay' | 'landed';
 }

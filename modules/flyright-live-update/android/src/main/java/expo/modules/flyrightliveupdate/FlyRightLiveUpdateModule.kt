@@ -36,6 +36,8 @@ class LiveUpdateContent : Record {
    * Empty from an older JS side, which keeps the route/headline layout. */
   @Field val leadTitle: String = ""
   @Field val leadText: String = ""
+  /** The part of leadText drawn crossed out; "" for none. */
+  @Field val leadStrike: String = ""
   /** "normal" | "boarding" | "delay" | "landed" — the card's accent. */
   @Field val tone: String = ""
 
@@ -56,6 +58,7 @@ class LiveUpdateContent : Record {
       emphasis = emphasis,
       leadTitle = leadTitle,
       leadText = leadText,
+      leadStrike = leadStrike,
       tone = tone,
     )
 }

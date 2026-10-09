@@ -10,6 +10,10 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import android.text.SpannableString
+import android.text.TextUtils
+import android.text.Spanned
+import android.text.style.StrikethroughSpan
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -33,6 +37,7 @@ data class LiveCard(
   val emphasis: String,
   val leadTitle: String,
   val leadText: String,
+  val leadStrike: String,
   val tone: String,
 ) {
   fun toJson(): String =
@@ -52,6 +57,7 @@ data class LiveCard(
       .put("emphasis", emphasis)
       .put("leadTitle", leadTitle)
       .put("leadText", leadText)
+      .put("leadStrike", leadStrike)
       .put("tone", tone)
       .toString()
 
@@ -75,6 +81,7 @@ data class LiveCard(
         emphasis = o.optString("emphasis", "none"),
         leadTitle = o.optString("leadTitle"),
         leadText = o.optString("leadText"),
+        leadStrike = o.optString("leadStrike"),
         tone = o.optString("tone"),
       )
     }
@@ -136,6 +143,23 @@ object LiveUpdateNotifier {
   fun canPostPromoted(context: Context): Boolean =
     Build.VERSION.SDK_INT >= 36 && manager(context).canPostPromotedNotifications()
 
+  /** `text` with `part` drawn crossed out — a boarding time the delay has
+   * overtaken — or as is when the part is empty or not in it. Android 16's
+   * ProgressStyle card drops text spans (seen on the API 37 emulator), so
+   * there each character carries a combining long stroke (U+0336) instead;
+   * older versions keep the real StrikethroughSpan. */
+  private fun struck(text: String, part: String): CharSequence {
+    val at = if (part.isEmpty()) -1 else text.lastIndexOf(part)
+    if (at < 0) return text
+    if (Build.VERSION.SDK_INT >= 36) {
+      val stroked = part.map { "$it\u0336" }.joinToString("")
+      return text.substring(0, at) + stroked + text.substring(at + part.length)
+    }
+    return SpannableString(text).apply {
+      setSpan(StrikethroughSpan(), at, at + part.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+  }
+
   fun notify(context: Context, journeyId: String, content: LiveCard, live: Boolean) {
     val manager = manager(context)
     ensureChannel(manager)
@@ -174,7 +198,7 @@ object LiveUpdateNotifier {
     val routeCodes =
       if (content.fromCode.isNotEmpty() && content.toCode.isNotEmpty()) "${content.fromCode} → ${content.toCode}" else ""
     val title = if (lead) content.leadTitle else route
-    val line = if (lead) content.leadText else legacyLine
+    val line: CharSequence = if (lead) struck(content.leadText, content.leadStrike) else legacyLine
     val late = content.tone == "delay" || (!lead && content.emphasis == "delay")
     val accent = when {
       late -> COLOR_LATE
@@ -245,7 +269,8 @@ object LiveUpdateNotifier {
       }
     } else {
       builder.setProgress(100, percent, false)
-      val big = listOf(line, sub).filter { it.isNotEmpty() }.joinToString("\n")
+      // concat, not joinToString: keeps the crossed-out span.
+      val big = TextUtils.concat(*listOf(line, sub).filter { it.isNotEmpty() }.flatMap { listOf(it, "\n") }.dropLast(1).toTypedArray())
       if (big.isNotEmpty()) builder.setStyle(Notification.BigTextStyle().bigText(big))
     }
 

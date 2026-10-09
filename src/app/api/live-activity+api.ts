@@ -48,6 +48,7 @@ const STATE_KEYS = [
   'leadLabel',
   'leadValue',
   'leadSub',
+  'leadSubStruck',
   'lead2Label',
   'lead2Value',
   'delayChip',

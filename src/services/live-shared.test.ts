@@ -464,6 +464,16 @@ describe('liveLead', () => {
     expect(liveLead({ ...base, delayMinutes: 125 }).delayChip).toBe('+2h 5 min');
   });
 
+  it('crosses out the boarding time once a delay has overtaken it', () => {
+    expect(liveLead({ ...base, stage: 'security', delayMinutes: 46 }).lead).toEqual({
+      label: 'GATE', value: '53', sub: 'Boards 15:30', subStruck: true,
+    });
+    // Under half an hour late it still stands; other notes are never struck.
+    expect(liveLead({ ...base, stage: 'security', delayMinutes: 20 }).lead?.subStruck).toBe(false);
+    expect(liveLead({ ...base, stage: 'security', delayMinutes: 46, boardingClock: null }).lead?.subStruck).toBe(false);
+    expect(liveLead({ ...base, delayMinutes: 46 }).lead?.subStruck).toBe(false);
+  });
+
   it('ends on the belt once landed, by the timetable too', () => {
     expect(liveLead({ ...base, stage: 'landed' })).toMatchObject({
       clockLabel: 'LANDED 17:08',

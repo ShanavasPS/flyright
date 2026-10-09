@@ -12,7 +12,8 @@
 //   attributes: journeyId, title, fromCode, toCode, flightLabel, airline, deepLink (followers)
 //   state: clockLabel ("DEPARTS IN" | "BOARDING" | "LANDS IN" | "LANDED 17:08"),
 //          tone ("normal" | "boarding" | "delay" | "landed"),
-//          leadLabel / leadValue / leadSub and lead2Label / lead2Value (the
+//          leadLabel / leadValue / leadSub (+ leadSubStruck 1/0: a boarding
+//          time the delay overtook, drawn crossed out) and lead2Label / lead2Value (the
 //          two facts beside the clock —
 //          terminal, check-in desk, gate, seat, belt), delayChip ("+46 min"),
 //          compactLabel (the island's word for the lead: "T2", "G53", "14A"),
@@ -81,7 +82,7 @@ private struct TravelDayModel {
     /// beside it — resolved with fallbacks for older content states.
     let clockLabel: String
     let tone: Tone
-    let lead: (label: String, value: String, sub: String?)?
+    let lead: (label: String, value: String, sub: String?, struck: Bool)?
     /// The second fact beside the first (liveLead): the seat beside the
     /// gate, the check-in area beside the terminal, the belt beside the
     /// seat. Nil from builds that sent one fact.
@@ -153,7 +154,12 @@ private struct TravelDayModel {
         tone = text(state["tone"]?.asString()).flatMap(Tone.init(rawValue:))
             ?? (state["emphasis"]?.asString() == "delay" ? .delay : landedHeadline ? .landed : .normal)
         if let value = text(state["leadValue"]?.asString()) {
-            lead = (text(state["leadLabel"]?.asString()) ?? "", value, text(state["leadSub"]?.asString()))
+            lead = (
+                text(state["leadLabel"]?.asString()) ?? "",
+                value,
+                text(state["leadSub"]?.asString()),
+                number(state["leadSubStruck"]) == 1
+            )
         } else {
             lead = nil
         }
@@ -822,7 +828,7 @@ private struct ClockText: View {
 /// colour (cobalt, green while boarding and landed, amber when late); the
 /// second is white.
 private struct LeadFact: View {
-    let lead: (label: String, value: String, sub: String?)
+    let lead: (label: String, value: String, sub: String?, struck: Bool)
     var second: (label: String, value: String)? = nil
     let tone: Tone
     let size: CGFloat
@@ -838,6 +844,7 @@ private struct LeadFact: View {
             if let sub = lead.sub {
                 Text(sub)
                     .font(.system(size: 11, weight: .semibold))
+                    .strikethrough(lead.struck)
                     .foregroundStyle(Brand.whiteDim)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

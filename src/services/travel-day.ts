@@ -8,7 +8,7 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
-import { heldOnGround, landedOrLater, liveLead, presumedFlightStage } from '../../convex/liveShared';
+import { heldOnGround, LATE_MINUTES, landedOrLater, liveLead, presumedFlightStage } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
@@ -806,7 +806,7 @@ export interface LiveContent {
    * liveLead: terminal and check-in area on the way, gate and seat at the
    * airport, seat and belt on board, the belt once landed), with a short
    * note under the pair — or null when the step has none. */
-  lead: { label: string; value: string; sub: string } | null;
+  lead: { label: string; value: string; sub: string; subStruck: boolean } | null;
   /** The second fact beside it, or null. */
   second: { label: string; value: string } | null;
   /** "+46 min" while half an hour or more late, else null. */
@@ -921,7 +921,14 @@ export function liveContent(
   // ASKING for it once no arrival has come and the flight is plainly down.
   const overdue = landingDue(j, state, facts, now);
   const landed = hasLanded(state.stage);
-  const boardingOpen = !!facts.boardingTime && Date.parse(facts.boardingTime) <= now.getTime();
+  // The boarding time is the one printed on the pass and does not move with
+  // a delay. Half an hour late or more (when the cards cross it out), the
+  // gate opens that much later too: "Boarding now" 46 minutes early sent
+  // travellers to a closed gate.
+  const late = facts.delayMinutes != null && facts.delayMinutes >= LATE_MINUTES;
+  const boardingOpen =
+    !!facts.boardingTime &&
+    Date.parse(facts.boardingTime) + (late ? facts.delayMinutes! * 60_000 : 0) <= now.getTime();
   const gateWord = facts.gate ? `gate ${facts.gate}` : 'your gate';
 
   // The headline is the one time fact that matters right now: the countdown
@@ -1011,8 +1018,9 @@ export function liveContent(
         ? NEXT_STEP_LABELS[next ?? plan[0] ?? 'at_airport']
         : 'Nothing to do yet';
   } else if (next === 'boarded') {
-    // The gate step carries the boarding time when the airline posts one.
-    subtitle = facts.boardingTime
+    // The gate step carries the boarding time when the airline posts one,
+    // but not once a delay has overtaken it — this line cannot cross it out.
+    subtitle = facts.boardingTime && !late
       ? `Go to ${gateWord} · boards ${formatTime(facts.boardingTime, departureZone)}`
       : `Go to ${gateWord}`;
   } else if (next === 'checked_in' && facts.checkInDesk) {

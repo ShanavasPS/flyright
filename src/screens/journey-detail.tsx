@@ -775,19 +775,20 @@ type Slot = 'pass' | 'airport' | 'ticket' | 'progress' | 'lounge' | 'updates' | 
 /** The trip page's cards by what the moment needs (the A2 study, design
  * canvas "Trip details & Memberships alternatives"):
  *  - saved: close the ticket's gaps first; the airport card is still empty.
- *  - travel: the next hour, in the order it is needed — pass, gate, steps,
+ *  - travel: the next hour, in the order it is needed — pass, the steps
+ *    (where the day stands), the gate and the rest of the airport facts,
  *    then the lounges at the airport (docs/lounges.md).
- *  - landed: belt and bags, a claim if one is owed, then the journal while
- *    it is fresh.
+ *  - landed: the steps, belt and bags, a claim if one is owed, then the
+ *    journal while it is fresh.
  *  - past: any claim, then the memory; the airport record last. */
 function orderedSlots(moment: TripMoment): Slot[] {
   switch (moment) {
     case 'saved':
       return ['ticket', 'pass', 'airport', 'pro', 'claims', 'journal', 'about'];
     case 'travel':
-      return ['pass', 'airport', 'claims', 'progress', 'lounge', 'updates', 'ticket', 'journal', 'about'];
+      return ['pass', 'progress', 'airport', 'claims', 'lounge', 'updates', 'ticket', 'journal', 'about'];
     case 'landed':
-      return ['airport', 'claims', 'progress', 'journal', 'updates', 'about', 'ticket', 'pass'];
+      return ['progress', 'airport', 'claims', 'journal', 'updates', 'about', 'ticket', 'pass'];
     case 'past':
       return ['claims', 'pro', 'journal', 'progress', 'updates', 'ticket', 'airport', 'about', 'pass'];
   }

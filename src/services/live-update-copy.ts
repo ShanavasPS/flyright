@@ -9,14 +9,17 @@ import type { LiveContent } from '@/services/travel-day';
  * countdown itself. */
 export function liveUpdateLines(
   content: Pick<LiveContent, 'clockLabel' | 'lead' | 'delayChip'> & Partial<Pick<LiveContent, 'countdownEnd' | 'second'>>,
-): { title: string; text: string } {
+): { title: string; text: string; strike: string } {
   const label = sentenceCase(clockWord(content));
   // A value that already names itself ("Belt 7") needs no label before it.
   const fact = (f: { label: string; value: string } | null | undefined) =>
     f ? (/^[A-Za-z]+\s/.test(f.value) ? f.value : `${sentenceCase(f.label)} ${f.value}`) : null;
   const title = [label, fact(content.lead), fact(content.second)].filter(Boolean).join(' · ');
   const text = [content.delayChip, content.lead?.sub].filter(Boolean).join(' · ');
-  return { title, text };
+  // The part of the text to draw crossed out: a boarding time the delay
+  // has overtaken ("Boards 7:55 AM" after "+46 min").
+  const strike = content.lead?.subStruck ? content.lead.sub : '';
+  return { title, text, strike };
 }
 
 /** The notification draws the countdown itself (a chronometer in its

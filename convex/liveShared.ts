@@ -589,8 +589,10 @@ export interface LiveLead {
   clockLabel: string;
   tone: 'normal' | 'boarding' | 'delay' | 'landed';
   /** The first fact, with a short note under the pair ("Boards 6:05 AM",
-   * "Was 11:30", "Not posted yet"); '' for none. */
-  lead: { label: string; value: string; sub: string } | null;
+   * "Was 11:30", "Not posted yet"); '' for none. `subStruck`: the note is a
+   * time the delay has overtaken (the boarding time printed on the pass),
+   * drawn crossed out. */
+  lead: { label: string; value: string; sub: string; subStruck: boolean } | null;
   /** The second fact beside it, or null. */
   second: LiveFact | null;
   /** The Dynamic Island's compact word for the first fact ('' for none). */
@@ -628,9 +630,9 @@ export function liveLead(input: LiveLeadInput): LiveLead {
   const seatFact = fact('SEAT', seat);
   const beltFact = fact('BAGGAGE', baggageBelt ? `Belt ${baggageBelt}` : null);
   /** The first two known facts, the first with its note. */
-  const pick = (facts: (LiveFact | null)[], sub = '') => {
+  const pick = (facts: (LiveFact | null)[], sub = '', subStruck = false) => {
     const [first = null, second = null] = facts.filter((f): f is LiveFact => !!f);
-    return { lead: first ? { ...first, sub } : null, second, compact: compactOf(first) };
+    return { lead: first ? { ...first, sub, subStruck: subStruck && !!sub } : null, second, compact: compactOf(first) };
   };
 
   // On the ground at the other end: the belt, the last thing to find —
@@ -670,8 +672,11 @@ export function liveLead(input: LiveLeadInput): LiveLead {
     if (!gate && !checkedIn && checkInDesk) {
       return { clockLabel: 'DEPARTS IN', tone, ...pick([fact('CHECK-IN', checkInDesk), seatFact], wasSub), delayChip };
     }
-    const sub = gate ? (input.boardingClock ? `Boards ${input.boardingClock}` : wasSub) : 'Not posted yet';
-    return { clockLabel: 'DEPARTS IN', tone, ...pick([{ label: 'GATE', value: gate ?? '—' }, seatFact], sub), delayChip };
+    const boards = gate && input.boardingClock ? `Boards ${input.boardingClock}` : '';
+    const sub = gate ? boards || wasSub : 'Not posted yet';
+    // The boarding time comes from the pass and does not move with a
+    // delay: a late flight shows it crossed out rather than as a promise.
+    return { clockLabel: 'DEPARTS IN', tone, ...pick([{ label: 'GATE', value: gate ?? '—' }, seatFact], sub, delayed && !!boards), delayChip };
   }
   // On the way: the terminal to head for and the check-in area — or the
   // gate when that is what the airport has posted.
@@ -819,6 +824,7 @@ export function buildContentState(
     leadLabel: lead.lead?.label ?? '',
     leadValue: lead.lead?.value ?? '',
     leadSub: lead.lead?.sub ?? '',
+    leadSubStruck: lead.lead?.subStruck ? 1 : 0,
     lead2Label: lead.second?.label ?? '',
     lead2Value: lead.second?.value ?? '',
     delayChip: lead.delayChip,

@@ -461,6 +461,14 @@ describe('liveContent', () => {
         liveNow,
       ).subtitle,
     ).toBe('Boarding now · Gate A12');
+    // Half an hour late or more, the printed boarding time moves with the
+    // delay: not open yet, and the gate line no longer promises that time.
+    const late = facts({ gate: 'A12', boardingTime: '2026-08-25T04:50Z', delayMinutes: 46 });
+    expect(liveContent(journey(), throughImmigration, late, liveNow)).toMatchObject({
+      subtitle: '46 min late · Go to gate A12',
+      clockLabel: 'DEPARTS IN',
+      lead: { label: 'GATE', value: 'A12', subStruck: true },
+    });
     const boarded = advance(throughImmigration, 'boarded', liveNow);
     expect(liveContent(journey(), boarded, EMPTY_FACTS, liveNow).subtitle).toBe(
       'On board · ready for pushback',

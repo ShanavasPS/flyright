@@ -151,6 +151,7 @@ const toLiveUpdate = (content: LiveContent): LiveUpdateContent => {
     emphasis: content.emphasis,
     leadTitle: lines.title,
     leadText: lines.text,
+    leadStrike: lines.strike,
     tone: content.tone,
   };
 };
