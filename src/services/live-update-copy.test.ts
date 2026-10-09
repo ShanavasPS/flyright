@@ -1,4 +1,4 @@
-import { liveUpdateLines } from './live-update-copy';
+import { actionButtonLabel, liveUpdateLines } from './live-update-copy';
 
 describe('liveUpdateLines', () => {
   it('puts the clock label and the one fact in the title, the sub line under it', () => {
@@ -72,5 +72,14 @@ describe('liveUpdateLines — without a countdown the label names the moment', (
     });
     expect(late).toMatchObject({ text: '+46 min · Boards 7:55 AM', strike: 'Boards 7:55 AM' });
     expect(liveUpdateLines({ clockLabel: 'DEPARTS IN', lead: { label: 'GATE', value: '22', sub: 'Boards 7:55 AM', subStruck: false }, delayChip: null }).strike).toBe('');
+  });
+});
+
+describe('actionButtonLabel', () => {
+  it('keeps the words that fit and trims the two that Android would cut', () => {
+    expect(actionButtonLabel("I'm at the airport")).toBe("I'm at the airport");
+    expect(actionButtonLabel("I'm on board")).toBe("I'm on board");
+    expect(actionButtonLabel("I'm through security")).toBe('Through security');
+    expect(actionButtonLabel("I'm through immigration")).toBe('Through immigration');
   });
 });

@@ -15,7 +15,12 @@ declare class LiveActivitiesModule extends NativeModule {
   setStaleDate(activityId: string, atSeconds: number): Promise<boolean>;
   staleDateOf(activityId: string): Promise<number>;
   updateActivityContent(activityId: string, state: Record<string, unknown>): Promise<boolean>;
+  takePendingStepMarks(): StepMark[];
+  addListener(event: 'onStepMarked', listener: () => void): { remove(): void };
 }
+
+/** A step the traveller marked from the Lock Screen or the Dynamic Island. */
+export type StepMark = { journeyId: string; stage: string; at: number };
 
 const native = requireOptionalNativeModule<LiveActivitiesModule>('FlyRightLiveActivities');
 
@@ -62,4 +67,16 @@ export function updateLiveActivityLocally(
  * release checks to prove the deadline stuck, not by the app itself. */
 export function liveActivityStaleDate(activityId: string): Promise<number> {
   return native?.staleDateOf?.(activityId).then((s) => s * 1000) ?? Promise.resolve(0);
+}
+
+/** Steps marked on the Lock Screen or in the Dynamic Island since the last
+ * call, oldest first — taken, so each is handed over once. Empty where the
+ * module is absent (Android, web, an older dev client). */
+export function takePendingStepMarks(): StepMark[] {
+  return native?.takePendingStepMarks?.() ?? [];
+}
+
+/** Calls `listener` whenever a step is marked while the app is running. */
+export function addStepMarkListener(listener: () => void): { remove(): void } {
+  return native?.takePendingStepMarks ? native.addListener('onStepMarked', listener) : { remove() {} };
 }

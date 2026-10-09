@@ -98,6 +98,10 @@ function contentState(content: LiveContent) {
     lead2Label: content.second?.label ?? '',
     lead2Value: content.second?.value ?? '',
     delayChip: content.delayChip ?? '',
+    // The traveller's button (MarkStepIntent) and the pass beside it.
+    actionStage: content.action?.stage ?? '',
+    actionLabel: content.action?.label ?? '',
+    hasPass: content.hasPass ? 1 : 0,
   };
 }
 
@@ -250,6 +254,9 @@ function endById(activityId: string, content?: LiveContent): void {
         lead2Label: '',
         lead2Value: '',
         delayChip: '',
+        actionStage: '',
+        actionLabel: '',
+        hasPass: 0,
       };
   void lookupHeaders().then(headers => fetch('/api/live-activity', {
     method: 'POST',

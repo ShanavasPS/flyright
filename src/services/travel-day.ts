@@ -8,7 +8,7 @@
  * Convex live session and the Swift widget's content-state dict. Rename only
  * with a migration on all three sides. */
 
-import { heldOnGround, LATE_MINUTES, landedOrLater, liveLead, presumedFlightStage } from '../../convex/liveShared';
+import { heldOnGround, LATE_MINUTES, landedOrLater, liveLead, presumedFlightStage, STEP_PROMPTS } from '../../convex/liveShared';
 
 import { airportZone } from '@/services/airports';
 import { formatDelay, hasRealTime } from '@/services/notification-plan';
@@ -177,23 +177,7 @@ export const STAGE_COMPACT: Record<TravelStage, string> = {
 /** Imperative labels for the tap targets ("Tap when you're…"). The flight
  * stages' prompts only ever surface on manual journal trips, where the
  * traveler stamps them too (no status feed to do it). */
-export const STAGE_PROMPTS: Record<TravelStage, string> = {
-  left_home: "I've left home",
-  left_stay: "I've left the hotel",
-  at_airport: "I'm at the airport",
-  checked_in: "I've checked in",
-  bag_dropped: 'Bags are dropped',
-  security: "I'm through security",
-  immigration: "I'm through immigration",
-  boarded: "I'm on board",
-  departed: "We've taken off",
-  landed: "We've landed",
-  arrival_immigration: "I'm through immigration",
-  bags_collected: 'I have my bags',
-  bags_rechecked: 'Bags are re-checked',
-  reached_stay: "I'm at the hotel",
-  home_safe: "I'm home",
-};
+export const STAGE_PROMPTS: Record<TravelStage, string> = STEP_PROMPTS;
 
 /** What the traveler should do NEXT, keyed by the stage that tap will
  * reach. The traveler's own surfaces (Live Activity, Android Live Update,
@@ -652,6 +636,9 @@ export type TravelJourney = Pick<
   /** The traveller's seat, when they typed it or a boarding pass carried
    * it: the live card's fact once they are on board. */
   seat?: string | null;
+  /** The saved boarding pass's barcode, when there is one: the live
+   * surfaces offer the pass beside their button. */
+  passCode?: string | null;
 };
 
 export type TravelPhase = 'unsupported' | 'before' | 'reminder' | 'live' | 'ended';
@@ -811,6 +798,12 @@ export interface LiveContent {
   second: { label: string; value: string } | null;
   /** "+46 min" while half an hour or more late, else null. */
   delayChip: string | null;
+  /** The step the traveller can mark done right now, and the button's
+   * words ("I'm through security") — on the live card, the Lock Screen and
+   * the Dynamic Island. Null when no step is open to a tap. */
+  action: { stage: TravelStage; label: string } | null;
+  /** A boarding pass is saved: the surfaces show Pass beside the button. */
+  hasPass: boolean;
 }
 
 /** Which instant the live surfaces' self-ticking countdown runs to. The
@@ -1111,6 +1104,8 @@ export function liveContent(
     lead: lead.lead,
     second: lead.second,
     delayChip: lead.delayChip || null,
+    action: next && canAdvanceTo(state, next, rules) ? { stage: next, label: STAGE_PROMPTS[next] } : null,
+    hasPass: !!j.passCode,
   };
 }
 

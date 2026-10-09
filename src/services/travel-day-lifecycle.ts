@@ -27,7 +27,7 @@ import {
   startTravelActivity,
   updateTravelActivity,
 } from '@/services/live-activity';
-import { liveUpdateLines } from '@/services/live-update-copy';
+import { actionButtonLabel, liveUpdateLines } from '@/services/live-update-copy';
 import { refreshHomeWidget } from '@/services/home-widget';
 import { getPushEnabled } from '@/services/notifications';
 import {
@@ -35,10 +35,13 @@ import {
   EMPTY_FACTS,
   liveContent,
   liveContentSchedule,
+  STAGE_ORDER,
+  stageRules,
   travelWindow,
   type FlightFacts,
   type LiveContent,
   type TravelJourney,
+  type TravelStage,
 } from '@/services/travel-day';
 import { stagePlans } from '@/services/travel-day-plan';
 import { homeCheck } from '@/services/home-base';
@@ -48,10 +51,16 @@ import { recordAirportFacts } from '@/services/trip-record-store';
 import {
   endTravelLiveUpdate,
   postTravelLiveUpdate,
+  takePendingNotificationStepMarks,
   type LiveUpdateContent,
 } from '../../modules/flyright-live-update';
-import { endOrphanLiveActivities, listLiveActivityIds } from '../../modules/flyright-live-activities';
 import {
+  endOrphanLiveActivities,
+  listLiveActivityIds,
+  takePendingStepMarks,
+} from '../../modules/flyright-live-activities';
+import {
+  advanceStage,
   allTravelDayRows,
   markActivity,
   mergeFlightStages,
@@ -152,6 +161,9 @@ const toLiveUpdate = (content: LiveContent): LiveUpdateContent => {
     leadTitle: lines.title,
     leadText: lines.text,
     leadStrike: lines.strike,
+    actionStage: content.action?.stage ?? '',
+    actionLabel: content.action ? actionButtonLabel(content.action.label) : '',
+    hasPass: content.hasPass,
     tone: content.tone,
   };
 };
@@ -209,6 +221,38 @@ async function readJournal() {
   const suggestedOf = stagePlans(journeyRows, homeCheck(getHomeBase(userId), allRows));
   const planOf = (journeyId: string) => chosenPlan(rowToState(byJourney.get(journeyId)), suggestedOf(journeyId));
   return { stateRows, byJourney, journeyRows, planOf };
+}
+
+/** Mark a step of a trip's travel day done — the live card's button, and
+ * the Lock Screen's and Dynamic Island's (MarkTravelStep) once the app
+ * takes their marks. The same rules as a tap on the trip's timeline, so a
+ * step that is not open yet (the gate before boarding time) is refused here
+ * too. Does not reconcile; the callers do, once for a batch. */
+async function recordStep(journeyId: string, stage: string): Promise<void> {
+  if (!(STAGE_ORDER as readonly string[]).includes(stage)) return;
+  const { byJourney, journeyRows, planOf } = await readJournal();
+  const j = journeyRows.find((row) => row.id === journeyId);
+  if (!j) return;
+  const state = rowToState(byJourney.get(journeyId));
+  const rules = stageRules(j, state, factsFor(j), new Date(), planOf(journeyId));
+  await advanceStage(journeyId, stage as TravelStage, rules);
+}
+
+/** The live card's button: mark the step, then bring every surface up to it. */
+export async function markTravelStep(journeyId: string, stage: TravelStage): Promise<void> {
+  await recordStep(journeyId, stage);
+  await reconcileTravelDay();
+}
+
+/** Record the steps marked on the Lock Screen or in the Dynamic Island (iOS,
+ * FlyRightStepMarks) or from the notification's button (Android, StepMarks)
+ * while the app was in the background or not yet listening. */
+export async function applyPendingStepMarks(): Promise<void> {
+  const marks = [...takePendingStepMarks(), ...takePendingNotificationStepMarks()].sort((a, b) => a.at - b.at);
+  if (!marks.length) return;
+  for (const mark of marks) await recordStep(mark.journeyId, mark.stage);
+  Observe.logEvent('travel_day.step_marked_from_lock_screen', { attributes: { count: marks.length } });
+  await reconcileTravelDay();
 }
 
 async function refreshWidget(): Promise<void> {
@@ -292,6 +336,8 @@ async function doReconcile(): Promise<void> {
         content.depTime ?? '',
         content.arrTime ?? '',
         Math.round(content.progress * 50),
+        content.action?.stage ?? '',
+        content.hasPass ? 'pass' : '',
       ].join('|');
       // Unchanged content only skips work when the surface actually exists —
       // on iOS a stale fingerprint (app update mid-window) must not block the

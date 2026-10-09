@@ -52,6 +52,9 @@ const STATE_KEYS = [
   'lead2Label',
   'lead2Value',
   'delayChip',
+  'actionStage',
+  'actionLabel',
+  'hasPass',
 ] as const;
 
 export async function POST(request: Request) {

@@ -44,6 +44,7 @@ import { useSymbolFont } from "@/hooks/use-symbol-font";
 import { ErrorScreen } from "@/components/error-screen";
 import { NotificationRouter } from "@/components/notification-router";
 import { OtaUpdateSync } from "@/components/ota-update-sync";
+import { StepMarkSync } from "@/components/step-mark-sync";
 import { UpdateRequired } from "@/components/update-required";
 import { Colors } from "@/constants/theme";
 import { useVersionGate } from "@/hooks/use-version-gate";
@@ -225,6 +226,7 @@ function RootLayout() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <IdentitySync />
       <OtaUpdateSync />
+      <StepMarkSync />
       <NotificationRouter />
       <AssistantActionRouter />
       <DocumentShareRouter />

@@ -47,9 +47,9 @@ export const ownCardExtras = internalQuery({
   args: { sessionId: v.id('liveSessions') },
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.db.get(sessionId);
-    if (!session) return { seat: null };
+    if (!session) return { seat: null, hasPass: false, traveller: true };
     const journey = await journeyForKey(ctx, session.userId, session.naturalKey);
-    return { seat: journey?.seat ?? null };
+    return { seat: journey?.seat ?? null, hasPass: !!journey?.passCode, traveller: true };
   },
 });
 

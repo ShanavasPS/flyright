@@ -8,13 +8,15 @@ const path = require('node:path');
 module.exports = config => {
   config = withXcodeProject(config, config => {
     const name = IOSConfig.XcodeUtils.getProjectName(config.modRequest.projectRoot);
-    const filename = 'FlyRightAppIntents.swift';
-    fs.copyFileSync(path.join(__dirname, 'assistant', filename), path.join(config.modRequest.platformProjectRoot, name, filename));
-    IOSConfig.XcodeUtils.addBuildSourceFileToGroup({
-      filepath: `${name}/${filename}`,
-      groupName: name,
-      project: config.modResults,
-    });
+    // The Siri/Shortcuts intents, and the Live Activity's mark-a-step button.
+    for (const filename of ['FlyRightAppIntents.swift', 'FlyRightStepIntent.swift']) {
+      fs.copyFileSync(path.join(__dirname, 'assistant', filename), path.join(config.modRequest.platformProjectRoot, name, filename));
+      IOSConfig.XcodeUtils.addBuildSourceFileToGroup({
+        filepath: `${name}/${filename}`,
+        groupName: name,
+        project: config.modResults,
+      });
+    }
     return config;
   });
   return withAppDelegate(config, config => {

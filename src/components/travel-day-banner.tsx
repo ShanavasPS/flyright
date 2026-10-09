@@ -39,7 +39,7 @@ import {
 } from '@/services/travel-day';
 import { noteBoarding, noteLanded, noteTakeOff, noteWarning, tapLight } from '@/services/haptics';
 import { liveMoments, rememberLive, type LiveMemory } from '@/services/live-moments';
-import { factsFor } from '@/services/travel-day-lifecycle';
+import { factsFor, markTravelStep } from '@/services/travel-day-lifecycle';
 import { useTravelDayStates } from '@/services/travel-day-store';
 import type { TripHeroGroup } from '@/services/trip-groups';
 import { flagEmoji } from '@/services/travel-recap';
@@ -281,9 +281,31 @@ function HeroContent({
               </ThemedText>
             </Pressable>
           )}
-          <ThemedText type="small" themeColor="textSecondary" style={styles.openTrip}>
-            Open trip
-          </ThemedText>
+          {/* The step to mark, in the traveller's own words ("I'm through
+              security") — a filled button with a verb, never a state, so it
+              can't be taken for the flight's status. The same button is on
+              the Lock Screen and in the Dynamic Island (MarkTravelStep). The
+              chevron still says the card opens the trip. */}
+          {content.action ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={content.action.label}
+              accessibilityHint="Marks this step of your travel day done"
+              testID="hero-mark-step"
+              onPress={() => {
+                tapLight();
+                const { stage } = content.action!;
+                trackEvent('travel_step_marked', { from: 'home', stage });
+                void markTravelStep(active.id, stage);
+              }}
+              style={({ pressed }) => [styles.markStep, { backgroundColor: theme.tint, opacity: pressed ? 0.8 : 1 }]}>
+              <ThemedText type="smallBold" style={styles.markStepText} numberOfLines={1}>
+                {content.action.label}
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <View style={styles.footerFill} />
+          )}
           <SymbolView
             name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
             size={14}
@@ -526,7 +548,7 @@ const styles = StyleSheet.create({
   // The wash overlay is clipped to the rounded corners; SheenCard supplies
   // the surface, border and radius.
   // Tighten padding and gaps, not the countdown or gate. The group shortcut
-  // stays a separate 44pt target rather than nesting inside Open trip.
+  // stays a separate 44pt target rather than nesting inside the card.
   card: {
     overflow: 'hidden',
     borderWidth: BORDER_WIDTH,
@@ -660,8 +682,19 @@ const styles = StyleSheet.create({
   groupName: { flex: 1, fontSize: 12, lineHeight: 16 },
   groupAction: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, maxWidth: '45%' },
   groupActionLabel: { fontSize: 12, lineHeight: 16, flexShrink: 1 },
-  openTrip: {
+  footerFill: {
     flex: 1,
+  },
+  markStep: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markStepText: {
+    color: '#ffffff',
   },
   codeTime: {
     fontVariant: ['tabular-nums'],

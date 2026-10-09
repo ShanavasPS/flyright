@@ -40,6 +40,12 @@ class LiveUpdateContent : Record {
   @Field val leadStrike: String = ""
   /** "normal" | "boarding" | "delay" | "landed" — the card's accent. */
   @Field val tone: String = ""
+  /** The step the action button marks ("security") and its words ("I'm
+   * through security"); "" for no button. */
+  @Field val actionStage: String = ""
+  @Field val actionLabel: String = ""
+  /** A boarding pass is saved: the card offers a Pass action. */
+  @Field val hasPass: Boolean = false
 
   fun toCard(): LiveCard =
     LiveCard(
@@ -60,6 +66,9 @@ class LiveUpdateContent : Record {
       leadText = leadText,
       leadStrike = leadStrike,
       tone = tone,
+      actionStage = actionStage,
+      actionLabel = actionLabel,
+      hasPass = hasPass,
     )
 }
 
@@ -100,6 +109,13 @@ class FlyRightLiveUpdateModule : Module() {
     Function("canPostPromoted") {
       LiveUpdateNotifier.canPostPromoted(context)
     }
+
+    // Steps marked from the card's button (StepMarkReceiver): the JS side
+    // takes them and records each like a tap in the app.
+    Events("onStepMarked")
+    Function("takePendingStepMarks") { StepMarks.take(context) }
+    OnCreate { StepMarks.listener = { sendEvent("onStepMarked") } }
+    OnDestroy { StepMarks.listener = null }
   }
 
   private val context: Context

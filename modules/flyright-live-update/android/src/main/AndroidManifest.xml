@@ -9,5 +9,10 @@
     <receiver
       android:name="expo.modules.flyrightliveupdate.LiveUpdateAlarmReceiver"
       android:exported="false" />
+    <!-- The card's "I'm through security" button, handled without opening
+         the app (StepMarkReceiver). -->
+    <receiver
+      android:name="expo.modules.flyrightliveupdate.StepMarkReceiver"
+      android:exported="false" />
   </application>
 </manifest>

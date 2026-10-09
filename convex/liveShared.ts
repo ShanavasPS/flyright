@@ -436,6 +436,29 @@ function countdownBit(departureMs: number, now: number): string {
  * done-stage copy above. Sessions are tracked flights, so the walk pauses
  * at 'boarded' — flight data takes over — and resumes with the plan's
  * arrival steps once the landing is in. */
+/** The traveller's own words for marking a step done — the live card's,
+ * the Lock Screen's and the Dynamic Island's button ("I'm through
+ * security"), and the trip timeline's tap targets. The app's STAGE_PROMPTS
+ * is this map. The flight stages only surface on manual journal trips,
+ * where the traveller stamps them too. */
+export const STEP_PROMPTS: Record<string, string> = {
+  left_home: "I've left home",
+  left_stay: "I've left the hotel",
+  at_airport: "I'm at the airport",
+  checked_in: "I've checked in",
+  bag_dropped: 'Bags are dropped',
+  security: "I'm through security",
+  immigration: "I'm through immigration",
+  boarded: "I'm on board",
+  departed: "We've taken off",
+  landed: "We've landed",
+  arrival_immigration: "I'm through immigration",
+  bags_collected: 'I have my bags',
+  bags_rechecked: 'Bags are re-checked',
+  reached_stay: "I'm at the hotel",
+  home_safe: "I'm home",
+};
+
 const NEXT_STEP_LABELS: Record<string, string> = {
   left_home: 'Leave for the airport',
   left_stay: 'Leave for the airport',
@@ -696,9 +719,10 @@ export function liveLead(input: LiveLeadInput): LiveLead {
 export function buildContentState(
   s: Doc<'liveSessions'>,
   now: number,
-  /** The traveller's seat, from their journey — for their own card only;
-   * a follower's card is built without it. */
-  own: { seat?: string | null } = {},
+  /** The traveller's own card: their seat from the journey, whether a
+   * boarding pass is saved, and `traveller` — which alone puts the
+   * mark-a-step button on the card. A follower's card is built without. */
+  own: { seat?: string | null; hasPass?: boolean; traveller?: boolean } = {},
 ): Record<string, unknown> {
   const delayed = s.delayMinutes != null && s.delayMinutes >= 30;
   const delayLabel = delayed
@@ -795,6 +819,19 @@ export function buildContentState(
   // The island's word follows the lead rule wherever it has one.
   if (lead.compact) compactLabel = lead.compact;
 
+  // The step the traveller's button marks — mirrors the app's (liveContent
+  // action): the next step of the walk, or its first before any tap, once
+  // the live window is open; the gate only from two hours out, as the app's
+  // stepOpensAt has it. nextStep already keeps the flight's own stages and
+  // the arrival steps before a landing out of it.
+  const scheduledMs = flightInstant(s.scheduledDeparture, s.fromCode);
+  const step = next ?? (s.currentStage === null ? (plan[0] ?? null) : null);
+  const actionStage =
+    own.traveller && step && STEP_PROMPTS[step] && !Number.isNaN(scheduledMs) &&
+    now >= scheduledMs - 4 * HOUR_MS && (step !== 'boarded' || now >= scheduledMs - 2 * HOUR_MS)
+      ? step
+      : '';
+
   return {
     headline,
     subtitle,
@@ -828,6 +865,10 @@ export function buildContentState(
     lead2Label: lead.second?.label ?? '',
     lead2Value: lead.second?.value ?? '',
     delayChip: lead.delayChip,
+    // The traveller's button and the pass beside it (own card only).
+    actionStage,
+    actionLabel: actionStage ? STEP_PROMPTS[actionStage] : '',
+    hasPass: own.hasPass ? 1 : 0,
   };
 }
 

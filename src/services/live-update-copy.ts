@@ -44,3 +44,11 @@ function sentenceCase(text: string): string {
   const lower = text.toLowerCase().replace(/(\d)(\s?)([ap]m)\b/g, (_, digit, space, half) => digit + space + half.toUpperCase());
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
+
+/** The notification's step button in the traveller's words, shortened where
+ * Android would cut it: a notification gives each of its two actions half
+ * the card, which fits about eighteen characters ("I'm through immigra…"
+ * on the Pixel 9a emulator, 2026-10-09). */
+export function actionButtonLabel(label: string): string {
+  return label.length > 18 ? label.replace(/^I'm through /, 'Through ') : label;
+}

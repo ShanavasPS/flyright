@@ -184,6 +184,39 @@ describe('buildContentState with a connecting leg\'s plan', () => {
   });
 });
 
+describe("buildContentState: the traveller's step button", () => {
+  // COK 04:15 local = 22:45Z the day before.
+  const PLAN = ['security', 'boarded', 'departed', 'landed', 'arrival_immigration', 'bags_collected'];
+  const own = { traveller: true, hasPass: true };
+  const secured = { plan: PLAN, currentStage: 'security', stageTimes: { security: '2026-09-08T19:30:00.000Z' } };
+
+  it("offers the next step on the traveller's own card only, with the pass", () => {
+    const at = Date.parse('2026-09-08T20:00Z');
+    expect(buildContentState(session({ plan: PLAN }), at, own)).toMatchObject({
+      actionStage: 'security',
+      actionLabel: "I'm through security",
+      hasPass: 1,
+    });
+    expect(buildContentState(session({ plan: PLAN }), at)).toMatchObject({ actionStage: '', actionLabel: '', hasPass: 0 });
+  });
+
+  it('waits for the live window, and for two hours out before the gate', () => {
+    expect(buildContentState(session({ plan: PLAN }), Date.parse('2026-09-08T17:00Z'), own).actionStage).toBe('');
+    expect(buildContentState(session(secured), Date.parse('2026-09-08T20:00Z'), own).actionStage).toBe('');
+    expect(buildContentState(session(secured), Date.parse('2026-09-08T21:00Z'), own)).toMatchObject({
+      actionStage: 'boarded',
+      actionLabel: "I'm on board",
+    });
+  });
+
+  it('has nothing to mark in the air, and the arrival steps once landed', () => {
+    const aloft = session({ plan: PLAN, currentStage: 'departed', stageTimes: { departed: '2026-09-08T23:00:00.000Z' } });
+    expect(buildContentState(aloft, Date.parse('2026-09-09T01:00Z'), own).actionStage).toBe('');
+    const landed = session({ plan: PLAN, currentStage: 'landed', stageTimes: { landed: '2026-09-09T03:00:00.000Z' } });
+    expect(buildContentState(landed, Date.parse('2026-09-09T03:10Z'), own).actionLabel).toBe("I'm through immigration");
+  });
+});
+
 describe('buildContentState marks a next-day landing', () => {
   it('appends "⁺¹" to the arrival clock when the landing reads on the next day', () => {
     // Doha 19:40 → Kochi 02:45 next morning (a QR516).

@@ -12,6 +12,8 @@
 //   attributes: journeyId, title, fromCode, toCode, flightLabel, airline, deepLink (followers)
 //   state: clockLabel ("DEPARTS IN" | "BOARDING" | "LANDS IN" | "LANDED 17:08"),
 //          tone ("normal" | "boarding" | "delay" | "landed"),
+//          actionStage / actionLabel (the step the traveller's button marks,
+//          "I'm through security"; MarkTravelStep below), hasPass (1/0),
 //          leadLabel / leadValue / leadSub (+ leadSubStruck 1/0: a boarding
 //          time the delay overtook, drawn crossed out) and lead2Label / lead2Value (the
 //          two facts beside the clock —
@@ -29,6 +31,7 @@
 // with the phone offline; a push only moves its anchor.
 
 import ActivityKit
+import AppIntents
 import WidgetKit
 import SwiftUI
 import UIKit
@@ -88,6 +91,12 @@ private struct TravelDayModel {
     /// seat. Nil from builds that sent one fact.
     let second: (label: String, value: String)?
     let delayChip: String?
+    /// The step the traveller can mark done now and the button's words
+    /// ("I'm through security") — MarkTravelStep below. Nil when no step is
+    /// open, and always on a follower's card.
+    let action: (stage: String, label: String)?
+    /// A boarding pass is saved: Pass sits beside the button.
+    let hasPass: Bool
     /// The instant the live countdown runs to, and whether it is the
     /// departure or the arrival. Nil once landed or when unknown.
     let countdownEnd: Date?
@@ -169,6 +178,14 @@ private struct TravelDayModel {
             second = nil
         }
         delayChip = text(state["delayChip"]?.asString())
+        if followerDeepLink == nil,
+           let stage = text(state["actionStage"]?.asString()),
+           let label = text(state["actionLabel"]?.asString()) {
+            action = (stage, label)
+        } else {
+            action = nil
+        }
+        hasPass = followerDeepLink == nil && number(state["hasPass"]) == 1
     }
 
     /// The instant the clock counts to — nil once it has passed: a closed
@@ -224,6 +241,19 @@ private struct TravelDayModel {
         return (fromCode, toCode)
     }
 
+    /// The saved boarding pass, full screen in the app.
+    var passLink: URL? {
+        URL(string: "flyright://boarding-pass?journeyId=\(journeyId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? journeyId)")
+    }
+
+    /// The button row has something to show: the pass, or a step to mark
+    /// (buttons that run an intent need iOS 17).
+    var showsActions: Bool {
+        if hasPass { return true }
+        if #available(iOS 17.0, *) { return action != nil }
+        return false
+    }
+
     var deepLink: URL? {
         if let followerDeepLink, followerDeepLink.hasPrefix("flyright://following/") {
             return URL(string: followerDeepLink)
@@ -267,9 +297,18 @@ struct OneSignalWidgetLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    RouteLine(model: model, codeSize: 12)
-                        .padding(.horizontal, 4)
-                        .padding(.top, 4)
+                    // The island has no room for both (measured: the row
+                    // was clipped): the traveller's buttons take the route
+                    // bar's place while there is a step or a pass to offer.
+                    Group {
+                        if model.showsActions {
+                            StepActions(model: model, height: 36)
+                        } else {
+                            RouteLine(model: model, codeSize: 12)
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.top, 4)
                 }
             } compactLeading: {
                 // The one fact, in a word: "T2", "G53", "14A", "Belt 7".
@@ -357,7 +396,11 @@ private struct LockScreenView: View {
     let model: TravelDayModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        // iOS caps the card at about 160pt: with the button row it tightens
+        // (padding, gaps, the clock a step smaller, no captions round the
+        // route bar) rather than have the system clip its bottom.
+        let actions = model.showsActions
+        VStack(alignment: .leading, spacing: actions ? 8 : 12) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     ClockLabelRow(model: model, size: 11)
@@ -365,22 +408,95 @@ private struct LockScreenView: View {
                         // A step smaller when two facts share the row, so
                         // they fit beside it at full size (stacked, the
                         // card's height squeezed them below their labels).
-                        FlapClock(end: end, height: model.second == nil ? 38 : 32, color: model.tone == .delay ? Brand.amber : FlapClock.digit)
+                        FlapClock(end: end, height: actions ? 30 : model.second == nil ? 38 : 32, color: model.tone == .delay ? Brand.amber : FlapClock.digit)
                     } else {
-                        BigClock(model: model, size: 52, marks: true)
+                        BigClock(model: model, size: actions ? 40 : 52, marks: true)
                     }
                 }
                 .layoutPriority(1)
                 Spacer(minLength: 8)
                 if let lead = model.lead {
-                    LeadFact(lead: lead, second: model.second, tone: model.tone, size: model.second == nil ? 38 : 26)
+                    LeadFact(lead: lead, second: model.second, tone: model.tone, size: actions ? 24 : model.second == nil ? 38 : 26)
                 }
             }
-            RouteLine(model: model, codeSize: 13, captions: true)
+            RouteLine(model: model, codeSize: 13, captions: !actions)
+            if actions {
+                StepActions(model: model, height: 34)
+            }
         }
-        .padding(16)
+        .padding(actions ? 12 : 16)
         .activityBackgroundTint(Brand.navy)
         .activitySystemActionForegroundColor(Brand.white)
+    }
+}
+
+/// The traveller's row under the route (design canvas "Mark next step",
+/// option D, 2026-10-09): Pass, then a filled button with the step in their
+/// own words — a verb, never a state, so it can't be read as the flight's
+/// status. The button runs MarkTravelStep in the app's process; the card's
+/// body still opens the trip.
+private struct StepActions: View {
+    let model: TravelDayModel
+    let height: CGFloat
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if model.hasPass, let pass = model.passLink {
+                Link(destination: pass) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "qrcode")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("Pass")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    .foregroundStyle(Brand.white)
+                    .padding(.horizontal, 12)
+                    .frame(height: height)
+                    .background(Brand.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+            }
+            if #available(iOS 17.0, *), let action = model.action {
+                Button(intent: MarkTravelStep(journeyId: model.journeyId, stage: action.stage)) {
+                    Text(action.label)
+                        .font(.system(size: 14, weight: .heavy))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .foregroundStyle(Brand.navy)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: height)
+                        .background(Brand.cobalt, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+/// The extension's half of the step button's intent. The app declares the
+/// same type (plugins/assistant/FlyRightStepIntent.swift) and, because it is
+/// a LiveActivityIntent, iOS runs the app's copy, in the app's process —
+/// the only place a Live Activity can be updated from. Keep the name and
+/// parameters identical in both; this perform is never the one that runs.
+@available(iOS 17.0, *)
+struct MarkTravelStep: LiveActivityIntent {
+    static var title: LocalizedStringResource = "Mark a travel step"
+    static var isDiscoverable: Bool = false
+
+    @Parameter(title: "Trip")
+    var journeyId: String
+
+    @Parameter(title: "Step")
+    var stage: String
+
+    init() {}
+
+    init(journeyId: String, stage: String) {
+        self.journeyId = journeyId
+        self.stage = stage
+    }
+
+    func perform() async throws -> some IntentResult {
+        .result()
     }
 }
 

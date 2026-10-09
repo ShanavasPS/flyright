@@ -41,7 +41,16 @@ export interface LiveUpdateContent {
   leadStrike?: string;
   /** Colours the card: 'delay' amber, 'boarding' green, else the brand. */
   tone?: 'normal' | 'boarding' | 'delay' | 'landed';
+  /** The step the traveller's action button marks done, and its words
+   * ("I'm through security") — '' or absent for no button. */
+  actionStage?: string;
+  actionLabel?: string;
+  /** A boarding pass is saved: the card offers a Pass action. */
+  hasPass?: boolean;
 }
+
+/** A step the traveller marked from the notification's button. */
+export type StepMark = { journeyId: string; stage: string; at: number };
 
 /** A card for later: what the notification should read from `at` (ms since
  * epoch) on — the moment a countdown runs out, when "Departs in" has to
@@ -55,6 +64,8 @@ const native = requireOptionalNativeModule<{
   post(journeyId: string, content: LiveUpdateContent, scheduled: ScheduledLiveUpdate[]): void;
   end(journeyId: string, content: LiveUpdateContent | null): void;
   canPostPromoted(): boolean;
+  takePendingStepMarks?(): StepMark[];
+  addListener(event: 'onStepMarked', listener: () => void): { remove(): void };
 }>('FlyRightLiveUpdate');
 
 /** Post or replace-in-place the journey's ongoing Live Update, with the
@@ -78,4 +89,16 @@ export function endTravelLiveUpdate(journeyId: string, content?: LiveUpdateConte
 /** Whether the OS grants Live Update promotion (Android 16+, user-revocable). */
 export function canPostPromotedLiveUpdates(): boolean {
   return native?.canPostPromoted() ?? false;
+}
+
+/** Steps marked from the notification's button since the last call, oldest
+ * first — taken, so each is handed over once. Empty off Android and on a
+ * binary built before the button. */
+export function takePendingNotificationStepMarks(): StepMark[] {
+  return native?.takePendingStepMarks?.() ?? [];
+}
+
+/** Calls `listener` whenever the button is tapped while the app is running. */
+export function addNotificationStepMarkListener(listener: () => void): { remove(): void } {
+  return native?.takePendingStepMarks ? native.addListener('onStepMarked', listener) : { remove() {} };
 }

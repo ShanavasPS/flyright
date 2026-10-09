@@ -39,6 +39,9 @@ data class LiveCard(
   val leadText: String,
   val leadStrike: String,
   val tone: String,
+  val actionStage: String = "",
+  val actionLabel: String = "",
+  val hasPass: Boolean = false,
 ) {
   fun toJson(): String =
     JSONObject()
@@ -59,6 +62,9 @@ data class LiveCard(
       .put("leadText", leadText)
       .put("leadStrike", leadStrike)
       .put("tone", tone)
+      .put("actionStage", actionStage)
+      .put("actionLabel", actionLabel)
+      .put("hasPass", hasPass)
       .toString()
 
   companion object {
@@ -83,6 +89,9 @@ data class LiveCard(
         leadText = o.optString("leadText"),
         leadStrike = o.optString("leadStrike"),
         tone = o.optString("tone"),
+        actionStage = o.optString("actionStage"),
+        actionLabel = o.optString("actionLabel"),
+        hasPass = o.optBoolean("hasPass", false),
       )
     }
   }
@@ -111,6 +120,11 @@ object LiveUpdateNotifier {
   const val EXTRA_JOURNEY = "journeyId"
   const val EXTRA_CARD = "card"
   const val EXTRA_INDEX = "index"
+  const val EXTRA_STAGE = "stage"
+
+  /** The card last posted per journey, so the step button's receiver can
+   * redraw it without the button the moment it is tapped. */
+  private const val CARDS = "flyright.liveupdate.cards"
 
   // Payout green / brand navy from src/constants/theme.ts.
   private const val COLOR_ON_TIME = 0xFF0FA362.toInt()
@@ -131,6 +145,7 @@ object LiveUpdateNotifier {
   }
 
   fun cancel(context: Context, journeyId: String) {
+    context.getSharedPreferences(CARDS, Context.MODE_PRIVATE).edit().remove(journeyId).apply()
     cancelScheduled(context, journeyId)
     manager(context).cancel(journeyId, NOTIFICATION_ID)
   }
@@ -216,6 +231,27 @@ object LiveUpdateNotifier {
       .setAutoCancel(!live)
       .setColor(accent)
       .setContentIntent(tapIntent(context, journeyId))
+    // The traveller's row (design canvas "Mark next step", option D): the
+    // pass, then the step to mark in their own words — a verb, never a
+    // state. The step runs in the background (StepMarkReceiver); the pass
+    // opens the app on it. Only on the live card, never a final one.
+    if (live && content.hasPass) {
+      builder.addAction(
+        Notification.Action.Builder(Icon.createWithResource(context, R.drawable.flyright_live_brand), "Pass", passIntent(context, journeyId)).build(),
+      )
+    }
+    if (live && content.actionStage.isNotEmpty() && content.actionLabel.isNotEmpty()) {
+      builder.addAction(
+        Notification.Action.Builder(
+          Icon.createWithResource(context, R.drawable.flyright_live_brand),
+          content.actionLabel,
+          markIntent(context, journeyId, content.actionStage),
+        ).build(),
+      )
+    }
+    if (live) {
+      context.getSharedPreferences(CARDS, Context.MODE_PRIVATE).edit().putString(journeyId, content.toJson()).apply()
+    }
     // The lead already names the fact; beneath it only which trip this is.
     val sub = if (lead) routeCodes else facts
     if (sub.isNotEmpty()) builder.setSubText(sub)
@@ -295,6 +331,41 @@ object LiveUpdateNotifier {
     channel.setSound(null, null)
     channel.enableVibration(false)
     manager.createNotificationChannel(channel)
+  }
+
+  /** The step button was tapped: the same card again, without the button,
+   * so a second tap can't land on whatever step the app shows next. The JS
+   * lifecycle reposts the real next card once it has recorded the mark. */
+  fun dropAction(context: Context, journeyId: String) {
+    if (!isPosted(context, journeyId)) return
+    val raw = context.getSharedPreferences(CARDS, Context.MODE_PRIVATE).getString(journeyId, null) ?: return
+    val card = try { LiveCard.fromJson(raw) } catch (error: Exception) { return }
+    notify(context, journeyId, card.copy(actionStage = "", actionLabel = ""), live = true)
+  }
+
+  private fun passIntent(context: Context, journeyId: String): PendingIntent {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("flyright:///boarding-pass?journeyId=${Uri.encode(journeyId)}")).apply {
+      setPackage(context.packageName)
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    return PendingIntent.getActivity(
+      context,
+      "pass:$journeyId".hashCode(),
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+  }
+
+  private fun markIntent(context: Context, journeyId: String, stage: String): PendingIntent {
+    val intent = Intent(context, StepMarkReceiver::class.java)
+      .putExtra(EXTRA_JOURNEY, journeyId)
+      .putExtra(EXTRA_STAGE, stage)
+    return PendingIntent.getBroadcast(
+      context,
+      "mark:$journeyId".hashCode(),
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
   }
 
   private fun tapIntent(context: Context, journeyId: String): PendingIntent {

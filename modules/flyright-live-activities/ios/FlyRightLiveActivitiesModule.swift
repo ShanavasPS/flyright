@@ -2,13 +2,72 @@ import ActivityKit
 import ExpoModulesCore
 import OneSignalLiveActivities
 
+/// Steps the traveller marked from the Lock Screen or the Dynamic Island
+/// (MarkTravelStep, plugins/assistant/FlyRightStepIntent.swift). The intent
+/// runs in the app's process, often with React Native not yet listening, so
+/// the marks wait on disk until the JS lifecycle takes them
+/// (services/step-marks) and records them like a tap in the app.
+public enum FlyRightStepMarks {
+  private static let lock = NSLock()
+  private static let key = "flyright.stepMarks.pending"
+  static let changed = Notification.Name("FlyRightStepMarked")
+
+  public static func mark(journeyId: String, stage: String) async {
+    lock.lock()
+    var marks = UserDefaults.standard.array(forKey: key) as? [[String: Any]] ?? []
+    marks.append(["journeyId": journeyId, "stage": stage, "at": Date().timeIntervalSince1970])
+    UserDefaults.standard.set(Array(marks.suffix(20)), forKey: key)
+    lock.unlock()
+    // The card answers the tap at once: its button goes, so a second tap
+    // can't land on whatever step it would show next. The JS lifecycle then
+    // posts the real next card, with the next step's button.
+    for activity in Activity<DefaultLiveActivityAttributes>.activities
+    where activity.attributes.data["journeyId"]?.asString() == journeyId
+      && !activity.attributes.onesignal.activityId.hasPrefix("following~") {
+      var next = activity.content.state
+      var data = next.data
+      data["actionStage"] = AnyCodable("")
+      data["actionLabel"] = AnyCodable("")
+      next.data = data
+      await activity.update(ActivityContent(state: next, staleDate: activity.content.staleDate))
+    }
+    await MainActor.run { NotificationCenter.default.post(name: changed, object: nil) }
+  }
+
+  /// The marks still waiting, oldest first, and forgets them. A mark older
+  /// than half a day is dropped: the travel day it belonged to is over.
+  static func take() -> [[String: Any]] {
+    lock.lock()
+    defer { lock.unlock() }
+    let marks = UserDefaults.standard.array(forKey: key) as? [[String: Any]] ?? []
+    UserDefaults.standard.removeObject(forKey: key)
+    let now = Date().timeIntervalSince1970
+    return marks.filter { (($0["at"] as? Double).map { now - $0 < 12 * 3600 }) ?? false }
+  }
+}
+
 /// The lock-screen truth the JS lifecycle can't see on its own — see
 /// ../index.ts. Every FlyRight Live Activity is started through OneSignal's
 /// `startDefault`, so they are all typed `DefaultLiveActivityAttributes` and
 /// carry the id we chose in `attributes.onesignal.activityId`.
 public class FlyRightLiveActivitiesModule: Module {
+  private var stepObserver: NSObjectProtocol?
+
   public func definition() -> ModuleDefinition {
     Name("FlyRightLiveActivities")
+
+    // Steps marked on the Lock Screen or in the Dynamic Island (above).
+    Events("onStepMarked")
+    Function("takePendingStepMarks") { FlyRightStepMarks.take() }
+    OnCreate { [weak self] in
+      self?.stepObserver = NotificationCenter.default.addObserver(
+        forName: FlyRightStepMarks.changed, object: nil, queue: .main
+      ) { [weak self] _ in self?.sendEvent("onStepMarked") }
+    }
+    OnDestroy { [weak self] in
+      if let observer = self?.stepObserver { NotificationCenter.default.removeObserver(observer) }
+      self?.stepObserver = nil
+    }
 
     // Only activities still alive: `activities` also lists ones the OS has
     // ended but still shows dimmed on the lock screen (the eight-hour cap
