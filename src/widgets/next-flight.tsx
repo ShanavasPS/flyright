@@ -325,22 +325,18 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           <Text modifiers={[font({ size: 15, weight: 'bold' }), lineLimit(1)]}>{route}</Text>
         </HStack>
         {live ? (
-          ticking && (inAir ? props.arrTime : props.depTime) ? (
-            // The clock time, not a ticking countdown: the Lock Screen dims
-            // and blurs a running timer's last digits ("1:2⁝:--"), and the
-            // Live Activity right above already counts down.
-            <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(1)]}>
-              {inAir ? `Lands ${props.arrTime}` : `Departs ${props.depTime}`}
-            </Text>
-          ) : (
-            <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(1)]}>{props.subtitle}</Text>
-          )
+          // While live, the Live Activity sits right above with its own
+          // countdown and times; this card steps back to the facts only,
+          // so the Lock Screen never shows the same clock twice.
+          <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(2)]}>
+            {factsLine || props.subtitle}
+          </Text>
         ) : (
-          <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(1)]}>{props.whenLabel}</Text>
+          <VStack alignment="leading" spacing={1}>
+            <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(1)]}>{props.whenLabel}</Text>
+            <Text modifiers={[font({ size: 13 }), opacity(0.7), lineLimit(1)]}>{when}</Text>
+          </VStack>
         )}
-        <Text modifiers={[font({ size: 13 }), opacity(0.7), lineLimit(1)]}>
-          {live && factsLine ? factsLine : when}
-        </Text>
       </VStack>
     );
   }
