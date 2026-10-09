@@ -1,5 +1,6 @@
 import { PushIdentitySync } from "@/components/push-identity-sync";
 import { ClerkProvider, useAuth } from "@clerk/expo";
+import { resourceCache } from "@clerk/expo/resource-cache";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -223,7 +224,15 @@ function RootLayout() {
   }
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+    // resourceCache keeps the signed-in session on the device, so with no
+    // network Clerk still reports who is signed in. Without it, an offline
+    // cold start read as signed out: the journal, filtered by the user,
+    // came up empty ("Where have you flown?") over a full local database.
+    <ClerkProvider
+      publishableKey={publishableKey}
+      tokenCache={tokenCache}
+      __experimental_resourceCache={resourceCache}
+    >
       <IdentitySync />
       <OtaUpdateSync />
       <StepMarkSync />
