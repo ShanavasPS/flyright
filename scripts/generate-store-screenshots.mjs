@@ -40,7 +40,7 @@ const SHOTS = [
   {
     raw: 'phone-05-travel-day.png',
     headline: 'Your travel day, live',
-    sub: 'Gate, delays and landing updates with FlyRight Pro',
+    sub: 'Gate, seat and your next step, live with FlyRight Pro',
   },
   {
     raw: 'phone-03-verdict.png',

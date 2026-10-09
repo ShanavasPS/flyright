@@ -195,7 +195,7 @@
           ]
         }
       ],
-      "versionCode": 86
+      "versionCode": 87
     },
     "web": {
       "output": "server",

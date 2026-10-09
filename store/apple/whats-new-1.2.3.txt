@@ -1,0 +1,9 @@
+Mark your next step without opening FlyRight: "I'm through security" now sits on the Flights card, the Lock Screen and the Dynamic Island, with your boarding pass one tap away. Take-off and landing are asked, never assumed.
+
+A split-flap countdown on the Flights card, the Lock Screen and the Home Screen widget, with the two things that matter right now beside it: terminal and check-in area, then gate and seat, then seat and baggage belt.
+
+When your flight runs late, the boarding time on your pass is crossed out, and FlyRight no longer says "Boarding now" before the gate opens.
+
+Your trips show without an internet connection: FlyRight remembers that you are signed in when you are offline.
+
+iPhone photos in HEIC now upload to your trip, and trip pages put your progress above the airport details.

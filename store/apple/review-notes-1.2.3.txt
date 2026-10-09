@@ -1,0 +1,12 @@
+What's new to review in 1.2.3:
+
+Nothing about purchases, prices or the existing Free and Pro features changes.
+
+1. Mark a step from the Live Activity. On the travel day the Lock Screen Live Activity and the expanded Dynamic Island show a button with the traveller's next step in their own words (for example "I'm through security"), plus a "Pass" link that opens the saved boarding pass in the app. The button runs an App Intent (LiveActivityIntent) in the app's process: it records the step on the device and updates the card. It does not open the app and sends nothing to a server by itself. Take-off and landing are shown as a question ("Taken off?") with a "Yes" button. The same button is on the Flights tab's live card.
+2. Live card. The countdown is drawn as a split-flap board on the Flights card, the Lock Screen and the Home Screen widget, with the two facts that matter at each stage beside it (terminal and check-in area, gate and seat, seat and baggage belt). A delayed flight shows the printed boarding time crossed out.
+3. Offline. Trips now show when the device has no connection: the signed-in session is kept on the device (Clerk's secure-store cache) so the journal is not read as signed out.
+4. Photos. HEIC photos picked from the library are converted to JPEG on the device before upload.
+
+To see them: sign in with the review account and add or open a flight departing within the next few hours; the Live Activity starts four hours before departure (a Pro feature, as before). The review account already has trips.
+
+The existing review account and credentials remain valid. Use the email sign-in form and choose the password option if prompted for another method.
