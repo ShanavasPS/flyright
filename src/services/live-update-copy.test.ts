@@ -13,6 +13,25 @@ describe('liveUpdateLines', () => {
     ).toEqual({ title: 'Landed 17:08 · Belt 7', text: '' });
   });
 
+  it('adds the second fact after the first', () => {
+    expect(
+      liveUpdateLines({
+        clockLabel: 'DEPARTS IN',
+        lead: { label: 'GATE', value: '53', sub: 'Boards 15:30' },
+        second: { label: 'SEAT', value: '14A' },
+        delayChip: null,
+      }),
+    ).toEqual({ title: 'Departs in · Gate 53 · Seat 14A', text: 'Boards 15:30' });
+    expect(
+      liveUpdateLines({
+        clockLabel: 'LANDS IN',
+        lead: { label: 'SEAT', value: '14A', sub: '' },
+        second: { label: 'BAGGAGE', value: 'Belt 7' },
+        delayChip: null,
+      }).title,
+    ).toBe('Lands in · Seat 14A · Belt 7');
+  });
+
   it('leads the text with the delay chip, and stands alone without a fact', () => {
     expect(
       liveUpdateLines({ clockLabel: 'DEPARTS IN', lead: { label: 'GATE', value: '53', sub: 'Was 15:14' }, delayChip: '+46 min' }),
@@ -36,5 +55,12 @@ describe('liveUpdateLines — without a countdown the label names the moment', (
     expect(liveUpdateLines({ clockLabel: 'DEPARTS IN', lead: null, delayChip: null, countdownEnd: 1_800_000_000_000 }).title).toBe('Departs in');
     expect(liveUpdateLines({ clockLabel: 'DEPARTS IN', lead: null, delayChip: null }).title).toBe('Departs in');
     expect(liveUpdateLines({ clockLabel: 'LANDED 17:08', lead: null, delayChip: null, countdownEnd: null }).title).toBe('Landed 17:08');
+  });
+
+  it('keeps a 12-hour time in capitals', () => {
+    expect(
+      liveUpdateLines({ clockLabel: 'LANDED 5:11 AM', lead: { label: 'BAGGAGE', value: 'Belt 7', sub: '' }, delayChip: null }).title,
+    ).toBe('Landed 5:11 AM · Belt 7');
+    expect(liveUpdateLines({ clockLabel: 'LANDED 11:40PM', lead: null, delayChip: null }).title).toBe('Landed 11:40PM');
   });
 });

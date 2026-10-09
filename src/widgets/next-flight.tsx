@@ -55,10 +55,10 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
   const family = environment.widgetFamily;
   const now = environment.date;
   const live = props.kind === 'live';
-  const accent = props.tone === 'delay' ? AMBER : props.tone === 'landed' ? GREEN : COBALT;
-  // The one fact to act on (gate, desk, seat, belt) stands out in the
-  // status colour: green once it is time to go, amber when running late.
-  const leadColor = props.tone === 'boarding' || props.tone === 'landed' ? GREEN : props.tone === 'delay' ? AMBER : COBALT;
+  // The status colour, as on the Lock Screen card: green once it is time to
+  // go, amber when running late. The fact to act on (gate, desk, seat, belt)
+  // stands out in it too.
+  const accent = props.tone === 'boarding' || props.tone === 'landed' ? GREEN : props.tone === 'delay' ? AMBER : COBALT;
   // Both facts on one line, for the sizes too narrow to stack them.
   const factsLine = [
     props.leadValue ? `${props.leadLabel} ${props.leadValue}` : '',
@@ -108,6 +108,14 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         {props.clockLabel.startsWith('LANDED') ? 'Landed' : props.clockLabel}
       </Text>
     );
+
+  // One fact on the small card's line: a muted label, the value coloured.
+  const smallFact = (labelText: string, value: string, color: string) => (
+    <HStack spacing={2}>
+      <Text modifiers={[font({ size: 10, weight: 'bold' }), foregroundStyle(UNIT), lineLimit(1), fixedSize()]}>{labelText}</Text>
+      <Text modifiers={[font({ size: 13, weight: 'heavy', design: 'rounded' }), foregroundStyle(color), lineLimit(1), minimumScaleFactor(0.7)]}>{value}</Text>
+    </HStack>
+  );
 
   // One fact beside the board: its label over its value.
   const fact = (labelText: string, value: string, color: string, size: number) => (
@@ -177,8 +185,8 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
     const boardW = width + 2 * side;
     const boardH = boardPad + height + rowGap + 10 + boardPad * 0.8;
     const digitColor = props.tone === 'delay' ? AMBER : DIGIT;
-    const unit = (text: string, w: number) => (
-      <Text modifiers={[font({ size: 8, weight: 'bold' }), kerning(1), foregroundStyle(UNIT), lineLimit(1), minimumScaleFactor(0.7), frame({ width: w })]}>
+    const unit = (text: string, w: number, align: 'center' | 'leading' = 'center') => (
+      <Text modifiers={[font({ size: 8, weight: 'bold' }), kerning(1), foregroundStyle(UNIT), lineLimit(1), minimumScaleFactor(0.7), frame({ width: w, alignment: align })]}>
         {text}
       </Text>
     );
@@ -234,8 +242,12 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           ) : null}
         </ZStack>
         <HStack spacing={gap}>
-          {unit(hourDigits > 1 ? 'HOURS' : 'HRS', hourDigits * tileW + (hourDigits - 1) * gap)}
-          {blank(colonW, 1)}
+          {/* One hour tile is narrower than "HRS" on the small face: the
+              label takes the empty room under the colon beside it too. */}
+          {hourDigits > 1
+            ? unit('HOURS', 2 * tileW + gap)
+            : unit('HRS', tileW + gap + colonW, 'leading')}
+          {hourDigits > 1 ? blank(colonW, 1) : null}
           {unit('MIN', 2 * tileW + gap)}
           {withSeconds ? blank(colonW, 1) : null}
           {withSeconds ? unit('SEC', 2 * tileW + gap) : null}
@@ -279,10 +291,20 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
 
   // ── Lock Screen ────────────────────────────────────────────────────────
   if (family === 'accessoryInline') {
+    // One line beside the date: the fact to act on ("Gate 22", "Belt 7"),
+    // else the status word. A value that names itself needs no label.
+    // A plain space, not \s: this body ships as a string and loses its
+    // backslashes on the way to the extension.
+    const lead = props.leadValue
+      ? /^[A-Za-z]+ /.test(props.leadValue)
+        ? props.leadValue
+        : `${props.leadLabel.charAt(0)}${props.leadLabel.slice(1).toLowerCase()} ${props.leadValue}`
+      : '';
+    const inlineFact = lead || props.clockLabel.toLowerCase();
     if (props.kind === 'none') return <Text>No flights ahead</Text>;
     return (
       <Text modifiers={[widgetURL(props.url)]}>
-        {live ? `${route} · ${props.clockLabel.toLowerCase()}` : `${route} · ${props.whenLabel}`}
+        {live ? `${route} · ${inlineFact}` : `${route} · ${props.whenLabel}`}
       </Text>
     );
   }
@@ -328,8 +350,12 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         {label('FLYRIGHT', COBALT)}
         <Spacer />
         <Image systemName="airplane.departure" color={COBALT} size={26} />
-        <Text modifiers={[font({ size: 17, weight: 'bold' }), foregroundStyle(WHITE)]}>No flights ahead</Text>
-        {dim('Tap to add your next trip', 12)}
+        {/* Shrinks on the small card, which cut it to "No flights ahe…". */}
+        <Text modifiers={[font({ size: 17, weight: 'bold' }), foregroundStyle(WHITE), lineLimit(1), minimumScaleFactor(0.7)]}>No flights ahead</Text>
+        {/* Two lines allowed: on the small card one line cut it to "…nex…". */}
+        <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.62), lineLimit(2), minimumScaleFactor(0.9)]}>
+          Tap to add your next trip
+        </Text>
       </VStack>
     );
   }
@@ -342,11 +368,25 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           <Spacer />
           {props.delayChip ? label(props.delayChip, AMBER) : null}
         </HStack>
-        {live ? (ticking ? flap(24, false) : clock(26)) : codes(22)}
+        {live ? (ticking ? flap(19, true) : clock(26)) : codes(22)}
         {/* The times, not the cities: a city name never fits the small card.
-            No arrow — each time sits under its own airport. */}
+            Live, the usual route line: each code at its own edge with its
+            clock under it, the plane (and its progress aloft) between. */}
         {live ? (
-          codes(15)
+          <HStack alignment="center" spacing={6}>
+            <VStack alignment="leading" spacing={0}>
+              <Text modifiers={[font({ size: 15, weight: 'heavy', design: 'rounded' }), foregroundStyle(WHITE), fixedSize()]}>{props.fromCode}</Text>
+              {props.depTime ? <Text modifiers={[font({ size: 11, weight: 'bold' }), monospacedDigit(), foregroundStyle(WHITE), lineLimit(1), minimumScaleFactor(0.8)]}>{props.depTime}</Text> : null}
+            </VStack>
+            <VStack spacing={2} modifiers={[frame({ maxWidth: 9999 })]}>
+              <Image systemName="airplane" color={accent} size={10} />
+              {progress()}
+            </VStack>
+            <VStack alignment="trailing" spacing={0}>
+              <Text modifiers={[font({ size: 15, weight: 'heavy', design: 'rounded' }), foregroundStyle(WHITE), fixedSize()]}>{props.toCode}</Text>
+              {props.arrTime ? <Text modifiers={[font({ size: 11, weight: 'bold' }), monospacedDigit(), foregroundStyle(WHITE), lineLimit(1), minimumScaleFactor(0.8)]}>{props.arrTime}</Text> : null}
+            </VStack>
+          </HStack>
         ) : props.depTime ? (
           <HStack spacing={4}>
             {dim(props.depTime, 11)}
@@ -357,15 +397,21 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         <Spacer />
         {live ? (
           <VStack alignment="leading" spacing={2}>
-            {progress()}
-            {factsLine ? (
-              <Text modifiers={[font({ size: 13, weight: 'bold' }), foregroundStyle(leadColor), lineLimit(1), minimumScaleFactor(0.75)]}>
-                {factsLine}
+            {props.leadValue ? (
+              // Labels in plain white, the values coloured: the first in the
+              // status colour, the second white — as the medium card.
+              // Separate pieces in a row: this runtime draws no nested Text.
+              <HStack spacing={3}>
+                {smallFact(props.leadLabel, props.leadValue, accent)}
+                {props.lead2Value ? smallFact(props.lead2Label, props.lead2Value, WHITE) : null}
+              </HStack>
+            ) : (
+              // Nothing to point at (a landed flight with no belt yet): the
+              // next step is the one useful line left.
+              <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.75), lineLimit(2)]}>
+                {props.subtitle}
               </Text>
-            ) : null}
-            <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.75), lineLimit(ticking ? 1 : 2)]}>
-              {props.subtitle}
-            </Text>
+            )}
           </VStack>
         ) : (
           <VStack alignment="leading" spacing={1}>
@@ -391,8 +437,9 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
   return (
     <VStack alignment="leading" spacing={6} modifiers={[background, widgetURL(props.url), frame({ maxWidth: 9999, maxHeight: 9999, alignment: 'topLeading' })]}>
       <HStack spacing={6}>
-        {label(live ? props.clockLabel.replace(/ \d.*$/, '') : 'NEXT FLIGHT', live ? accent : COBALT)}
+        {/* Which flight first, then what its clock counts. */}
         {label(props.flightLabel, WHITE)}
+        {label(live ? props.clockLabel.replace(/ \d.*$/, '') : 'NEXT FLIGHT', live ? accent : COBALT)}
         <Spacer />
         {props.delayChip ? label(props.delayChip, AMBER) : null}
         {live ? (ticking ? null : clock(20, 'trailing')) : countdown(15)}
@@ -403,7 +450,7 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           <Spacer />
           {props.leadValue ? (
             <HStack alignment="top" spacing={12}>
-              {fact(props.leadLabel, props.leadValue, leadColor, props.lead2Value ? 22 : 24)}
+              {fact(props.leadLabel, props.leadValue, accent, props.lead2Value ? 22 : 24)}
               {props.lead2Value ? fact(props.lead2Label, props.lead2Value, WHITE, 22) : null}
             </HStack>
           ) : null}
