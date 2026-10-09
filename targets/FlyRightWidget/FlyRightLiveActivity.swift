@@ -12,7 +12,8 @@
 //   attributes: journeyId, title, fromCode, toCode, flightLabel, airline, deepLink (followers)
 //   state: clockLabel ("DEPARTS IN" | "BOARDING" | "LANDS IN" | "LANDED 17:08"),
 //          tone ("normal" | "boarding" | "delay" | "landed"),
-//          leadLabel / leadValue / leadSub (the one fact beside the clock —
+//          leadLabel / leadValue / leadSub and lead2Label / lead2Value (the
+//          two facts beside the clock —
 //          terminal, check-in desk, gate, seat, belt), delayChip ("+46 min"),
 //          compactLabel (the island's word for the lead: "T2", "G53", "14A"),
 //          countdownEnd (ms since epoch, 0 = unknown), countdownKind
@@ -81,6 +82,10 @@ private struct TravelDayModel {
     let clockLabel: String
     let tone: Tone
     let lead: (label: String, value: String, sub: String?)?
+    /// The second fact beside the first (liveLead): the seat beside the
+    /// gate, the check-in area beside the terminal, the belt beside the
+    /// seat. Nil from builds that sent one fact.
+    let second: (label: String, value: String)?
     let delayChip: String?
     /// The instant the live countdown runs to, and whether it is the
     /// departure or the arrival. Nil once landed or when unknown.
@@ -151,6 +156,11 @@ private struct TravelDayModel {
             lead = (text(state["leadLabel"]?.asString()) ?? "", value, text(state["leadSub"]?.asString()))
         } else {
             lead = nil
+        }
+        if let value = text(state["lead2Value"]?.asString()) {
+            second = (text(state["lead2Label"]?.asString()) ?? "", value)
+        } else {
+            second = nil
         }
         delayChip = text(state["delayChip"]?.asString())
     }
@@ -346,7 +356,10 @@ private struct LockScreenView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ClockLabelRow(model: model, size: 11)
                     if let end = model.countdown {
-                        FlapClock(end: end, height: 38, color: model.tone == .delay ? Brand.amber : FlapClock.digit)
+                        // A step smaller when two facts share the row, so
+                        // they fit beside it at full size (stacked, the
+                        // card's height squeezed them below their labels).
+                        FlapClock(end: end, height: model.second == nil ? 38 : 32, color: model.tone == .delay ? Brand.amber : FlapClock.digit)
                     } else {
                         BigClock(model: model, size: 52, marks: true)
                     }
@@ -354,7 +367,7 @@ private struct LockScreenView: View {
                 .layoutPriority(1)
                 Spacer(minLength: 8)
                 if let lead = model.lead {
-                    LeadFact(lead: lead, tone: model.tone, size: 38)
+                    LeadFact(lead: lead, second: model.second, tone: model.tone, size: model.second == nil ? 38 : 26)
                 }
             }
             RouteLine(model: model, codeSize: 13, captions: true)
@@ -804,31 +817,24 @@ private struct ClockText: View {
     }
 }
 
-/// The one fact beside the clock, right-aligned: "GATE" / "53" / "Boards
-/// 15:30". Green while boarding (the gate is the task), white otherwise.
+/// The facts beside the clock, right-aligned: "GATE 53   SEAT 14A" over
+/// "Boards 15:30". The first is the one to act on, so it wears the status
+/// colour (cobalt, green while boarding and landed, amber when late); the
+/// second is white.
 private struct LeadFact: View {
     let lead: (label: String, value: String, sub: String?)
+    var second: (label: String, value: String)? = nil
     let tone: Tone
     let size: CGFloat
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 1) {
-            if !lead.label.isEmpty {
-                Text(lead.label)
-                    .font(.system(size: 10, weight: .bold))
-                    .kerning(1.2)
-                    .foregroundStyle(Brand.whiteDim)
-                    .lineLimit(1)
+            HStack(alignment: .top, spacing: 12) {
+                fact(label: lead.label, value: lead.value, color: tone.color)
+                if let second {
+                    fact(label: second.label, value: second.value, color: Brand.white)
+                }
             }
-            Text(lead.value)
-                .font(.system(size: size, weight: .heavy, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(tone == .boarding || tone == .landed ? Brand.green : Brand.white)
-                .lineLimit(1)
-                // Room for "Rows 101–140": down to half size before it
-                // truncates — never at the clock's expense (the clock's
-                // column has layout priority and a fixed width).
-                .minimumScaleFactor(0.5)
             if let sub = lead.sub {
                 Text(sub)
                     .font(.system(size: 11, weight: .semibold))
@@ -838,6 +844,27 @@ private struct LeadFact: View {
             }
         }
         .multilineTextAlignment(.trailing)
+    }
+
+    private func fact(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            if !label.isEmpty {
+                Text(label)
+                    .font(.system(size: 10, weight: .bold))
+                    .kerning(1.2)
+                    .foregroundStyle(Brand.whiteDim)
+                    .lineLimit(1)
+            }
+            Text(value)
+                .font(.system(size: size, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(color)
+                .lineLimit(1)
+                // Room for "Rows 101–140": down to half size before it
+                // truncates — never at the clock's expense (the clock's
+                // column has layout priority and a fixed width).
+                .minimumScaleFactor(0.5)
+        }
     }
 }
 

@@ -802,9 +802,13 @@ export interface LiveContent {
    * surface). */
   clockLabel: string;
   tone: 'normal' | 'boarding' | 'delay' | 'landed';
-  /** The one fact beside the clock — terminal, check-in desk, gate, seat,
-   * belt — or null when the step has none worth the space. */
+  /** The first of the two facts beside the clock (convex/liveShared.ts
+   * liveLead: terminal and check-in area on the way, gate and seat at the
+   * airport, seat and belt on board, the belt once landed), with a short
+   * note under the pair — or null when the step has none. */
   lead: { label: string; value: string; sub: string } | null;
+  /** The second fact beside it, or null. */
+  second: { label: string; value: string } | null;
   /** "+46 min" while half an hour or more late, else null. */
   delayChip: string | null;
 }
@@ -1034,7 +1038,7 @@ export function liveContent(
   } else if (index >= stageIndex('boarded') || next === null) {
     compactLabel = STAGE_COMPACT[state.stage];
   } else if (next === 'boarded') {
-    compactLabel = facts.gate ? `G${facts.gate}` : NEXT_STEP_COMPACT.boarded;
+    compactLabel = facts.gate ? (/^\d/.test(facts.gate) ? `G${facts.gate}` : facts.gate) : NEXT_STEP_COMPACT.boarded;
   } else {
     compactLabel = NEXT_STEP_COMPACT[next];
   }
@@ -1097,6 +1101,7 @@ export function liveContent(
     clockLabel: lead.clockLabel,
     tone: lead.tone,
     lead: lead.lead,
+    second: lead.second,
     delayChip: lead.delayChip || null,
   };
 }

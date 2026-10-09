@@ -56,6 +56,14 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
   const now = environment.date;
   const live = props.kind === 'live';
   const accent = props.tone === 'delay' ? AMBER : props.tone === 'landed' ? GREEN : COBALT;
+  // The one fact to act on (gate, desk, seat, belt) stands out in the
+  // status colour: green once it is time to go, amber when running late.
+  const leadColor = props.tone === 'boarding' || props.tone === 'landed' ? GREEN : props.tone === 'delay' ? AMBER : COBALT;
+  // Both facts on one line, for the sizes too narrow to stack them.
+  const factsLine = [
+    props.leadValue ? `${props.leadLabel} ${props.leadValue}` : '',
+    props.lead2Value ? `${props.lead2Label} ${props.lead2Value}` : '',
+  ].filter(Boolean).join(' · ');
   const route = `${props.fromCode} → ${props.toCode}`;
   const when = [props.dayLabel, props.depTime].filter(Boolean).join(' · ');
   // Within a day of take-off the words "Today" give way to a ticking
@@ -100,6 +108,16 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         {props.clockLabel.startsWith('LANDED') ? 'Landed' : props.clockLabel}
       </Text>
     );
+
+  // One fact beside the board: its label over its value.
+  const fact = (labelText: string, value: string, color: string, size: number) => (
+    <VStack alignment="trailing" spacing={0}>
+      <Text modifiers={[font({ size: 10, weight: 'bold' }), kerning(1), foregroundStyle(WHITE), opacity(0.62), lineLimit(1)]}>{labelText}</Text>
+      <Text modifiers={[font({ size, weight: 'heavy', design: 'rounded' }), monospacedDigit(), foregroundStyle(color), lineLimit(1), minimumScaleFactor(0.5)]}>
+        {value}
+      </Text>
+    </VStack>
+  );
 
   // The split-flap face the Flights live card and the Lock Screen card wear
   // (src/components/split-flap-clock.tsx, targets/FlyRightWidget): a dark
@@ -173,7 +191,10 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
       <ZStack alignment="topLeading" modifiers={[frame({ width: boardW, height: boardH })]}>
         <RoundedRectangle cornerRadius={boardRadius} modifiers={[frame({ width: boardW, height: boardH }), foregroundStyle(BOARD)]} />
         <VStack alignment="leading" spacing={rowGap} modifiers={[padding({ leading: side, trailing: side - hang, top: boardPad, bottom: boardPad * 0.8 })]}>
-        <ZStack alignment="trailing" modifiers={[frame({ width: faceW, height }), clipped()]}>
+        {/* Trailing in its frame too: the timer and the cover hang a shift
+            past the face's leading edge, and a centred frame split that
+            overhang, sliding every tile half a tile right of its label. */}
+        <ZStack alignment="trailing" modifiers={[frame({ width: faceW, height, alignment: 'trailing' }), clipped()]}>
           <HStack spacing={gap}>
             {cells.map((c, i) =>
               c === 'd' ? (
@@ -294,7 +315,7 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           <Text modifiers={[font({ size: 13, weight: 'semibold' }), lineLimit(1)]}>{props.whenLabel}</Text>
         )}
         <Text modifiers={[font({ size: 13 }), opacity(0.7), lineLimit(1)]}>
-          {live && props.leadValue ? `${props.leadLabel} ${props.leadValue}` : when}
+          {live && factsLine ? factsLine : when}
         </Text>
       </VStack>
     );
@@ -337,9 +358,9 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
         {live ? (
           <VStack alignment="leading" spacing={2}>
             {progress()}
-            {props.leadValue ? (
-              <Text modifiers={[font({ size: 13, weight: 'bold' }), foregroundStyle(accent), lineLimit(1)]}>
-                {`${props.leadLabel} ${props.leadValue}`}
+            {factsLine ? (
+              <Text modifiers={[font({ size: 13, weight: 'bold' }), foregroundStyle(leadColor), lineLimit(1), minimumScaleFactor(0.75)]}>
+                {factsLine}
               </Text>
             ) : null}
             <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.75), lineLimit(ticking ? 1 : 2)]}>
@@ -356,13 +377,13 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
     );
   }
 
-  // systemMedium
-  const timeColumn = (code: string, city: string, time: string, align: 'leading' | 'trailing') => (
-    <VStack alignment={align} spacing={0}>
+  // systemMedium. Code and clock only: the city under the code repeated
+  // what the code says, and the clocks are what a glance is for.
+  const timeColumn = (code: string, time: string, align: 'leading' | 'trailing') => (
+    <VStack alignment={align} spacing={1}>
       <Text modifiers={[font({ size: ticking ? 24 : 30, weight: 'heavy', design: 'rounded' }), foregroundStyle(WHITE)]}>{code}</Text>
-      {dim(city, 11)}
       {time ? (
-        <Text modifiers={[font({ size: 13, weight: 'bold' }), monospacedDigit(), foregroundStyle(WHITE)]}>{time}</Text>
+        <Text modifiers={[font({ size: 15, weight: 'bold' }), monospacedDigit(), foregroundStyle(WHITE), lineLimit(1)]}>{time}</Text>
       ) : null}
     </VStack>
   );
@@ -381,29 +402,27 @@ const NextFlight = (props: NextFlightProps, environment: WidgetEnvironment) => {
           {flap(26, true)}
           <Spacer />
           {props.leadValue ? (
-            <VStack alignment="trailing" spacing={0}>
-              <Text modifiers={[font({ size: 10, weight: 'bold' }), kerning(1), foregroundStyle(WHITE), opacity(0.62), lineLimit(1)]}>{props.leadLabel}</Text>
-              <Text modifiers={[font({ size: 24, weight: 'heavy', design: 'rounded' }), monospacedDigit(), foregroundStyle(props.tone === 'boarding' ? GREEN : WHITE), lineLimit(1), minimumScaleFactor(0.5)]}>
-                {props.leadValue}
-              </Text>
-            </VStack>
+            <HStack alignment="top" spacing={12}>
+              {fact(props.leadLabel, props.leadValue, leadColor, props.lead2Value ? 22 : 24)}
+              {props.lead2Value ? fact(props.lead2Label, props.lead2Value, WHITE, 22) : null}
+            </HStack>
           ) : null}
         </HStack>
       ) : null}
       <HStack alignment="center" spacing={8}>
-        {timeColumn(props.fromCode, props.fromCity, props.depTime, 'leading')}
+        {timeColumn(props.fromCode, props.depTime, 'leading')}
         <VStack spacing={4} modifiers={[frame({ maxWidth: 9999 })]}>
           <Image systemName="airplane" color={accent} size={16} />
           {progress()}
         </VStack>
-        {timeColumn(props.toCode, props.toCity, props.arrTime, 'trailing')}
+        {timeColumn(props.toCode, props.arrTime, 'trailing')}
       </HStack>
       <Spacer />
       {ticking ? null : (
         <HStack spacing={6}>
           {live ? (
             <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(WHITE), opacity(0.8), lineLimit(1)]}>
-              {props.leadValue ? `${props.leadLabel} ${props.leadValue} · ${props.subtitle}` : props.subtitle}
+              {factsLine ? `${factsLine} · ${props.subtitle}` : props.subtitle}
             </Text>
           ) : (
             dim(props.dayLabel, 12)

@@ -54,6 +54,9 @@ export interface NextFlightProps {
   subtitle: string;
   leadLabel: string;
   leadValue: string;
+  /** The second fact beside the first (liveLead), '' for none. */
+  lead2Label: string;
+  lead2Value: string;
   delayChip: string;
   tone: string;
   /** Upcoming flights after this one. */
@@ -107,6 +110,8 @@ const NONE: NextFlightProps = {
   subtitle: '',
   leadLabel: '',
   leadValue: '',
+  lead2Label: '',
+  lead2Value: '',
   delayChip: '',
   tone: 'normal',
   laterCount: 0,
@@ -187,6 +192,8 @@ export function widgetPropsAt(input: WidgetInput, t: Date): NextFlightProps {
           subtitle: c.subtitle,
           leadLabel: c.lead?.label ?? '',
           leadValue: c.lead?.value ?? '',
+          lead2Label: c.second?.label ?? '',
+          lead2Value: c.second?.value ?? '',
           delayChip: c.delayChip ?? '',
           tone: c.tone,
         };

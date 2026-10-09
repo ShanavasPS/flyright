@@ -195,19 +195,22 @@ function HeroContent({
             />
           </View>
           {content.lead && (
-            <View style={styles.leadFact}>
-              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.leadLabel}>
-                {content.lead.label}
-              </ThemedText>
-              <ThemedText
-                numberOfLines={1}
-                style={[
-                  styles.leadValue,
-                  leadValueSize(content.lead.value),
-                  { color: content.tone === 'boarding' || content.tone === 'landed' ? theme.success : theme.heading },
-                ]}>
-                {content.lead.value}
-              </ThemedText>
+            <View style={styles.leadFacts}>
+              {/* Two facts stacked (liveLead): the first in the status
+                  colour — it is the one to act on — the second under it.
+                  Side by side, the board left them too little width and
+                  "TERMINAL" / "Area 2" truncated. */}
+              <View style={styles.leadPair}>
+                <LeadFact
+                  label={content.lead.label}
+                  value={content.lead.value}
+                  pair={!!content.second}
+                  color={toneColor}
+                />
+                {content.second && (
+                  <LeadFact label={content.second.label} value={content.second.value} pair color={theme.heading} />
+                )}
+              </View>
               {!!content.lead.sub && (
                 <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.leadSub}>
                   {content.lead.sub}
@@ -485,13 +488,28 @@ function clockWordsSize(words: string) {
   return words.length <= 16 ? { fontSize: 22, lineHeight: 28 } : { fontSize: 18, lineHeight: 24 };
 }
 
+/** One fact beside the board: its label over its value, right-aligned. */
+function LeadFact({ label, value, pair, color }: { label: string; value: string; pair: boolean; color: string }) {
+  return (
+    <View style={styles.leadFact}>
+      <ThemedText type="smallBold" themeColor="textSecondary" numberOfLines={1} style={styles.leadLabel}>
+        {label}
+      </ThemedText>
+      <ThemedText numberOfLines={1} style={[styles.leadValue, leadValueSize(value, pair), { color }]}>
+        {value}
+      </ThemedText>
+    </View>
+  );
+}
+
 /** The lead fact is always short — a gate, a desk, a seat, a belt — so its
- * size comes from its length. adjustsFontSizeToFit drew it a few points tall
+ * size comes from its length, and is a step smaller when two share the room. adjustsFontSizeToFit drew it a few points tall
  * on iOS (React Native 0.86, below its own minimumFontScale): a shrink-wrapped
  * auto-fit text is fitted against no width at all. */
-function leadValueSize(value: string) {
-  if (value.length <= 4) return null;
-  return value.length <= 7 ? { fontSize: 20, lineHeight: 26 } : { fontSize: 16, lineHeight: 24 };
+function leadValueSize(value: string, pair = false) {
+  if (value.length <= 4) return pair ? { fontSize: 20, lineHeight: 24 } : null;
+  if (value.length <= 7) return pair ? { fontSize: 18, lineHeight: 22 } : { fontSize: 20, lineHeight: 26 };
+  return pair ? { fontSize: 15, lineHeight: 20 } : { fontSize: 16, lineHeight: 24 };
 }
 
 const styles = StyleSheet.create({
@@ -595,13 +613,20 @@ const styles = StyleSheet.create({
     fontWeight: 800,
     letterSpacing: -0.5,
   },
-  leadFact: {
+  leadFacts: {
     flex: 1,
-    // Never crushed to a column of letters beside the board: the value
-    // shrinks by its length instead (leadValueSize).
+    // Never crushed to a column of letters beside the board: the values
+    // shrink by their length instead (leadValueSize).
     minWidth: 64,
     alignItems: 'flex-end',
     gap: Spacing.half,
+  },
+  leadPair: {
+    alignItems: 'flex-end',
+    gap: Spacing.one,
+  },
+  leadFact: {
+    alignItems: 'flex-end',
   },
   leadLabel: {
     fontSize: 10,

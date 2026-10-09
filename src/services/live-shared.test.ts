@@ -385,18 +385,43 @@ describe('liveLead', () => {
     landedClock: '17:08',
   } satisfies LiveLeadInput;
 
-  it('leads with the terminal on the way, the desk at the airport, the gate from check-in', () => {
-    expect(liveLead(base)).toMatchObject({ clockLabel: 'DEPARTS IN', lead: { label: 'TERMINAL', value: '2' }, compact: 'T2' });
-    expect(liveLead({ ...base, stage: 'at_airport' })).toMatchObject({
-      lead: { label: 'CHECK-IN', value: 'A200', sub: 'Terminal 2' },
+  it('shows the terminal and check-in area on the way, the gate and seat at the airport', () => {
+    expect(liveLead(base)).toMatchObject({
+      clockLabel: 'DEPARTS IN',
+      lead: { label: 'TERMINAL', value: '2', sub: '' },
+      second: { label: 'CHECK-IN', value: 'A200' },
       compact: 'T2',
     });
-    for (const stage of ['checked_in', 'bag_dropped', 'security', 'immigration']) {
+    for (const stage of ['at_airport', 'checked_in', 'bag_dropped', 'security', 'immigration']) {
       expect(liveLead({ ...base, stage })).toMatchObject({
         lead: { label: 'GATE', value: '53', sub: 'Boards 15:30' },
+        second: { label: 'SEAT', value: '14A' },
         compact: 'G53',
       });
     }
+  });
+
+  it('names a lettered gate in the island as posted', () => {
+    expect(liveLead({ ...base, stage: 'security', gate: 'B12A' }).compact).toBe('B12A');
+    expect(liveLead({ ...base, stage: 'security', gate: '53' }).compact).toBe('G53');
+  });
+
+  it('lets the next known fact take a missing one\'s place', () => {
+    // No terminal on the way: the check-in area leads, then the gate.
+    expect(liveLead({ ...base, terminal: null })).toMatchObject({
+      lead: { label: 'CHECK-IN', value: 'A200' },
+      second: { label: 'GATE', value: '53' },
+    });
+    // At the airport before check-in, with no gate posted: the desk stands in.
+    expect(liveLead({ ...base, stage: 'at_airport', gate: null })).toMatchObject({
+      lead: { label: 'CHECK-IN', value: 'A200' },
+      second: { label: 'SEAT', value: '14A' },
+    });
+    // No seat known: the gate alone.
+    expect(liveLead({ ...base, stage: 'security', seat: null })).toMatchObject({
+      lead: { label: 'GATE', value: '53' },
+      second: null,
+    });
   });
 
   it('says the gate is not posted yet rather than leading with nothing', () => {
@@ -410,12 +435,23 @@ describe('liveLead', () => {
     expect(liveLead({ ...base, stage: 'security', boardingOpen: true })).toMatchObject({
       clockLabel: 'BOARDING',
       tone: 'boarding',
-      lead: { label: 'GATE', value: '53', sub: 'Departs 16:00' },
+      // No departure note: the route line under the card has that clock.
+      lead: { label: 'GATE', value: '53', sub: '' },
+      second: { label: 'SEAT', value: '14A' },
     });
-    expect(liveLead({ ...base, stage: 'boarded' })).toMatchObject({ lead: { label: 'SEAT', value: '14A' }, compact: '14A' });
-    expect(liveLead({ ...base, stage: 'departed' })).toMatchObject({ clockLabel: 'LANDS IN', lead: { label: 'SEAT' } });
-    // A follower's card carries no seat: the clock stands alone.
-    expect(liveLead({ ...base, stage: 'departed', seat: null })).toMatchObject({ lead: null, compact: '' });
+    expect(liveLead({ ...base, stage: 'boarded' })).toMatchObject({
+      lead: { label: 'SEAT', value: '14A' },
+      second: { label: 'BAGGAGE', value: 'Belt 7' },
+      compact: '14A',
+    });
+    expect(liveLead({ ...base, stage: 'departed' })).toMatchObject({
+      clockLabel: 'LANDS IN',
+      lead: { label: 'SEAT' },
+      second: { label: 'BAGGAGE' },
+    });
+    // A follower's card carries no seat: the belt alone, or nothing.
+    expect(liveLead({ ...base, stage: 'departed', seat: null })).toMatchObject({ lead: { label: 'BAGGAGE' }, second: null });
+    expect(liveLead({ ...base, stage: 'departed', seat: null, baggageBelt: null })).toMatchObject({ lead: null, compact: '' });
   });
 
   it('goes amber with a chip when half an hour late', () => {
@@ -433,6 +469,7 @@ describe('liveLead', () => {
       clockLabel: 'LANDED 17:08',
       tone: 'landed',
       lead: { label: 'BAGGAGE', value: 'Belt 7' },
+      second: null,
       compact: 'Belt 7',
     });
     expect(liveLead({ ...base, presumed: 'landed', landedClock: null }).clockLabel).toBe('LANDED');

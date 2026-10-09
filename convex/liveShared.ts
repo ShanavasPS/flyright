@@ -553,10 +553,12 @@ function countdownAnchor(
  *  - the big clock's label and colour ("DEPARTS IN" in the brand colour,
  *    "BOARDING" in green, amber once half an hour late, "LANDS IN" aloft,
  *    "LANDED 17:08" on the ground);
- *  - the ONE fact beside it: the terminal before the airport, the check-in
- *    desk at it, the gate from check-in until boarding, the seat once on
- *    board and in the air, the baggage belt after landing;
- *  - the island's word for that fact ("T2", "G53", "14A", "Belt 7").
+ *  - the TWO facts beside it, by where the traveller is (user decision,
+ *    2026-10-09): on the way, the terminal and the check-in area; at the
+ *    airport, the gate and the seat; on board and in the air, the seat and
+ *    the baggage belt; landed, the belt. A missing fact gives its place to
+ *    the next one that is known;
+ *  - the island's word for the first fact ("T2", "G53", "14A", "Belt 7").
  *
  * Pure, and shared by the app (liveContent) and the server
  * (buildContentState) so a push never undoes what the device drew. */
@@ -581,11 +583,17 @@ export interface LiveLeadInput {
   landedClock: string | null;
 }
 
+export interface LiveFact { label: string; value: string }
+
 export interface LiveLead {
   clockLabel: string;
   tone: 'normal' | 'boarding' | 'delay' | 'landed';
+  /** The first fact, with a short note under the pair ("Boards 6:05 AM",
+   * "Was 11:30", "Not posted yet"); '' for none. */
   lead: { label: string; value: string; sub: string } | null;
-  /** The Dynamic Island's compact word for the lead ('' for none). */
+  /** The second fact beside it, or null. */
+  second: LiveFact | null;
+  /** The Dynamic Island's compact word for the first fact ('' for none). */
   compact: string;
   /** "+46 min" while the flight is half an hour or more late. */
   delayChip: string;
@@ -599,74 +607,80 @@ const delayText = (minutes: number): string => {
   return h ? (m ? `+${h}h ${m} min` : `+${h}h`) : `+${m} min`;
 };
 
+/** The island's word for a fact. */
+function compactOf(fact: LiveFact | null): string {
+  if (!fact) return '';
+  switch (fact.label) {
+    // "G53", but a gate that already starts with its pier letter stays
+    // as posted: "B12A", never "GB12A".
+    case 'GATE': return fact.value === '—' ? 'Gate —' : /^\d/.test(fact.value) ? `G${fact.value}` : fact.value;
+    case 'TERMINAL': return `T${fact.value}`;
+    default: return fact.value;
+  }
+}
+
 export function liveLead(input: LiveLeadInput): LiveLead {
   const { stage, presumed, gate, terminal, checkInDesk, baggageBelt, seat } = input;
   const index = stageIndex(stage);
   const delayed = input.delayMinutes != null && input.delayMinutes >= LATE_MINUTES;
   const delayChip = delayed ? delayText(input.delayMinutes!) : '';
+  const fact = (label: string, value: string | null): LiveFact | null => (value ? { label, value } : null);
+  const seatFact = fact('SEAT', seat);
+  const beltFact = fact('BAGGAGE', baggageBelt ? `Belt ${baggageBelt}` : null);
+  /** The first two known facts, the first with its note. */
+  const pick = (facts: (LiveFact | null)[], sub = '') => {
+    const [first = null, second = null] = facts.filter((f): f is LiveFact => !!f);
+    return { lead: first ? { ...first, sub } : null, second, compact: compactOf(first) };
+  };
 
   // On the ground at the other end: the belt, the last thing to find —
   // until the bags are collected.
   if (landedOrLater(stage) || presumed === 'landed') {
-    const belt = baggageBelt && index < stageIndex('bags_collected') ? baggageBelt : null;
+    const belt = index < stageIndex('bags_collected') ? beltFact : null;
     return {
       clockLabel: input.landedClock ? `LANDED ${input.landedClock}` : 'LANDED',
       tone: 'landed',
-      lead: belt ? { label: 'BAGGAGE', value: `Belt ${belt}`, sub: '' } : null,
-      compact: belt ? `Belt ${belt}` : '',
+      ...pick([belt]),
       delayChip: '',
     };
   }
-  const seatLead = seat ? { label: 'SEAT', value: seat, sub: '' } : null;
-  // In the air: the landing countdown, and where you sit.
+  const tone = delayed ? 'delay' : 'normal';
+  // On board and in the air: where you sit, and where the bags will come out.
   if (stage === 'departed' || presumed === 'departed') {
-    return { clockLabel: 'LANDS IN', tone: delayed ? 'delay' : 'normal', lead: seatLead, compact: seat ?? '', delayChip };
+    return { clockLabel: 'LANDS IN', tone, ...pick([seatFact, beltFact]), delayChip };
   }
-  // On board: the gate is behind you; the seat is the fact.
   if (index >= stageIndex('boarded')) {
-    return { clockLabel: 'DEPARTS IN', tone: delayed ? 'delay' : 'normal', lead: seatLead, compact: seat ?? '', delayChip };
+    return { clockLabel: 'DEPARTS IN', tone, ...pick([seatFact, beltFact]), delayChip };
   }
-  const gateLead = (sub: string) => ({ label: 'GATE', value: gate ?? '—', sub });
+  const wasSub = delayed && input.ticketedDepartureClock ? `Was ${input.ticketedDepartureClock}` : '';
   // Boarding has opened: wherever the walk stands, the gate is the task.
+  // No departure note — the route line under the card has that clock.
   if (input.boardingOpen) {
     return {
       clockLabel: 'BOARDING',
       tone: 'boarding',
-      lead: gateLead(input.departureClock ? `Departs ${input.departureClock}` : ''),
-      compact: gate ? `G${gate}` : 'Gate',
+      ...pick([{ label: 'GATE', value: gate ?? '—' }, seatFact]),
       delayChip,
     };
   }
-  const tone = delayed ? 'delay' : 'normal';
-  const wasSub = delayed && input.ticketedDepartureClock ? `Was ${input.ticketedDepartureClock}` : '';
-  // Checked in (and through bag drop, security, passport control): the gate.
-  if (index >= stageIndex('checked_in')) {
-    const sub = gate
-      ? input.boardingClock
-        ? `Boards ${input.boardingClock}`
-        : wasSub
-      : 'Not posted yet';
-    return { clockLabel: 'DEPARTS IN', tone, lead: gateLead(sub), compact: gate ? `G${gate}` : 'Gate —', delayChip };
+  // At the airport: the gate and the seat. Before check-in with no gate
+  // posted yet, the check-in desk stands in for the gate.
+  if (index >= stageIndex('at_airport')) {
+    const checkedIn = index >= stageIndex('checked_in');
+    if (!gate && !checkedIn && checkInDesk) {
+      return { clockLabel: 'DEPARTS IN', tone, ...pick([fact('CHECK-IN', checkInDesk), seatFact], wasSub), delayChip };
+    }
+    const sub = gate ? (input.boardingClock ? `Boards ${input.boardingClock}` : wasSub) : 'Not posted yet';
+    return { clockLabel: 'DEPARTS IN', tone, ...pick([{ label: 'GATE', value: gate ?? '—' }, seatFact], sub), delayChip };
   }
-  // At the airport, not checked in: the desk, with its terminal under it.
-  if (index >= stageIndex('at_airport') && checkInDesk) {
-    return {
-      clockLabel: 'DEPARTS IN',
-      tone,
-      lead: { label: 'CHECK-IN', value: checkInDesk, sub: terminal ? `Terminal ${terminal}` : wasSub },
-      compact: terminal ? `T${terminal}` : checkInDesk,
-      delayChip,
-    };
-  }
-  // On the way: the terminal to head for — or the gate when that is all
-  // the airport has posted.
-  if (terminal) {
-    return { clockLabel: 'DEPARTS IN', tone, lead: { label: 'TERMINAL', value: terminal, sub: wasSub }, compact: `T${terminal}`, delayChip };
-  }
-  if (gate) {
-    return { clockLabel: 'DEPARTS IN', tone, lead: gateLead(wasSub), compact: `G${gate}`, delayChip };
-  }
-  return { clockLabel: 'DEPARTS IN', tone, lead: null, compact: '', delayChip };
+  // On the way: the terminal to head for and the check-in area — or the
+  // gate when that is what the airport has posted.
+  return {
+    clockLabel: 'DEPARTS IN',
+    tone,
+    ...pick([fact('TERMINAL', terminal), fact('CHECK-IN', checkInDesk), fact('GATE', gate)], wasSub),
+    delayChip,
+  };
 }
 
 /** Server-side mirror of liveContent() for the Live Activity content state —
@@ -771,7 +785,7 @@ export function buildContentState(
     compactLabel = next === 'bags_collected' && s.baggageBelt ? `Belt ${s.baggageBelt}` : NEXT_STEP_COMPACT[next];
   } else if (s.currentStage === 'landed' && s.baggageBelt) compactLabel = `Belt ${s.baggageBelt}`;
   else if (index >= BOARDED_INDEX || next === null) compactLabel = STAGE_COMPACT[s.currentStage] ?? '';
-  else if (next === 'boarded') compactLabel = s.gate ? `G${s.gate}` : NEXT_STEP_COMPACT.boarded;
+  else if (next === 'boarded') compactLabel = s.gate ? (/^\d/.test(s.gate) ? `G${s.gate}` : s.gate) : NEXT_STEP_COMPACT.boarded;
   else compactLabel = NEXT_STEP_COMPACT[next];
   // The island's word follows the lead rule wherever it has one.
   if (lead.compact) compactLabel = lead.compact;
@@ -805,6 +819,8 @@ export function buildContentState(
     leadLabel: lead.lead?.label ?? '',
     leadValue: lead.lead?.value ?? '',
     leadSub: lead.lead?.sub ?? '',
+    lead2Label: lead.second?.label ?? '',
+    lead2Value: lead.second?.value ?? '',
     delayChip: lead.delayChip,
   };
 }

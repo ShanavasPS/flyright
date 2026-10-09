@@ -94,6 +94,8 @@ function contentState(content: LiveContent) {
     leadLabel: content.lead?.label ?? '',
     leadValue: content.lead?.value ?? '',
     leadSub: content.lead?.sub ?? '',
+    lead2Label: content.second?.label ?? '',
+    lead2Value: content.second?.value ?? '',
     delayChip: content.delayChip ?? '',
   };
 }
@@ -243,6 +245,8 @@ function endById(activityId: string, content?: LiveContent): void {
         leadLabel: '',
         leadValue: '',
         leadSub: '',
+        lead2Label: '',
+        lead2Value: '',
         delayChip: '',
       };
   void lookupHeaders().then(headers => fetch('/api/live-activity', {
