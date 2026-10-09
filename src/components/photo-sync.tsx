@@ -18,6 +18,7 @@ import {
   toRemotePhoto,
   uploadPhoto,
 } from '@/services/photos';
+import { uploadFailureKind } from '@/services/photo-files';
 
 /** Keeps trip photos converged with Convex for the signed-in user: uploads
  * the bytes of photos imported here, pushes rows and tombstones, and pulls
@@ -50,14 +51,14 @@ export function PhotoSync() {
         for (const row of plan.upload) {
           markUploading(row.id);
           try {
-            const storageId = await uploadPhoto(row, await generateUploadUrl());
+            const storageId = await uploadPhoto(row, () => generateUploadUrl());
             await markPhotoUploaded(row.id, storageId, row.updatedAt);
             outbound.push({ ...row, storageId });
             markUploadDone(row.id, true);
-          } catch {
-            // Missing file or bad network: leave it dirty for the next pass,
-            // and let the strip say it is waiting.
-            markUploadDone(row.id, false);
+          } catch (error) {
+            // Leave it dirty for the next pass, and let the strip say why it
+            // is waiting.
+            markUploadDone(row.id, false, uploadFailureKind(error));
           }
         }
         for (let offset = 0; offset < outbound.length; offset += 100) {

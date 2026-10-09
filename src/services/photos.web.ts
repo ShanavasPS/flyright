@@ -38,7 +38,7 @@ export async function photoById(_id: string): Promise<TripPhotoRow | undefined> 
   return undefined;
 }
 
-export async function uploadPhoto(_row: TripPhotoRow, _uploadUrl: string): Promise<string> {
+export async function uploadPhoto(_row: TripPhotoRow, _uploadUrl: string | (() => Promise<string>)): Promise<string> {
   throw new Error('Photos are not supported on web yet.');
 }
 

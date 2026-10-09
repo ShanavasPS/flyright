@@ -48,6 +48,28 @@ describe('uploadSummary', () => {
     expect(uploadSummary(['a', 'b'], { uploading: none, failed: new Set(['a', 'b']) })).toEqual({
       kind: 'waiting',
       count: 2,
+      reason: 'offline',
     });
+  });
+
+  it('speaks of the failure the traveller has to act on, not a connection', () => {
+    const reasons = new Map([['a', 'offline' as const], ['b', 'rejected' as const]]);
+    expect(uploadSummary(['a', 'b'], { uploading: none, failed: new Set(['a', 'b']), reasons })).toMatchObject({
+      reason: 'rejected',
+    });
+    reasons.set('a', 'limit' as never);
+    expect(uploadSummary(['a', 'b'], { uploading: none, failed: new Set(['a', 'b']), reasons })).toMatchObject({
+      reason: 'limit',
+    });
+  });
+
+  it('forgets a reason once the photo goes out or the traveller retries', () => {
+    markUploadDone('c', false, 'rejected');
+    expect(getPhotoUploadState().reasons.get('c')).toBe('rejected');
+    markUploadDone('c', true);
+    expect(getPhotoUploadState().reasons.has('c')).toBe(false);
+    markUploadDone('d', false, 'limit');
+    retryUploads();
+    expect(getPhotoUploadState().reasons.size).toBe(0);
   });
 });

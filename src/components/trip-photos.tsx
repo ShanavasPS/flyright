@@ -16,6 +16,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { PhotoUploadFailure } from '@/services/photo-files';
 import { retryUploads, uploadSummary, usePhotoUploadState } from '@/services/photo-upload-state';
 import { PhotoPermissionError, importPhotos, pickImages, usePhotos } from '@/services/photos';
 
@@ -205,8 +206,7 @@ export function TripPhotos({
             tintColor={theme.warning}
           />
           <ThemedText type="small" themeColor="textSecondary" style={styles.statusText}>
-            {summary.count === 1 ? '1 photo' : `${summary.count} photos`} saved on this phone. They
-            upload when you’re back online.
+            {waitingText(summary.count, summary.reason)}
           </ThemedText>
           <Pressable
             accessibilityRole="button"
@@ -222,6 +222,26 @@ export function TripPhotos({
       ) : null}
     </View>
   );
+}
+
+/** The line under photos that did not upload, by why. "Back online" only
+ * when that is the reason: it used to cover every failure, so a photo the
+ * server refused looked like a connection problem and Retry never helped. */
+function waitingText(count: number, reason: PhotoUploadFailure): string {
+  const photos = count === 1 ? '1 photo' : `${count} photos`;
+  const they = count === 1 ? 'It uploads' : 'They upload';
+  switch (reason) {
+    case 'limit':
+      return `${photos} saved on this phone. You've reached today's upload limit. ${they} tomorrow.`;
+    case 'storage':
+      return `${photos} saved on this phone. Your photo storage is full. Remove some photos to upload ${count === 1 ? 'it' : 'them'}.`;
+    case 'missing':
+      return `${photos} can't be found on this phone. Remove and add ${count === 1 ? 'it' : 'them'} again.`;
+    case 'rejected':
+      return `${photos} couldn't upload. Retry, or remove and add ${count === 1 ? 'it' : 'them'} again.`;
+    default:
+      return `${photos} saved on this phone. ${they} when you're back online.`;
+  }
 }
 
 /** Camera or library. iOS gets the native action sheet; Android the alert

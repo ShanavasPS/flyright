@@ -1,7 +1,9 @@
 /** Trip photos: the local `trip_photos` table plus the file each row points
- * at. Imports copy the picked image into the app's document directory (the
- * picker's cache URI is temporary), so a row's uri is either that file:// path
- * or, for photos that arrived through sync, its Convex storage URL. */
+ * at. Imports write the picked image into the app's document directory as a
+ * JPEG of at most MAX_PHOTO_EDGE (the picker's cache URI is temporary, and
+ * its file may be a HEIC — see photo-normalize), so a row's uri is either
+ * that file:// path or, for photos that arrived through sync, its Convex
+ * storage URL. */
 
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { CryptoDigestAlgorithm, digest } from 'expo-crypto';
@@ -13,6 +15,7 @@ import { tripPhotos } from '@/db/schema';
 import { useLiveRow, useLiveRows } from '@/services/live-rows';
 import type { RemotePhoto, TripPhotoRow } from '@/services/photo-sync-plan';
 import { resolvePhotoUri, uploadPhotoFile } from '@/services/photo-files';
+import { convertToJpeg } from '@/services/photo-normalize';
 
 export type { TripPhotoRow };
 
@@ -172,15 +175,24 @@ export async function importPhotos(
     const id = newPhotoId();
     result.ids.push(id);
     const target = new File(dir, `${id}.jpg`);
-    await source.copy(target);
+    let size = { width: image.width, height: image.height };
+    try {
+      const jpeg = await convertToJpeg(image.uri);
+      await new File(jpeg.uri).move(target);
+      size = { width: jpeg.width, height: jpeg.height };
+    } catch {
+      // Keep the original rather than lose the photo; the upload converts
+      // it then (photo-files), or says why it cannot.
+      await source.copy(target);
+    }
     const now = new Date().toISOString();
     await db.insert(tripPhotos).values({
       id,
       journeyId,
       userId: userId ?? null,
       uri: target.uri,
-      width: image.width,
-      height: image.height,
+      width: size.width,
+      height: size.height,
       storageId: null,
       contentHash: hash,
       createdAt: now,
@@ -232,7 +244,7 @@ export {
 } from '@/services/photo-sync-plan';
 
 /** POSTs the file's bytes to a Convex upload URL and returns the storageId. */
-export async function uploadPhoto(row: TripPhotoRow, uploadUrl: string): Promise<string> {
+export async function uploadPhoto(row: TripPhotoRow, uploadUrl: string | (() => Promise<string>)): Promise<string> {
   return uploadPhotoFile(row.uri, uploadUrl);
 }
 

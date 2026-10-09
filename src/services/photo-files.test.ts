@@ -1,6 +1,7 @@
 import { fetch } from 'expo/fetch';
 import { MAX_PHOTO_BYTES } from '../../convex/uploadShared';
-import { resolvePhotoUri, uploadPhotoFile } from './photo-files';
+import { resolvePhotoUri, uploadFailureKind, uploadPhotoFile, PhotoUploadError } from './photo-files';
+import { convertToJpeg } from './photo-normalize';
 
 const mockFiles = new Map<string, { bytes: Uint8Array; size?: number; error?: Error }>();
 jest.mock('expo-file-system', () => ({
@@ -18,7 +19,13 @@ jest.mock('expo-file-system', () => ({
       if (!file || file.error) throw file?.error ?? new Error('Cannot read file');
       return file.bytes;
     }
+    write(bytes: Uint8Array) { mockFiles.set(this.uri, { bytes }); }
+    delete() { mockFiles.delete(this.uri); }
   },
+}));
+jest.mock('./photo-normalize', () => ({
+  ...jest.requireActual('./photo-normalize'),
+  convertToJpeg: jest.fn(),
 }));
 jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
 
@@ -64,13 +71,67 @@ it('rejects unreadable files, including a file removed after its existence check
   expect(fetch).not.toHaveBeenCalled();
 });
 
-it('does not send empty, oversized or remote photos to the uploader', async () => {
+it('does not send empty or remote photos to the uploader', async () => {
   mockFiles.set(currentUri, { bytes: new Uint8Array() });
   await expect(uploadPhotoFile(oldUri, uploadUrl)).rejects.toThrow('unavailable');
-  mockFiles.set(currentUri, { bytes, size: MAX_PHOTO_BYTES + 1 });
-  await expect(uploadPhotoFile(oldUri, uploadUrl)).rejects.toThrow('10 MB');
   await expect(uploadPhotoFile('https://example.com/a.jpg', uploadUrl)).rejects.toThrow('not stored');
   expect(fetch).not.toHaveBeenCalled();
+});
+
+/** What convertToJpeg leaves in the cache, as the real one would. */
+const converted = new Uint8Array([255, 216, 255, 224, 1, 2, 255, 217]);
+const convertedUri = 'file:///cache/ImageManipulator/out.jpg';
+const heicBytes = new Uint8Array([0, 0, 0, 24, ...new TextEncoder().encode('ftypheic'), 0, 0, 0, 0, ...new TextEncoder().encode('mif1heic')]);
+
+it('converts an iPhone HEIC saved under a .jpg name before sending it, and keeps the JPEG', async () => {
+  mockFiles.set(currentUri, { bytes: heicBytes });
+  jest.mocked(convertToJpeg).mockImplementation(async () => {
+    mockFiles.set(convertedUri, { bytes: converted });
+    return { uri: convertedUri, width: 4032, height: 3024 };
+  });
+  await expect(uploadPhotoFile(oldUri, uploadUrl)).resolves.toBe('stored-photo');
+  expect(fetch).toHaveBeenCalledWith(uploadUrl, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: converted });
+  // The phone's copy is the JPEG now, and the cache file is gone.
+  expect(mockFiles.get(currentUri)?.bytes).toEqual(converted);
+  expect(mockFiles.has(convertedUri)).toBe(false);
+});
+
+it('scales down a JPEG too big for the server instead of refusing it', async () => {
+  mockFiles.set(currentUri, { bytes: new Uint8Array(MAX_PHOTO_BYTES + 1).fill(1).map((v, i) => (i < 3 ? [255, 216, 255][i] : v)) });
+  jest.mocked(convertToJpeg).mockImplementation(async () => {
+    mockFiles.set(convertedUri, { bytes: converted });
+    return { uri: convertedUri, width: 4096, height: 3072 };
+  });
+  await expect(uploadPhotoFile(oldUri, uploadUrl)).resolves.toBe('stored-photo');
+  expect(jest.mocked(fetch).mock.calls[0][1]?.body).toEqual(converted);
+});
+
+it('says a photo it cannot convert is refused, not offline, and sends nothing', async () => {
+  mockFiles.set(currentUri, { bytes: heicBytes });
+  jest.mocked(convertToJpeg).mockRejectedValue(new Error('decode failed'));
+  const error = await uploadPhotoFile(oldUri, uploadUrl).catch((e) => e);
+  expect(uploadFailureKind(error)).toBe('rejected');
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('asks for an upload ticket only once the photo is ready', async () => {
+  const ticket = jest.fn(async () => uploadUrl);
+  await expect(uploadPhotoFile(oldUri, ticket)).rejects.toThrow('unavailable');
+  expect(ticket).not.toHaveBeenCalled();
+  mockFiles.set(currentUri, { bytes });
+  await expect(uploadPhotoFile(oldUri, ticket)).resolves.toBe('stored-photo');
+  expect(ticket).toHaveBeenCalledTimes(1);
+});
+
+it('tells the reasons apart', async () => {
+  mockFiles.set(currentUri, { bytes });
+  jest.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 415 } as Awaited<ReturnType<typeof fetch>>);
+  expect(uploadFailureKind(await uploadPhotoFile(oldUri, uploadUrl).catch((e) => e))).toBe('rejected');
+  jest.mocked(fetch).mockRejectedValueOnce(new Error('Network request failed'));
+  expect(uploadFailureKind(await uploadPhotoFile(oldUri, uploadUrl).catch((e) => e))).toBe('offline');
+  expect(uploadFailureKind(Object.assign(new Error('x'), { data: 'Too many requests. Please try again later.' }))).toBe('limit');
+  expect(uploadFailureKind(Object.assign(new Error('x'), { data: 'Your photo storage is full. Remove some photos first.' }))).toBe('storage');
+  expect(uploadFailureKind(new PhotoUploadError('gone', 'missing'))).toBe('missing');
 });
 
 it('keeps failed uploads retryable instead of treating them as synced', async () => {

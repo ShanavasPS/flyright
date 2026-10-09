@@ -44,6 +44,7 @@ import { formatDayLabelWithYear } from '@/services/dates';
 import { showFlash } from '@/services/flash';
 import { noteSuccess } from '@/services/haptics';
 import { useJourney } from '@/services/journeys';
+import { uploadFailureKind, type PhotoUploadFailure } from '@/services/photo-files';
 import {
   PhotoPermissionError,
   importPhotos,
@@ -56,6 +57,16 @@ import {
 import { useTravelDay } from '@/services/travel-day-store';
 import { UPDATE_TEXT_MAX, photoAspect, updateContext } from '@/services/trip-updates';
 import { visibilityOf } from '@/services/trip-visibility';
+
+/** What a failed post says, by what went wrong: only a dropped connection is
+ * worth "try again"; the rest need the traveller to do something else. */
+const POST_FAILURE: Record<PhotoUploadFailure, [string, string]> = {
+  offline: ['Could not post', 'Check your connection and try again. Your draft is saved.'],
+  limit: ['Too many photos today', "You've reached today's photo upload limit. Post without the photo, or try again tomorrow."],
+  storage: ['Photo storage is full', 'Remove some trip photos, then post again. Your draft is saved.'],
+  rejected: ["This photo can't be shared", 'Pick a different photo, or post without one. Your draft is saved.'],
+  missing: ['Photo not found', 'The photo is no longer on this phone. Pick it again. Your draft is saved.'],
+};
 
 /**
  * "Share an update": the composer for what a traveller posts from inside a
@@ -155,7 +166,7 @@ function PostcardComposer() {
         // a second time: the update points at the file it has.
         let storageId = stored.storageId as Id<'_storage'> | null;
         if (!storageId) {
-          storageId = (await uploadPhoto(stored, await generateUploadUrl())) as Id<'_storage'>;
+          storageId = (await uploadPhoto(stored, () => generateUploadUrl())) as Id<'_storage'>;
           await markPhotoUploaded(photoId, storageId);
         }
         photo = { photoId, storageId, width: stored.width, height: stored.height };
@@ -186,7 +197,8 @@ function PostcardComposer() {
       } else if (code === 'PRIVATE_TRIP') {
         Alert.alert('This trip is only yours', 'Change who sees it from the trip menu to share updates.');
       } else {
-        Alert.alert('Could not post', 'Check your connection and try again.');
+        const [title, message] = POST_FAILURE[uploadFailureKind(error)];
+        Alert.alert(title, message);
       }
     } finally {
       setBusy(false);
