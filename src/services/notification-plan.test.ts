@@ -44,7 +44,9 @@ describe('planReminders — trips', () => {
     expect(plan[0].id).toBe('trip-AY1331-2026-08-25');
     expect(plan[0].fireDate.toISOString()).toBe('2026-08-24T10:15:00.000Z');
     expect(plan[0].url).toBe('/journey/AY1331-2026-08-25');
-    expect(plan[0].title).toContain('AY1331');
+    expect(plan[0].title).toBe("You're flying tomorrow");
+    expect(plan[0].subtitle).toMatch(/^AY1331 to London · departs \S/);
+    expect(plan[0].body).toBe('Safe travels!');
   });
 
   it('skips trips whose reminder moment has already passed', () => {
@@ -60,12 +62,12 @@ describe('planReminders — trips', () => {
       scheduledArrival: '2026-08-25T12:00:00',
     });
     const [reminder] = planReminders([manual], [], NOW);
-    expect(reminder.body).not.toContain('Departs');
+    expect(reminder.subtitle).not.toContain('departs');
   });
 
   it('falls back to the carrier name for number-less journal entries', () => {
     const [reminder] = planReminders([journey({ number: '' })], [], NOW);
-    expect(reminder.title).toContain('Finnair');
+    expect(reminder.subtitle).toContain('Finnair');
   });
 });
 

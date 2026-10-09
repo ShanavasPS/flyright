@@ -2,6 +2,7 @@ import { proLocked, proExpiresAt } from '@/services/purchases';
 import { and, eq, isNull, or } from 'drizzle-orm';
 import * as Notifications from 'expo-notifications';
 import Storage from 'expo-sqlite/kv-store';
+import { Platform } from 'react-native';
 
 import { db } from '@/db/client';
 import { claims, journeys } from '@/db/schema';
@@ -130,7 +131,13 @@ async function doReconcile(): Promise<void> {
     plan.map((reminder) =>
       Notifications.scheduleNotificationAsync({
         identifier: reminder.id,
-        content: { title: reminder.title, body: reminder.body, data: { url: reminder.url } },
+        content: {
+          title: reminder.title,
+          ...(reminder.subtitle && Platform.OS === 'ios'
+            ? { subtitle: reminder.subtitle, body: reminder.body }
+            : { body: reminder.subtitle ? `${reminder.subtitle}. ${reminder.body}` : reminder.body }),
+          data: { url: reminder.url },
+        },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: reminder.fireDate,

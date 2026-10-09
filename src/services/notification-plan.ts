@@ -17,6 +17,9 @@ export interface PlannedReminder {
    * replaces the previous request, which is what makes reconcile idempotent. */
   id: string;
   title: string;
+  /** The line under the title — iOS only; the lifecycle folds it into the
+   * body on Android, which has no subtitle. */
+  subtitle?: string;
   body: string;
   fireDate: Date;
   /** Deep link pushed when the user taps the notification. */
@@ -71,20 +74,17 @@ function tripReminder(j: ReminderJourney, now: Date): PlannedReminder | null {
   const fireDate = new Date(departure - DAY_MS);
   if (fireDate.getTime() <= now.getTime()) return null;
 
-  const watching =
-    j.source === 'lookup'
-      ? "FlyRight is watching it — if it runs late, you'll know what you're owed."
-      : 'Safe travels! Your journal has the trip covered.';
   // "Departs 08:35" means 08:35 at the gate they're walking to — a push that
   // re-times itself to wherever the phone is would be worse than silent.
   const when = hasRealTime(j)
-    ? `Departs ${formatTime(j.scheduledDeparture, airportZone(j.fromCode))}. `
+    ? ` · departs ${formatTime(j.scheduledDeparture, airportZone(j.fromCode))}`
     : '';
 
   return {
     id: `trip-${j.id}`,
-    title: `${flightLabel(j)} to ${cityOf(j.toCode)} tomorrow`,
-    body: `${when}${watching}`,
+    title: "You're flying tomorrow",
+    subtitle: `${flightLabel(j)} to ${cityOf(j.toCode)}${when}`,
+    body: 'Safe travels!',
     fireDate,
     url: `/journey/${j.id}`,
   };
@@ -177,8 +177,8 @@ export function delayNotification(
       : 'compensation';
     return {
       ...base,
-      title: `${label} delayed — you're likely owed ${money}`,
-      body: `Running ${formatDelay(delayMinutes)} late. ${
+      title: `${label} is running ${formatDelay(delayMinutes)} late`,
+      body: `You may be owed ${money}. ${
         verdict.regulation ?? 'Passenger rights'
       } compensation applies — start your claim in FlyRight.`,
     };
@@ -186,7 +186,7 @@ export function delayNotification(
   return {
     ...base,
     title: `${label} is running late`,
-    body: `Current delay: ${formatDelay(delayMinutes)}. FlyRight will tell you if it reaches compensation territory.`,
+    body: `Current delay: ${formatDelay(delayMinutes)}.`,
   };
 }
 
