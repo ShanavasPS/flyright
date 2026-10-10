@@ -647,6 +647,8 @@ export interface TravelWindow {
   phase: TravelPhase;
   /** Start of the live-surface window (T−24h). Absent when unsupported. */
   startsAt?: Date;
+  /** When the live phase opens (T−4h). Absent when unsupported. */
+  liveAt?: Date;
   /** When every live surface must be gone. Absent when unsupported. */
   endsAt?: Date;
 }
@@ -684,6 +686,7 @@ export function travelWindow(
   if (Number.isNaN(departure)) return { phase: 'unsupported' };
 
   const startsAt = new Date(departure - REMINDER_LEAD_MS);
+  const liveAt = new Date(departure - LIVE_LEAD_MS);
 
   const landed = state.stamps.landed ? Date.parse(state.stamps.landed) : NaN;
   const arrival = flightInstant(j.scheduledArrival, airportZone(j.toCode));
@@ -706,10 +709,10 @@ export function travelWindow(
   const endsAt = new Date(end);
 
   const t = now.getTime();
-  if (t < startsAt.getTime()) return { phase: 'before', startsAt, endsAt };
-  if (t >= end) return { phase: 'ended', startsAt, endsAt };
-  if (t < departure - LIVE_LEAD_MS) return { phase: 'reminder', startsAt, endsAt };
-  return { phase: 'live', startsAt, endsAt };
+  if (t < startsAt.getTime()) return { phase: 'before', startsAt, liveAt, endsAt };
+  if (t >= end) return { phase: 'ended', startsAt, liveAt, endsAt };
+  if (t < liveAt.getTime()) return { phase: 'reminder', startsAt, liveAt, endsAt };
+  return { phase: 'live', startsAt, liveAt, endsAt };
 }
 
 /** The journey the My travels banner should surface: the flight whose window

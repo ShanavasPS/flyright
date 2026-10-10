@@ -13,13 +13,14 @@ import { proLocked } from '@/services/purchases';
 import { isNull } from 'drizzle-orm';
 import * as Notifications from 'expo-notifications';
 import { Observe } from 'expo-observe';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import Storage from 'expo-sqlite/kv-store';
 
 import { db } from '@/db/client';
 import { journeys } from '@/db/schema';
 import type { FlightStatus } from '@/services/flight-lookup';
 import {
+  activityStartedAt,
   adoptLiveActivity,
   endTravelActivity,
   forgetActivityIfDead,
@@ -317,15 +318,25 @@ async function doReconcile(): Promise<void> {
     const row = byJourney.get(j.id);
     const state = await repairFlightStages(j.id, rowToState(row), j);
     const plan = planOf(j.id);
-    const { phase } = travelWindow(j, state, now, plan);
+    const { phase, liveAt } = travelWindow(j, state, now, plan);
 
     if (phase === 'reminder' || phase === 'live') {
       // The eight-hour cap again: an activity started at T−24h is dead before
-      // boarding. Start iOS activities at T−4h (the live phase) only — one
-      // that already exists keeps updating through the reminder phase.
-      if (Platform.OS === 'ios' && phase === 'reminder' && !getActivityId(j.id)) continue;
+      // boarding. iOS activities start at T−4h (the live phase), or earlier
+      // once the traveller has tapped a step — their travel day has begun.
+      // One that already exists keeps updating through the reminder phase.
+      if (Platform.OS === 'ios' && phase === 'reminder' && !state.stage && !getActivityId(j.id)) continue;
       const facts = factsFor(j);
       const content = liveContent(j, state, facts, now, plan);
+      // An activity started by an early tap would run out of its eight hours
+      // in the air. Swap it for a fresh one once the live phase has opened —
+      // never from a background run, where ActivityKit refuses the request
+      // (a launch reads 'inactive' or 'unknown' before it reads 'active').
+      const startedAt = Platform.OS === 'ios' && phase === 'live' ? activityStartedAt(j.id) : null;
+      if (startedAt && liveAt && startedAt < liveAt.getTime() && AppState.currentState !== 'background') {
+        endTravelActivity(j.id, content);
+        Observe.logEvent('travel_day.activity_renewed');
+      }
       // Progress is bucketed to 2% so the in-flight plane creeps along on
       // each reconcile without re-posting for sub-pixel changes.
       const fingerprint = [

@@ -177,7 +177,10 @@ export function widgetPropsAt(input: WidgetInput, t: Date): NextFlightProps {
     if (active) {
       const state = input.stateOf(active.id);
       const plan = input.planOf(active.id);
-      if (travelWindow(active, state, t, plan).phase === 'live') {
+      // Live from four hours out, or earlier once the traveller has tapped a
+      // step — the same rule that starts the Live Activity.
+      const { phase } = travelWindow(active, state, t, plan);
+      if (phase === 'live' || (phase === 'reminder' && state.stage)) {
         const c = liveContent(active, state, input.factsOf(active.id), t, plan);
         const later = ahead.filter((j) => j.id !== active.id).length;
         return {

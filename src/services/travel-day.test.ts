@@ -211,6 +211,11 @@ describe('travelWindow', () => {
     expect(at('2026-08-25T20:00Z')).toBe('ended'); // arrival+6h passed
   });
 
+  it('reports when the live phase opens', () => {
+    const w = travelWindow(journey(), EMPTY_TRAVEL_DAY, NOW);
+    expect(w.liveAt?.toISOString()).toBe('2026-08-25T04:00:00.000Z'); // T−4h
+  });
+
   it('ends 30 min after a landed stamp', () => {
     const j = journey();
     const state: TravelDayState = { stage: 'landed', stamps: { landed: '2026-08-25T10:40Z' } };

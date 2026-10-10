@@ -94,6 +94,13 @@ describe('widgetPropsAt', () => {
     expect(props.countdownEnd).toBe(Date.parse('2026-08-25T08:00Z'));
   });
 
+  it('turns live earlier once a step is tapped', () => {
+    const t = new Date('2026-08-25T01:00Z'); // T−7h
+    expect(widgetPropsAt(input([journey()]), t).kind).toBe('upcoming');
+    const state: TravelDayState = advance(EMPTY_TRAVEL_DAY, 'checked_in', t);
+    expect(widgetPropsAt(input([journey()], { stateOf: () => state }), t).kind).toBe('live');
+  });
+
   it('stays the plain card through the travel day without Pro', () => {
     const t = new Date('2026-08-25T05:00Z');
     expect(widgetPropsAt(input([journey()], { live: false }), t).kind).toBe('upcoming');

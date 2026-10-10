@@ -194,6 +194,12 @@ export function forgetActivityIfDead(journeyId: string, liveIds: readonly string
   return true;
 }
 
+/** When the journey's remembered activity was started (ms), or null. */
+export function activityStartedAt(journeyId: string): number | null {
+  const started = Number(Storage.getItemSync(startedKey(journeyId)) ?? 0);
+  return started || null;
+}
+
 /** Push fresh content to an already-started activity via the server proxy.
  * Fire-and-forget: a missed update is corrected by the next one. */
 export function updateTravelActivity(journeyId: string, content: LiveContent): void {
