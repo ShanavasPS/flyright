@@ -134,12 +134,15 @@ labels what fits (the London cluster shows one code) and never the lot. They
 hide below `LABEL_SCALE` (the sun view); the trip inset passes
 `labels="always"`, which only drops that zoom gate.
 
-The World tab's globe sways with the phone's tilt (`tilt` prop,
+The globe can sway with the phone's tilt (`tilt` prop,
 `hooks/use-device-tilt` + `services/tilt`, expo-sensors DeviceMotion): a
 glimpse of up to ~17° that eases back while the phone is still, added on top
-of the camera so pan, pinch and the fit stay the traveller's. The sensor runs
-only while the tab is focused in a foregrounded app, never with Reduce
-Motion, and needs no permission (`motionPermission: false` in app.json). The server side of this (`providerFetch`,
+of the camera so pan, pinch and the fit stay the traveller's. It is switched
+off: the World tab stopped passing `tilt` on 2026-10-10 (user decision), so
+the sensor never starts; the code stays for a later return. With the prop on,
+the sensor runs only while the tab is focused in a foregrounded app, never
+with Reduce Motion, and needs no permission (`motionPermission: false` in
+app.json). The server side of this (`providerFetch`,
 `flightNormalize`) reaches production with the next backend + hosting deploy.
 
 # Home-screen widget (expo-widgets, iOS)
