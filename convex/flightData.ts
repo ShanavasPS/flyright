@@ -16,6 +16,8 @@
 
 import type { ActionCtx } from './_generated/server';
 import { internal } from './_generated/api';
+import { airportInfoFor } from './airportInfo';
+import { withAirportInfo } from './airportInfoShared';
 import {
   factsPatch,
   legDepartingOn,
@@ -76,7 +78,11 @@ export async function fetchFlightFacts(
     return null;
   }
 
-  const facts = normalizeLeg(leg, flight, date);
+  // Gate, terminal and belt from the second provider where this one has
+  // none (airportInfoShared.ts) — filed with the answer, so the cache serves
+  // the completed record to everyone on the flight.
+  const read = normalizeLeg(leg, flight, date);
+  const facts = withAirportInfo(read, await airportInfoFor(ctx, flight, date, read));
   const now = Date.now();
   await ctx.runMutation(internal.provider.recordInternal, {
     flight,

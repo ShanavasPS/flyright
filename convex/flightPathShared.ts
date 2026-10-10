@@ -53,6 +53,9 @@ export interface AeroFlight {
   diverted?: boolean;
   position_only?: boolean;
   progress_percent?: number | null;
+  gate_origin?: string | null;
+  terminal_origin?: string | null;
+  baggage_claim?: string | null;
 }
 
 export interface AeroPosition {

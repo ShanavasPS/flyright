@@ -25,6 +25,7 @@
 import { ConvexHttpClient } from 'convex/browser';
 
 import { api } from '../../convex/_generated/api';
+import { airportInfoWanted, type AirportInfo, type AirportInfoFacts } from '../../convex/airportInfoShared';
 import { lookupDay } from '../../convex/lookupShared';
 import type { BeginResult, InteractiveBeginResult } from '../../convex/provider';
 import { providerFetch, type ProviderResponse } from '../../convex/providerFetch';
@@ -272,6 +273,48 @@ export async function providerCall(path: string): Promise<ProviderResponse> {
     return providerFetch(path);
   }
   return (await client.action(api.provider.fetchPath, { secret, path })) as ProviderResponse;
+}
+
+/**
+ * Gate, terminal and baggage belt from the second provider, for a status
+ * answer that is missing them (convex/airportInfoShared.ts). Made from
+ * Convex, which holds that provider's key, cache and monthly cap. Null when
+ * there is nothing to add, and on any failure: the status answer goes out
+ * as it was read.
+ */
+export async function airportInfoCall(
+  flight: string,
+  date: string,
+  facts: AirportInfoFacts,
+): Promise<AirportInfo | null> {
+  const secret = process.env.LOOKUP_QUOTA_SECRET;
+  const client = convex();
+  // Asked only when something is missing, so most answers pay no round trip.
+  if (!secret || !client || !airportInfoWanted(facts, Date.now())) return null;
+  try {
+    return await client.action(api.airportInfo.fill, {
+      secret,
+      flight,
+      date,
+      facts: {
+        landed: facts.landed,
+        from: { code: facts.from.code },
+        to: { code: facts.to.code },
+        scheduledDeparture: facts.scheduledDeparture,
+        estimatedDeparture: facts.estimatedDeparture,
+        actualDeparture: facts.actualDeparture,
+        scheduledArrival: facts.scheduledArrival,
+        estimatedArrival: facts.estimatedArrival,
+        actualArrival: facts.actualArrival,
+        gate: facts.gate,
+        terminal: facts.terminal,
+        baggageBelt: facts.baggageBelt,
+      },
+    });
+  } catch (error) {
+    console.warn('[lookup-gate] airport info unavailable', error);
+    return null;
+  }
 }
 
 export interface LookupRequest {

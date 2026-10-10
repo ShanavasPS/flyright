@@ -64,6 +64,37 @@ before changing any of this:
   journey's own departure, so an ambiguous prefix resolves to "no data",
   never to the wrong flight.
 
+## Gate, terminal and baggage belt (added 2026-10-10, dormant without a key)
+
+AeroDataBox has no gates for United States airports (measured 2026-10-10:
+0 gates in 606 departures from DFW, JFK and ORF; 88 in 88 from HEL), so a
+status answer missing its gate, terminal or belt is completed from the
+AeroAPI flight record (`gate_origin`, `terminal_origin`, `baggage_claim`).
+
+- Rules: `convex/airportInfoShared.ts` (pure, tested in
+  `src/services/airport-info-shared.test.ts`). Asked from 24 h before
+  departure while the gate or terminal is missing, and from departure until
+  90 min after landing while the belt is. Gaps are filled; what AeroDataBox
+  said is never replaced.
+- Calls: `convex/airportInfo.ts`. One ident lookup ($0.005 per result set)
+  per answer, counted against `FLIGHTAWARE_MONTHLY_CENTS` in
+  `flightPathBudget` and cached in `flightPaths` under `<FLIGHT>:<DAY>:info`
+  (10–60 min, 6 h once a belt is named). Both status fetchers use it: the
+  poll chain (`flightData.fetchFlightFacts`) and the hosting route
+  (`lookup-gate.airportInfoCall` → `airportInfo.fill`, secret-gated). The
+  completed record is what `flightFacts` caches.
+- **Only those three facts cross over.** Times, status and delay stay
+  AeroDataBox's, because of May Not §12 (no passenger-rights use).
+- **Open licence points before the key goes to production:** §10 (this is
+  exactly "in conjunction with" another real-time provider, so the written
+  permission is required), and §9: the app copies a gate and terminal onto
+  the trip's own row, which is kept for as long as the trip is. Either ask
+  FlightAware to allow that in the same letter, or clear provider-sourced
+  gates from trips older than thirty days.
+- Not verified against the live API: no key existed when this was written.
+  First step with a key is to query today's American departures from DFW
+  and count the gates.
+
 ## Configuration
 
 Server-side only (Convex production + EAS Hosting production env; also

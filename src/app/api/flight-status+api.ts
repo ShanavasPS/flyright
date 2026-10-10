@@ -24,7 +24,8 @@ import { legDepartingOn, normalizeLeg, stampHappened, toIso } from '../../../con
 import { cacheExpiry, flightPhase, maySpend } from '../../../convex/providerShared';
 import { carrierFor } from '@/constants/carriers';
 import { lookupDay } from '../../../convex/lookupShared';
-import { beginLookup, identifyCaller, providerCall, recordLookup } from '@/server/lookup-gate';
+import { withAirportInfo } from '../../../convex/airportInfoShared';
+import { airportInfoCall, beginLookup, identifyCaller, providerCall, recordLookup } from '@/server/lookup-gate';
 import { PROVIDER_HISTORY_DAYS, providerHasDay } from '@/services/lookup-reach';
 
 /** Offline/dev stand-in: HEL→FRA on the requested date. Past flights with an
@@ -323,7 +324,10 @@ export async function GET(request: Request) {
     ).catch(() => null);
   }
 
-  const facts = normalizeLeg(leg, flight, date, inbound);
+  // Gate, terminal and belt from the second provider where this one has
+  // none — before filing, so the cached record is the completed one.
+  const read = normalizeLeg(leg, flight, date, inbound);
+  const facts = withAirportInfo(read, await airportInfoCall(flight, date, read));
 
   // File the answer so the next caller asking the same question — the other
   // traveller on this flight, this journey's detail screen reopened, the next
