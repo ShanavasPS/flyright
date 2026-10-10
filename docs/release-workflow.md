@@ -81,7 +81,7 @@ Since 2026-10-08 the app carries `expo-updates`, so a JavaScript-only change can
 ```sh
 npm run update:staging -- "What changed, in one line"   # eas update --channel staging --environment production
 # install/open a preview build (channel staging), verify, then promote the very same bundle:
-npm run update:promote -- "Same line"                    # eas update:republish --channel staging --destination-channel production
+npm run update:promote -- "Same line" --group <staging group id>   # eas update:republish --destination-channel production; non-interactive mode needs --group
 npm run update:list                                       # recent update groups
 ```
 

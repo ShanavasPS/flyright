@@ -113,7 +113,7 @@
     "typecheck": "tsc --noEmit",
     "sync-versions": "node ./scripts/sync-build-numbers.mjs",
     "update:staging": "eas update --channel staging --environment production --non-interactive --message",
-    "update:promote": "eas update:republish --channel staging --destination-channel production --non-interactive --message",
+    "update:promote": "eas update:republish --destination-channel production --non-interactive --message",
     "update:list": "eas update:list --non-interactive",
     "build-airport-timezones": "node ./scripts/build-airport-timezones.mjs",
     "test:security": "node scripts/security-regressions.cjs",
