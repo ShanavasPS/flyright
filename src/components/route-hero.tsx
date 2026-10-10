@@ -92,6 +92,18 @@ function dateChipLabel(departure: string, now: Date, zone: string | null, airbor
   return days === 1 ? 'Tomorrow' : `In ${days} days`;
 }
 
+/** Where the plane sits when the screen has no reckoning of its own: by the
+ * origin until the flight is due out, by the destination once it is due in,
+ * and by the clock between the two. */
+function timetablePlace(journey: HeroJourney, now: number): number {
+  const departs = flightInstant(journey.scheduledDeparture, airportZone(journey.from.code));
+  const arrives = flightInstant(journey.scheduledArrival, airportZone(journey.to.code));
+  if (Number.isNaN(departs) || now < departs) return 0;
+  if (Number.isNaN(arrives) || arrives <= departs) return 0.5;
+  if (now >= arrives) return 1;
+  return Math.min(0.97, Math.max(0.03, (now - departs) / (arrives - departs)));
+}
+
 /** The trip at a glance, the boarding-pass row the journeys list uses but on
  * the page: airline and flight number as an eyebrow with a relative date
  * chip, the two codes big at the edges with the contrail and plane between,
@@ -118,8 +130,8 @@ export function RouteHero({
   journey: HeroJourney;
   now: number;
   schedule: Schedule | null;
-  /** 0–1 while the flight is under way (see travel-day's flightProgress);
-   * null before departure and after landing. */
+  /** Where the flight is, 0–1 (see travel-day's flightProgress): 0 until it
+   * has left, 1 once it has landed. Null leaves it to the timetable. */
   progress?: number | null;
   action?: React.ReactNode;
   /** The flight-number row and the moved-flight notice. Off on the
@@ -129,7 +141,10 @@ export function RouteHero({
 }) {
   const theme = useTheme();
   const large = useLargeText();
-  const airborne = progress != null;
+  const airborne = progress != null && progress > 0 && progress < 1;
+  // The plane waits by the origin, crosses with the flight and stops by the
+  // destination — never parked in the middle of a flight that is over.
+  const place = progress ?? timetablePlace(journey, now);
   const flown = !airborne && Date.parse(journey.scheduledDeparture) <= now;
   const chip = dateChipLabel(journey.scheduledDeparture, new Date(now), airportZone(journey.from.code), airborne);
   const duration = durationLabel(journey);
@@ -178,9 +193,9 @@ export function RouteHero({
       <View
         accessible
         accessibilityLabel={
-          progress == null
-            ? `${journey.from.code} to ${journey.to.code}`
-            : `${journey.from.code} to ${journey.to.code}, ${Math.round(progress * 100)} percent of the way`
+          airborne
+            ? `${journey.from.code} to ${journey.to.code}, ${Math.round(place * 100)} percent of the way`
+            : `${journey.from.code} to ${journey.to.code}`
         }
         style={styles.codesRow}>
         <View style={styles.endpoint}>
@@ -210,15 +225,7 @@ export function RouteHero({
             numberOfLines={1}>
             {duration ?? ' '}
           </ThemedText>
-          {progress == null ? (
-            <View style={styles.contrailLine}>
-              <ContrailDots />
-              <PlaneGlyph />
-              <ContrailDots />
-            </View>
-          ) : (
-            <ProgressContrail progress={progress} />
-          )}
+          <ProgressContrail progress={place} />
           <ThemedText
             type="small"
             themeColor="textSecondary"
@@ -283,17 +290,6 @@ function MovedFrom({ clock }: { clock: string }) {
 
 /** Half of the dotted contrail between the codes — the journeys list's
  * boarding-pass motif in the page's own palette. */
-function ContrailDots() {
-  const theme = useTheme();
-  return (
-    <View style={styles.contrailDots}>
-      {Array.from({ length: 4 }, (_, i) => (
-        <View key={i} style={[styles.contrailDot, { backgroundColor: theme.textSecondary }]} />
-      ))}
-    </View>
-  );
-}
-
 function PlaneGlyph() {
   const theme = useTheme();
   return (
@@ -307,23 +303,24 @@ function PlaneGlyph() {
 }
 
 const PLANE_SIZE = 18;
-/** Dots across the whole contrail when it shows progress — one more than
- * the two resting halves carry, so the spacing stays about the same. */
+/** Dots across the whole contrail. */
 const PROGRESS_DOTS = 9;
 
-/** The contrail while the flight is in the air: the plane at `progress`
- * of the way across, the dots it has passed in the tint, the ones ahead as
- * they were; a dot the plane would sit on steps aside. */
+/** The contrail: the plane at `progress` of the way across — by the origin
+ * at 0, by the destination at 1 — and a dot the plane would sit on steps
+ * aside. In the air the dots it has passed take the tint and the ones ahead
+ * fade; on the ground at either end they are all the same quiet line. */
 function ProgressContrail({ progress }: { progress: number }) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const planeX = Math.min(1, Math.max(0, progress)) * (width - PLANE_SIZE);
   const centre = planeX + PLANE_SIZE / 2;
+  const airborne = progress > 0 && progress < 1;
   const dots = [];
   for (let i = 0; i < PROGRESS_DOTS; i += 1) {
     const x = ((i + 0.5) * width) / PROGRESS_DOTS;
     if (Math.abs(x - centre) < PLANE_SIZE / 2 + 3) continue;
-    const passed = x < centre;
+    const passed = airborne && x < centre;
     dots.push(
       <View
         key={i}
@@ -448,12 +445,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     height: 18,
-  },
-  contrailDots: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
   },
   contrailDot: {
     width: 4,

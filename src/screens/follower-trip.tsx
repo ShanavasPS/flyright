@@ -24,7 +24,7 @@ import { airportZone, getAirport } from '@/services/airports';
 import { flightInstant, formatTime, tripDateTitle } from '@/services/dates';
 import { useFlightPath } from '@/services/flight-path';
 import { haversineKm } from '@/services/geo';
-import { adaptPublicSession, travellerEyebrow, tripDone } from '@/services/public-session';
+import { adaptPublicSession, sessionProgress, travellerEyebrow, tripDone } from '@/services/public-session';
 import { lookupDayFor } from '@/services/schedule-change-lifecycle';
 import { hasLanded, type TravelStage } from '@/services/travel-day';
 import { useMarkInteractive } from '@/hooks/use-mark-interactive';
@@ -163,6 +163,9 @@ export function FollowerTrip({
             }}
             now={now.getTime()}
             schedule={scheduleOf(trip)}
+            // The plane where the traveller's own page draws it; before the
+            // session opens and after it is gone, the timetable places it.
+            progress={session ? sessionProgress(session, now) : null}
           />
         </View>
 

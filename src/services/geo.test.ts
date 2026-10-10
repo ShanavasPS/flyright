@@ -243,7 +243,7 @@ describe('routePlane', () => {
     expect(plane.heading).toBeLessThan(80);
   });
 
-  it('sits mid-arc on a flown route, heading the way the latest leg flew', () => {
+  it('sits by the destination of a flown route, heading the way the latest leg flew', () => {
     const { routes } = buildWorldRoutes(
       [
         row({ id: 'a', fromCode: 'HEL', toCode: 'FRA', scheduledDeparture: '2026-01-01T08:00:00Z' }),
@@ -256,8 +256,10 @@ describe('routePlane', () => {
     expect(plane.leg.id).toBe('b');
     expect(plane.heading).toBeGreaterThan(20);
     expect(plane.heading).toBeLessThan(80);
-    const mid = pointAlong(routes[0].segments, 0.5).coordinate;
-    expect(plane.coordinate.latitude).toBeCloseTo(mid.latitude, 5);
+    // Leg b flew FRA → HEL: close to Helsinki, short of it.
+    const hel = getAirport('HEL')!;
+    expect(Math.abs(plane.coordinate.latitude - hel.lat)).toBeLessThan(2.5);
+    expect(plane.coordinate.latitude).toBeLessThan(hel.lat);
   });
 });
 
@@ -437,10 +439,11 @@ describe('real flight paths', () => {
     expect(route.remaining).toEqual([]);
     expect(route.segments[0].map((c) => [c.latitude, c.longitude])).toEqual(track);
     expect(pathCaption(route.path)).toBe('Flown path');
-    // The plane sits mid-track for a finished flight, as it does mid-arc.
+    // The plane of a finished flight sits on the track's last stretch, by London.
     const plane = routePlane(route);
     expect(plane.upcoming).toBe(false);
-    expect(plane.coordinate.latitude).toBeCloseTo(55, 0);
+    expect(plane.coordinate.latitude).toBeLessThan(53);
+    expect(plane.coordinate.latitude).toBeGreaterThan(lhr.lat);
   });
 
   it('keeps the great circle when the path is missing or degenerate', () => {

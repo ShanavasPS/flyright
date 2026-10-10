@@ -302,16 +302,30 @@ function originOffset(route: GeoRoute): number {
   return Math.min(ORIGIN_OFFSET_MAX, Math.max(ORIGIN_OFFSET_MIN, ORIGIN_OFFSET_KM / km));
 }
 
-/** Where the route's plane sits. Direction comes from the journeys, not the
+/** A plane parked by one end of the leg it flies: just off the airport, the
+ * same distance out either way, so the dot and its code stay readable. For a
+ * caller that knows which end better than the timetable does. */
+export function parkedPlane(
+  route: GeoRoute,
+  forward: boolean,
+  end: 'origin' | 'destination',
+): { coordinate: LatLng; heading: number } {
+  const t = end === 'origin' ? originOffset(route) : 1 - originOffset(route);
+  const { coordinate, heading } = pointAlong(route.segments, forward ? t : 1 - t);
+  return { coordinate, heading: forward ? heading : (heading + 180) % 360 };
+}
+
+/** Where the route's plane sits: by the origin of a leg still to fly, by
+ * the destination of one flown. Direction comes from the journeys, not the
  * (undirected) pair: the next upcoming leg wins, else the most recent one. */
 export function routePlane(route: GeoRoute): RoutePlane {
   const next = route.legs.find((leg) => !leg.flown);
   const leg = next ?? route.legs[route.legs.length - 1];
   const forward = leg.from.iata === route.from.iata;
   // A track still being flown ends where the aircraft is: the plane sits
-  // there, nose along the last stretch, rather than at a notional midpoint.
+  // there, nose along the last stretch, rather than parked by an airport.
   const inAir = route.path?.kind === 'track' && !route.path.complete;
-  const t = inAir ? 1 : next ? originOffset(route) : 0.5;
+  const t = inAir ? 1 : next ? originOffset(route) : 1 - originOffset(route);
   const { coordinate, heading } = pointAlong(route.segments, forward ? t : 1 - t);
   return {
     coordinate,

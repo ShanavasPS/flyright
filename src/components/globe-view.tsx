@@ -685,10 +685,15 @@ export function GlobeView({
     };
   }, [packed, livePlane]);
   const upcomingRoutes = packed.filter((route) => route.plane.upcoming && route.key !== liveKey);
+  // Aircraft on routes that are not waiting to leave: the one in the air,
+  // and — only when asked — a plane by the destination of a flown route.
+  const stillRoutes = packed.filter(
+    (route) => route.key !== liveKey && !route.plane.upcoming && (pastPlanes || route.plane.live),
+  );
   const planeAnchors = useMemo(
-    () => [...upcomingRoutes, ...(liveRoute ? [liveRoute] : [])].map((route) => route.plane.anchor),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- upcomingRoutes is derived from packed and liveKey
-    [packed, liveKey, liveRoute],
+    () => [...upcomingRoutes, ...stillRoutes, ...(liveRoute ? [liveRoute] : [])].map((route) => route.plane.anchor),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- both lists are derived from packed, liveKey and pastPlanes
+    [packed, liveKey, liveRoute, pastPlanes],
   );
   // The codes are placed together, once a frame: the busiest airports
   // first, each where it has room, the rest hidden until a zoom makes some
@@ -701,18 +706,13 @@ export function GlobeView({
       const [vx, vy, vz] = toView(airport.v[0], airport.v[1], airport.v[2], rot);
       return { x: cx + r * vx, y: cy - r * vy, r: airport.r, w: labelWidths[i], vz, priority: airport.count };
     });
-    // A plane waiting on its origin, or in the air, covers the dot's side.
+    // A plane by its origin or destination, or in the air, covers the dot's side.
     const planes = planeAnchors.map((anchor) => {
       const [vx, vy, vz] = toView(anchor[0], anchor[1], anchor[2], rot);
       return { x: cx + r * vx, y: cy - r * vy, r: PLANE_OBSTACLE_R, vz };
     });
     return placeLabels(dots, sky, planes);
   });
-  // Aircraft on routes that are not waiting to leave: the one in the air,
-  // and — only when asked — a plane mid-arc on a flown route.
-  const stillRoutes = packed.filter(
-    (route) => route.key !== liveKey && !route.plane.upcoming && (pastPlanes || route.plane.live),
-  );
   const beaconVector = useMemo(
     () => (beacon ? toVector(beacon.latitude, beacon.longitude) : null),
     [beacon],

@@ -11,7 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { airportZone, getAirport } from '@/services/airports';
 import { flightInstant } from '@/services/dates';
 import { planeNow } from '@/services/flight-position';
-import { buildWorldRoutes, pathCaption, type RoutePath, type RouteSource } from '@/services/geo';
+import { buildWorldRoutes, parkedPlane, pathCaption, type RoutePath, type RouteSource } from '@/services/geo';
 import { useGlobeDaylight } from '@/services/globe-daylight';
 import { useGlobeTextures } from '@/services/globe-textures';
 import {
@@ -96,28 +96,37 @@ export function RouteMap({
   const data = useMemo(() => buildWorldRoutes([journey], now, paths), [journey, now, paths]);
   const route = data.routes[0];
   const sunAt = useMemo(() => sunMoment(journey, now), [journey, now]);
+  const progress = useMemo(
+    () => (live ? flightProgress(live.journey, live.state, live.facts, new Date(live.now)) : null),
+    [live],
+  );
+  const airborne = progress != null && progress > 0 && progress < 1;
   // In the air: the plane where the flight is, from its last reported
-  // position or the timetable, instead of parked by the origin.
+  // position or the timetable. Either side of that the route's own plane
+  // does (by the origin, then by the destination) — except a flight held at
+  // the gate past its time, which the clock alone would park at the far end.
   const livePlane = useMemo(() => {
-    if (!live || !route) return null;
-    const progress = flightProgress(live.journey, live.state, live.facts, new Date(live.now));
-    if (progress <= 0 || progress >= 1) return null;
+    if (!live || !route || progress == null || progress >= 1) return null;
     const leg = route.legs.find((candidate) => candidate.id === live.journey.id);
     const forward = leg ? leg.from.iata === route.from.iata : true;
+    if (progress <= 0) {
+      return route.legs.every((candidate) => candidate.flown)
+        ? { key: route.key, ...parkedPlane(route, forward, 'origin') }
+        : null;
+    }
     return { key: route.key, ...planeNow(route, forward, progress, live.facts.position, live.now) };
-  }, [live, route]);
+  }, [live, route, progress]);
   // The radar rings the World tab gives the trip of the day: on the origin
   // through the travel day, on the aircraft once it is in the air, on the
   // destination once landed — while the travel window is open.
   const beacon = useMemo(() => {
-    if (!live) return null;
-    if (livePlane) return livePlane.coordinate;
+    if (!live || progress == null) return null;
+    if (airborne && livePlane) return livePlane.coordinate;
     const { phase } = travelWindow(live.journey, live.state, new Date(live.now));
     if (phase !== 'reminder' && phase !== 'live') return null;
-    const landed = flightProgress(live.journey, live.state, live.facts, new Date(live.now)) >= 1;
-    const airport = getAirport(landed ? live.journey.toCode : live.journey.fromCode);
+    const airport = getAirport(progress >= 1 ? live.journey.toCode : live.journey.fromCode);
     return airport ? { latitude: airport.lat, longitude: airport.lon } : null;
-  }, [live, livePlane]);
+  }, [live, livePlane, progress, airborne]);
   // The globe is sized to the card as it came out, so it is measured first;
   // the sea-coloured background covers the frame until the width lands.
   const [width, setWidth] = useState(0);

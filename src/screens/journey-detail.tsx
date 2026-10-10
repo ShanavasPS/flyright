@@ -256,13 +256,13 @@ export function JourneyDetail({
   }, [isDemo, rowId, observedFacts]);
 
   const travelState = useTravelDay(rowId ?? '');
-  // How far along the flight is while it is in the air — the same reckoning
-  // as the Live Activity's bar — for the route hero's contrail and the inset's
-  // plane. Null on the ground either side, and for the demo.
+  // How far along the flight is — the same reckoning as the Live Activity's
+  // bar — for the plane on the route hero's contrail: 0 until it has left,
+  // 1 once it has landed. Null (the timetable decides) for the demo and
+  // without live updates.
   const liveProgress = useMemo(() => {
     if (isDemo || !row || proLocked) return null;
-    const fraction = flightProgress(row, travelState, factsFor(row), new Date(now));
-    return fraction > 0 && fraction < 1 ? fraction : null;
+    return flightProgress(row, travelState, factsFor(row), new Date(now));
   }, [isDemo, row, travelState, now, proLocked]);
   // Which stages this leg's travel day has: the whole airport walk for a
   // flight on its own, transit security and the arrival steps for a leg of
