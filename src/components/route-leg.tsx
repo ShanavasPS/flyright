@@ -7,7 +7,7 @@ import { Spacing } from '@/constants/theme';
 import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
-import { dayOffset, dayOffsetMark, dayOffsetSpoken, formatTime } from '@/services/dates';
+import { dayOffset, dayOffsetMark, dayOffsetSpoken, flightInstant, formatTime } from '@/services/dates';
 import { blockMinutes, cityOf } from '@/services/timeline';
 
 /** The least a leg needs to be drawn: the two codes and the two clocks. */
@@ -33,8 +33,8 @@ export interface Leg {
  * `progress` puts the plane where the flight is: at the origin until it
  * departs, riding the line in the air, at the destination once landed — the
  * traveller's hero motif, so a follower reads "how much is left" from the
- * same picture. Without it the plane sits mid-line, as the journal's rows
- * have always drawn it. `yourTime` adds the landing clock in the reader's
+ * same picture. Without it the plane sits mid-line; a caller with only the
+ * timetable passes `timetableProgress`. `yourTime` adds the landing clock in the reader's
  * own zone when that differs from the airport's: the traveller is standing
  * in that zone, the person waiting for them usually isn't.
  *
@@ -211,10 +211,27 @@ function Was({ clock }: { clock: string }) {
   );
 }
 
+/** Where the timetable puts a flight, 0–1: at the origin until it is due
+ * out, at the destination once it is due in, by the clock between the two.
+ * For a surface with no live facts to hand — those belong to the travel-day
+ * surfaces — so its plane still waits and rests at the right end. A journal
+ * entry without times (one instant for both ends) flips at that instant. */
+export function timetableProgress(
+  leg: Pick<Leg, 'fromCode' | 'toCode' | 'departure' | 'arrival'>,
+  now: Date,
+): number {
+  const from = flightInstant(leg.departure, airportZone(leg.fromCode));
+  const to = flightInstant(leg.arrival, airportZone(leg.toCode));
+  if (!Number.isFinite(from)) return 0;
+  if (!Number.isFinite(to) || to <= from) return now.getTime() >= from ? 1 : 0;
+  return Math.min(1, Math.max(0, (now.getTime() - from) / (to - from)));
+}
+
 /** The dotted contrail between the codes, with the plane on it. Given a
- * `progress` the plane rides the line and the flown part turns solid behind
- * it (the traveller's hero and Live Activity motif); without one it sits
- * mid-line, the journal's static drawing. Colours are the caller's, so the
+ * `progress` the plane sits where the flight is — by the origin at 0, by the
+ * destination at 1 — and in the air the flown part turns solid behind it
+ * (the traveller's hero and Live Activity motif); without one it sits
+ * mid-line, a drawing of the route rather than of a flight. Colours are the caller's, so the
  * night-sky pass and the light cards draw the same line. */
 export function Contrail({
   progress,
@@ -250,7 +267,7 @@ export function Contrail({
           />
         ))}
       </View>
-      {progress !== undefined && width > 0 && (
+      {at > 0 && at < 1 && progress !== undefined && width > 0 && (
         <View style={[styles.contrailFlown, { backgroundColor: tint, width: x + size / 2 }]} />
       )}
       {width > 0 && (

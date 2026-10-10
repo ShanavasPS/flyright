@@ -5,7 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AirlineLogo, airlineCode } from '@/components/airline-logo';
 import { CityPhotoCard } from '@/components/city-photo-card';
 import { RecordGlobe } from '@/components/record-globe';
-import { RouteLeg } from '@/components/route-leg';
+import { RouteLeg, timetableProgress } from '@/components/route-leg';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
 import { TripRow } from '@/components/trip-row';
@@ -20,6 +20,7 @@ import {
 import { carrierCodeForName } from '@/constants/carriers';
 import { Spacing } from '@/constants/theme';
 import { useCountUp } from '@/hooks/use-count-up';
+import { useNow } from '@/hooks/use-now';
 import { useLargeText } from '@/hooks/use-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 import { airportZone } from '@/services/airports';
@@ -165,9 +166,16 @@ export function RecordCard({
   onPress?: () => void;
 }) {
   const theme = useTheme();
+  const now = useNow();
   const airline = airlineOf(row);
   const when = formatDayLabelWithYear(row.scheduledDeparture, airportZone(row.fromCode));
   const km = `${Math.round(row.distanceKm).toLocaleString()} km`;
+  const leg = {
+    fromCode: row.fromCode,
+    toCode: row.toCode,
+    departure: row.scheduledDeparture,
+    arrival: row.scheduledArrival,
+  };
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
@@ -192,15 +200,7 @@ export function RecordCard({
           </View>
         </View>
         <View style={styles.recordBody}>
-          <RouteLeg
-            leg={{
-              fromCode: row.fromCode,
-              toCode: row.toCode,
-              departure: row.scheduledDeparture,
-              arrival: row.scheduledArrival,
-              distanceKm: row.distanceKm,
-            }}
-          />
+          <RouteLeg progress={timetableProgress(leg, now)} leg={{ ...leg, distanceKm: row.distanceKm }} />
         </View>
         <View style={[styles.recordFooter, { borderTopColor: theme.hairline }]}>
           <AirlineLogo number={row.number} carrier={row.carrier} size={28} />

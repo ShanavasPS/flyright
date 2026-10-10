@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AirlineLogo } from '@/components/airline-logo';
 import { LiveDot } from '@/components/live-dot';
-import { RouteLeg } from '@/components/route-leg';
+import { RouteLeg, timetableProgress } from '@/components/route-leg';
 import { BORDER_WIDTH, RunningBorder } from '@/components/running-border';
 import { SheenCard } from '@/components/sheen-card';
 import { ThemedText } from '@/components/themed-text';
@@ -81,8 +81,8 @@ export function TripRow({
    * still the live one. */
   eyebrowTone?: 'tint' | 'heading';
   /** Where the flight is along the route, 0–1 — the plane waits at the
-   * origin, then rides the line. Omitted, the plane sits mid-line as the
-   * journal has always drawn it. */
+   * origin, rides the line, then rests at the destination. Omitted, the
+   * timetable places it (timetableProgress). */
   progress?: number;
   /** In the air right now: the row wears the live card's running light and
    * counts down to the landing instead of saying how long ago it left. */
@@ -167,7 +167,17 @@ export function TripRow({
             )))}
         </View>
         <RouteLeg
-          progress={progress}
+          // The free plan's in-the-air row says "Live" and no more: where
+          // the plane is along the line is Pro's, so there it sits mid-line.
+          progress={
+            progress ??
+            (liveMark
+              ? undefined
+              : timetableProgress(
+                  { fromCode: trip.fromCode, toCode: trip.toCode, departure: trip.scheduledDeparture, arrival: trip.scheduledArrival },
+                  now,
+                ))
+          }
           leg={{
             fromCode: trip.fromCode,
             toCode: trip.toCode,

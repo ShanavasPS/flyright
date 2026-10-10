@@ -57,7 +57,7 @@ import type { Money } from '@/rules/types';
 import { requestTrackingConsent } from '@/services/analytics';
 import { useClaims, type ClaimRow } from '@/services/claims';
 import { airportZone } from '@/services/airports';
-import { countdown, flightDay, flightInstant, localDateString } from '@/services/dates';
+import { countdown, flightDay, localDateString } from '@/services/dates';
 import { useDisruptions } from '@/services/disruptions';
 import { toDomainJourney, useJourneys, type JourneyRow } from '@/services/journeys';
 import { maybeAskForReview } from '@/services/review-prompt';
@@ -789,17 +789,6 @@ function MoneyBadge({ claim, owed, now }: { claim?: ClaimRow; owed?: Money; now:
   );
 }
 
-/** How far along its own schedule a leg is, 0–1. The journal has no live
- * facts to hand — those belong to the travel-day surfaces — so this is the
- * timetable's own answer, which is what the plane on a row has always been
- * drawn from. */
-function legProgress(row: JourneyRow, now: Date): number {
-  const from = flightInstant(row.scheduledDeparture, airportZone(row.fromCode));
-  const to = flightInstant(row.scheduledArrival, airportZone(row.toCode));
-  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return 0;
-  return Math.min(1, Math.max(0, (now.getTime() - from) / (to - from)));
-}
-
 function JourneyItem({
   row,
   now,
@@ -846,9 +835,9 @@ function JourneyItem({
       earning={earning}
       live={live}
       liveMark={liveMark}
-      // Where it is along the route, so the plane sits where the flight is
-      // rather than in the middle of the line.
-      progress={content?.progress ?? (live ? legProgress(row, now) : undefined)}
+      // Where the live card says the flight is; without one the row places
+      // the plane by the timetable itself.
+      progress={content?.progress}
       selected={selected}
       highlight={hero ? {
         color,

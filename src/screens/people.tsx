@@ -26,7 +26,7 @@ import { Avatar } from '@/components/avatar';
 import { PaneOutline } from '@/components/pane-placeholders';
 import { PassAction, PassCard, PassDivider, MicroLabel } from '@/components/pass-card';
 import { LivePass } from '@/components/live-pass';
-import { RouteLeg } from '@/components/route-leg';
+import { RouteLeg, timetableProgress } from '@/components/route-leg';
 import { SegmentTabs } from '@/components/segment-tabs';
 import { PadTabBarClearance, SplitPanes } from '@/components/split-panes';
 import { IconBadge, SheenCard } from '@/components/sheen-card';
@@ -784,6 +784,15 @@ function FollowingRow({ person, fresh }: { person: Following; fresh: boolean }) 
           <View style={styles.nextLeg}>
             <RouteLeg
               compact
+              progress={timetableProgress(
+                {
+                  fromCode: next.fromCode,
+                  toCode: next.toCode,
+                  departure: next.scheduledDeparture,
+                  arrival: next.scheduledArrival,
+                },
+                now,
+              )}
               leg={{
                 fromCode: next.fromCode,
                 toCode: next.toCode,

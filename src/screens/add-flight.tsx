@@ -37,13 +37,14 @@ import {
   PASS_AMBER,
 } from '@/components/pass-card';
 import { PrimaryButton } from '@/components/primary-button';
-import { RouteLeg } from '@/components/route-leg';
+import { RouteLeg, timetableProgress } from '@/components/route-leg';
 import { ThemedText } from '@/components/themed-text';
 import { TimeDialog } from '@/components/time-dialog';
 import { ThemedView } from '@/components/themed-view';
 import { COBALT, WHITE, WHITE_DIM, WHITE_FAINT } from '@/components/travel-stats-header';
 import { CARRIERS, carrierCodeForName, carrierFor } from '@/constants/carriers';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import {
   airportZone,
@@ -699,6 +700,7 @@ export function AddFlight({ step }: { step: Step }) {
     arrTime ??
     (manualKm != null ? addClockMinutes(depClock, estimatedFlightMinutes(manualKm)) : depClock);
 
+  const now = useNow();
   const manualPreview =
     fromAirport && toAirport && date
       ? manualSchedule(date, depClock, arrClock, fromAirport.iata, toAirport.iata)
@@ -1209,6 +1211,22 @@ export function AddFlight({ step }: { step: Step }) {
                   {[date ? formatDayLabel(date) : null, flightNumber].filter(Boolean).join(' · ')}
                 </ThemedText>
                 <RouteLeg
+                  // The plane where the saved row will draw it: at the
+                  // origin for a flight ahead, at the destination for one
+                  // already flown. Mid-line until there is a date to go by.
+                  progress={
+                    manualPreview
+                      ? timetableProgress(
+                          {
+                            fromCode: fromAirport.iata,
+                            toCode: toAirport.iata,
+                            departure: manualPreview.scheduledDeparture,
+                            arrival: manualPreview.scheduledArrival,
+                          },
+                          now,
+                        )
+                      : undefined
+                  }
                   leg={{
                     fromCode: fromAirport.iata,
                     toCode: toAirport.iata,
