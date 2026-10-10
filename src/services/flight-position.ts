@@ -20,6 +20,11 @@ export const FIX_MAX_AGE_MS = 30 * 60_000;
 /** How far forward a fix is carried: enough to cover a poll interval, not
  * enough to fly past the destination on final approach. */
 const EXTRAPOLATE_MAX_MS = 10 * 60_000;
+/** A fix is carried forward only while its track agrees with the way the
+ * route runs. One caught mid-turn (AA2274, 2026-10-10: 331° for two minutes
+ * on a west-south-west flight) would otherwise slide the plane 139 km off
+ * to the side before the next fix; it is held where it was reported. */
+const CARRY_MAX_TURN_DEG = 45;
 const KM_PER_NAUTICAL_MILE = 1.852;
 /** The timetable never puts the plane on either airport — that is the
  * pulsing plane's place before departure and nothing's after landing. */
@@ -48,8 +53,10 @@ export function planeNow(
     if (!Number.isNaN(reportedAt) && age <= FIX_MAX_AGE_MS) {
       const heading = fix.trackDeg ?? arcHeading(route, forward, progress);
       const carried = Math.min(Math.max(age, 0), EXTRAPOLATE_MAX_MS);
+      const onCourse =
+        fix.trackDeg != null && turnBetween(fix.trackDeg, arcHeading(route, forward, progress)) <= CARRY_MAX_TURN_DEG;
       const km =
-        fix.groundSpeedKt != null && fix.trackDeg != null
+        fix.groundSpeedKt != null && onCourse
           ? (fix.groundSpeedKt * KM_PER_NAUTICAL_MILE * carried) / 3_600_000
           : 0;
       const coordinate =
@@ -62,6 +69,12 @@ export function planeNow(
   const t = Math.min(PROGRESS_MAX, Math.max(PROGRESS_MIN, progress));
   const { coordinate, heading } = pointAlong(route.segments, forward ? t : 1 - t);
   return { coordinate, heading: forward ? heading : (heading + 180) % 360, source: 'estimated' };
+}
+
+/** The smaller angle between two compass headings, 0–180. */
+function turnBetween(a: number, b: number): number {
+  const diff = Math.abs(a - b) % 360;
+  return diff > 180 ? 360 - diff : diff;
 }
 
 function arcHeading(route: Pick<GeoRoute, 'segments'>, forward: boolean, progress: number): number {

@@ -53,6 +53,30 @@ describe('planeNow', () => {
     expect(placed.coordinate.longitude).toBeLessThan(fix.longitude);
   });
 
+  it('holds a fix caught mid-turn instead of sliding it off the route', () => {
+    // AA2274 ORF→DFW, 2026-10-10: reported heading 331° for two minutes on a
+    // west-south-west flight; the real plane was back on 245° by 12:10.
+    const leg = { segments: arcCoordinates(getAirport('ORF')!, getAirport('DFW')!) };
+    const turning = {
+      latitude: 37.50886,
+      longitude: -81.99156,
+      altitudeFt: 37775,
+      groundSpeedKt: 449,
+      trackDeg: 331,
+      reportedAt: '2026-10-10T12:05Z',
+    };
+    const at = Date.parse('2026-10-10T12:15:00Z');
+    const held = planeNow(leg, true, 0.3, turning, at);
+    expect(held.source).toBe('reported');
+    expect(held.coordinate).toEqual({ latitude: turning.latitude, longitude: turning.longitude });
+    expect(held.heading).toBe(331);
+    // The same fix on course is carried as before.
+    const onCourse = planeNow(leg, true, 0.3, { ...turning, trackDeg: 258 }, at);
+    expect(
+      haversineKm(onCourse.coordinate.latitude, onCourse.coordinate.longitude, turning.latitude, turning.longitude),
+    ).toBeGreaterThan(130);
+  });
+
   it('carries a fix at most ten minutes, then holds it', () => {
     const later = planeNow(route, true, 0.5, fix, NOW + 25 * 60_000);
     expect(later.source).toBe('reported');
